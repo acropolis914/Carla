@@ -18,7 +18,7 @@ jobs:
     container:
       image: ${{ matrix.container }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Set up dependencies
         run: |
           apt-get update -qq
@@ -43,7 +43,7 @@ jobs:
           - frameworks: OFF
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Set up dependencies
         run: |
           brew install cmake fluid-synth liblo libmagic libsndfile pkg-config
@@ -75,7 +75,7 @@ jobs:
     container:
       image: ${{ matrix.container }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Set up dependencies
         run: |
           dpkg --add-architecture i386
@@ -112,7 +112,7 @@ jobs:
     container:
       image: ${{ matrix.container }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Set up dependencies
         run: |
           dpkg --add-architecture i386
@@ -140,7 +140,7 @@ jobs:
   windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: configure
         run: cmake -S cmake -B build
       - name: build
