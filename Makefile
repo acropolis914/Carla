@@ -582,7 +582,8 @@ endif
 
 	install -m 644 \
 		source/frontend/patchcanvas/*.py \
-		$(DESTDIR)$(DATADIR)/carla/patchcanvas/
+		source/frontend/patchcanvas/themes.json \
+    		$(DESTDIR)$(DATADIR)/carla/patchcanvas/
 
 	install -m 644 \
 		source/frontend/utils/*.py \
