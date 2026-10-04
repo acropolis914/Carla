@@ -1,18 +1,288 @@
 #!/usr/bin/env python3
-# SPDX-FileCopyrightText: 2011-2024 Filipe Coelho <falktx@falktx.com>
+# SPDX-FileCopyrightText: 2011-2025 Filipe Coelho <falktx@falktx.com>
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 # ------------------------------------------------------------------------------------------------------------
 # Imports (Global)
 
+import json
+import os
+
 from qt_compat import qt_config
 
 if qt_config == 5:
     from PyQt5.QtCore import Qt
-    from PyQt5.QtGui import QColor, QFont, QPen, QPixmap
+    from PyQt5.QtGui import QBrush, QColor, QFont, QPen, QPixmap
 elif qt_config == 6:
     from PyQt6.QtCore import Qt
-    from PyQt6.QtGui import QColor, QFont, QPen, QPixmap
+    from PyQt6.QtGui import QBrush, QColor, QFont, QPen, QPixmap
+
+# ------------------------------------------------------------------------------------------------------------
+# Theme definition file path
+
+THEMES_JSON_FILE = os.path.join(os.path.dirname(__file__), "themes.json")
+
+# ------------------------------------------------------------------------------------------------------------
+# Color, Pen & Contrast Helpers
+
+def parse_rgb(c):
+    """Return (r, g, b) tuple from hex string, list/tuple, or QColor."""
+    if isinstance(c, QColor):
+        return (c.red(), c.green(), c.blue())
+    if isinstance(c, str):
+        c = c.strip().lstrip("#")
+        if len(c) in (3, 4):
+            return (int(c[0] * 2, 16), int(c[1] * 2, 16), int(c[2] * 2, 16))
+        elif len(c) >= 6:
+            return (int(c[0:2], 16), int(c[2:4], 16), int(c[4:6], 16))
+    if isinstance(c, (list, tuple)) and len(c) >= 3:
+        return (int(c[0]), int(c[1]), int(c[2]))
+    return (0, 0, 0)
+
+
+def calculate_contrast(rgb1, rgb2):
+    """Calculate WCAG 2.1 contrast ratio between two RGB tuples."""
+    def channel_lum(val):
+        c = val / 255.0
+        return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+
+    l1 = (
+        0.2126 * channel_lum(rgb1[0])
+        + 0.7152 * channel_lum(rgb1[1])
+        + 0.0722 * channel_lum(rgb1[2])
+    )
+    l2 = (
+        0.2126 * channel_lum(rgb2[0])
+        + 0.7152 * channel_lum(rgb2[1])
+        + 0.0722 * channel_lum(rgb2[2])
+    )
+    return (max(l1, l2) + 0.05) / (min(l1, l2) + 0.05)
+
+
+def adjust_text_for_contrast(text_color_val, bg_color_val, min_contrast=4.5):
+    """
+    Adjust text color towards white or black until it meets min_contrast ratio
+    against the background color.
+    """
+    text_rgb = parse_rgb(text_color_val)
+    bg_rgb = parse_rgb(bg_color_val)
+    if calculate_contrast(text_rgb, bg_rgb) >= min_contrast:
+        return text_color_val
+
+    cr_white = calculate_contrast((255, 255, 255), bg_rgb)
+    cr_black = calculate_contrast((0, 0, 0), bg_rgb)
+    target_rgb = (255, 255, 255) if cr_white >= cr_black else (0, 0, 0)
+
+    for step in range(1, 101):
+        t = step / 100.0
+        candidate = (
+            int(text_rgb[0] * (1 - t) + target_rgb[0] * t),
+            int(text_rgb[1] * (1 - t) + target_rgb[1] * t),
+            int(text_rgb[2] * (1 - t) + target_rgb[2] * t),
+        )
+        if calculate_contrast(candidate, bg_rgb) >= min_contrast:
+            return f"#{candidate[0]:02x}{candidate[1]:02x}{candidate[2]:02x}"
+
+    return f"#{target_rgb[0]:02x}{target_rgb[1]:02x}{target_rgb[2]:02x}"
+
+
+def parse_color(c):
+    """Parse color from hex string, list/tuple, or QColor."""
+    if isinstance(c, QColor):
+        return c
+    if isinstance(c, str):
+        c = c.strip()
+        if c.startswith("#"):
+            h = c[1:]
+            if len(h) == 3:
+                return QColor(int(h[0] * 2, 16), int(h[1] * 2, 16), int(h[2] * 2, 16))
+            elif len(h) == 4:
+                return QColor(
+                    int(h[0] * 2, 16),
+                    int(h[1] * 2, 16),
+                    int(h[2] * 2, 16),
+                    int(h[3] * 2, 16),
+                )
+            elif len(h) == 6:
+                return QColor(int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
+            elif len(h) == 8:
+                return QColor(
+                    int(h[0:2], 16),
+                    int(h[2:4], 16),
+                    int(h[4:6], 16),
+                    int(h[6:8], 16),
+                )
+        return QColor(c)
+    if isinstance(c, (list, tuple)):
+        if len(c) == 3:
+            return QColor(int(c[0]), int(c[1]), int(c[2]))
+        elif len(c) >= 4:
+            return QColor(int(c[0]), int(c[1]), int(c[2]), int(c[3]))
+    return QColor(0, 0, 0)
+
+
+def parse_pen(color_val, width=1, style="solid"):
+    """Parse pen from color, width, and style string."""
+    if isinstance(color_val, QPen):
+        return color_val
+    color = parse_color(color_val)
+    if qt_config == 6:
+        pen_style = Qt.PenStyle.SolidLine
+        if style == "dash":
+            pen_style = Qt.PenStyle.DashLine
+        elif style == "dot":
+            pen_style = Qt.PenStyle.DotLine
+        elif style == "none":
+            pen_style = Qt.PenStyle.NoPen
+    else:
+        pen_style = Qt.SolidLine
+        if style == "dash":
+            pen_style = Qt.DashLine
+        elif style == "dot":
+            pen_style = Qt.DotLine
+        elif style == "none":
+            pen_style = Qt.NoPen
+    return QPen(color, width, pen_style)
+
+
+def parse_theme_dict(raw):
+    """
+    Parse a raw flat theme dict from themes.json into Qt objects in memory,
+    automatically calculating and adjusting port text contrast if needed.
+    """
+    data = dict(raw)
+
+    # 1. Calculate & adjust node port text contrast if not in socket mode
+    is_socket = str(data.get("port_mode", "")).lower() == "socket"
+    if not is_socket:
+        for ptype in ("audio_jack", "midi_jack", "midi_alsa", "parameter"):
+            for state in ("", "_sel"):
+                bg_key = f"port_{ptype}_bg{state}"
+                text_key = f"port_{ptype}_text{state}"
+                if bg_key in data and text_key in data:
+                    data[text_key] = adjust_text_for_contrast(
+                        data[text_key], data[bg_key], min_contrast=4.5
+                    )
+
+    parsed = {}
+
+    # 2. Reassemble flattened pens (box_pen, box_pen_sel, rubberband_pen, port pens)
+    pen_bases = ["box_pen", "box_pen_sel", "rubberband_pen"]
+    for ptype in ("audio_jack", "midi_jack", "midi_alsa", "parameter"):
+        pen_bases.append(f"port_{ptype}_pen")
+        pen_bases.append(f"port_{ptype}_pen_sel")
+
+    for base in pen_bases:
+        color_k = f"{base}_color"
+        width_k = f"{base}_width"
+        style_k = f"{base}_style"
+        if color_k in data:
+            parsed[base] = parse_pen(
+                data[color_k], data.get(width_k, 1), data.get(style_k, "solid")
+            )
+        elif base in data:
+            v = data[base]
+            if isinstance(v, list):
+                c = v[0]
+                w = v[1] if len(v) > 1 else 1
+                s = v[2] if len(v) > 2 else "solid"
+                parsed[base] = parse_pen(c, w, s)
+            else:
+                parsed[base] = parse_pen(v)
+
+    # 3. Process all other attributes
+    for k, v in data.items():
+        if k.endswith("_color") or k.endswith("_width") or k.endswith("_style"):
+            continue
+        if k == "rubberband_brush":
+            c = parse_color(v)
+            parsed[k] = QBrush(c)
+        elif (
+            k in ("canvas_bg", "box_bg_1", "box_bg_2", "box_shadow")
+            or k.endswith("_bg")
+            or k.endswith("_bg_sel")
+            or k.startswith("line_")
+        ):
+            parsed[k] = parse_color(v)
+        elif k.endswith("_text") or k.endswith("_text_sel"):
+            parsed[k] = parse_pen(v, width=0)
+        elif k in ("box_font_state", "port_font_state"):
+            if qt_config == 6:
+                parsed[k] = QFont.Weight.Bold if str(v).lower() == "bold" else QFont.Weight.Normal
+            else:
+                parsed[k] = QFont.Bold if str(v).lower() == "bold" else QFont.Normal
+        elif k == "box_bg_type":
+            parsed[k] = (
+                Theme.THEME_BG_GRADIENT
+                if (str(v).lower() == "gradient" or v == 1)
+                else Theme.THEME_BG_SOLID
+            )
+        elif k == "port_mode":
+            mode_str = str(v).lower()
+            if mode_str == "socket" or v == 2:
+                parsed[k] = Theme.THEME_PORT_SOCKET
+            elif mode_str == "polygon" or v == 1:
+                parsed[k] = Theme.THEME_PORT_POLYGON
+            else:
+                parsed[k] = Theme.THEME_PORT_SQUARE
+        elif k in ("box_header_pixmap", "port_bg_pixmap"):
+            parsed[k] = QPixmap(v) if v else None
+        else:
+            parsed[k] = v
+
+    return parsed
+
+
+# ------------------------------------------------------------------------------------------------------------
+# Theme Loader & Registry
+
+_CACHED_THEMES_RAW = None
+
+
+def load_themes_data(reload=False):
+    """Load themes dictionary from themes.json (cached unless reload=True)."""
+    global _CACHED_THEMES_RAW
+    if _CACHED_THEMES_RAW is not None and not reload:
+        return _CACHED_THEMES_RAW
+
+    if os.path.exists(THEMES_JSON_FILE):
+        try:
+            with open(THEMES_JSON_FILE, "r", encoding="utf-8") as f:
+                _CACHED_THEMES_RAW = json.load(f)
+                Theme.THEME_MAX = len(_CACHED_THEMES_RAW)
+                return _CACHED_THEMES_RAW
+        except Exception as e:
+            print(f"Warning: Failed to load patchcanvas themes from {THEMES_JSON_FILE}: {e}")
+
+    if _CACHED_THEMES_RAW is None:
+        _CACHED_THEMES_RAW = {}
+    Theme.THEME_MAX = len(_CACHED_THEMES_RAW)
+    return _CACHED_THEMES_RAW
+
+
+def getThemeNames():
+    """Return list of all theme names loaded from themes.json."""
+    return list(load_themes_data().keys())
+
+
+def getThemeName(idx):
+    """Get theme name by integer index."""
+    names = getThemeNames()
+    if isinstance(idx, int) and 0 <= idx < len(names):
+        return names[idx]
+    if isinstance(idx, str) and idx in names:
+        return idx
+    return ""
+
+
+def getDefaultThemeName():
+    names = getThemeNames()
+    return names[0] if names else "Modern Dark"
+
+
+def getDefaultTheme():
+    return 0
+
 
 # ------------------------------------------------------------------------------------------------------------
 
@@ -21,459 +291,47 @@ class Theme(object):
     # enum PortType
     THEME_PORT_SQUARE = 0
     THEME_PORT_POLYGON = 1
-
-    # enum List
-    THEME_MODERN_DARK = 0
-    THEME_MODERN_DARK_TINY = 1
-    THEME_MODERN_LIGHT = 2
-    THEME_CLASSIC_DARK = 3
-    THEME_OOSTUDIO = 4
-    THEME_BLENDER_DARK = 5
-    THEME_MAX = 6
+    THEME_PORT_SOCKET = 2
 
     # enum BackgroundType
     THEME_BG_SOLID = 0
     THEME_BG_GRADIENT = 1
 
+    # Backwards-compat numeric theme name constants
+    THEME_MODERN_DARK          = 0
+    THEME_MODERN_DARK_TINY     = 1
+    THEME_MODERN_LIGHT         = 2
+    THEME_CLASSIC_DARK         = 3
+    THEME_OOSTUDIO             = 4
+    THEME_BLENDER_DARK         = 5
+    THEME_CATPPUCCIN_MACCHIATO = 6
+    THEME_CATPPUCCIN_MOCHA     = 7
+    THEME_CATPPUCCIN_FRAPPE    = 8
+    THEME_CATPPUCCIN_LATTE     = 9
+
+    THEME_MAX = 10
+
     def __init__(self, idx):
         object.__init__(self)
         self.idx = idx
 
-        theme_data = self._get_themes_data().get(
-            idx, self._get_themes_data()[self.THEME_MODERN_DARK]
-        )
+        themes_dict = load_themes_data()
+        theme_name = getThemeName(idx) if isinstance(idx, int) else str(idx)
+
+        theme_raw = themes_dict.get(theme_name)
+        if not theme_raw:
+            default_name = getDefaultThemeName()
+            theme_raw = themes_dict.get(default_name, {})
+
+        theme_data = parse_theme_dict(theme_raw)
         for key, value in theme_data.items():
             setattr(self, key, value)
 
     def _get_themes_data(self):
-        # Data-driven theme registry
-        return {
-            self.THEME_MODERN_DARK: {
-                "canvas_bg": QColor(0, 0, 0),
-                "box_pen": QPen(QColor(76, 77, 78), 1, Qt.SolidLine),
-                "box_pen_sel": QPen(QColor(206, 207, 208), 1, Qt.DashLine),
-                "box_bg_1": QColor(32, 34, 35),
-                "box_bg_2": QColor(43, 47, 48),
-                "box_shadow": QColor(89, 89, 89, 180),
-                "box_header_pixmap": None,
-                "box_header_height": 24,
-                "box_header_spacing": 0,
-                "box_text": QPen(QColor(240, 240, 240), 0),
-                "box_text_sel": QPen(QColor(240, 240, 240), 0),
-                "box_text_ypos": 16,
-                "box_font_name": "Deja Vu Sans",
-                "box_font_size": 11,
-                "box_font_state": QFont.Bold,
-                "box_bg_type": self.THEME_BG_GRADIENT,
-                "box_use_icon": True,
-                "port_text": QPen(QColor(250, 250, 250), 0),
-                "port_bg_pixmap": None,
-                "port_font_name": "Deja Vu Sans",
-                "port_font_size": 11,
-                "port_font_state": QFont.Normal,
-                "port_mode": self.THEME_PORT_POLYGON,
-                "port_audio_jack_pen": QPen(QColor(63, 90, 126), 1),
-                "port_audio_jack_pen_sel": QPen(QColor(93, 120, 156), 1),
-                "port_midi_jack_pen": QPen(QColor(159, 44, 42), 1),
-                "port_midi_jack_pen_sel": QPen(QColor(189, 74, 72), 1),
-                "port_midi_alsa_pen": QPen(QColor(93, 141, 46), 1),
-                "port_midi_alsa_pen_sel": QPen(QColor(123, 171, 76), 1),
-                "port_parameter_pen": QPen(QColor(137, 76, 43), 1),
-                "port_parameter_pen_sel": QPen(QColor(167, 106, 73), 1),
-                "port_audio_jack_bg": QColor(35, 61, 99),
-                "port_audio_jack_bg_sel": QColor(85, 111, 149),
-                "port_midi_jack_bg": QColor(120, 15, 16),
-                "port_midi_jack_bg_sel": QColor(170, 65, 66),
-                "port_midi_alsa_bg": QColor(64, 112, 18),
-                "port_midi_alsa_bg_sel": QColor(114, 162, 68),
-                "port_parameter_bg": QColor(101, 47, 16),
-                "port_parameter_bg_sel": QColor(151, 97, 66),
-                "port_audio_jack_text": QPen(QColor(250, 250, 250), 0),
-                "port_audio_jack_text_sel": QPen(QColor(250, 250, 250), 0),
-                "port_midi_jack_text": QPen(QColor(250, 250, 250), 0),
-                "port_midi_jack_text_sel": QPen(QColor(250, 250, 250), 0),
-                "port_midi_alsa_text": QPen(QColor(250, 250, 250), 0),
-                "port_midi_alsa_text_sel": QPen(QColor(250, 250, 250), 0),
-                "port_parameter_text": QPen(QColor(250, 250, 250), 0),
-                "port_parameter_text_sel": QPen(QColor(250, 250, 250), 0),
-                "port_height": 16,
-                "port_offset": 0,
-                "port_spacing": 2,
-                "port_spacingT": 2,
-                "line_audio_jack": QColor(63, 90, 126),
-                "line_audio_jack_sel": QColor(153, 180, 216),
-                "line_audio_jack_glow": QColor(100, 100, 200),
-                "line_midi_jack": QColor(159, 44, 42),
-                "line_midi_jack_sel": QColor(249, 134, 132),
-                "line_midi_jack_glow": QColor(200, 100, 100),
-                "line_midi_alsa": QColor(93, 141, 46),
-                "line_midi_alsa_sel": QColor(183, 231, 136),
-                "line_midi_alsa_glow": QColor(100, 200, 100),
-                "line_parameter": QColor(137, 76, 43),
-                "line_parameter_sel": QColor(227, 166, 133),
-                "line_parameter_glow": QColor(166, 133, 133),
-                "rubberband_pen": QPen(QColor(206, 207, 208), 1, Qt.SolidLine),
-                "rubberband_brush": QColor(76, 77, 78, 100),
-            },
-            self.THEME_MODERN_DARK_TINY: {
-                "canvas_bg": QColor(0, 0, 0),
-                "box_pen": QPen(QColor(76, 77, 78), 1, Qt.SolidLine),
-                "box_pen_sel": QPen(QColor(206, 207, 208), 1, Qt.DashLine),
-                "box_bg_1": QColor(32, 34, 35),
-                "box_bg_2": QColor(43, 47, 48),
-                "box_shadow": QColor(89, 89, 89, 180),
-                "box_header_pixmap": None,
-                "box_header_height": 14,
-                "box_header_spacing": 0,
-                "box_text": QPen(QColor(240, 240, 240), 0),
-                "box_text_sel": QPen(QColor(240, 240, 240), 0),
-                "box_text_ypos": 10,
-                "box_font_name": "Deja Vu Sans",
-                "box_font_size": 10,
-                "box_font_state": QFont.Bold,
-                "box_bg_type": self.THEME_BG_GRADIENT,
-                "box_use_icon": False,
-                "port_text": QPen(QColor(250, 250, 250), 0),
-                "port_bg_pixmap": None,
-                "port_font_name": "Deja Vu Sans",
-                "port_font_size": 9,
-                "port_font_state": QFont.Normal,
-                "port_mode": self.THEME_PORT_POLYGON,
-                "port_audio_jack_pen": QPen(QColor(63, 90, 126), 1),
-                "port_audio_jack_pen_sel": QPen(QColor(93, 120, 156), 1),
-                "port_midi_jack_pen": QPen(QColor(159, 44, 42), 1),
-                "port_midi_jack_pen_sel": QPen(QColor(189, 74, 72), 1),
-                "port_midi_alsa_pen": QPen(QColor(93, 141, 46), 1),
-                "port_midi_alsa_pen_sel": QPen(QColor(123, 171, 76), 1),
-                "port_parameter_pen": QPen(QColor(137, 76, 43), 1),
-                "port_parameter_pen_sel": QPen(QColor(167, 106, 73), 1),
-                "port_audio_jack_bg": QColor(35, 61, 99),
-                "port_audio_jack_bg_sel": QColor(85, 111, 149),
-                "port_midi_jack_bg": QColor(120, 15, 16),
-                "port_midi_jack_bg_sel": QColor(170, 65, 66),
-                "port_midi_alsa_bg": QColor(64, 112, 18),
-                "port_midi_alsa_bg_sel": QColor(114, 162, 68),
-                "port_parameter_bg": QColor(101, 47, 16),
-                "port_parameter_bg_sel": QColor(151, 97, 66),
-                "port_audio_jack_text": QPen(QColor(250, 250, 250), 0),
-                "port_audio_jack_text_sel": QPen(QColor(250, 250, 250), 0),
-                "port_midi_jack_text": QPen(QColor(250, 250, 250), 0),
-                "port_midi_jack_text_sel": QPen(QColor(250, 250, 250), 0),
-                "port_midi_alsa_text": QPen(QColor(250, 250, 250), 0),
-                "port_midi_alsa_text_sel": QPen(QColor(250, 250, 250), 0),
-                "port_parameter_text": QPen(QColor(250, 250, 250), 0),
-                "port_parameter_text_sel": QPen(QColor(250, 250, 250), 0),
-                "port_height": 12,
-                "port_offset": 0,
-                "port_spacing": 1,
-                "port_spacingT": 1,
-                "line_audio_jack": QColor(63, 90, 126),
-                "line_audio_jack_sel": QColor(153, 180, 216),
-                "line_audio_jack_glow": QColor(100, 100, 200),
-                "line_midi_jack": QColor(159, 44, 42),
-                "line_midi_jack_sel": QColor(249, 134, 132),
-                "line_midi_jack_glow": QColor(200, 100, 100),
-                "line_midi_alsa": QColor(93, 141, 46),
-                "line_midi_alsa_sel": QColor(183, 231, 136),
-                "line_midi_alsa_glow": QColor(100, 200, 100),
-                "line_parameter": QColor(137, 76, 43),
-                "line_parameter_sel": QColor(227, 166, 133),
-                "line_parameter_glow": QColor(166, 133, 133),
-                "rubberband_pen": QPen(QColor(206, 207, 208), 1, Qt.SolidLine),
-                "rubberband_brush": QColor(76, 77, 78, 100),
-            },
-            self.THEME_MODERN_LIGHT: {
-                "canvas_bg": QColor(248, 249, 250),
-                "box_pen": QPen(QColor(176, 177, 178), 1, Qt.SolidLine),
-                "box_pen_sel": QPen(QColor(1, 2, 3), 2, Qt.DashLine),
-                "box_bg_1": QColor(250, 250, 250),
-                "box_bg_2": QColor(200, 200, 200),
-                "box_shadow": QColor(1, 1, 1, 100),
-                "box_header_pixmap": None,
-                "box_header_height": 24,
-                "box_header_spacing": 0,
-                "box_text": QPen(QColor(1, 1, 1), 0),
-                "box_text_sel": QPen(QColor(1, 1, 1), 0),
-                "box_text_ypos": 16,
-                "box_font_name": "Ubuntu",
-                "box_font_size": 11,
-                "box_font_state": QFont.Bold,
-                "box_bg_type": self.THEME_BG_GRADIENT,
-                "box_use_icon": True,
-                "port_text": QPen(QColor(255, 255, 255), 1),
-                "port_bg_pixmap": None,
-                "port_font_name": "Ubuntu",
-                "port_font_size": 11,
-                "port_font_state": QFont.Bold,
-                "port_mode": self.THEME_PORT_POLYGON,
-                "port_audio_jack_pen": QPen(QColor(103, 130, 166), 2),
-                "port_audio_jack_pen_sel": QPen(QColor(239, 320, 356), 1),
-                "port_midi_jack_pen": QPen(QColor(159, 44, 42), 1),
-                "port_midi_jack_pen_sel": QPen(QColor(120, 74, 72), 1),
-                "port_midi_alsa_pen": QPen(QColor(93, 141, 46), 1),
-                "port_midi_alsa_pen_sel": QPen(QColor(123, 171, 76), 1),
-                "port_parameter_pen": QPen(QColor(137, 76, 43), 1),
-                "port_parameter_pen_sel": QPen(QColor(167, 106, 73), 1),
-                "port_audio_jack_bg": QColor(0, 0, 180),
-                "port_audio_jack_bg_sel": QColor(285, 311, 349),
-                "port_midi_jack_bg": QColor(130, 15, 16),
-                "port_midi_jack_bg_sel": QColor(120, 65, 66),
-                "port_midi_alsa_bg": QColor(64, 112, 18),
-                "port_midi_alsa_bg_sel": QColor(114, 162, 68),
-                "port_parameter_bg": QColor(101, 47, 16),
-                "port_parameter_bg_sel": QColor(151, 97, 66),
-                "port_audio_jack_text": QPen(QColor(255, 255, 255), 1),
-                "port_audio_jack_text_sel": QPen(QColor(255, 255, 255), 1),
-                "port_midi_jack_text": QPen(QColor(255, 255, 255), 1),
-                "port_midi_jack_text_sel": QPen(QColor(255, 255, 255), 1),
-                "port_midi_alsa_text": QPen(QColor(255, 255, 255), 1),
-                "port_midi_alsa_text_sel": QPen(QColor(255, 255, 255), 1),
-                "port_parameter_text": QPen(QColor(255, 255, 255), 1),
-                "port_parameter_text_sel": QPen(QColor(255, 255, 255), 1),
-                "port_height": 16,
-                "port_offset": 0,
-                "port_spacing": 2,
-                "port_spacingT": 2,
-                "line_audio_jack": QColor(63, 90, 126),
-                "line_audio_jack_sel": QColor(126, 180, 216),
-                "line_audio_jack_glow": QColor(100, 100, 200),
-                "line_midi_jack": QColor(159, 44, 42),
-                "line_midi_jack_sel": QColor(203, 134, 132),
-                "line_midi_jack_glow": QColor(200, 100, 100),
-                "line_midi_alsa": QColor(93, 141, 46),
-                "line_midi_alsa_sel": QColor(183, 231, 136),
-                "line_midi_alsa_glow": QColor(100, 200, 100),
-                "line_parameter": QColor(137, 43, 43),
-                "line_parameter_sel": QColor(227, 166, 133),
-                "line_parameter_glow": QColor(166, 133, 133),
-                "rubberband_pen": QPen(QColor(206, 207, 208), 1, Qt.SolidLine),
-                "rubberband_brush": QColor(76, 77, 78, 100),
-            },
-            self.THEME_CLASSIC_DARK: {
-                "canvas_bg": QColor(0, 0, 0),
-                "box_pen": QPen(QColor(77, 81, 73), 2, Qt.SolidLine),
-                "box_pen_sel": QPen(QColor(147, 151, 143), 2, Qt.DashLine),
-                "box_bg_1": QColor(30, 34, 36),
-                "box_bg_2": QColor(30, 34, 36),
-                "box_shadow": QColor(89, 89, 89, 180),
-                "box_header_pixmap": None,
-                "box_header_height": 19,
-                "box_header_spacing": 0,
-                "box_text": QPen(QColor(255, 255, 255), 0),
-                "box_text_sel": QPen(QColor(255, 255, 255), 0),
-                "box_text_ypos": 12,
-                "box_font_name": "Sans",
-                "box_font_size": 12,
-                "box_font_state": QFont.Normal,
-                "box_bg_type": self.THEME_BG_GRADIENT,
-                "box_use_icon": False,
-                "port_text": QPen(QColor(250, 250, 250), 0),
-                "port_bg_pixmap": None,
-                "port_font_name": "Sans",
-                "port_font_size": 11,
-                "port_font_state": QFont.Normal,
-                "port_mode": self.THEME_PORT_SQUARE,
-                "port_audio_jack_pen": QPen(QColor(35, 61, 99), 0, Qt.NoPen),
-                "port_audio_jack_pen_sel": QPen(QColor(255, 0, 0), 0, Qt.NoPen),
-                "port_midi_jack_pen": QPen(QColor(120, 15, 16), 0, Qt.NoPen),
-                "port_midi_jack_pen_sel": QPen(QColor(255, 0, 0), 0, Qt.NoPen),
-                "port_midi_alsa_pen": QPen(QColor(63, 112, 19), 0, Qt.NoPen),
-                "port_midi_alsa_pen_sel": QPen(QColor(255, 0, 0), 0, Qt.NoPen),
-                "port_parameter_pen": QPen(QColor(101, 47, 17), 0, Qt.NoPen),
-                "port_parameter_pen_sel": QPen(QColor(255, 0, 0), 0, Qt.NoPen),
-                "port_audio_jack_bg": QColor(35, 61, 99),
-                "port_audio_jack_bg_sel": QColor(255, 0, 0),
-                "port_midi_jack_bg": QColor(120, 15, 16),
-                "port_midi_jack_bg_sel": QColor(255, 0, 0),
-                "port_midi_alsa_bg": QColor(63, 112, 19),
-                "port_midi_alsa_bg_sel": QColor(255, 0, 0),
-                "port_parameter_bg": QColor(101, 47, 17),
-                "port_parameter_bg_sel": QColor(255, 0, 0),
-                "port_audio_jack_text": QPen(QColor(250, 250, 250), 0),
-                "port_audio_jack_text_sel": QPen(QColor(250, 250, 250), 0),
-                "port_midi_jack_text": QPen(QColor(250, 250, 250), 0),
-                "port_midi_jack_text_sel": QPen(QColor(250, 250, 250), 0),
-                "port_midi_alsa_text": QPen(QColor(250, 250, 250), 0),
-                "port_midi_alsa_text_sel": QPen(QColor(250, 250, 250), 0),
-                "port_parameter_text": QPen(QColor(250, 250, 250), 0),
-                "port_parameter_text_sel": QPen(QColor(250, 250, 250), 0),
-                "port_height": 14,
-                "port_offset": 0,
-                "port_spacing": 1,
-                "port_spacingT": 0,
-                "line_audio_jack": QColor(53, 78, 116),
-                "line_audio_jack_sel": QColor(255, 0, 0),
-                "line_audio_jack_glow": QColor(255, 0, 0),
-                "line_midi_jack": QColor(139, 32, 32),
-                "line_midi_jack_sel": QColor(255, 0, 0),
-                "line_midi_jack_glow": QColor(255, 0, 0),
-                "line_midi_alsa": QColor(81, 130, 36),
-                "line_midi_alsa_sel": QColor(255, 0, 0),
-                "line_midi_alsa_glow": QColor(255, 0, 0),
-                "line_parameter": QColor(120, 65, 33),
-                "line_parameter_sel": QColor(255, 0, 0),
-                "line_parameter_glow": QColor(255, 0, 0),
-                "rubberband_pen": QPen(QColor(147, 151, 143), 2, Qt.SolidLine),
-                "rubberband_brush": QColor(35, 61, 99, 100),
-            },
-            self.THEME_OOSTUDIO: {
-                "canvas_bg": QColor(11, 11, 11),
-                "box_pen": QPen(QColor(76, 77, 78), 1, Qt.SolidLine),
-                "box_pen_sel": QPen(QColor(189, 122, 214), 1, Qt.DashLine),
-                "box_bg_1": QColor(46, 46, 46),
-                "box_bg_2": QColor(23, 23, 23),
-                "box_shadow": QColor(89, 89, 89, 180),
-                "box_header_pixmap": QPixmap(":/bitmaps/canvas/frame_node_header.png"),
-                "box_header_height": 22,
-                "box_header_spacing": 6,
-                "box_text": QPen(QColor(144, 144, 144), 0),
-                "box_text_sel": QPen(QColor(189, 122, 214), 0),
-                "box_text_ypos": 16,
-                "box_font_name": "Deja Vu Sans",
-                "box_font_size": 11,
-                "box_font_state": QFont.Bold,
-                "box_bg_type": self.THEME_BG_SOLID,
-                "box_use_icon": False,
-                "port_text": QPen(QColor(155, 155, 155), 0),
-                "port_bg_pixmap": QPixmap(":/bitmaps/canvas/frame_port_bg.png"),
-                "port_font_name": "Deja Vu Sans",
-                "port_font_size": 11,
-                "port_font_state": QFont.Normal,
-                "port_mode": self.THEME_PORT_SQUARE,
-                "port_audio_jack_pen": QPen(QColor(23, 23, 23), 2),
-                "port_audio_jack_pen_sel": QPen(QColor(1, 230, 238), 1),
-                "port_midi_jack_pen": QPen(QColor(23, 23, 23), 2),
-                "port_midi_jack_pen_sel": QPen(QColor(252, 118, 118), 1),
-                "port_midi_alsa_pen": QPen(QColor(23, 23, 23), 2),
-                "port_midi_alsa_pen_sel": QPen(QColor(129, 244, 118), 0),
-                "port_parameter_pen": QPen(QColor(23, 23, 23), 2),
-                "port_parameter_pen_sel": QPen(QColor(137, 76, 43), 1),
-                "port_audio_jack_bg": QColor(46, 46, 46),
-                "port_audio_jack_bg_sel": QColor(23, 23, 23),
-                "port_midi_jack_bg": QColor(46, 46, 46),
-                "port_midi_jack_bg_sel": QColor(23, 23, 23),
-                "port_midi_alsa_bg": QColor(46, 46, 46),
-                "port_midi_alsa_bg_sel": QColor(23, 23, 23),
-                "port_parameter_bg": QColor(46, 46, 46),
-                "port_parameter_bg_sel": QColor(23, 23, 23),
-                "port_audio_jack_text": QPen(QColor(155, 155, 155), 0),
-                "port_audio_jack_text_sel": QPen(QColor(1, 230, 238), 1),
-                "port_midi_jack_text": QPen(QColor(155, 155, 155), 0),
-                "port_midi_jack_text_sel": QPen(QColor(252, 118, 118), 1),
-                "port_midi_alsa_text": QPen(QColor(155, 155, 155), 0),
-                "port_midi_alsa_text_sel": QPen(QColor(129, 244, 118), 0),
-                "port_parameter_text": QPen(QColor(155, 155, 155), 0),
-                "port_parameter_text_sel": QPen(QColor(137, 76, 43), 1),
-                "port_height": 21,
-                "port_offset": 1,
-                "port_spacing": 3,
-                "port_spacingT": 0,
-                "line_audio_jack": QColor(64, 64, 64),
-                "line_audio_jack_sel": QColor(1, 230, 238),
-                "line_audio_jack_glow": QColor(100, 200, 100),
-                "line_midi_jack": QColor(64, 64, 64),
-                "line_midi_jack_sel": QColor(252, 118, 118),
-                "line_midi_jack_glow": QColor(200, 100, 100),
-                "line_midi_alsa": QColor(64, 64, 64),
-                "line_midi_alsa_sel": QColor(129, 244, 118),
-                "line_midi_alsa_glow": QColor(100, 200, 100),
-                "line_parameter": QColor(64, 64, 64),
-                "line_parameter_sel": QColor(227, 166, 133),
-                "line_parameter_glow": QColor(166, 133, 133),
-                "rubberband_pen": QPen(QColor(1, 230, 238), 2, Qt.SolidLine),
-                "rubberband_brush": QColor(90, 90, 90, 100),
-            },
-            self.THEME_BLENDER_DARK: {
-                "canvas_bg": QColor(30, 30, 30),
-                "box_pen": QPen(QColor(17, 17, 17), 1, Qt.SolidLine),
-                "box_pen_sel": QPen(QColor(224, 149, 32), 1, Qt.SolidLine),
-                "box_bg_1": QColor(66, 66, 66),
-                "box_bg_2": QColor(45, 45, 45),
-                "box_shadow": QColor(0, 0, 0, 150),
-                "box_header_pixmap": None,
-                "box_header_height": 22,
-                "box_header_spacing": 0,
-                "box_text": QPen(QColor(204, 204, 204), 0),
-                "box_text_sel": QPen(QColor(255, 255, 255), 0),
-                "box_text_ypos": 16,
-                "box_font_name": "Deja Vu Sans",
-                "box_font_size": 10,
-                "box_font_state": QFont.Normal,
-                "box_bg_type": self.THEME_BG_SOLID,
-                "box_use_icon": False,
-                "port_text": QPen(QColor(204, 204, 204), 0),
-                "port_bg_pixmap": None,
-                "port_font_name": "Deja Vu Sans",
-                "port_font_size": 10,
-                "port_font_state": QFont.Normal,
-                "port_mode": self.THEME_PORT_POLYGON,
-                "port_audio_jack_pen": QPen(QColor(25, 25, 25), 1),
-                "port_audio_jack_pen_sel": QPen(QColor(224, 149, 32), 1),
-                "port_midi_jack_pen": QPen(QColor(25, 25, 25), 1),
-                "port_midi_jack_pen_sel": QPen(QColor(224, 149, 32), 1),
-                "port_midi_alsa_pen": QPen(QColor(25, 25, 25), 1),
-                "port_midi_alsa_pen_sel": QPen(QColor(224, 149, 32), 1),
-                "port_parameter_pen": QPen(QColor(25, 25, 25), 1),
-                "port_parameter_pen_sel": QPen(QColor(224, 149, 32), 1),
-                "port_audio_jack_bg": QColor(84, 133, 161),
-                "port_audio_jack_bg_sel": QColor(114, 163, 191),
-                "port_midi_jack_bg": QColor(186, 74, 74),
-                "port_midi_jack_bg_sel": QColor(216, 104, 104),
-                "port_midi_alsa_bg": QColor(95, 163, 85),
-                "port_midi_alsa_bg_sel": QColor(125, 193, 115),
-                "port_parameter_bg": QColor(135, 113, 168),
-                "port_parameter_bg_sel": QColor(165, 143, 198),
-                "port_audio_jack_text": QPen(QColor(204, 204, 204), 0),
-                "port_audio_jack_text_sel": QPen(QColor(255, 255, 255), 0),
-                "port_midi_jack_text": QPen(QColor(204, 204, 204), 0),
-                "port_midi_jack_text_sel": QPen(QColor(255, 255, 255), 0),
-                "port_midi_alsa_text": QPen(QColor(204, 204, 204), 0),
-                "port_midi_alsa_text_sel": QPen(QColor(255, 255, 255), 0),
-                "port_parameter_text": QPen(QColor(204, 204, 204), 0),
-                "port_parameter_text_sel": QPen(QColor(255, 255, 255), 0),
-                "port_height": 14,
-                "port_offset": 1,
-                "port_spacing": 3,
-                "port_spacingT": 1,
-                "line_audio_jack": QColor(84, 133, 161),
-                "line_audio_jack_sel": QColor(224, 149, 32),
-                "line_audio_jack_glow": QColor(114, 163, 191),
-                "line_midi_jack": QColor(186, 74, 74),
-                "line_midi_jack_sel": QColor(224, 149, 32),
-                "line_midi_jack_glow": QColor(216, 104, 104),
-                "line_midi_alsa": QColor(95, 163, 85),
-                "line_midi_alsa_sel": QColor(224, 149, 32),
-                "line_midi_alsa_glow": QColor(125, 193, 115),
-                "line_parameter": QColor(135, 113, 168),
-                "line_parameter_sel": QColor(224, 149, 32),
-                "line_parameter_glow": QColor(165, 143, 198),
-                "rubberband_pen": QPen(QColor(224, 149, 32), 1, Qt.SolidLine),
-                "rubberband_brush": QColor(255, 255, 255, 20),
-            },
-        }
-
-
-# ------------------------------------------------------------------------------------------------------------
-
-
-def getDefaultTheme():
-    return Theme.THEME_MODERN_DARK
-
-
-def getThemeName(idx):
-    names = {
-        Theme.THEME_MODERN_DARK: "Modern Dark",
-        Theme.THEME_MODERN_DARK_TINY: "Modern Dark (Tiny)",
-        Theme.THEME_MODERN_LIGHT: "Modern Light",
-        Theme.THEME_CLASSIC_DARK: "Classic Dark",
-        Theme.THEME_OOSTUDIO: "OpenOctave Studio",
-        Theme.THEME_BLENDER_DARK: "Blender Dark",
-    }
-    return names.get(idx, "")
-
-
-def getDefaultThemeName():
-    return "Modern Dark"
-
-
-# ------------------------------------------------------------------------------------------------------------
+        themes_dict = load_themes_data()
+        names = getThemeNames()
+        result = {}
+        for i, name in enumerate(names):
+            if name in themes_dict:
+                result[i] = parse_theme_dict(themes_dict[name])
+        return result

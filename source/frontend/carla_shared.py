@@ -203,6 +203,8 @@ CARLA_KEY_CANVAS_ANTIALIASING      = "Canvas/Antialiasing"    # enum
 CARLA_KEY_CANVAS_HQ_ANTIALIASING   = "Canvas/HQAntialiasing"  # bool
 CARLA_KEY_CANVAS_INLINE_DISPLAYS   = "Canvas/InlineDisplays"  # bool
 CARLA_KEY_CANVAS_FULL_REPAINTS     = "Canvas/FullRepaints"    # bool
+CARLA_KEY_CANVAS_ROUNDED_NODES     = "Canvas/RoundedNodes"    # bool
+CARLA_KEY_CANVAS_NODE_RADIUS       = "Canvas/NodeRadius"      # int
 
 CARLA_KEY_ENGINE_DRIVER_PREFIX         = "Engine/Driver-"
 CARLA_KEY_ENGINE_AUDIO_DRIVER          = "Engine/AudioDriver"         # str
@@ -289,6 +291,8 @@ CARLA_DEFAULT_CANVAS_ANTIALIASING      = CANVAS_ANTIALIASING_SMALL
 CARLA_DEFAULT_CANVAS_HQ_ANTIALIASING   = False
 CARLA_DEFAULT_CANVAS_INLINE_DISPLAYS   = False
 CARLA_DEFAULT_CANVAS_FULL_REPAINTS     = False
+CARLA_DEFAULT_CANVAS_ROUNDED_NODES     = True
+CARLA_DEFAULT_CANVAS_NODE_RADIUS       = 8
 
 # Engine
 CARLA_DEFAULT_FORCE_STEREO          = False
@@ -605,14 +609,42 @@ del DEFAULT_SFZ_PATH
 
 class CarlaObject():
     def __init__(self):
-        self.cnprefix = ""    # Client name prefix
-        self.gui      = None  # Host Window
-        self.nogui    = False # Skip UI
-        self.term     = False # Terminated by OS signal
-        self.felib    = None  # Frontend lib object
-        self.utils    = None  # Utils object
+        self.cnprefix    = ""       # Client name prefix
+        self.gui         = None     # Host Window
+        self.nogui       = False    # Skip UI
+        self.term        = False    # Terminated by OS signal
+        self.felib       = None     # Frontend lib object
+        self.utils       = None     # Utils object
+        self.debug_level = "info"   # "info", "warn", "critical"
+        self.log_file    = None     # Log file path
 
 gCarla = CarlaObject()
+
+DEBUG_LEVEL_MAP = {
+    "info": 0,
+    "warn": 1,
+    "warning": 1,
+    "critical": 2,
+    "error": 2,
+}
+
+def log_carla(msg, level="info"):
+    msg_str = str(msg)
+    if "CRITICAL" in msg_str or "Traceback" in msg_str:
+        level = "critical"
+
+    current_threshold = DEBUG_LEVEL_MAP.get(str(gCarla.debug_level).lower(), 0)
+    msg_level = DEBUG_LEVEL_MAP.get(str(level).lower(), 0)
+    if msg_level < current_threshold:
+        return
+
+    log_path = gCarla.log_file if gCarla.log_file else "/tmp/carla.log"
+    try:
+        with open(log_path, "a", encoding="utf-8") as f:
+            f.write(msg_str + "\n")
+    except Exception:
+        pass
+    print(msg_str, file=sys.stderr, flush=True)
 
 # ------------------------------------------------------------------------------------------------------------
 # Set CWD
@@ -693,8 +725,28 @@ def handleInitialCommandLineArguments(file):
     initName  = os.path.basename(file) if (file is not None and os.path.dirname(file) in PATH) else sys.argv[0]
     libPrefix = None
     readPrefixNext = False
+    readDebugNext = False
+    readLogNext = False
 
     for arg in sys.argv[1:]:
+        if readPrefixNext:
+            readPrefixNext = False
+            gCarla.cnprefix = arg
+            continue
+
+        if readLogNext:
+            readLogNext = False
+            if not arg.startswith("-"):
+                gCarla.log_file = arg
+                continue
+            # If it starts with '-', fall through to parse it as an argument
+
+        if readDebugNext:
+            if arg.lower() in ("info", "warn", "warning", "critical", "error"):
+                gCarla.debug_level = arg.lower()
+                continue
+            readDebugNext = False
+
         if arg.startswith("--with-appname="):
             initName = os.path.basename(arg.replace("--with-appname=", ""))
 
@@ -709,6 +761,20 @@ def handleInitialCommandLineArguments(file):
 
         elif arg == "--cnprefix":
             readPrefixNext = True
+
+        elif arg.startswith("--debug="):
+            gCarla.debug_level = arg.split("=", 1)[1].lower()
+
+        elif arg == "--debug":
+            readDebugNext = True
+            gCarla.debug_level = "info"
+
+        elif arg.startswith("--log="):
+            gCarla.log_file = arg.split("=", 1)[1]
+
+        elif arg == "--log":
+            readLogNext = True
+            gCarla.log_file = "carla.log"
 
         elif arg == "--gdb":
             pass
@@ -726,14 +792,16 @@ def handleInitialCommandLineArguments(file):
             print("")
             print(" and OPTION can be one or more of the following:")
             print("")
-            print("    --cnprefix\t Set a prefix for client names in multi-client mode.")
+            print("    --cnprefix     \t Set a prefix for client names in multi-client mode.")
+            print("    --debug [level]\t Set debug level: info, warn, critical.")
+            print("    --log [path]   \t Log output to file (defaults to carla.log).")
             if isinstance(gCarla.nogui, bool):
                 if X_LIBDIR_X is not None:
-                    print("    --gdb     \t Run Carla inside gdb.")
-                print(" -n,--no-gui  \t Run Carla headless, don't show UI.")
+                    print("    --gdb          \t Run Carla inside gdb.")
+                print(" -n,--no-gui       \t Run Carla headless, don't show UI.")
                 print("")
-            print(" -h,--help    \t Print this help text and exit.")
-            print(" -v,--version \t Print version information and exit.")
+            print(" -h,--help         \t Print this help text and exit.")
+            print(" -v,--version      \t Print version information and exit.")
             print("")
 
             if not isinstance(gCarla.nogui, bool):
@@ -753,10 +821,6 @@ def handleInitialCommandLineArguments(file):
             print("  Resources dir:  %s" % pathResources)
 
             sys.exit(1 if gCarla.nogui else 0)
-
-        elif readPrefixNext:
-            readPrefixNext = False
-            gCarla.cnprefix = arg
 
     if gCarla.nogui and not isinstance(gCarla.nogui, bool):
         if os.fork():

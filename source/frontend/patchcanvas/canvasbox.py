@@ -25,10 +25,11 @@ if qt_config == 5:
         QImage,
         QLinearGradient,
         QPainter,
+        QPainterPath,
         QPen,
     )
     from PyQt5.QtSvg import QGraphicsSvgItem
-    from PyQt5.QtWidgets import QGraphicsItem, QGraphicsObject, QMenu
+    from PyQt5.QtWidgets import QApplication, QGraphicsItem, QGraphicsObject, QMenu
 elif qt_config == 6:
     from PyQt6.QtCore import (
         pyqtSignal,
@@ -47,10 +48,11 @@ elif qt_config == 6:
         QImage,
         QLinearGradient,
         QPainter,
+        QPainterPath,
         QPen,
     )
     from PyQt6.QtSvgWidgets import QGraphicsSvgItem
-    from PyQt6.QtWidgets import QGraphicsItem, QGraphicsObject, QMenu
+    from PyQt6.QtWidgets import QApplication, QGraphicsItem, QGraphicsObject, QMenu
 
 # ------------------------------------------------------------------------------------------------------------
 # Backwards-compatible horizontalAdvance/width call, depending on Qt version
@@ -60,6 +62,17 @@ def fontHorizontalAdvance(font, string):
     if QT_VERSION >= 0x50B00:
         return QFontMetrics(font).horizontalAdvance(string)
     return QFontMetrics(font).width(string)
+
+
+def getSystemFont(size=None, weight=None):
+    base_font = QApplication.font() if QApplication.instance() else QFont()
+    font = QFont(base_font)
+    if size is not None and size > 0:
+        font.setPixelSize(size)
+    if weight is not None:
+        font.setWeight(weight)
+    return font
+
 
 
 # ------------------------------------------------------------------------------------------------------------
@@ -160,15 +173,12 @@ class CanvasBox(QGraphicsObject):
         self.m_connection_lines = []
 
         # Set Font
-        self.m_font_name = QFont()
-        self.m_font_name.setFamily(canvas.theme.box_font_name)
-        self.m_font_name.setPixelSize(canvas.theme.box_font_size)
-        self.m_font_name.setWeight(canvas.theme.box_font_state)
-
-        self.m_font_port = QFont()
-        self.m_font_port.setFamily(canvas.theme.port_font_name)
-        self.m_font_port.setPixelSize(canvas.theme.port_font_size)
-        self.m_font_port.setWeight(canvas.theme.port_font_state)
+        self.m_font_name = getSystemFont(
+            canvas.theme.box_font_size, canvas.theme.box_font_state
+        )
+        self.m_font_port = getSystemFont(
+            canvas.theme.port_font_size, canvas.theme.port_font_state
+        )
 
         # Icon
         if canvas.theme.box_use_icon:
@@ -780,10 +790,34 @@ class CanvasBox(QGraphicsObject):
     def boundingRect(self):
         return QRectF(0, 0, self.p_width, self.p_height)
 
+    def shape(self):
+        path = QPainterPath()
+        radius = options.node_radius if getattr(options, "rounded_nodes", False) else 0
+        if radius > 0:
+            path.addRoundedRect(
+                QRectF(0, 0, self.p_width, self.p_height), radius, radius
+            )
+        else:
+            path.addRect(QRectF(0, 0, self.p_width, self.p_height))
+        return path
+
+    def updateTheme(self):
+        self.m_font_name = getSystemFont(
+            canvas.theme.box_font_size, canvas.theme.box_font_state
+        )
+        self.m_font_port = getSystemFont(
+            canvas.theme.port_font_size, canvas.theme.port_font_state
+        )
+        if self.shadow is not None:
+            self.shadow.setColor(canvas.theme.box_shadow)
+        self.update()
+
     def paint(self, painter, option, widget):
         painter.save()
+        radius = options.node_radius if getattr(options, "rounded_nodes", False) else 0
         painter.setRenderHint(
-            QPainter.Antialiasing, bool(options.antialiasing == ANTIALIASING_FULL)
+            QPainter.Antialiasing,
+            bool(options.antialiasing == ANTIALIASING_FULL or radius > 0),
         )
         rect = QRectF(0, 0, self.p_width, self.p_height)
 
@@ -804,25 +838,49 @@ class CanvasBox(QGraphicsObject):
             painter.setBrush(canvas.theme.box_bg_1)
 
         rect.adjust(lineHinting, lineHinting, -lineHinting, -lineHinting)
-        painter.drawRect(rect)
+        if radius > 0:
+            painter.drawRoundedRect(rect, radius, radius)
+        else:
+            painter.drawRect(rect)
 
         # Draw plugin inline display if supported
         self.paintInlineDisplay(painter)
 
-        # Draw pixmap header
-        rect.setHeight(canvas.theme.box_header_height)
-        if canvas.theme.box_header_pixmap:
-            painter.setPen(Qt.NoPen)
-            painter.setBrush(canvas.theme.box_bg_2)
+        # Draw header
+        header_height = canvas.theme.box_header_height
+        if header_height > 0:
+            header_rect = QRectF(lineHinting, lineHinting, self.p_width - 2 * lineHinting, header_height)
+            painter.save()
+            if radius > 0:
+                header_clip = QPainterPath()
+                header_clip.addRoundedRect(rect, radius, radius)
+                clipOp = (
+                    Qt.ClipOperation.IntersectClip
+                    if hasattr(Qt, "ClipOperation")
+                    else Qt.IntersectClip
+                )
+                painter.setClipPath(header_clip, clipOp)
 
-            # outline
-            rect.adjust(lineHinting, lineHinting, -lineHinting, -lineHinting)
-            painter.drawRect(rect)
+            if canvas.theme.box_header_pixmap:
+                painter.setPen(Qt.NoPen)
+                painter.setBrush(canvas.theme.box_bg_2)
+                painter.drawRect(header_rect)
+                painter.drawTiledPixmap(
+                    header_rect, canvas.theme.box_header_pixmap, header_rect.topLeft()
+                )
+            else:
+                header_bg = canvas.theme.box_bg_2
+                if header_bg:
+                    painter.setPen(Qt.NoPen)
+                    painter.setBrush(header_bg)
+                    painter.drawRect(header_rect)
+                    painter.setPen(canvas.theme.box_pen)
+                    painter.drawLine(
+                        QPointF(header_rect.left(), header_rect.bottom()),
+                        QPointF(header_rect.right(), header_rect.bottom())
+                    )
 
-            rect.adjust(1, 1, -1, 0)
-            painter.drawTiledPixmap(
-                rect, canvas.theme.box_header_pixmap, rect.topLeft()
-            )
+            painter.restore()
 
         # Draw text
         painter.setFont(self.m_font_name)
@@ -840,8 +898,6 @@ class CanvasBox(QGraphicsObject):
             textPos = QPointF(rem / 2, canvas.theme.box_text_ypos)
 
         painter.drawText(textPos, self.m_group_name)
-
-        self.repaintLines()
 
         painter.restore()
 

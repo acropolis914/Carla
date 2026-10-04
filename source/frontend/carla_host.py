@@ -127,14 +127,6 @@ def sys_excepthook(typ, value, tback):
     return sys.__excepthook__(typ, value, tback)
 
 
-def log_carla(msg):
-    try:
-        with open("/tmp/carla.log", "a") as f:
-            f.write(str(msg) + "\n")
-    except Exception:
-        pass
-    print(str(msg), file=sys.stderr, flush=True)
-
 
 # ------------------------------------------------------------------------------------------------------------
 # Session Management support
@@ -1896,6 +1888,12 @@ class HostWindow(QMainWindow):
         ]
         pOptions.antialiasing = self.fSavedSettings[CARLA_KEY_CANVAS_ANTIALIASING]
         pOptions.inline_displays = self.fSavedSettings[CARLA_KEY_CANVAS_INLINE_DISPLAYS]
+        pOptions.rounded_nodes = self.fSavedSettings.get(
+            CARLA_KEY_CANVAS_ROUNDED_NODES, CARLA_DEFAULT_CANVAS_ROUNDED_NODES
+        )
+        pOptions.node_radius = self.fSavedSettings.get(
+            CARLA_KEY_CANVAS_NODE_RADIUS, CARLA_DEFAULT_CANVAS_NODE_RADIUS
+        )
 
         if self.fSavedSettings[CARLA_KEY_CANVAS_FANCY_EYE_CANDY]:
             pOptions.eyecandy = patchcanvas.EYECANDY_FULL
@@ -2501,6 +2499,16 @@ class HostWindow(QMainWindow):
             ),
             CARLA_KEY_CANVAS_FULL_REPAINTS: settings.value(
                 CARLA_KEY_CANVAS_FULL_REPAINTS, CARLA_DEFAULT_CANVAS_FULL_REPAINTS, bool
+            ),
+            CARLA_KEY_CANVAS_ROUNDED_NODES: settings.value(
+                CARLA_KEY_CANVAS_ROUNDED_NODES,
+                CARLA_DEFAULT_CANVAS_ROUNDED_NODES,
+                bool,
+            ),
+            CARLA_KEY_CANVAS_NODE_RADIUS: settings.value(
+                CARLA_KEY_CANVAS_NODE_RADIUS,
+                CARLA_DEFAULT_CANVAS_NODE_RADIUS,
+                int,
             ),
             CARLA_KEY_CUSTOM_PAINTING: (
                 settings.value(CARLA_KEY_MAIN_USE_PRO_THEME, True, bool)

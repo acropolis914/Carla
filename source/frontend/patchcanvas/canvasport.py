@@ -12,11 +12,26 @@ from qt_compat import qt_config
 if qt_config == 5:
     from PyQt5.QtCore import qCritical, Qt, QLineF, QPointF, QRectF, QTimer
     from PyQt5.QtGui import QCursor, QFont, QFontMetrics, QPainter, QPainterPath, QPen
-    from PyQt5.QtWidgets import QGraphicsItem, QMenu
+    from PyQt5.QtWidgets import QApplication, QGraphicsItem, QMenu
 elif qt_config == 6:
     from PyQt6.QtCore import qCritical, Qt, QLineF, QPointF, QRectF, QTimer
     from PyQt6.QtGui import QCursor, QFont, QFontMetrics, QPainter, QPainterPath, QPen
-    from PyQt6.QtWidgets import QGraphicsItem, QMenu
+    from PyQt6.QtWidgets import QApplication, QGraphicsItem, QMenu
+
+def getSystemFont(size=None, weight=None):
+    base_font = QApplication.font() if QApplication.instance() else QFont()
+    font = QFont(base_font)
+    if size is not None and size > 0:
+        font.setPixelSize(size)
+    if weight is not None:
+        font.setWeight(weight)
+    return font
+
+def fontHorizontalAdvance(font, string):
+    if hasattr(QFontMetrics, "horizontalAdvance"):
+        return QFontMetrics(font).horizontalAdvance(string)
+    return QFontMetrics(font).width(string)
+
 
 # ------------------------------------------------------------------------------------------------------------
 # Imports (Custom)
@@ -77,10 +92,9 @@ class CanvasPort(QGraphicsItem):
 
         self.m_port_width = 15
         self.m_port_height = canvas.theme.port_height
-        self.m_port_font = QFont()
-        self.m_port_font.setFamily(canvas.theme.port_font_name)
-        self.m_port_font.setPixelSize(canvas.theme.port_font_size)
-        self.m_port_font.setWeight(canvas.theme.port_font_state)
+        self.m_port_font = getSystemFont(
+            canvas.theme.port_font_size, canvas.theme.port_font_state
+        )
 
         self.m_line_mov = None
         self.m_hover_item = None
@@ -366,13 +380,20 @@ class CanvasPort(QGraphicsItem):
         for conn_id, _, _ in conn_list:
             canvas.callback(ACTION_PORTS_DISCONNECT, conn_id, 0, "")
 
+    def updateTheme(self):
+        self.m_port_height = canvas.theme.port_height
+        self.m_port_font = getSystemFont(
+            canvas.theme.port_font_size, canvas.theme.port_font_state
+        )
+        self.update()
+
     def boundingRect(self):
         return QRectF(0, 0, self.m_port_width + 12, self.m_port_height)
 
     def paint(self, painter, option, widget):
         painter.save()
         painter.setRenderHint(
-            QPainter.Antialiasing, bool(options.antialiasing == ANTIALIASING_FULL)
+            QPainter.Antialiasing, bool(options.antialiasing == ANTIALIASING_FULL or canvas.theme.port_mode == Theme.THEME_PORT_SOCKET)
         )
 
         # --- Refactored dynamic theme mapping (removes giant block of if/elifs) ---
@@ -424,6 +445,42 @@ class CanvasPort(QGraphicsItem):
         text_y = (
             height - font_metrics.ascent() - font_metrics.descent()
         ) / 2 + font_metrics.ascent()
+
+        # --- Blender-style Socket Drawing (dots on edges, label text on body) ---
+        if canvas.theme.port_mode == Theme.THEME_PORT_SOCKET:
+            socket_r = 4.0
+            cy = height / 2.0
+            if self.m_port_mode == PORT_MODE_INPUT:
+                cx = 5.0
+                socket_rect = QRectF(cx - socket_r, cy - socket_r, socket_r * 2.0, socket_r * 2.0)
+                text_pos = QPointF(cx + socket_r + 5.0, text_y)
+            elif self.m_port_mode == PORT_MODE_OUTPUT:
+                right_x = self.m_port_width + 12.0
+                cx = right_x - 5.0
+                socket_rect = QRectF(cx - socket_r, cy - socket_r, socket_r * 2.0, socket_r * 2.0)
+                text_w = fontHorizontalAdvance(self.m_port_font, self.m_port_name)
+                text_x = max(1.0, (cx - socket_r - 4.0) - text_w)
+                text_pos = QPointF(text_x, text_y)
+            else:
+                painter.restore()
+                return
+
+            painter.setBrush(poly_color)
+            painter.setPen(poly_pen)
+            painter.drawEllipse(socket_rect)
+
+            if selected:
+                ring_pen = QPen(poly_pen)
+                ring_pen.setWidthF(1.0)
+                painter.setPen(ring_pen)
+                painter.setBrush(Qt.NoBrush)
+                painter.drawEllipse(QRectF(cx - socket_r - 2.0, cy - socket_r - 2.0, (socket_r + 2.0) * 2.0, (socket_r + 2.0) * 2.0))
+
+            painter.setPen(text_pen)
+            painter.setFont(self.m_port_font)
+            painter.drawText(text_pos, self.m_port_name)
+            painter.restore()
+            return
 
         path = QPainterPath()
 

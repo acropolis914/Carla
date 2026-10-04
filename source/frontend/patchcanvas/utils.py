@@ -21,13 +21,17 @@ elif qt_config == 6:
 from . import bool2str, canvas, CanvasBoxType
 import sys
 
-def log_carla(msg):
-    try:
-        with open("/tmp/carla.log", "a") as f:
-            f.write(str(msg) + "\n")
-    except Exception:
-        pass
-    print(str(msg), file=sys.stderr, flush=True)
+try:
+    from carla_shared import log_carla
+except Exception:
+    def log_carla(msg, level="info"):
+        try:
+            with open("/tmp/carla.log", "a") as f:
+                f.write(str(msg) + "\n")
+        except Exception:
+            pass
+        print(str(msg), file=sys.stderr, flush=True)
+
 
 # Optional PipeWire display names, keyed by JACK client and port names.
 _pipewire_port_names = {}

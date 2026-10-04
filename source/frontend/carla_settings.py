@@ -659,6 +659,16 @@ class CarlaSettingsW(QDialog):
         self.ui.cb_canvas_eyecandy.toggled.connect(self.slot_canvasEyeCandyToggled)
         #self.ui.cb_canvas_fancy_eyecandy.toggled.connect(self.slot_canvasFancyEyeCandyToggled)
         self.ui.cb_canvas_use_opengl.toggled.connect(self.slot_canvasOpenGLToggled)
+        if hasattr(self.ui, "cb_canvas_rounded_nodes"):
+            self.ui.cb_canvas_rounded_nodes.toggled.connect(
+                self.ui.sl_canvas_node_radius.setEnabled
+            )
+            self.ui.cb_canvas_rounded_nodes.toggled.connect(
+                self.ui.label_canvas_node_radius.setEnabled
+            )
+            self.ui.sl_canvas_node_radius.valueChanged.connect(
+                lambda v: self.ui.label_canvas_node_radius.setText(f"{v} px")
+            )
 
         # -------------------------------------------------------------------------------------------------------------
         # Post-connect setup
@@ -758,6 +768,23 @@ class CarlaSettingsW(QDialog):
 
         self.ui.cb_canvas_inline_displays.setChecked(
             settings.value(CARLA_KEY_CANVAS_INLINE_DISPLAYS, CARLA_DEFAULT_CANVAS_INLINE_DISPLAYS, bool))
+
+        if hasattr(self.ui, "cb_canvas_rounded_nodes"):
+            roundedNodes = settings.value(
+                CARLA_KEY_CANVAS_ROUNDED_NODES,
+                CARLA_DEFAULT_CANVAS_ROUNDED_NODES,
+                bool,
+            )
+            nodeRadius = settings.value(
+                CARLA_KEY_CANVAS_NODE_RADIUS,
+                CARLA_DEFAULT_CANVAS_NODE_RADIUS,
+                int,
+            )
+            self.ui.cb_canvas_rounded_nodes.setChecked(roundedNodes)
+            self.ui.sl_canvas_node_radius.setValue(nodeRadius)
+            self.ui.label_canvas_node_radius.setText(f"{nodeRadius} px")
+            self.ui.sl_canvas_node_radius.setEnabled(roundedNodes)
+            self.ui.label_canvas_node_radius.setEnabled(roundedNodes)
 
         # -------------------------------------------------------------------------------------------------------------
 
@@ -1015,6 +1042,16 @@ class CarlaSettingsW(QDialog):
         settings.setValue(CARLA_KEY_CANVAS_ANTIALIASING,      self.ui.cb_canvas_render_aa.checkState())
         settings.setValue(CARLA_KEY_CANVAS_FULL_REPAINTS,     self.ui.cb_canvas_full_repaints.isChecked())
         settings.setValue(CARLA_KEY_CANVAS_INLINE_DISPLAYS,   self.ui.cb_canvas_inline_displays.isChecked())
+        if hasattr(self.ui, "cb_canvas_rounded_nodes"):
+            settings.setValue(
+                CARLA_KEY_CANVAS_ROUNDED_NODES,
+                self.ui.cb_canvas_rounded_nodes.isChecked(),
+            )
+            settings.setValue(
+                CARLA_KEY_CANVAS_NODE_RADIUS,
+                self.ui.sl_canvas_node_radius.value(),
+            )
+
 
         # -------------------------------------------------------------------------------------------------------------
 
@@ -1210,6 +1247,14 @@ class CarlaSettingsW(QDialog):
             self.ui.cb_canvas_eyecandy.setChecked(CARLA_DEFAULT_CANVAS_EYE_CANDY and self.ui.cb_canvas_eyecandy.isEnabled())
             self.ui.cb_canvas_render_aa.setCheckState(Qt.PartiallyChecked) # CARLA_DEFAULT_CANVAS_ANTIALIASING
             self.ui.cb_canvas_full_repaints.setChecked(CARLA_DEFAULT_CANVAS_FULL_REPAINTS)
+            if hasattr(self.ui, "cb_canvas_rounded_nodes"):
+                self.ui.cb_canvas_rounded_nodes.setChecked(
+                    CARLA_DEFAULT_CANVAS_ROUNDED_NODES
+                )
+                self.ui.sl_canvas_node_radius.setValue(
+                    CARLA_DEFAULT_CANVAS_NODE_RADIUS
+                )
+
 
         # -------------------------------------------------------------------------------------------------------------
         # Engine
