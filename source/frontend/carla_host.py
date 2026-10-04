@@ -6,6 +6,7 @@
 # Imports (Global)
 
 import json
+import xml.etree.ElementTree as ET
 
 # ------------------------------------------------------------------------------------------------------------
 # Imports (ctypes)
@@ -971,6 +972,31 @@ class HostWindow(QMainWindow):
             )
             return
 
+        if self.fWithCanvas and os.path.exists(self.fProjectFilename):
+            try:
+                tree = ET.parse(self.fProjectFilename)
+                root = tree.getroot()
+                if root.tag == "CARLA-PROJECT":
+                    # Remove any existing CanvasPositions
+                    for child in list(root):
+                        if child.tag == "CanvasPositions":
+                            root.remove(child)
+
+                    canvas_pos_elem = ET.SubElement(root, "CanvasPositions")
+                    positions = patchcanvas.saveGroupPositions()
+                    for pos_data in positions:
+                        p_elem = ET.SubElement(canvas_pos_elem, "Position")
+                        p_elem.set("name", str(pos_data.get("name", "")))
+                        p_elem.set("pos1x", str(int(round(pos_data.get("pos1x", 0)))))
+                        p_elem.set("pos1y", str(int(round(pos_data.get("pos1y", 0)))))
+                        p_elem.set("pos2x", str(int(round(pos_data.get("pos2x", 0)))))
+                        p_elem.set("pos2y", str(int(round(pos_data.get("pos2y", 0)))))
+                        p_elem.set("split", "1" if pos_data.get("split") else "0")
+
+                    tree.write(self.fProjectFilename, encoding="UTF-8", xml_declaration=True)
+            except Exception as e:
+                print("Failed to inject CanvasPositions into project file:", e)
+
     def projectLoadingStarted(self):
         self.ui.rack.setEnabled(False)
         self.ui.graphicsView.setEnabled(False)
@@ -985,10 +1011,72 @@ class HostWindow(QMainWindow):
         ):
             return
 
-        if refreshCanvas and not self.loadExternalCanvasGroupPositionsIfNeeded(
+        # Restore positions from .carxp if present
+        positions_loaded = False
+        if self.fProjectFilename and os.path.exists(self.fProjectFilename):
+            positions_loaded = self.loadCanvasGroupPositionsFromProject(self.fProjectFilename)
+
+        if not positions_loaded and refreshCanvas and not self.loadExternalCanvasGroupPositionsIfNeeded(
             self.fProjectFilename
         ):
             QTimer.singleShot(1, self.slot_canvasRefresh)
+
+    def loadCanvasGroupPositionsFromProject(self, filename):
+        if not filename or not os.path.exists(filename):
+            return False
+
+        try:
+            tree = ET.parse(filename)
+            root = tree.getroot()
+            if root.tag != "CARLA-PROJECT":
+                return False
+
+            canvas_elem = root.find("CanvasPositions")
+            data_list = []
+
+            if canvas_elem is not None:
+                for p_elem in canvas_elem.findall("Position"):
+                    data_list.append({
+                        "name": p_elem.get("name", ""),
+                        "pos1x": float(p_elem.get("pos1x", 0)),
+                        "pos1y": float(p_elem.get("pos1y", 0)),
+                        "pos2x": float(p_elem.get("pos2x", 0)),
+                        "pos2y": float(p_elem.get("pos2y", 0)),
+                        "split": p_elem.get("split") in ("1", "true", "True"),
+                    })
+
+            # Also check Patchbay/Positions and ExternalPatchbay/Positions from Carla native XML if present
+            if not data_list:
+                for pb_tag in ("Patchbay", "ExternalPatchbay"):
+                    pb_elem = root.find(pb_tag)
+                    if pb_elem is not None:
+                        pos_elem = pb_elem.find("Positions")
+                        if pos_elem is not None:
+                            for p_elem in pos_elem.findall("Position"):
+                                name_elem = p_elem.find("Name")
+                                name = name_elem.text if name_elem is not None else ""
+                                if name:
+                                    x1 = float(p_elem.get("x1", 0))
+                                    y1 = float(p_elem.get("y1", 0))
+                                    x2 = float(p_elem.get("x2", 0))
+                                    y2 = float(p_elem.get("y2", 0))
+                                    data_list.append({
+                                        "name": name,
+                                        "pos1x": x1,
+                                        "pos1y": y1,
+                                        "pos2x": x2,
+                                        "pos2y": y2,
+                                        "split": (x2 != 0 or y2 != 0),
+                                    })
+
+            if not data_list:
+                return False
+
+            patchcanvas.restoreGroupPositions(data_list)
+            return True
+        except Exception as e:
+            print("Failed to load canvas positions from carxp:", e)
+            return False
 
     def loadExternalCanvasGroupPositionsIfNeeded(self, filename):
         extrafile = filename.rsplit(".", 1)[0] + ".json"
@@ -1932,7 +2020,7 @@ class HostWindow(QMainWindow):
 
         self.ui.miniCanvasPreview.setViewTheme(
             patchcanvas.canvas.theme.canvas_bg,
-            patchcanvas.canvas.theme.rubberband_brush,
+            patchcanvas.canvas.theme.rubberband_brush.color(),
             patchcanvas.canvas.theme.rubberband_pen.color(),
         )
         self.ui.miniCanvasPreview.init(
@@ -2813,7 +2901,8 @@ class HostWindow(QMainWindow):
             return
 
         if filename.endswith(".carxp"):
-            self.loadExternalCanvasGroupPositionsIfNeeded(filename)
+            if not self.loadCanvasGroupPositionsFromProject(filename):
+                self.loadExternalCanvasGroupPositionsIfNeeded(filename)
 
     # --------------------------------------------------------------------------------------------------------
     # Transport
