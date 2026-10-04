@@ -340,7 +340,13 @@ def setCanvasSize(x, y, width, height):
     canvas.scene.fixScaleFactor()
 
 
-def addGroup(group_id, group_name, split=SPLIT_UNDEF, icon=ICON_APPLICATION):
+def addGroup(
+    group_id,
+    group_name,
+    split=SPLIT_UNDEF,
+    icon=ICON_APPLICATION,
+    pw_node_name=None,
+):
     log_carla(f"patchcanvas.addGroup: group_id={group_id}, group_name='{group_name}'")
     if canvas.debug:
         print(
@@ -368,13 +374,14 @@ def addGroup(group_id, group_name, split=SPLIT_UNDEF, icon=ICON_APPLICATION):
         elif old_matching_group is not None and old_matching_group[0]:
             split = SPLIT_YES
 
-    group_box = CanvasBox(group_id, group_name, icon)
+    group_box = CanvasBox(group_id, group_name, icon, pw_node_name=pw_node_name)
     group_box.positionChanged.connect(canvas.qobject.boxPositionChanged)
     group_box.blockSignals(True)
 
     group_dict = group_dict_t()
     group_dict.group_id = group_id
     group_dict.group_name = group_name
+    group_dict.pw_node_name = pw_node_name or group_name
     group_dict.split = bool(split == SPLIT_YES)
     group_dict.icon = icon
     group_dict.plugin_id = -1
@@ -396,7 +403,7 @@ def addGroup(group_id, group_name, split=SPLIT_UNDEF, icon=ICON_APPLICATION):
         else:
             group_box.setPos(CanvasGetNewGroupPos(False))
 
-        group_sbox = CanvasBox(group_id, group_name, icon)
+        group_sbox = CanvasBox(group_id, group_name, icon, pw_node_name=pw_node_name)
         group_sbox.positionChanged.connect(canvas.qobject.sboxPositionChanged)
         group_sbox.blockSignals(True)
         group_sbox.setSplit(True, PORT_MODE_INPUT)
@@ -1041,11 +1048,16 @@ def addPort(group_id, port_id, port_name, port_mode, port_type, is_alternate=Fal
             canvas.next_pipewire_group_id -= 1
             canvas.pipewire_group_map[stream_key] = visual_group_id
             canvas.pipewire_group_ids.setdefault(group_id, set()).add(visual_group_id)
+            source_pw_name = (
+                getattr(source_group, "pw_node_name", None)
+                or source_group.group_name
+            )
             addGroup(
                 visual_group_id,
                 display_name,
                 SPLIT_YES if source_group.split else SPLIT_NO,
                 source_group.icon,
+                pw_node_name=source_pw_name,
             )
 
     box_widget = None
@@ -1062,6 +1074,16 @@ def addPort(group_id, port_id, port_name, port_mode, port_type, is_alternate=Fal
             else:
                 n = 0
             box_widget = group.widgets[n]
+            if box_widget:
+                source_pw_name = (
+                    getattr(source_group, "pw_node_name", None)
+                    or source_group.group_name
+                )
+                if source_pw_name and (
+                    not getattr(box_widget, "pw_node_name", None)
+                    or box_widget.pw_node_name == box_widget.m_group_name
+                ):
+                    box_widget.pw_node_name = source_pw_name
             port_widget = box_widget.addPortFromGroup(
                 port_id, port_mode, port_type, port_name, is_alternate, group_id
             )
@@ -1686,11 +1708,38 @@ def autoArrange():
                 rx += n.boundingRect().width() + node_gap
             curr_y += row_max_h + vertical_gap
 
-    # --- 4. CANVAS MARGIN NORMALIZATION & NOTIFICATIONS ---
-    all_min_x = min(n.x() for n in nodes)
-    all_min_y = min(n.y() for n in nodes)
-    offset_x = 40 - all_min_x
-    offset_y = 40 - all_min_y
+    # --- 4. CENTER NODES IN PATCHCANVAS ---
+    min_x = min(n.x() for n in nodes)
+    min_y = min(n.y() for n in nodes)
+    max_x = max(n.x() + n.boundingRect().width() for n in nodes)
+    max_y = max(n.y() + n.boundingRect().height() for n in nodes)
+
+    bbox_w = max_x - min_x
+    bbox_h = max_y - min_y
+
+    canvas_w = (
+        canvas.size_rect.width()
+        if not canvas.size_rect.isNull()
+        else (canvas.scene.width() if canvas.scene else 0)
+    )
+    canvas_h = (
+        canvas.size_rect.height()
+        if not canvas.size_rect.isNull()
+        else (canvas.scene.height() if canvas.scene else 0)
+    )
+    canvas_x = canvas.size_rect.x() if not canvas.size_rect.isNull() else 0
+    canvas_y = canvas.size_rect.y() if not canvas.size_rect.isNull() else 0
+
+    if canvas_w > 0 and canvas_h > 0:
+        target_x = canvas_x + (canvas_w - bbox_w) / 2.0
+        target_y = canvas_y + (canvas_h - bbox_h) / 2.0
+        target_x = max(canvas_x, target_x)
+        target_y = max(canvas_y, target_y)
+        offset_x = target_x - min_x
+        offset_y = target_y - min_y
+    else:
+        offset_x = 40 - min_x
+        offset_y = 40 - min_y
 
     for node in nodes:
         node.blockSignals(True)
@@ -1712,7 +1761,9 @@ def autoArrange():
     for node in nodes:
         node.repaintLines(True)
 
-    canvas.scene.update()
+    if canvas.scene:
+        canvas.scene.zoom_fit()
+        canvas.scene.update()
     log_carla("PatchCanvas::autoArrange() finished")
 
 

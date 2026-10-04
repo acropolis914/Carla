@@ -165,6 +165,7 @@ class group_dict_t(object):
         "plugin_ui",
         "plugin_inline",
         "widgets",
+        "pw_node_name",
     ]
 
 

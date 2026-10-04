@@ -5,6 +5,8 @@
 # ------------------------------------------------------------------------------------------------------------
 # Imports (Global)
 
+import json
+import subprocess
 from qt_compat import qt_config
 
 if qt_config == 5:
@@ -29,7 +31,28 @@ if qt_config == 5:
         QPen,
     )
     from PyQt5.QtSvg import QGraphicsSvgItem
-    from PyQt5.QtWidgets import QApplication, QGraphicsItem, QGraphicsObject, QMenu
+    from PyQt5.QtWidgets import (
+        QApplication,
+        QGraphicsItem,
+        QGraphicsObject,
+        QMenu,
+        QDialog,
+        QTabWidget,
+        QWidget,
+        QVBoxLayout,
+        QHBoxLayout,
+        QFormLayout,
+        QLabel,
+        QLineEdit,
+        QDialogButtonBox,
+        QFrame,
+        QTableWidget,
+        QTableWidgetItem,
+        QHeaderView,
+        QGroupBox,
+        QCheckBox,
+        QPushButton,
+    )
 elif qt_config == 6:
     from PyQt6.QtCore import (
         pyqtSignal,
@@ -52,7 +75,28 @@ elif qt_config == 6:
         QPen,
     )
     from PyQt6.QtSvgWidgets import QGraphicsSvgItem
-    from PyQt6.QtWidgets import QApplication, QGraphicsItem, QGraphicsObject, QMenu
+    from PyQt6.QtWidgets import (
+        QApplication,
+        QGraphicsItem,
+        QGraphicsObject,
+        QMenu,
+        QDialog,
+        QTabWidget,
+        QWidget,
+        QVBoxLayout,
+        QHBoxLayout,
+        QFormLayout,
+        QLabel,
+        QLineEdit,
+        QDialogButtonBox,
+        QFrame,
+        QTableWidget,
+        QTableWidgetItem,
+        QHeaderView,
+        QGroupBox,
+        QCheckBox,
+        QPushButton,
+    )
 
 # ------------------------------------------------------------------------------------------------------------
 # Backwards-compatible horizontalAdvance/width call, depending on Qt version
@@ -74,7 +118,96 @@ def getSystemFont(size=None, weight=None):
     return font
 
 
+# ------------------------------------------------------------------------------------------------------------
+# PipeWire Property Formatting Dictionary
 
+PW_PRETTY_MAP = {
+    # Application / Client
+    "application.name": "Application Name",
+    "application.process.id": "Process ID",
+    "application.process.user": "Process User",
+    "application.process.host": "Process Host",
+    "application.process.binary": "Process Binary",
+    "application.language": "Language",
+    "client.api": "Client API",
+    "client.id": "Client ID",
+    # ALSA Specifics
+    "alsa.card": "ALSA Card ID",
+    "alsa.card_name": "ALSA Card Name",
+    "alsa.class": "ALSA Class",
+    "alsa.components": "ALSA Components",
+    "alsa.device": "ALSA Device ID",
+    "alsa.driver_name": "ALSA Driver Name",
+    "alsa.id": "ALSA ID",
+    "alsa.long_card_name": "ALSA Long Card Name",
+    "alsa.mixer_name": "ALSA Mixer Name",
+    "alsa.name": "ALSA Name",
+    "alsa.resolution_bits": "ALSA Resolution (Bits)",
+    "alsa.subclass": "ALSA Subclass",
+    "alsa.subdevice": "ALSA Subdevice ID",
+    "alsa.subdevice_name": "ALSA Subdevice Name",
+    "alsa.sync.id": "ALSA Sync ID",
+    "api.alsa.card.longname": "ALSA API Card Longname",
+    "api.alsa.card.name": "ALSA API Card Name",
+    "api.alsa.headroom": "ALSA API Headroom",
+    "api.alsa.path": "ALSA API Path",
+    "api.alsa.pcm.card": "ALSA PCM Card",
+    "api.alsa.pcm.stream": "ALSA PCM Stream",
+    "api.alsa.period-num": "ALSA Period Count",
+    "api.alsa.period-size": "ALSA Period Size",
+    # Audio & Clock
+    "audio.channels": "Channels",
+    "audio.rate": "Sample Rate",
+    "audio.position": "Channel Map",
+    "audio.format": "Audio Format",
+    "clock.quantum-limit": "Quantum Limit",
+    "clock.rate": "Clock Rate",
+    "clock.allowed-rates": "Allowed Rates",
+    # Device
+    "card.profile.device": "Card Profile Device",
+    "device.api": "Device API",
+    "device.bus": "Device Bus",
+    "device.class": "Device Class",
+    "device.icon-name": "Device Icon",
+    "device.id": "Device ID",
+    "device.description": "Device Description",
+    "device.name": "Device Name",
+    "device.nick": "Device Nickname",
+    "device.profile.description": "Device Profile Description",
+    "device.profile.name": "Device Profile Name",
+    "device.routes": "Device Routes",
+    # Core / Internal
+    "factory.name": "Factory Name",
+    "factory.id": "Factory ID",
+    "library.name": "Library Name",
+    "object.id": "Object ID",
+    "object.serial": "Object Serial",
+    "object.path": "Object Path",
+    # Media
+    "media.class": "Media Class",
+    "media.type": "Media Type",
+    "media.role": "Media Role",
+    "media.name": "Media Name",
+    # Node
+    "node.description": "Description",
+    "node.name": "Node Name",
+    "node.nick": "Nickname",
+    "node.latency": "Latency",
+    "node.max-latency": "Maximum Latency",
+    "node.driver": "Is Driver",
+    "node.driver-id": "Driver Node ID",
+    "node.loop.name": "Loop Name",
+    "node.pause-on-idle": "Pause on Idle",
+    # Port & Stream
+    "port.name": "Port Name",
+    "port.direction": "Port Direction",
+    "port.alias": "Port Alias",
+    "port.group": "Port Group",
+    "stream.is-live": "Is Live Stream",
+    # Priority
+    "priority.driver": "Driver Priority",
+    "priority.session": "Session Priority",
+}
 # ------------------------------------------------------------------------------------------------------------
 # Imports (Custom)
 
@@ -113,7 +246,12 @@ from .canvasboxshadow import CanvasBoxShadow
 from .canvasicon import CanvasIcon
 from .canvasport import CanvasPort
 from .theme import Theme
-from .utils import CanvasItemFX, CanvasGetFullPortName, CanvasGetPortConnectionList, log_carla
+from .utils import (
+    CanvasItemFX,
+    CanvasGetFullPortName,
+    CanvasGetPortConnectionList,
+    log_carla,
+)
 
 # ------------------------------------------------------------------------------------------------------------
 
@@ -122,6 +260,396 @@ class cb_line_t(object):
     def __init__(self, line, connection_id):
         self.line = line
         self.connection_id = connection_id
+
+
+# ------------------------------------------------------------------------------------------------------------
+
+
+class BoxPropertiesDialog(QDialog):
+    def __init__(self, box, parent=None):
+        super().__init__(parent)
+        self.box = box
+        self.setWindowTitle(f"{box.getGroupName()} Properties")
+        self.resize(520, 680)
+
+        # Fetch PipeWire properties early using the node's query name
+        query_name = (
+            getattr(self.box, "pw_node_name", None)
+            or self.box.getGroupName()
+        )
+        self.pw_props = self.get_pw_properties(query_name)
+
+        # Main layout
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(12, 12, 12, 12)
+
+        # Tabs
+        self.tabs = QTabWidget()
+        self.general_tab = QWidget()
+        self.ports_tab = QWidget()
+        self.pw_tab = QWidget()
+
+        self.tabs.addTab(self.general_tab, "General")
+        self.tabs.addTab(self.ports_tab, "Ports")
+        self.tabs.addTab(self.pw_tab, "PipeWire Raw")
+
+        layout.addWidget(self.tabs)
+
+        self.setup_general_tab()
+        self.setup_ports_tab()
+        self.setup_pipewire_tab()
+
+        # Bottom Buttons (OK, Cancel, Apply)
+        self.button_box = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok
+            | QDialogButtonBox.StandardButton.Cancel
+            | QDialogButtonBox.StandardButton.Apply
+        )
+        self.button_box.accepted.connect(self.accept)
+        self.button_box.rejected.connect(self.reject)
+        self.button_box.button(QDialogButtonBox.StandardButton.Apply).clicked.connect(
+            self.apply_changes
+        )
+        layout.addWidget(self.button_box)
+
+    def get_pw_properties(self, search_name):
+        try:
+            # 1. Try querying pw-dump directly with search_name (pw-dump accepts node.name or id)
+            if search_name:
+                try:
+                    out = subprocess.check_output(
+                        ["pw-dump", str(search_name)],
+                        text=True,
+                        stderr=subprocess.DEVNULL,
+                    )
+                    if out.strip():
+                        data = json.loads(out)
+                        for obj in data:
+                            if obj.get("type") in (
+                                "PipeWire:Interface:Node",
+                                "PipeWire:Interface:Client",
+                            ):
+                                props = obj.get("info", {}).get("props", {})
+                                if props:
+                                    if "node.name" in props and hasattr(self.box, "pw_node_name"):
+                                        self.box.pw_node_name = props["node.name"]
+                                    return props
+                except (subprocess.SubprocessError, json.JSONDecodeError):
+                    pass
+
+            # 2. Fall back to dumping state and matching against node names, descriptions, or nicks
+            out = subprocess.check_output(["pw-dump"], text=True, stderr=subprocess.DEVNULL)
+            state = json.loads(out)
+
+            box_title = self.box.getGroupName() if hasattr(self.box, "getGroupName") else ""
+            for obj in state:
+                if obj.get("type") in (
+                    "PipeWire:Interface:Node",
+                    "PipeWire:Interface:Client",
+                ):
+                    props = obj.get("info", {}).get("props", {})
+                    candidates = (
+                        props.get("node.name"),
+                        props.get("node.description"),
+                        props.get("node.nick"),
+                        props.get("client.name"),
+                        props.get("application.name"),
+                        props.get("media.name"),
+                    )
+
+                    if (search_name and search_name in candidates) or (
+                        box_title and box_title in candidates
+                    ):
+                        if "node.name" in props and hasattr(self.box, "pw_node_name"):
+                            self.box.pw_node_name = props["node.name"]
+                        return props
+
+        except Exception as e:
+            print(f"Failed to fetch PipeWire data: {e}")
+
+        return None
+
+    def create_group_box(self, title):
+        group = QGroupBox(title)
+        group.setStyleSheet("""
+            QGroupBox { 
+                font-weight: bold; 
+                font-size: 13px;
+                padding-top: 18px; 
+                margin-top: 12px;
+                border: 1px solid rgba(128, 128, 128, 0.3);
+                border-radius: 4px;
+            } 
+            QGroupBox::title { 
+                subcontrol-origin: margin; 
+                left: 10px; 
+                padding: 0 5px 0 5px;
+            }
+        """)
+        return group
+
+    def setup_general_tab(self):
+        layout = QVBoxLayout(self.general_tab)
+        layout.setSpacing(12)
+        layout.setContentsMargins(15, 15, 15, 15)
+
+        # --- 1. Header (H1 Equivalent) ---
+        header_layout = QHBoxLayout()
+        header_layout.setSpacing(15)
+
+        icon_label = QLabel()
+        icon_label.setPixmap(
+            self.style()
+            .standardIcon(self.style().StandardPixmap.SP_FileIcon)
+            .pixmap(48, 48)
+        )
+        header_layout.addWidget(icon_label)
+
+        title_layout = QVBoxLayout()
+        title_layout.setSpacing(0)
+
+        self.name_edit = QLineEdit(self.box.getGroupName())
+        font = self.name_edit.font()
+        font.setPointSize(16)
+        font.setBold(True)
+        self.name_edit.setFont(font)
+        self.name_edit.setStyleSheet("""
+            QLineEdit { 
+                border: 1px solid transparent; 
+                border-bottom: 1px solid rgba(128, 128, 128, 0.4); 
+                background: transparent; 
+                padding: 0px;
+                margin-bottom: 2px;
+            } 
+            QLineEdit:focus { 
+                border-bottom: 2px solid palette(highlight); 
+            }
+        """)
+        title_layout.addWidget(self.name_edit)
+
+        type_str = "Plugin Node" if self.box.m_plugin_id >= 0 else "Canvas Group"
+        type_subtitle = QLabel(
+            f"<span style='color: #777; font-size: 11pt;'>{type_str}</span>"
+        )
+        title_layout.addWidget(type_subtitle)
+        title_layout.addStretch()
+
+        header_layout.addLayout(title_layout)
+        layout.addLayout(header_layout)
+
+        # Separator
+        line1 = QFrame()
+        line1.setFrameShape(
+            QFrame.Shape.HLine if hasattr(QFrame, "Shape") else QFrame.HLine
+        )
+        line1.setFrameShadow(
+            QFrame.Shadow.Sunken if hasattr(QFrame, "Shadow") else QFrame.Sunken
+        )
+        layout.addWidget(line1)
+
+        # --- 2. PipeWire Identity Box (Most Important) ---
+        if self.pw_props:
+            pw_group = self.create_group_box("PipeWire Identity")
+            pw_layout = QFormLayout(pw_group)
+            pw_layout.setSpacing(8)
+            pw_layout.setContentsMargins(15, 15, 15, 15)
+
+            desc = self.pw_props.get(
+                "node.description", self.pw_props.get("node.nick", "N/A")
+            )
+            media_class = self.pw_props.get("media.class", "N/A")
+            app_name = self.pw_props.get("application.name", "N/A")
+            node_name = self.pw_props.get("node.name", "N/A")
+
+            lbl_desc = QLabel(
+                f"<span style='font-size: 11pt; font-weight: bold;'>{desc}</span>"
+            )
+            lbl_desc.setWordWrap(True)
+
+            pw_layout.addRow("Description:", lbl_desc)
+
+            if media_class != "N/A":
+                pw_layout.addRow(
+                    "Media Class:",
+                    QLabel(
+                        f"<code style='color: #2b78e4; font-size: 10pt;'>{media_class}</code>"
+                    ),
+                )
+
+            if app_name != "N/A":
+                pw_layout.addRow("Application:", QLabel(f"<b>{app_name}</b>"))
+
+            pw_layout.addRow("Node Name:", QLabel(str(node_name)))
+            layout.addWidget(pw_group)
+
+        # --- 3. Node Identity Box ---
+        info_group = self.create_group_box("Node Details")
+        info_layout = QFormLayout(info_group)
+        info_layout.setSpacing(8)
+        info_layout.setContentsMargins(15, 15, 15, 15)
+
+        info_layout.addRow("Canvas Group ID:", QLabel(str(self.box.getGroupId())))
+        if self.box.m_plugin_id >= 0:
+            info_layout.addRow("Plugin ID:", QLabel(f"<b>{self.box.m_plugin_id}</b>"))
+            info_layout.addRow(
+                "Custom UI:",
+                QLabel("<b>Available</b>" if self.box.m_plugin_ui else "Not Available"),
+            )
+
+        layout.addWidget(info_group)
+
+        # --- 4. Geometry Box (Least Important) ---
+        geo_group = self.create_group_box("Geometry & Layout")
+        geo_layout = QFormLayout(geo_group)
+        geo_layout.setSpacing(8)
+        geo_layout.setContentsMargins(15, 15, 15, 15)
+
+        geo_layout.addRow(
+            "Position (X, Y):", QLabel(f"{int(self.box.x())}, {int(self.box.y())}")
+        )
+        geo_layout.addRow(
+            "Dimensions:",
+            QLabel(f"{int(self.box.p_width)}w × {int(self.box.p_height)}h pixels"),
+        )
+        geo_layout.addRow(
+            "Split Mode:",
+            QLabel(
+                "<span style='color: #2e8b57; font-weight: bold;'>Active</span>"
+                if self.box.isSplit()
+                else "Inactive"
+            ),
+        )
+
+        layout.addWidget(geo_group)
+        layout.addStretch()
+
+    def setup_ports_tab(self):
+        layout = QVBoxLayout(self.ports_tab)
+        layout.setContentsMargins(15, 15, 15, 15)
+
+        port_group = self.create_group_box("Port Configuration")
+        form = QFormLayout(port_group)
+        form.setSpacing(12)
+        form.setContentsMargins(15, 20, 15, 15)
+
+        form.addRow(
+            "Total Ports:",
+            QLabel(
+                f"<span style='font-size: 12pt; font-weight: bold;'>{self.box.getPortCount()}</span>"
+            ),
+        )
+
+        # Count inputs and outputs
+        ins = outs = 0
+        for port in canvas.port_list:
+            if (
+                port.widget.parentItem() == self.box
+                and port.port_id in self.box.m_port_list_ids
+            ):
+                if port.port_mode == PORT_MODE_INPUT:
+                    ins += 1
+                elif port.port_mode == PORT_MODE_OUTPUT:
+                    outs += 1
+
+        form.addRow("Input Ports:", QLabel(str(ins)))
+        form.addRow("Output Ports:", QLabel(str(outs)))
+
+        layout.addWidget(port_group)
+        layout.addStretch()
+
+    def setup_pipewire_tab(self):
+        layout = QVBoxLayout(self.pw_tab)
+        layout.setSpacing(8)
+        layout.setContentsMargins(12, 12, 12, 12)
+
+        if not self.pw_props:
+            target_str = f"<b>{self.box.getGroupName()}</b>"
+            if getattr(self.box, "pw_node_name", None) and self.box.pw_node_name != self.box.getGroupName():
+                target_str += f" (<code>{self.box.pw_node_name}</code>)"
+            lbl = QLabel(
+                f"Could not find matching PipeWire properties for {target_str}.<br><br>Ensure the node is active and named identically in the PipeWire graph."
+            )
+            lbl.setWordWrap(True)
+            layout.addWidget(lbl)
+            layout.addStretch()
+            return
+
+        # Top Controls Layout
+        controls_layout = QHBoxLayout()
+
+        self.pretty_checkbox = QCheckBox("Show user-friendly property names")
+        self.pretty_checkbox.setChecked(True)
+        self.pretty_checkbox.toggled.connect(self.populate_pw_table)
+        controls_layout.addWidget(self.pretty_checkbox)
+
+        controls_layout.addStretch()
+
+        self.btn_copy = QPushButton("Copy JSON")
+        self.btn_copy.setToolTip("Copy raw PipeWire JSON to clipboard")
+        self.btn_copy.clicked.connect(self.copy_pw_json)
+        controls_layout.addWidget(self.btn_copy)
+
+        layout.addLayout(controls_layout)
+
+        # Create a table to show properties
+        self.pw_table = QTableWidget(0, 2)
+        self.pw_table.setHorizontalHeaderLabels(["Property", "Value"])
+        self.pw_table.horizontalHeader().setStretchLastSection(True)
+        self.pw_table.setColumnWidth(0, 200)
+        self.pw_table.verticalHeader().setVisible(False)
+        self.pw_table.setAlternatingRowColors(True)
+
+        # Reduce vertical padding in rows
+        self.pw_table.verticalHeader().setDefaultSectionSize(24)
+
+        # Disable editing
+        if hasattr(QTableWidget, "EditTrigger"):
+            self.pw_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        else:
+            self.pw_table.setEditTriggers(QTableWidget.NoEditTriggers)
+
+        layout.addWidget(self.pw_table)
+
+        # Initial population
+        self.populate_pw_table()
+
+    def populate_pw_table(self):
+        if not hasattr(self, "pw_table") or not self.pw_props:
+            return
+
+        use_pretty = self.pretty_checkbox.isChecked()
+        self.pw_table.setRowCount(0)
+        self.pw_table.setRowCount(len(self.pw_props))
+
+        for i, (key, val) in enumerate(sorted(self.pw_props.items())):
+            display_key = PW_PRETTY_MAP.get(key, key) if use_pretty else key
+
+            key_item = QTableWidgetItem(str(display_key))
+            # Keep original raw key in tooltip for power users
+            key_item.setToolTip(str(key))
+
+            val_item = QTableWidgetItem(str(val))
+            val_item.setToolTip(str(val))
+
+            self.pw_table.setItem(i, 0, key_item)
+            self.pw_table.setItem(i, 1, val_item)
+
+    def copy_pw_json(self):
+        if self.pw_props:
+            QApplication.clipboard().setText(json.dumps(self.pw_props, indent=4))
+            self.btn_copy.setText("Copied!")
+            QTimer.singleShot(1500, lambda: self.btn_copy.setText("Copy JSON"))
+
+    def apply_changes(self):
+        # Update name if changed
+        new_name = self.name_edit.text()
+        if new_name != self.box.getGroupName():
+            self.box.setGroupName(new_name)
+            self.setWindowTitle(f"{new_name} Properties")
+
+    def accept(self):
+        self.apply_changes()
+        super().accept()
 
 
 # ------------------------------------------------------------------------------------------------------------
@@ -136,13 +664,22 @@ class CanvasBox(QGraphicsObject):
     INLINE_DISPLAY_ENABLED = 1
     INLINE_DISPLAY_CACHED = 2
 
-    def __init__(self, group_id, group_name, icon, parent=None):
+    # Box Width Limits
+    MIN_BOX_WIDTH = 120  # Sensible minimum width
+    MAX_BOX_WIDTH_TITLE = 200  # Max width driven by the title
+    MAX_BOX_WIDTH_ABSOLUTE = 350  # Absolute hard limit for the box
+
+    def __init__(self, group_id, group_name, icon, parent=None, pw_node_name=None):
         QGraphicsObject.__init__(self)
         self.setParentItem(parent)
 
         # Save Variables, useful for later
         self.m_group_id = group_id
         self.m_group_name = group_name
+        self.setToolTip(self.m_group_name)
+
+        # PipeWire accepted query name for nodes (node.name)
+        self.pw_node_name = pw_node_name or group_name
 
         # plugin Id, < 0 if invalid
         self.m_plugin_id = -1
@@ -218,11 +755,32 @@ class CanvasBox(QGraphicsObject):
         canvas.scene.addItem(self)
         QTimer.singleShot(0, self.fixPos)
 
+    def showPropertiesDialog(self):
+        parent_view = (
+            self.scene().views()[0] if self.scene() and self.scene().views() else None
+        )
+        self.prop_dialog = BoxPropertiesDialog(self, parent_view)
+        self.prop_dialog.show()
+
     def getGroupId(self):
         return self.m_group_id
 
     def getGroupName(self):
         return self.m_group_name
+
+    def getPwNodeName(self):
+        return self.pw_node_name
+
+    def setPwNodeName(self, name):
+        self.pw_node_name = name
+
+    @property
+    def node_name(self):
+        return self.pw_node_name
+
+    @node_name.setter
+    def node_name(self, value):
+        self.pw_node_name = value
 
     def isSplit(self):
         return self.m_split
@@ -242,10 +800,6 @@ class CanvasBox(QGraphicsObject):
             self.update()
 
     def removeAsPlugin(self):
-        # del self.m_inline_image
-        # self.m_inline_image = None
-        # self.m_inline_scaling = 1.0
-
         self.m_plugin_id = -1
         self.m_plugin_ui = False
         self.m_plugin_inline = self.INLINE_DISPLAY_DISABLED
@@ -277,6 +831,7 @@ class CanvasBox(QGraphicsObject):
 
     def setGroupName(self, group_name):
         self.m_group_name = group_name
+        self.setToolTip(self.m_group_name)
         self.updatePositions()
 
     def setShadowOpacity(self, opacity):
@@ -294,7 +849,9 @@ class CanvasBox(QGraphicsObject):
     ):
         if len(self.m_port_list_ids) == 0:
             if options.auto_hide_groups:
-                log_carla(f"CanvasBox.addPortFromGroup: unhiding box '{self.m_group_name}' (id={self.m_group_id}) on first port '{port_name}'")
+                log_carla(
+                    f"CanvasBox.addPortFromGroup: unhiding box '{self.m_group_name}' (id={self.m_group_id}) on first port '{port_name}'"
+                )
                 if options.eyecandy == EYECANDY_FULL:
                     CanvasItemFX(self, True, False)
                 self.blockSignals(True)
@@ -393,9 +950,14 @@ class CanvasBox(QGraphicsObject):
     def updatePositions(self):
         self.prepareGeometryChange()
 
-        # Check Text Name size
+        # Check Text Name size with Hard & Soft Limits
+        # Add 30px buffer for margins/icons
         app_name_size = fontHorizontalAdvance(self.m_font_name, self.m_group_name) + 30
-        self.p_width = max(50, app_name_size)
+
+        # Apply minimum width and title maximum width
+        self.p_width = max(
+            self.MIN_BOX_WIDTH, min(app_name_size, self.MAX_BOX_WIDTH_TITLE)
+        )
 
         # Get Port List
         port_list = []
@@ -452,6 +1014,9 @@ class CanvasBox(QGraphicsObject):
                         last_out_pos += port_spacing
 
             self.p_width = max(self.p_width, 30 + max_in_width + max_out_width)
+            self.p_width = min(
+                self.p_width, self.MAX_BOX_WIDTH_ABSOLUTE
+            )  # Absolute hard limit
             self.p_width_in = max_in_width
             self.p_width_out = max_out_width
 
@@ -623,6 +1188,9 @@ class CanvasBox(QGraphicsObject):
         act_x_sep2 = menu.addSeparator()
         act_x_split_join = menu.addAction("Join" if self.m_split else "Split")
 
+        menu.addSeparator()
+        act_x_properties = menu.addAction("Properties")
+
         if not features.group_info:
             act_x_info.setVisible(False)
 
@@ -669,6 +1237,9 @@ class CanvasBox(QGraphicsObject):
 
         if act_selected is None:
             pass
+
+        elif act_selected == act_x_properties:
+            self.showPropertiesDialog()
 
         elif act_selected == act_x_disc_all:
             for conn_id in conn_list_ids:
@@ -849,7 +1420,9 @@ class CanvasBox(QGraphicsObject):
         # Draw header
         header_height = canvas.theme.box_header_height
         if header_height > 0:
-            header_rect = QRectF(lineHinting, lineHinting, self.p_width - 2 * lineHinting, header_height)
+            header_rect = QRectF(
+                lineHinting, lineHinting, self.p_width - 2 * lineHinting, header_height
+            )
             painter.save()
             if radius > 0:
                 header_clip = QPainterPath()
@@ -877,12 +1450,12 @@ class CanvasBox(QGraphicsObject):
                     painter.setPen(canvas.theme.box_pen)
                     painter.drawLine(
                         QPointF(header_rect.left(), header_rect.bottom()),
-                        QPointF(header_rect.right(), header_rect.bottom())
+                        QPointF(header_rect.right(), header_rect.bottom()),
                     )
 
             painter.restore()
 
-        # Draw text
+        # Draw text (Truncated with Ellipsis)
         painter.setFont(self.m_font_name)
 
         if self.isSelected():
@@ -890,14 +1463,32 @@ class CanvasBox(QGraphicsObject):
         else:
             painter.setPen(canvas.theme.box_text)
 
+        metrics = QFontMetrics(self.m_font_name)
+        elide_mode = (
+            Qt.TextElideMode.ElideRight
+            if hasattr(Qt, "TextElideMode")
+            else Qt.ElideRight
+        )
+
+        # Calculate available width with safer padding
         if canvas.theme.box_use_icon:
+            available_width = self.p_width - 35  # Account for icon width + padding
             textPos = QPointF(25, canvas.theme.box_text_ypos)
         else:
-            appNameSize = fontHorizontalAdvance(self.m_font_name, self.m_group_name)
-            rem = self.p_width - appNameSize
+            available_width = self.p_width - 20  # 10px padding on each side
+
+        # Truncate string gracefully based on available pixel width
+        elided_name = metrics.elidedText(
+            self.m_group_name, elide_mode, int(max(0, available_width))
+        )
+
+        if not canvas.theme.box_use_icon:
+            # Re-center based on the actual drawn (potentially elided) text size
+            drawn_name_size = fontHorizontalAdvance(self.m_font_name, elided_name)
+            rem = self.p_width - drawn_name_size
             textPos = QPointF(rem / 2, canvas.theme.box_text_ypos)
 
-        painter.drawText(textPos, self.m_group_name)
+        painter.drawText(textPos, elided_name)
 
         painter.restore()
 
@@ -935,9 +1526,7 @@ class CanvasBox(QGraphicsObject):
                 return
 
             img_format = (
-                QImage.Format.Format_ARGB32
-                if qt_config == 6
-                else QImage.Format_ARGB32
+                QImage.Format.Format_ARGB32 if qt_config == 6 else QImage.Format_ARGB32
             )
             self.m_inline_image = QImage(
                 data["data"],
@@ -995,9 +1584,11 @@ class CanvasBox(QGraphicsObject):
 
     def itemChange(self, change, value):
         from qt_compat import qt_config
+
         pos_change = 1
         if qt_config == 6:
             from PyQt6.QtWidgets import QGraphicsItem
+
             pos_change = QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged
 
         if change == pos_change or change == 1:
