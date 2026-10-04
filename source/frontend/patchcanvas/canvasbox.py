@@ -100,7 +100,7 @@ from .canvasboxshadow import CanvasBoxShadow
 from .canvasicon import CanvasIcon
 from .canvasport import CanvasPort
 from .theme import Theme
-from .utils import CanvasItemFX, CanvasGetFullPortName, CanvasGetPortConnectionList
+from .utils import CanvasItemFX, CanvasGetFullPortName, CanvasGetPortConnectionList, log_carla
 
 # ------------------------------------------------------------------------------------------------------------
 
@@ -189,6 +189,7 @@ class CanvasBox(QGraphicsObject):
             QGraphicsItem.ItemIsFocusable
             | QGraphicsItem.ItemIsMovable
             | QGraphicsItem.ItemIsSelectable
+            | QGraphicsItem.ItemSendsGeometryChanges
         )
 
         # Wait for at least 1 port
@@ -283,6 +284,7 @@ class CanvasBox(QGraphicsObject):
     ):
         if len(self.m_port_list_ids) == 0:
             if options.auto_hide_groups:
+                log_carla(f"CanvasBox.addPortFromGroup: unhiding box '{self.m_group_name}' (id={self.m_group_id}) on first port '{port_name}'")
                 if options.eyecandy == EYECANDY_FULL:
                     CanvasItemFX(self, True, False)
                 self.blockSignals(True)
@@ -876,13 +878,18 @@ class CanvasBox(QGraphicsObject):
             if data is None:
                 return
 
+            img_format = (
+                QImage.Format.Format_ARGB32
+                if qt_config == 6
+                else QImage.Format_ARGB32
+            )
             self.m_inline_image = QImage(
                 data["data"],
                 data["width"],
                 data["height"],
                 data["stride"],
-                QImage.Format_ARGB32,
-            )
+                img_format,
+            ).copy()
             self.m_inline_scaling = scaling
             self.m_plugin_inline = self.INLINE_DISPLAY_CACHED
 
@@ -929,6 +936,19 @@ class CanvasBox(QGraphicsObject):
         )
 
         painter.drawImage(QRectF(srcx, srcy, swidth, sheight), self.m_inline_image)
+
+    def itemChange(self, change, value):
+        from qt_compat import qt_config
+        pos_change = 1
+        if qt_config == 6:
+            from PyQt6.QtWidgets import QGraphicsItem
+            pos_change = QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged
+
+        if change == pos_change or change == 1:
+            self.repaintLines()
+            self.slot_signalPositionChangedLater()
+
+        return super().itemChange(change, value)
 
 
 # ------------------------------------------------------------------------------------------------------------

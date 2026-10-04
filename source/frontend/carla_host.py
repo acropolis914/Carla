@@ -121,7 +121,19 @@ except:
 
 
 def sys_excepthook(typ, value, tback):
+    import traceback
+    err_str = "".join(traceback.format_exception(typ, value, tback))
+    log_carla(f"CRITICAL TRACEBACK:\n{err_str}")
     return sys.__excepthook__(typ, value, tback)
+
+
+def log_carla(msg):
+    try:
+        with open("/tmp/carla.log", "a") as f:
+            f.write(str(msg) + "\n")
+    except Exception:
+        pass
+    print(str(msg), file=sys.stderr, flush=True)
 
 
 # ------------------------------------------------------------------------------------------------------------
@@ -477,6 +489,18 @@ class HostWindow(QMainWindow):
         # ----------------------------------------------------------------------------------------------------
         # Set up GUI (logs)
 
+        try:
+            with open("/tmp/carla.log", "w") as f:
+                f.write("=== Carla Log Started ===\n")
+        except Exception:
+            pass
+
+        _orig_append = self.ui.text_logs.appendPlainText
+        def _log_append(text):
+            _orig_append(text)
+            log_carla(f"[APP_LOG] {text}")
+        self.ui.text_logs.appendPlainText = _log_append
+
         self.ui.text_logs.textChanged.connect(self.slot_logButtonsState)
         self.ui.logs_clear.clicked.connect(self.slot_logClear)
         self.ui.logs_save.clicked.connect(self.slot_logSave)
@@ -641,7 +665,7 @@ class HostWindow(QMainWindow):
             self.ui.act_canvas_copy_clipboard.triggered.connect(
                 self.slot_canvasCopyToClipboard
             )
-            self.ui.act_canvas_arrange.setEnabled(False)  # TODO, later
+            self.ui.act_canvas_arrange.setEnabled(True)
             self.ui.graphicsView.horizontalScrollBar().valueChanged.connect(
                 self.slot_horizontalScrollBarChanged
             )
@@ -1787,6 +1811,7 @@ class HostWindow(QMainWindow):
 
     @pyqtSlot(int, int, str)
     def slot_handlePluginAddedCallback(self, pluginId, pluginType, pluginName):
+        log_carla(f"carla_host: slot_handlePluginAddedCallback id={pluginId}, type={pluginType}, name='{pluginName}'")
         if pluginId != self.fPluginCount:
             print("ERROR: pluginAdded mismatch Id:", pluginId, self.fPluginCount)
             pitem = self.getPluginItem(pluginId)
@@ -1990,6 +2015,7 @@ class HostWindow(QMainWindow):
     @pyqtSlot()
     def slot_canvasArrange(self):
         patchcanvas.arrange()
+        self.updateMiniCanvasLater()
 
     @pyqtSlot()
     def slot_canvasRefresh(self):
@@ -2023,8 +2049,13 @@ class HostWindow(QMainWindow):
         self.scene.zoom_reset()
 
     def _canvasImageRender(self, zoom=1.0):
+        img_format = (
+            QImage.Format.Format_RGB32
+            if qt_config == 6
+            else QImage.Format_RGB32
+        )
         image = QImage(
-            self.scene.width() * zoom, self.scene.height() * zoom, QImage.Format_RGB32
+            self.scene.width() * zoom, self.scene.height() * zoom, img_format
         )
         painter = QPainter(image)
         painter.save()
@@ -2134,6 +2165,7 @@ class HostWindow(QMainWindow):
     def slot_handlePatchbayClientAddedCallback(
         self, clientId, clientIcon, pluginId, clientName
     ):
+        log_carla(f"carla_host: slot_handlePatchbayClientAddedCallback clientId={clientId}, clientIcon={clientIcon}, pluginId={pluginId}, clientName='{clientName}'")
         pcSplit = patchcanvas.SPLIT_UNDEF
         pcIcon = patchcanvas.ICON_APPLICATION
 
@@ -2233,6 +2265,7 @@ class HostWindow(QMainWindow):
     def slot_handlePatchbayPortAddedCallback(
         self, clientId, portId, portFlags, portGroupId, portName
     ):
+        log_carla(f"carla_host: slot_handlePatchbayPortAddedCallback clientId={clientId}, portId={portId}, name='{portName}'")
         if portFlags & PATCHBAY_PORT_IS_INPUT:
             portMode = patchcanvas.PORT_MODE_INPUT
         else:
@@ -3701,17 +3734,27 @@ def canvasCallback(action, value1, value2, valueStr):
 
     elif action == patchcanvas.ACTION_PORTS_CONNECT:
         gOut, pOut, gIn, pIn = tuple(int(i) for i in valueStr.split(":"))
+        log_carla(f"carla_host: ACTION_PORTS_CONNECT {gOut}:{pOut} -> {gIn}:{pIn} (external={gCarla.gui.fExternalPatchbay})")
 
         if not host.patchbay_connect(
             gCarla.gui.fExternalPatchbay, gOut, pOut, gIn, pIn
         ):
-            print("Connection failed:", host.get_last_error())
+            err = host.get_last_error()
+            log_carla(f"carla_host: Connection failed: {err}")
+            print("Connection failed:", err)
+        else:
+            log_carla("carla_host: Connection request succeeded")
 
     elif action == patchcanvas.ACTION_PORTS_DISCONNECT:
         connectionId = value1
+        log_carla(f"carla_host: ACTION_PORTS_DISCONNECT connectionId={connectionId} (external={gCarla.gui.fExternalPatchbay})")
 
         if not host.patchbay_disconnect(gCarla.gui.fExternalPatchbay, connectionId):
-            print("Disconnect failed:", host.get_last_error())
+            err = host.get_last_error()
+            log_carla(f"carla_host: Disconnect failed: {err}")
+            print("Disconnect failed:", err)
+        else:
+            log_carla("carla_host: Disconnect request succeeded")
 
     elif action == patchcanvas.ACTION_PLUGIN_CLONE:
         pluginId = value1
@@ -3805,10 +3848,13 @@ def engineCallback(host, action, pluginId, value1, value2, value3, valuef, value
     if action == ENGINE_CALLBACK_DEBUG:
         host.DebugCallback.emit(pluginId, value1, value2, value3, valuef, valueStr)
     elif action == ENGINE_CALLBACK_PLUGIN_ADDED:
+        log_carla(f"engineCallback: PLUGIN_ADDED id={pluginId}, type={value1}, name='{valueStr}'")
         host.PluginAddedCallback.emit(pluginId, value1, valueStr)
     elif action == ENGINE_CALLBACK_PLUGIN_REMOVED:
+        log_carla(f"engineCallback: PLUGIN_REMOVED id={pluginId}")
         host.PluginRemovedCallback.emit(pluginId)
     elif action == ENGINE_CALLBACK_PLUGIN_RENAMED:
+        log_carla(f"engineCallback: PLUGIN_RENAMED id={pluginId}, name='{valueStr}'")
         host.PluginRenamedCallback.emit(pluginId, valueStr)
     elif action == ENGINE_CALLBACK_PLUGIN_UNAVAILABLE:
         host.PluginUnavailableCallback.emit(pluginId, valueStr)
@@ -3848,10 +3894,13 @@ def engineCallback(host, action, pluginId, value1, value2, value3, valuef, value
     elif action == ENGINE_CALLBACK_RELOAD_ALL:
         host.ReloadAllCallback.emit(pluginId)
     elif action == ENGINE_CALLBACK_PATCHBAY_CLIENT_ADDED:
+        log_carla(f"engineCallback: PATCHBAY_CLIENT_ADDED clientId={pluginId}, icon={value1}, pluginId={value2}, name='{valueStr}'")
         host.PatchbayClientAddedCallback.emit(pluginId, value1, value2, valueStr)
     elif action == ENGINE_CALLBACK_PATCHBAY_CLIENT_REMOVED:
+        log_carla(f"engineCallback: PATCHBAY_CLIENT_REMOVED clientId={pluginId}")
         host.PatchbayClientRemovedCallback.emit(pluginId)
     elif action == ENGINE_CALLBACK_PATCHBAY_CLIENT_RENAMED:
+        log_carla(f"engineCallback: PATCHBAY_CLIENT_RENAMED clientId={pluginId}, name='{valueStr}'")
         host.PatchbayClientRenamedCallback.emit(pluginId, valueStr)
     elif action == ENGINE_CALLBACK_PATCHBAY_CLIENT_DATA_CHANGED:
         host.PatchbayClientDataChangedCallback.emit(pluginId, value1, value2)
@@ -3860,8 +3909,10 @@ def engineCallback(host, action, pluginId, value1, value2, value3, valuef, value
             pluginId, value1, value2, value3, int(round(valuef))
         )
     elif action == ENGINE_CALLBACK_PATCHBAY_PORT_ADDED:
+        log_carla(f"engineCallback: PATCHBAY_PORT_ADDED clientId={pluginId}, portId={value1}, flags={value2}, name='{valueStr}'")
         host.PatchbayPortAddedCallback.emit(pluginId, value1, value2, value3, valueStr)
     elif action == ENGINE_CALLBACK_PATCHBAY_PORT_REMOVED:
+        log_carla(f"engineCallback: PATCHBAY_PORT_REMOVED clientId={pluginId}, portId={value1}")
         host.PatchbayPortRemovedCallback.emit(pluginId, value1)
     elif action == ENGINE_CALLBACK_PATCHBAY_PORT_CHANGED:
         host.PatchbayPortChangedCallback.emit(
@@ -3874,9 +3925,11 @@ def engineCallback(host, action, pluginId, value1, value2, value3, valuef, value
     elif action == ENGINE_CALLBACK_PATCHBAY_PORT_GROUP_CHANGED:
         host.PatchbayPortGroupChangedCallback.emit(pluginId, value1, value2, valueStr)
     elif action == ENGINE_CALLBACK_PATCHBAY_CONNECTION_ADDED:
+        log_carla(f"engineCallback: PATCHBAY_CONNECTION_ADDED clientId={pluginId}, conn='{valueStr}'")
         gOut, pOut, gIn, pIn = [int(i) for i in valueStr.split(":")]  # FIXME
         host.PatchbayConnectionAddedCallback.emit(pluginId, gOut, pOut, gIn, pIn)
     elif action == ENGINE_CALLBACK_PATCHBAY_CONNECTION_REMOVED:
+        log_carla(f"engineCallback: PATCHBAY_CONNECTION_REMOVED clientId={pluginId}, connId={value1}")
         host.PatchbayConnectionRemovedCallback.emit(pluginId, value1, value2)
     elif action == ENGINE_CALLBACK_ENGINE_STARTED:
         host.EngineStartedCallback.emit(

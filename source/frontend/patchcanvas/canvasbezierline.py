@@ -64,12 +64,11 @@ class CanvasBezierLine(QGraphicsPathItem):
         if self.m_locked:
             return
 
-        yesno = self.item1.isSelected() or self.item2.isSelected()
-        if yesno != self.m_lineSelected and options.eyecandy == EYECANDY_FULL:
-            if yesno:
-                self.setGraphicsEffect(CanvasPortGlow(self.item1.getPortType(), self.toGraphicsObject()))
-            else:
-                self.setGraphicsEffect(None)
+        p1 = self.item1.parentItem()
+        p2 = self.item2.parentItem()
+        yesno = (self.item1.isSelected() or self.item2.isSelected() or
+                 (p1 is not None and p1.isSelected()) or 
+                 (p2 is not None and p2.isSelected()))
 
         self.m_lineSelected = yesno
         self.updateLineGradient()
@@ -96,8 +95,7 @@ class CanvasBezierLine(QGraphicsPathItem):
             path.cubicTo(item1_new_x, item1_y, item2_new_x, item2_y, item2_x, item2_y)
             self.setPath(path)
 
-            self.m_lineSelected = False
-            self.updateLineGradient()
+            self.updateLineSelected()
 
     def type(self):
         return CanvasBezierLineType
@@ -116,23 +114,29 @@ class CanvasBezierLine(QGraphicsPathItem):
         port_type2 = self.item2.getPortType()
         port_gradient = QLinearGradient(0, pos_top, 0, pos_bot)
 
+        def get_color(color_val):
+            c = QColor(color_val)
+            if not self.m_lineSelected:
+                c.setAlpha(127)
+            return c
+
         if port_type1 == PORT_TYPE_AUDIO_JACK:
-            port_gradient.setColorAt(pos1, canvas.theme.line_audio_jack_sel if self.m_lineSelected else canvas.theme.line_audio_jack)
+            port_gradient.setColorAt(pos1, get_color(canvas.theme.line_audio_jack_sel if self.m_lineSelected else canvas.theme.line_audio_jack))
         elif port_type1 == PORT_TYPE_MIDI_JACK:
-            port_gradient.setColorAt(pos1, canvas.theme.line_midi_jack_sel if self.m_lineSelected else canvas.theme.line_midi_jack)
+            port_gradient.setColorAt(pos1, get_color(canvas.theme.line_midi_jack_sel if self.m_lineSelected else canvas.theme.line_midi_jack))
         elif port_type1 == PORT_TYPE_MIDI_ALSA:
-            port_gradient.setColorAt(pos1, canvas.theme.line_midi_alsa_sel if self.m_lineSelected else canvas.theme.line_midi_alsa)
+            port_gradient.setColorAt(pos1, get_color(canvas.theme.line_midi_alsa_sel if self.m_lineSelected else canvas.theme.line_midi_alsa))
         elif port_type1 == PORT_TYPE_PARAMETER:
-            port_gradient.setColorAt(pos1, canvas.theme.line_parameter_sel if self.m_lineSelected else canvas.theme.line_parameter)
+            port_gradient.setColorAt(pos1, get_color(canvas.theme.line_parameter_sel if self.m_lineSelected else canvas.theme.line_parameter))
 
         if port_type2 == PORT_TYPE_AUDIO_JACK:
-            port_gradient.setColorAt(pos2, canvas.theme.line_audio_jack_sel if self.m_lineSelected else canvas.theme.line_audio_jack)
+            port_gradient.setColorAt(pos2, get_color(canvas.theme.line_audio_jack_sel if self.m_lineSelected else canvas.theme.line_audio_jack))
         elif port_type2 == PORT_TYPE_MIDI_JACK:
-            port_gradient.setColorAt(pos2, canvas.theme.line_midi_jack_sel if self.m_lineSelected else canvas.theme.line_midi_jack)
+            port_gradient.setColorAt(pos2, get_color(canvas.theme.line_midi_jack_sel if self.m_lineSelected else canvas.theme.line_midi_jack))
         elif port_type2 == PORT_TYPE_MIDI_ALSA:
-            port_gradient.setColorAt(pos2, canvas.theme.line_midi_alsa_sel if self.m_lineSelected else canvas.theme.line_midi_alsa)
+            port_gradient.setColorAt(pos2, get_color(canvas.theme.line_midi_alsa_sel if self.m_lineSelected else canvas.theme.line_midi_alsa))
         elif port_type2 == PORT_TYPE_PARAMETER:
-            port_gradient.setColorAt(pos2, canvas.theme.line_parameter_sel if self.m_lineSelected else canvas.theme.line_parameter)
+            port_gradient.setColorAt(pos2, get_color(canvas.theme.line_parameter_sel if self.m_lineSelected else canvas.theme.line_parameter))
 
         self.setPen(QPen(port_gradient, 2.00001, Qt.SolidLine, Qt.FlatCap))
 

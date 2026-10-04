@@ -44,10 +44,7 @@ class CanvasIcon(QGraphicsSvgItem):
         self.m_renderer = None
         self.p_size = QRectF(0, 0, 0, 0)
 
-        self.m_colorFX = QGraphicsColorizeEffect(self)
-        self.m_colorFX.setColor(canvas.theme.box_text.color())
-
-        self.setGraphicsEffect(self.m_colorFX)
+        self.m_colorFX = None
         self.setIcon(icon, name)
 
     def setIcon(self, icon, name):

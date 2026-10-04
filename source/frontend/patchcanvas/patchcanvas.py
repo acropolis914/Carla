@@ -56,6 +56,7 @@ from .utils import (
     CanvasGetPortDisplayName,
     CanvasItemFX,
     CanvasRemoveItemFX,
+    log_carla,
 )
 
 # FIXME
@@ -340,6 +341,7 @@ def setCanvasSize(x, y, width, height):
 
 
 def addGroup(group_id, group_name, split=SPLIT_UNDEF, icon=ICON_APPLICATION):
+    log_carla(f"patchcanvas.addGroup: group_id={group_id}, group_name='{group_name}'")
     if canvas.debug:
         print(
             "PatchCanvas::addGroup(%i, %s, %s, %s)"
@@ -1029,6 +1031,7 @@ def addPort(group_id, port_id, port_name, port_mode, port_type, is_alternate=Fal
 
     display_name = CanvasGetPortDisplayName(source_group.group_name, port_name)
     visual_group_id = group_id
+    log_carla(f"patchcanvas.addPort: group_id={group_id} ('{source_group.group_name}'), port_id={port_id}, port_name='{port_name}', display_name='{display_name}'")
 
     if display_name != port_name:
         stream_key = (group_id, display_name)
@@ -1091,7 +1094,6 @@ def addPort(group_id, port_id, port_name, port_mode, port_type, is_alternate=Fal
 
     if options.eyecandy == EYECANDY_FULL:
         CanvasItemFX(port_widget, True, False)
-        return
 
     QTimer.singleShot(0, canvas.scene.update)
 
@@ -1228,16 +1230,19 @@ def connectPorts(
     connection_dict.widget.setZValue(canvas.last_z_value)
 
     canvas.connection_list.append(connection_dict)
+    connection_dict.widget.updateLinePos()
+    log_carla(f"patchcanvas.connectPorts: id={connection_id}, {group_out_id}:{port_out_id} -> {group_in_id}:{port_in_id}")
 
     if options.eyecandy == EYECANDY_FULL:
         item = connection_dict.widget
         CanvasItemFX(item, True, False)
-        return
 
+    canvas.scene.update()
     QTimer.singleShot(0, canvas.scene.update)
 
 
 def disconnectPorts(connection_id):
+    log_carla(f"patchcanvas.disconnectPorts: id={connection_id}")
     if canvas.debug:
         print("PatchCanvas::disconnectPorts(%i)" % connection_id)
 
@@ -1308,9 +1313,411 @@ def disconnectPorts(connection_id):
 # ------------------------------------------------------------------------------------------------------------
 
 
-def arrange():
+def autoArrange():
+    """
+    Arranges canvas nodes according to left-to-right audio/MIDI signal flow:
+      1. Anchors connected Hardware Capture to Layer 0 (leftmost).
+      2. Computes topological layers for connected nodes (resolving feedback loops).
+      3. Anchors connected Hardware Playback to the final layer (rightmost).
+      4. Detects exclusive 1-to-1 relationships and locks them to the exact same Y
+         coordinate across consecutive columns (side-by-side horizontal tracks).
+      5. Resolves intra-column overlaps while maintaining strand Y-alignment.
+      6. Centers single fan-in/fan-out nodes across the tracks they feed or receive from.
+      7. Centers isolated/unconnected nodes in rows below the active graph.
+    """
+    log_carla("PatchCanvas::autoArrange() started")
     if canvas.debug:
-        print("PatchCanvas::arrange()")
+        print("PatchCanvas::autoArrange()")
+
+    node_gap = 64
+    vertical_gap = 40
+    max_isolated_per_row = 5
+
+    nodes = []
+    port_nodes = {}
+    node_to_group = {}
+
+    # Gather active widgets and map ports to their parent box widget
+    for group in canvas.group_list:
+        for widget in group.widgets:
+            if widget is None or not widget.m_port_list_ids:
+                continue
+            nodes.append(widget)
+            node_to_group[widget] = group
+            for port in canvas.port_list:
+                if port.widget and port.widget.parentItem() == widget:
+                    port_nodes[(port.group_id, port.port_id)] = widget
+
+    if not nodes:
+        return
+
+    node_set = set(nodes)
+    edges = {node: set() for node in nodes}
+    incoming = {node: set() for node in nodes}
+    edge_weight = {}
+
+    # Build directed graph edges from active connections
+    for connection in canvas.connection_list:
+        source = port_nodes.get((connection.group_out_id, connection.port_out_id))
+        target = port_nodes.get((connection.group_in_id, connection.port_in_id))
+        if source in node_set and target in node_set and source != target:
+            edges[source].add(target)
+            incoming[target].add(source)
+            edge_weight[(source, target)] = edge_weight.get((source, target), 0) + 1
+
+    connected = [node for node in nodes if edges[node] or incoming[node]]
+    isolated = [node for node in nodes if node not in connected]
+
+    # --- 1. CONNECTED GRAPH LAYOUT ---
+    if connected:
+        # Detect and temporarily ignore feedback back-edges (DFS cycle-breaking)
+        dag_edges = {node: set() for node in connected}
+        state = {node: 0 for node in connected}  # 0=unvisited, 1=visiting, 2=visited
+
+        def dfs(u):
+            state[u] = 1
+            for v in sorted(edges[u], key=lambda n: node_to_group[n].group_name):
+                if state[v] == 1:
+                    continue  # feedback loop / back-edge ignored for horizontal layering
+                dag_edges[u].add(v)
+                if state[v] == 0:
+                    dfs(v)
+            state[u] = 2
+
+        # Visit true sources first (preferring hardware capture)
+        sources_priority = sorted(
+            connected,
+            key=lambda n: (
+                0
+                if (node_to_group[n].icon == ICON_HARDWARE and not incoming[n])
+                else (1 if not incoming[n] else 2),
+                node_to_group[n].group_name,
+            ),
+        )
+        for node in sources_priority:
+            if state[node] == 0:
+                dfs(node)
+
+        dag_incoming = {node: set() for node in connected}
+        for u in connected:
+            for v in dag_edges[u]:
+                dag_incoming[v].add(u)
+
+        # Topological sorting (Kahn's algorithm)
+        in_degree = {node: len(dag_incoming[node]) for node in connected}
+        queue = [n for n in connected if in_degree[n] == 0]
+        if not queue:
+            queue = [connected[0]]
+            in_degree[connected[0]] = 0
+
+        topo_order = []
+        while queue:
+            u = queue.pop(0)
+            topo_order.append(u)
+            for v in sorted(dag_edges[u], key=lambda n: node_to_group[n].group_name):
+                in_degree[v] -= 1
+                if in_degree[v] == 0:
+                    queue.append(v)
+
+        for n in connected:
+            if n not in topo_order:
+                topo_order.append(n)
+
+        # Longest-path layer computation
+        layers = {node: 0 for node in connected}
+        for u in topo_order:
+            for v in dag_edges[u]:
+                layers[v] = max(layers[v], layers[u] + 1)
+
+        # Anchor connected hardware capture to Layer 0
+        for n in connected:
+            if node_to_group[n].icon == ICON_HARDWARE and not incoming[n]:
+                layers[n] = 0
+
+        # Anchor connected hardware playback (pure sinks) to outermost right column
+        hw_playback = [
+            n
+            for n in connected
+            if node_to_group[n].icon == ICON_HARDWARE and not edges[n]
+        ]
+        if hw_playback:
+            max_other = max(
+                (layers[n] for n in connected if n not in hw_playback), default=0
+            )
+            target_hw_layer = max_other + 1
+            for n in hw_playback:
+                layers[n] = target_hw_layer
+
+        # --- 2. EXCLUSIVE 1-TO-1 STRAND EXTRACTION ---
+        exclusive_next = {}
+        exclusive_prev = {}
+        for u in connected:
+            if len(edges[u]) == 1:
+                v = next(iter(edges[u]))
+                if len(incoming[v]) == 1 and next(iter(incoming[v])) == u:
+                    exclusive_next[u] = v
+                    exclusive_prev[v] = u
+
+        # Build strands (maximal 1-to-1 linear chains)
+        strands = []
+        visited_strand = set()
+        node_to_strand = {}
+
+        for u in connected:
+            if u in visited_strand:
+                continue
+            head = u
+            while head in exclusive_prev:
+                head = exclusive_prev[head]
+            strand = []
+            curr = head
+            while curr:
+                strand.append(curr)
+                visited_strand.add(curr)
+                curr = exclusive_next.get(curr)
+            strands.append(strand)
+            for n in strand:
+                node_to_strand[n] = strand
+
+        # Group nodes into columns
+        columns = {}
+        for n in connected:
+            columns.setdefault(layers[n], []).append(n)
+        sorted_layers = sorted(columns.keys())
+
+        # Establish initial vertical rank for strands
+        initial_sorted = sorted(strands, key=lambda s: (
+            0 if node_to_group[s[0]].icon == ICON_HARDWARE else 1,
+            layers[s[0]],
+            node_to_group[s[0]].group_name,
+            id(s)
+        ))
+        
+        strand_idx = {id(s): i for i, s in enumerate(initial_sorted)}
+        
+        # Barycenter heuristic: minimize line crossings by sorting strands based on their connections
+        for _ in range(8):
+            new_idx = {}
+            for s in initial_sorted:
+                sid = id(s)
+                head = s[0]
+                tail = s[-1]
+                weighted_sum = 0
+                total_weight = 0
+                
+                # Incoming to head
+                for u in dag_incoming[head]:
+                    w = edge_weight.get((u, head), 1)
+                    weighted_sum += strand_idx[id(node_to_strand[u])] * w
+                    total_weight += w
+                
+                # Outgoing from tail
+                for v in dag_edges[tail]:
+                    w = edge_weight.get((tail, v), 1)
+                    weighted_sum += strand_idx[id(node_to_strand[v])] * w
+                    total_weight += w
+                
+                if total_weight > 0:
+                    new_idx[sid] = weighted_sum / total_weight
+                else:
+                    new_idx[sid] = strand_idx[sid]
+            
+            initial_sorted.sort(key=lambda s: new_idx[id(s)])
+            for i, s in enumerate(initial_sorted):
+                strand_idx[id(s)] = i
+
+        strand_rank = {}
+        for s in strands:
+            strand_rank[id(s)] = strand_idx[id(s)]
+
+        # Sort nodes within each column by their strand's rank
+        for layer in sorted_layers:
+            col = columns[layer]
+            col.sort(key=lambda n: strand_rank[id(node_to_strand[n])])
+
+        # Assign unified Y coordinates per strand to ensure side-by-side alignment
+        strand_y = {id(s): 0.0 for s in strands}
+
+        # Iteratively propagate clearance constraints across all columns
+        num_passes = len(columns) + 2
+        for _ in range(num_passes):
+            for layer in sorted_layers:
+                col = columns[layer]
+                for i in range(1, len(col)):
+                    prev_node = col[i - 1]
+                    curr_node = col[i]
+                    prev_strand = node_to_strand[prev_node]
+                    curr_strand = node_to_strand[curr_node]
+
+                    required_y = (
+                        strand_y[id(prev_strand)]
+                        + prev_node.boundingRect().height()
+                        + vertical_gap
+                    )
+                    if strand_y[id(curr_strand)] < required_y:
+                        strand_y[id(curr_strand)] = required_y
+
+        # Apply locked Y position to all nodes in each strand
+        for s in strands:
+            base_y = strand_y[id(s)]
+            for n in s:
+                n.setPos(n.x(), base_y)
+
+        # Vertically center single fan-in / fan-out nodes (e.g. Master out or Capture in)
+        for layer in sorted_layers:
+            col = columns[layer]
+            for idx, n in enumerate(col):
+                s = node_to_strand[n]
+                if len(s) == 1:
+                    # Pure source feeding multiple outputs: center between targets
+                    if edges[n] and not incoming[n]:
+                        avg_y = sum(
+                            c.y()
+                            + (c.boundingRect().height() - n.boundingRect().height())
+                            / 2.0
+                            for c in edges[n]
+                        ) / len(edges[n])
+                        min_y = (
+                            (
+                                col[idx - 1].y()
+                                + col[idx - 1].boundingRect().height()
+                                + vertical_gap
+                            )
+                            if idx > 0
+                            else 0
+                        )
+                        max_y = (
+                            (
+                                col[idx + 1].y()
+                                - n.boundingRect().height()
+                                - vertical_gap
+                            )
+                            if idx < len(col) - 1
+                            else float("inf")
+                        )
+                        if min_y <= max_y:
+                            clamped_y = max(min_y, min(max_y, avg_y))
+                            n.setPos(n.x(), clamped_y)
+
+                    # Pure sink receiving from multiple inputs: center between sources
+                    elif incoming[n] and not edges[n]:
+                        avg_y = sum(
+                            p.y()
+                            + (p.boundingRect().height() - n.boundingRect().height())
+                            / 2.0
+                            for p in incoming[n]
+                        ) / len(incoming[n])
+                        min_y = (
+                            (
+                                col[idx - 1].y()
+                                + col[idx - 1].boundingRect().height()
+                                + vertical_gap
+                            )
+                            if idx > 0
+                            else 0
+                        )
+                        max_y = (
+                            (
+                                col[idx + 1].y()
+                                - n.boundingRect().height()
+                                - vertical_gap
+                            )
+                            if idx < len(col) - 1
+                            else float("inf")
+                        )
+                        if min_y <= max_y:
+                            clamped_y = max(min_y, min(max_y, avg_y))
+                            n.setPos(n.x(), clamped_y)
+
+        # Assign X coordinates with dynamic column widths
+        current_x = 0
+        for layer in sorted_layers:
+            col = columns[layer]
+            col_width = max(n.boundingRect().width() for n in col)
+            for n in col:
+                n.setPos(current_x, n.y())
+            current_x += col_width + node_gap
+
+    # --- 3. ISOLATED NODES LAYOUT ---
+    if isolated:
+        isolated.sort(
+            key=lambda n: (
+                0 if node_to_group[n].icon == ICON_HARDWARE else 1,
+                node_to_group[n].group_name,
+            )
+        )
+
+        if connected:
+            conn_min_x = min(n.x() for n in connected)
+            conn_max_x = max(n.x() + n.boundingRect().width() for n in connected)
+            conn_width = conn_max_x - conn_min_x
+            conn_max_y = max(n.y() + n.boundingRect().height() for n in connected)
+            start_y = conn_max_y + vertical_gap * 1.5
+        else:
+            conn_min_x = 0
+            conn_width = 800
+            start_y = 0
+
+        # Pack into rows
+        rows = []
+        curr_row = []
+        for n in isolated:
+            curr_row.append(n)
+            if len(curr_row) >= max_isolated_per_row:
+                rows.append(curr_row)
+                curr_row = []
+        if curr_row:
+            rows.append(curr_row)
+
+        curr_y = start_y
+        for row in rows:
+            row_width = (
+                sum(n.boundingRect().width() for n in row) + (len(row) - 1) * node_gap
+            )
+            if connected and conn_width > row_width:
+                row_start_x = conn_min_x + (conn_width - row_width) / 2.0
+            else:
+                row_start_x = conn_min_x
+
+            rx = row_start_x
+            row_max_h = max(n.boundingRect().height() for n in row)
+            for n in row:
+                n.setPos(rx, curr_y)
+                rx += n.boundingRect().width() + node_gap
+            curr_y += row_max_h + vertical_gap
+
+    # --- 4. CANVAS MARGIN NORMALIZATION & NOTIFICATIONS ---
+    all_min_x = min(n.x() for n in nodes)
+    all_min_y = min(n.y() for n in nodes)
+    offset_x = 40 - all_min_x
+    offset_y = 40 - all_min_y
+
+    for node in nodes:
+        node.blockSignals(True)
+        node.setPos(node.x() + offset_x, node.y() + offset_y)
+        node.checkItemPos()
+        node.blockSignals(False)
+
+    # Sync updated positions with Carla host / settings
+    for group in canvas.group_list:
+        pos1 = group.widgets[0].pos()
+        pos2 = (
+            group.widgets[1].pos()
+            if group.split and group.widgets[1]
+            else QPointF(0, 0)
+        )
+        valueStr = "%i:%i:%i:%i" % (pos1.x(), pos1.y(), pos2.x(), pos2.y())
+        CanvasCallback(ACTION_GROUP_POSITION, group.group_id, 0, valueStr)
+
+    for node in nodes:
+        node.repaintLines(True)
+
+    canvas.scene.update()
+    log_carla("PatchCanvas::autoArrange() finished")
+
+
+def arrange():
+    autoArrange()
 
 
 # ------------------------------------------------------------------------------------------------------------

@@ -48,6 +48,7 @@ from .utils import (
     CanvasGetFullPortName,
     CanvasGetPortConnectionList,
     CanvasGetPortDisplayName,
+    log_carla,
 )
 
 # ------------------------------------------------------------------------------------------------------------
@@ -273,6 +274,7 @@ class CanvasPort(QGraphicsItem):
             if self.m_hover_item:
                 for connection in canvas.connection_list:
                     if self._is_connected_to(connection, self.m_hover_item):
+                        log_carla(f"CanvasPort.handleMouseRelease: disconnecting connId={connection.connection_id}")
                         canvas.callback(
                             ACTION_PORTS_DISCONNECT, connection.connection_id, 0, ""
                         )
@@ -292,6 +294,7 @@ class CanvasPort(QGraphicsItem):
                             self.m_group_id,
                             self.m_port_id,
                         )
+                    log_carla(f"CanvasPort.handleMouseRelease: connecting {conn}")
                     canvas.callback(ACTION_PORTS_CONNECT, 0, 0, conn)
 
                 canvas.scene.clearSelection()
