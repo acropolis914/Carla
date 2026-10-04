@@ -5,6 +5,9 @@
 # ------------------------------------------------------------------------------------------------------------
 # Imports (Global)
 
+import json
+import subprocess
+
 from qt_compat import qt_config
 
 if qt_config == 5:
@@ -16,9 +19,73 @@ elif qt_config == 6:
 # Imports (Custom)
 
 from . import bool2str, canvas, CanvasBoxType
+
+# Optional PipeWire display names, keyed by JACK client and port names.
+_pipewire_port_names = {}
+_pipewire_port_name_candidates = {}
+
+
+def _updatePipewirePortNames():
+    _pipewire_port_name_candidates.clear()
+    try:
+        output = subprocess.check_output(
+            ("pw-dump",), stderr=subprocess.DEVNULL, text=True
+        )
+        objects = json.loads(output)
+        nodes = {
+            obj["id"]: obj.get("info", {}).get("props", {})
+            for obj in objects
+            if obj.get("type") == "PipeWire:Interface:Node"
+        }
+        for obj in objects:
+            if obj.get("type") != "PipeWire:Interface:Port":
+                continue
+            props = obj.get("info", {}).get("props", {})
+            node_props = nodes.get(props.get("node.id"), {})
+            display_name = node_props.get("media.name")
+            node_name = node_props.get("node.name")
+            port_name = props.get("port.name")
+            port_alias = props.get("port.alias", "")
+            if display_name and node_name and port_name:
+                key = (node_name, port_name)
+                candidates = _pipewire_port_name_candidates.setdefault(key, [])
+                if display_name not in candidates:
+                    candidates.append(display_name)
+                if ":" in port_alias:
+                    alias_group, alias_port = port_alias.rsplit(":", 1)
+                    alias_key = (alias_group, alias_port)
+                    candidates = _pipewire_port_name_candidates.setdefault(
+                        alias_key, []
+                    )
+                    if display_name not in candidates:
+                        candidates.append(display_name)
+    except (OSError, ValueError, KeyError, subprocess.SubprocessError):
+        pass
+
+
+def CanvasGetPortDisplayName(group_name, port_name):
+    key = (group_name, port_name)
+    if key not in _pipewire_port_names:
+        _updatePipewirePortNames()
+    display_name = _pipewire_port_names.get(key)
+    if display_name is None and "-" in port_name:
+        base_name, suffix = port_name.rsplit("-", 1)
+        if suffix.isdigit():
+            candidates = _pipewire_port_name_candidates.get((group_name, base_name), [])
+            if candidates:
+                display_name = candidates[min(len(candidates) - 1, 1)]
+    if display_name is None:
+        candidates = _pipewire_port_name_candidates.get(key, [])
+        if candidates:
+            display_name = candidates[0]
+            _pipewire_port_names[key] = display_name
+    return display_name or port_name
+
+
 from .canvasfadeanimation import CanvasFadeAnimation
 
 # ------------------------------------------------------------------------------------------------------------
+
 
 def CanvasGetNewGroupPos(horizontal):
     if canvas.debug:
@@ -27,7 +94,7 @@ def CanvasGetNewGroupPos(horizontal):
     new_pos = QPointF(canvas.initial_pos)
     items = canvas.scene.items()
 
-    #break_loop = False
+    # break_loop = False
     while True:
         break_for = False
         for i, item in enumerate(items):
@@ -47,9 +114,10 @@ def CanvasGetNewGroupPos(horizontal):
         else:
             if not break_for:
                 break
-            #break_loop = True
+            # break_loop = True
 
     return new_pos
+
 
 def CanvasGetFullPortName(group_id, port_id):
     if canvas.debug:
@@ -63,8 +131,12 @@ def CanvasGetFullPortName(group_id, port_id):
                     return group.group_name + ":" + port.port_name
             break
 
-    qCritical("PatchCanvas::CanvasGetFullPortName(%i, %i) - unable to find port" % (group_id, port_id))
+    qCritical(
+        "PatchCanvas::CanvasGetFullPortName(%i, %i) - unable to find port"
+        % (group_id, port_id)
+    )
     return ""
+
 
 def CanvasGetPortConnectionList(group_id, port_id):
     if canvas.debug:
@@ -74,21 +146,41 @@ def CanvasGetPortConnectionList(group_id, port_id):
 
     for connection in canvas.connection_list:
         if connection.group_out_id == group_id and connection.port_out_id == port_id:
-            conn_list.append((connection.connection_id, connection.group_in_id, connection.port_in_id))
+            conn_list.append(
+                (
+                    connection.connection_id,
+                    connection.group_in_id,
+                    connection.port_in_id,
+                )
+            )
         elif connection.group_in_id == group_id and connection.port_in_id == port_id:
-            conn_list.append((connection.connection_id, connection.group_out_id, connection.port_out_id))
+            conn_list.append(
+                (
+                    connection.connection_id,
+                    connection.group_out_id,
+                    connection.port_out_id,
+                )
+            )
 
     return conn_list
 
+
 def CanvasCallback(action, value1, value2, value_str):
     if canvas.debug:
-        print("PatchCanvas::CanvasCallback(%i, %i, %i, %s)" % (action, value1, value2, value_str.encode()))
+        print(
+            "PatchCanvas::CanvasCallback(%i, %i, %i, %s)"
+            % (action, value1, value2, value_str.encode())
+        )
 
     canvas.callback(action, value1, value2, value_str)
 
+
 def CanvasItemFX(item, show, destroy):
     if canvas.debug:
-        print("PatchCanvas::CanvasItemFX(%s, %s, %s)" % (item, bool2str(show), bool2str(destroy)))
+        print(
+            "PatchCanvas::CanvasItemFX(%s, %s, %s)"
+            % (item, bool2str(show), bool2str(destroy))
+        )
 
     # Check if the item already has an animation
     for animation in canvas.animation_list:
@@ -113,6 +205,7 @@ def CanvasItemFX(item, show, destroy):
 
     animation.start()
 
+
 def CanvasRemoveItemFX(item):
     if canvas.debug:
         print("PatchCanvas::CanvasRemoveItemFX(%s)" % item)
@@ -124,5 +217,6 @@ def CanvasRemoveItemFX(item):
     del item
 
     QTimer.singleShot(0, canvas.scene.update)
+
 
 # ------------------------------------------------------------------------------------------------------------

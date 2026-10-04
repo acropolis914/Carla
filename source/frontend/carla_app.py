@@ -112,7 +112,7 @@ class CarlaApplication():
             return
 
         # set style
-        QApplication.setStyle("carla" if stylesDir else "fusion")
+        # QApplication.setStyle("carla" if stylesDir else "fusion")
 
         # create app
         self.createApp(appName)
@@ -120,7 +120,7 @@ class CarlaApplication():
         if gCarla.nogui:
             return
 
-        self.fApp.setStyle("carla" if stylesDir else "fusion")
+        # self.fApp.setStyle("carla" if stylesDir else "fusion")
 
         if CARLA_OS_WIN:
             carlastyle1 = os.path.join(pathBinaries, "styles", "carlastyle.dll")

@@ -90,7 +90,7 @@ CarlaApplication::CarlaApplication(const QString appName, int& argc, char* argv[
     }
 
     // set style
-    QApplication::setStyle(stylesDir.isNotEmpty() ? "carla" : "fusion");
+    // QApplication::setStyle(stylesDir.isNotEmpty() ? "carla" : "fusion");
 
     // create app
     QApplication* const guiApp = createApp(appName, argc, argv);
@@ -98,7 +98,7 @@ CarlaApplication::CarlaApplication(const QString appName, int& argc, char* argv[
     if (guiApp == nullptr)
         return;
 
-    guiApp->setStyle(stylesDir.isNotEmpty() ? "carla" : "fusion");
+    // guiApp->setStyle(stylesDir.isNotEmpty() ? "carla" : "fusion");
 
 #ifdef MACOS
     if (true)

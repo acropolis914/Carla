@@ -16,6 +16,7 @@ elif qt_config == 6:
 
 # ------------------------------------------------------------------------------------------------------------
 
+
 class Theme(object):
     # enum PortType
     THEME_PORT_SQUARE = 0
@@ -27,7 +28,8 @@ class Theme(object):
     THEME_MODERN_LIGHT = 2
     THEME_CLASSIC_DARK = 3
     THEME_OOSTUDIO = 4
-    THEME_MAX = 5
+    THEME_BLENDER_DARK = 5
+    THEME_MAX = 6
 
     # enum BackgroundType
     THEME_BG_SOLID = 0
@@ -35,442 +37,443 @@ class Theme(object):
 
     def __init__(self, idx):
         object.__init__(self)
-
         self.idx = idx
 
-        if idx == self.THEME_MODERN_DARK:
-            # Canvas
-            self.canvas_bg = QColor(0, 0, 0)
+        theme_data = self._get_themes_data().get(
+            idx, self._get_themes_data()[self.THEME_MODERN_DARK]
+        )
+        for key, value in theme_data.items():
+            setattr(self, key, value)
 
-            # Boxes
-            self.box_pen = QPen(QColor(76, 77, 78), 1, Qt.SolidLine)
-            self.box_pen_sel = QPen(QColor(206, 207, 208), 1, Qt.DashLine)
-            self.box_bg_1 = QColor(32, 34, 35)
-            self.box_bg_2 = QColor(43, 47, 48)
-            self.box_shadow = QColor(89, 89, 89, 180)
-            self.box_header_pixmap = None
-            self.box_header_height = 24
-            self.box_header_spacing = 0
+    def _get_themes_data(self):
+        # Data-driven theme registry
+        return {
+            self.THEME_MODERN_DARK: {
+                "canvas_bg": QColor(0, 0, 0),
+                "box_pen": QPen(QColor(76, 77, 78), 1, Qt.SolidLine),
+                "box_pen_sel": QPen(QColor(206, 207, 208), 1, Qt.DashLine),
+                "box_bg_1": QColor(32, 34, 35),
+                "box_bg_2": QColor(43, 47, 48),
+                "box_shadow": QColor(89, 89, 89, 180),
+                "box_header_pixmap": None,
+                "box_header_height": 24,
+                "box_header_spacing": 0,
+                "box_text": QPen(QColor(240, 240, 240), 0),
+                "box_text_sel": QPen(QColor(240, 240, 240), 0),
+                "box_text_ypos": 16,
+                "box_font_name": "Deja Vu Sans",
+                "box_font_size": 11,
+                "box_font_state": QFont.Bold,
+                "box_bg_type": self.THEME_BG_GRADIENT,
+                "box_use_icon": True,
+                "port_text": QPen(QColor(250, 250, 250), 0),
+                "port_bg_pixmap": None,
+                "port_font_name": "Deja Vu Sans",
+                "port_font_size": 11,
+                "port_font_state": QFont.Normal,
+                "port_mode": self.THEME_PORT_POLYGON,
+                "port_audio_jack_pen": QPen(QColor(63, 90, 126), 1),
+                "port_audio_jack_pen_sel": QPen(QColor(93, 120, 156), 1),
+                "port_midi_jack_pen": QPen(QColor(159, 44, 42), 1),
+                "port_midi_jack_pen_sel": QPen(QColor(189, 74, 72), 1),
+                "port_midi_alsa_pen": QPen(QColor(93, 141, 46), 1),
+                "port_midi_alsa_pen_sel": QPen(QColor(123, 171, 76), 1),
+                "port_parameter_pen": QPen(QColor(137, 76, 43), 1),
+                "port_parameter_pen_sel": QPen(QColor(167, 106, 73), 1),
+                "port_audio_jack_bg": QColor(35, 61, 99),
+                "port_audio_jack_bg_sel": QColor(85, 111, 149),
+                "port_midi_jack_bg": QColor(120, 15, 16),
+                "port_midi_jack_bg_sel": QColor(170, 65, 66),
+                "port_midi_alsa_bg": QColor(64, 112, 18),
+                "port_midi_alsa_bg_sel": QColor(114, 162, 68),
+                "port_parameter_bg": QColor(101, 47, 16),
+                "port_parameter_bg_sel": QColor(151, 97, 66),
+                "port_audio_jack_text": QPen(QColor(250, 250, 250), 0),
+                "port_audio_jack_text_sel": QPen(QColor(250, 250, 250), 0),
+                "port_midi_jack_text": QPen(QColor(250, 250, 250), 0),
+                "port_midi_jack_text_sel": QPen(QColor(250, 250, 250), 0),
+                "port_midi_alsa_text": QPen(QColor(250, 250, 250), 0),
+                "port_midi_alsa_text_sel": QPen(QColor(250, 250, 250), 0),
+                "port_parameter_text": QPen(QColor(250, 250, 250), 0),
+                "port_parameter_text_sel": QPen(QColor(250, 250, 250), 0),
+                "port_height": 16,
+                "port_offset": 0,
+                "port_spacing": 2,
+                "port_spacingT": 2,
+                "line_audio_jack": QColor(63, 90, 126),
+                "line_audio_jack_sel": QColor(153, 180, 216),
+                "line_audio_jack_glow": QColor(100, 100, 200),
+                "line_midi_jack": QColor(159, 44, 42),
+                "line_midi_jack_sel": QColor(249, 134, 132),
+                "line_midi_jack_glow": QColor(200, 100, 100),
+                "line_midi_alsa": QColor(93, 141, 46),
+                "line_midi_alsa_sel": QColor(183, 231, 136),
+                "line_midi_alsa_glow": QColor(100, 200, 100),
+                "line_parameter": QColor(137, 76, 43),
+                "line_parameter_sel": QColor(227, 166, 133),
+                "line_parameter_glow": QColor(166, 133, 133),
+                "rubberband_pen": QPen(QColor(206, 207, 208), 1, Qt.SolidLine),
+                "rubberband_brush": QColor(76, 77, 78, 100),
+            },
+            self.THEME_MODERN_DARK_TINY: {
+                "canvas_bg": QColor(0, 0, 0),
+                "box_pen": QPen(QColor(76, 77, 78), 1, Qt.SolidLine),
+                "box_pen_sel": QPen(QColor(206, 207, 208), 1, Qt.DashLine),
+                "box_bg_1": QColor(32, 34, 35),
+                "box_bg_2": QColor(43, 47, 48),
+                "box_shadow": QColor(89, 89, 89, 180),
+                "box_header_pixmap": None,
+                "box_header_height": 14,
+                "box_header_spacing": 0,
+                "box_text": QPen(QColor(240, 240, 240), 0),
+                "box_text_sel": QPen(QColor(240, 240, 240), 0),
+                "box_text_ypos": 10,
+                "box_font_name": "Deja Vu Sans",
+                "box_font_size": 10,
+                "box_font_state": QFont.Bold,
+                "box_bg_type": self.THEME_BG_GRADIENT,
+                "box_use_icon": False,
+                "port_text": QPen(QColor(250, 250, 250), 0),
+                "port_bg_pixmap": None,
+                "port_font_name": "Deja Vu Sans",
+                "port_font_size": 9,
+                "port_font_state": QFont.Normal,
+                "port_mode": self.THEME_PORT_POLYGON,
+                "port_audio_jack_pen": QPen(QColor(63, 90, 126), 1),
+                "port_audio_jack_pen_sel": QPen(QColor(93, 120, 156), 1),
+                "port_midi_jack_pen": QPen(QColor(159, 44, 42), 1),
+                "port_midi_jack_pen_sel": QPen(QColor(189, 74, 72), 1),
+                "port_midi_alsa_pen": QPen(QColor(93, 141, 46), 1),
+                "port_midi_alsa_pen_sel": QPen(QColor(123, 171, 76), 1),
+                "port_parameter_pen": QPen(QColor(137, 76, 43), 1),
+                "port_parameter_pen_sel": QPen(QColor(167, 106, 73), 1),
+                "port_audio_jack_bg": QColor(35, 61, 99),
+                "port_audio_jack_bg_sel": QColor(85, 111, 149),
+                "port_midi_jack_bg": QColor(120, 15, 16),
+                "port_midi_jack_bg_sel": QColor(170, 65, 66),
+                "port_midi_alsa_bg": QColor(64, 112, 18),
+                "port_midi_alsa_bg_sel": QColor(114, 162, 68),
+                "port_parameter_bg": QColor(101, 47, 16),
+                "port_parameter_bg_sel": QColor(151, 97, 66),
+                "port_audio_jack_text": QPen(QColor(250, 250, 250), 0),
+                "port_audio_jack_text_sel": QPen(QColor(250, 250, 250), 0),
+                "port_midi_jack_text": QPen(QColor(250, 250, 250), 0),
+                "port_midi_jack_text_sel": QPen(QColor(250, 250, 250), 0),
+                "port_midi_alsa_text": QPen(QColor(250, 250, 250), 0),
+                "port_midi_alsa_text_sel": QPen(QColor(250, 250, 250), 0),
+                "port_parameter_text": QPen(QColor(250, 250, 250), 0),
+                "port_parameter_text_sel": QPen(QColor(250, 250, 250), 0),
+                "port_height": 12,
+                "port_offset": 0,
+                "port_spacing": 1,
+                "port_spacingT": 1,
+                "line_audio_jack": QColor(63, 90, 126),
+                "line_audio_jack_sel": QColor(153, 180, 216),
+                "line_audio_jack_glow": QColor(100, 100, 200),
+                "line_midi_jack": QColor(159, 44, 42),
+                "line_midi_jack_sel": QColor(249, 134, 132),
+                "line_midi_jack_glow": QColor(200, 100, 100),
+                "line_midi_alsa": QColor(93, 141, 46),
+                "line_midi_alsa_sel": QColor(183, 231, 136),
+                "line_midi_alsa_glow": QColor(100, 200, 100),
+                "line_parameter": QColor(137, 76, 43),
+                "line_parameter_sel": QColor(227, 166, 133),
+                "line_parameter_glow": QColor(166, 133, 133),
+                "rubberband_pen": QPen(QColor(206, 207, 208), 1, Qt.SolidLine),
+                "rubberband_brush": QColor(76, 77, 78, 100),
+            },
+            self.THEME_MODERN_LIGHT: {
+                "canvas_bg": QColor(248, 249, 250),
+                "box_pen": QPen(QColor(176, 177, 178), 1, Qt.SolidLine),
+                "box_pen_sel": QPen(QColor(1, 2, 3), 2, Qt.DashLine),
+                "box_bg_1": QColor(250, 250, 250),
+                "box_bg_2": QColor(200, 200, 200),
+                "box_shadow": QColor(1, 1, 1, 100),
+                "box_header_pixmap": None,
+                "box_header_height": 24,
+                "box_header_spacing": 0,
+                "box_text": QPen(QColor(1, 1, 1), 0),
+                "box_text_sel": QPen(QColor(1, 1, 1), 0),
+                "box_text_ypos": 16,
+                "box_font_name": "Ubuntu",
+                "box_font_size": 11,
+                "box_font_state": QFont.Bold,
+                "box_bg_type": self.THEME_BG_GRADIENT,
+                "box_use_icon": True,
+                "port_text": QPen(QColor(255, 255, 255), 1),
+                "port_bg_pixmap": None,
+                "port_font_name": "Ubuntu",
+                "port_font_size": 11,
+                "port_font_state": QFont.Bold,
+                "port_mode": self.THEME_PORT_POLYGON,
+                "port_audio_jack_pen": QPen(QColor(103, 130, 166), 2),
+                "port_audio_jack_pen_sel": QPen(QColor(239, 320, 356), 1),
+                "port_midi_jack_pen": QPen(QColor(159, 44, 42), 1),
+                "port_midi_jack_pen_sel": QPen(QColor(120, 74, 72), 1),
+                "port_midi_alsa_pen": QPen(QColor(93, 141, 46), 1),
+                "port_midi_alsa_pen_sel": QPen(QColor(123, 171, 76), 1),
+                "port_parameter_pen": QPen(QColor(137, 76, 43), 1),
+                "port_parameter_pen_sel": QPen(QColor(167, 106, 73), 1),
+                "port_audio_jack_bg": QColor(0, 0, 180),
+                "port_audio_jack_bg_sel": QColor(285, 311, 349),
+                "port_midi_jack_bg": QColor(130, 15, 16),
+                "port_midi_jack_bg_sel": QColor(120, 65, 66),
+                "port_midi_alsa_bg": QColor(64, 112, 18),
+                "port_midi_alsa_bg_sel": QColor(114, 162, 68),
+                "port_parameter_bg": QColor(101, 47, 16),
+                "port_parameter_bg_sel": QColor(151, 97, 66),
+                "port_audio_jack_text": QPen(QColor(255, 255, 255), 1),
+                "port_audio_jack_text_sel": QPen(QColor(255, 255, 255), 1),
+                "port_midi_jack_text": QPen(QColor(255, 255, 255), 1),
+                "port_midi_jack_text_sel": QPen(QColor(255, 255, 255), 1),
+                "port_midi_alsa_text": QPen(QColor(255, 255, 255), 1),
+                "port_midi_alsa_text_sel": QPen(QColor(255, 255, 255), 1),
+                "port_parameter_text": QPen(QColor(255, 255, 255), 1),
+                "port_parameter_text_sel": QPen(QColor(255, 255, 255), 1),
+                "port_height": 16,
+                "port_offset": 0,
+                "port_spacing": 2,
+                "port_spacingT": 2,
+                "line_audio_jack": QColor(63, 90, 126),
+                "line_audio_jack_sel": QColor(126, 180, 216),
+                "line_audio_jack_glow": QColor(100, 100, 200),
+                "line_midi_jack": QColor(159, 44, 42),
+                "line_midi_jack_sel": QColor(203, 134, 132),
+                "line_midi_jack_glow": QColor(200, 100, 100),
+                "line_midi_alsa": QColor(93, 141, 46),
+                "line_midi_alsa_sel": QColor(183, 231, 136),
+                "line_midi_alsa_glow": QColor(100, 200, 100),
+                "line_parameter": QColor(137, 43, 43),
+                "line_parameter_sel": QColor(227, 166, 133),
+                "line_parameter_glow": QColor(166, 133, 133),
+                "rubberband_pen": QPen(QColor(206, 207, 208), 1, Qt.SolidLine),
+                "rubberband_brush": QColor(76, 77, 78, 100),
+            },
+            self.THEME_CLASSIC_DARK: {
+                "canvas_bg": QColor(0, 0, 0),
+                "box_pen": QPen(QColor(77, 81, 73), 2, Qt.SolidLine),
+                "box_pen_sel": QPen(QColor(147, 151, 143), 2, Qt.DashLine),
+                "box_bg_1": QColor(30, 34, 36),
+                "box_bg_2": QColor(30, 34, 36),
+                "box_shadow": QColor(89, 89, 89, 180),
+                "box_header_pixmap": None,
+                "box_header_height": 19,
+                "box_header_spacing": 0,
+                "box_text": QPen(QColor(255, 255, 255), 0),
+                "box_text_sel": QPen(QColor(255, 255, 255), 0),
+                "box_text_ypos": 12,
+                "box_font_name": "Sans",
+                "box_font_size": 12,
+                "box_font_state": QFont.Normal,
+                "box_bg_type": self.THEME_BG_GRADIENT,
+                "box_use_icon": False,
+                "port_text": QPen(QColor(250, 250, 250), 0),
+                "port_bg_pixmap": None,
+                "port_font_name": "Sans",
+                "port_font_size": 11,
+                "port_font_state": QFont.Normal,
+                "port_mode": self.THEME_PORT_SQUARE,
+                "port_audio_jack_pen": QPen(QColor(35, 61, 99), 0, Qt.NoPen),
+                "port_audio_jack_pen_sel": QPen(QColor(255, 0, 0), 0, Qt.NoPen),
+                "port_midi_jack_pen": QPen(QColor(120, 15, 16), 0, Qt.NoPen),
+                "port_midi_jack_pen_sel": QPen(QColor(255, 0, 0), 0, Qt.NoPen),
+                "port_midi_alsa_pen": QPen(QColor(63, 112, 19), 0, Qt.NoPen),
+                "port_midi_alsa_pen_sel": QPen(QColor(255, 0, 0), 0, Qt.NoPen),
+                "port_parameter_pen": QPen(QColor(101, 47, 17), 0, Qt.NoPen),
+                "port_parameter_pen_sel": QPen(QColor(255, 0, 0), 0, Qt.NoPen),
+                "port_audio_jack_bg": QColor(35, 61, 99),
+                "port_audio_jack_bg_sel": QColor(255, 0, 0),
+                "port_midi_jack_bg": QColor(120, 15, 16),
+                "port_midi_jack_bg_sel": QColor(255, 0, 0),
+                "port_midi_alsa_bg": QColor(63, 112, 19),
+                "port_midi_alsa_bg_sel": QColor(255, 0, 0),
+                "port_parameter_bg": QColor(101, 47, 17),
+                "port_parameter_bg_sel": QColor(255, 0, 0),
+                "port_audio_jack_text": QPen(QColor(250, 250, 250), 0),
+                "port_audio_jack_text_sel": QPen(QColor(250, 250, 250), 0),
+                "port_midi_jack_text": QPen(QColor(250, 250, 250), 0),
+                "port_midi_jack_text_sel": QPen(QColor(250, 250, 250), 0),
+                "port_midi_alsa_text": QPen(QColor(250, 250, 250), 0),
+                "port_midi_alsa_text_sel": QPen(QColor(250, 250, 250), 0),
+                "port_parameter_text": QPen(QColor(250, 250, 250), 0),
+                "port_parameter_text_sel": QPen(QColor(250, 250, 250), 0),
+                "port_height": 14,
+                "port_offset": 0,
+                "port_spacing": 1,
+                "port_spacingT": 0,
+                "line_audio_jack": QColor(53, 78, 116),
+                "line_audio_jack_sel": QColor(255, 0, 0),
+                "line_audio_jack_glow": QColor(255, 0, 0),
+                "line_midi_jack": QColor(139, 32, 32),
+                "line_midi_jack_sel": QColor(255, 0, 0),
+                "line_midi_jack_glow": QColor(255, 0, 0),
+                "line_midi_alsa": QColor(81, 130, 36),
+                "line_midi_alsa_sel": QColor(255, 0, 0),
+                "line_midi_alsa_glow": QColor(255, 0, 0),
+                "line_parameter": QColor(120, 65, 33),
+                "line_parameter_sel": QColor(255, 0, 0),
+                "line_parameter_glow": QColor(255, 0, 0),
+                "rubberband_pen": QPen(QColor(147, 151, 143), 2, Qt.SolidLine),
+                "rubberband_brush": QColor(35, 61, 99, 100),
+            },
+            self.THEME_OOSTUDIO: {
+                "canvas_bg": QColor(11, 11, 11),
+                "box_pen": QPen(QColor(76, 77, 78), 1, Qt.SolidLine),
+                "box_pen_sel": QPen(QColor(189, 122, 214), 1, Qt.DashLine),
+                "box_bg_1": QColor(46, 46, 46),
+                "box_bg_2": QColor(23, 23, 23),
+                "box_shadow": QColor(89, 89, 89, 180),
+                "box_header_pixmap": QPixmap(":/bitmaps/canvas/frame_node_header.png"),
+                "box_header_height": 22,
+                "box_header_spacing": 6,
+                "box_text": QPen(QColor(144, 144, 144), 0),
+                "box_text_sel": QPen(QColor(189, 122, 214), 0),
+                "box_text_ypos": 16,
+                "box_font_name": "Deja Vu Sans",
+                "box_font_size": 11,
+                "box_font_state": QFont.Bold,
+                "box_bg_type": self.THEME_BG_SOLID,
+                "box_use_icon": False,
+                "port_text": QPen(QColor(155, 155, 155), 0),
+                "port_bg_pixmap": QPixmap(":/bitmaps/canvas/frame_port_bg.png"),
+                "port_font_name": "Deja Vu Sans",
+                "port_font_size": 11,
+                "port_font_state": QFont.Normal,
+                "port_mode": self.THEME_PORT_SQUARE,
+                "port_audio_jack_pen": QPen(QColor(23, 23, 23), 2),
+                "port_audio_jack_pen_sel": QPen(QColor(1, 230, 238), 1),
+                "port_midi_jack_pen": QPen(QColor(23, 23, 23), 2),
+                "port_midi_jack_pen_sel": QPen(QColor(252, 118, 118), 1),
+                "port_midi_alsa_pen": QPen(QColor(23, 23, 23), 2),
+                "port_midi_alsa_pen_sel": QPen(QColor(129, 244, 118), 0),
+                "port_parameter_pen": QPen(QColor(23, 23, 23), 2),
+                "port_parameter_pen_sel": QPen(QColor(137, 76, 43), 1),
+                "port_audio_jack_bg": QColor(46, 46, 46),
+                "port_audio_jack_bg_sel": QColor(23, 23, 23),
+                "port_midi_jack_bg": QColor(46, 46, 46),
+                "port_midi_jack_bg_sel": QColor(23, 23, 23),
+                "port_midi_alsa_bg": QColor(46, 46, 46),
+                "port_midi_alsa_bg_sel": QColor(23, 23, 23),
+                "port_parameter_bg": QColor(46, 46, 46),
+                "port_parameter_bg_sel": QColor(23, 23, 23),
+                "port_audio_jack_text": QPen(QColor(155, 155, 155), 0),
+                "port_audio_jack_text_sel": QPen(QColor(1, 230, 238), 1),
+                "port_midi_jack_text": QPen(QColor(155, 155, 155), 0),
+                "port_midi_jack_text_sel": QPen(QColor(252, 118, 118), 1),
+                "port_midi_alsa_text": QPen(QColor(155, 155, 155), 0),
+                "port_midi_alsa_text_sel": QPen(QColor(129, 244, 118), 0),
+                "port_parameter_text": QPen(QColor(155, 155, 155), 0),
+                "port_parameter_text_sel": QPen(QColor(137, 76, 43), 1),
+                "port_height": 21,
+                "port_offset": 1,
+                "port_spacing": 3,
+                "port_spacingT": 0,
+                "line_audio_jack": QColor(64, 64, 64),
+                "line_audio_jack_sel": QColor(1, 230, 238),
+                "line_audio_jack_glow": QColor(100, 200, 100),
+                "line_midi_jack": QColor(64, 64, 64),
+                "line_midi_jack_sel": QColor(252, 118, 118),
+                "line_midi_jack_glow": QColor(200, 100, 100),
+                "line_midi_alsa": QColor(64, 64, 64),
+                "line_midi_alsa_sel": QColor(129, 244, 118),
+                "line_midi_alsa_glow": QColor(100, 200, 100),
+                "line_parameter": QColor(64, 64, 64),
+                "line_parameter_sel": QColor(227, 166, 133),
+                "line_parameter_glow": QColor(166, 133, 133),
+                "rubberband_pen": QPen(QColor(1, 230, 238), 2, Qt.SolidLine),
+                "rubberband_brush": QColor(90, 90, 90, 100),
+            },
+            self.THEME_BLENDER_DARK: {
+                "canvas_bg": QColor(30, 30, 30),
+                "box_pen": QPen(QColor(17, 17, 17), 1, Qt.SolidLine),
+                "box_pen_sel": QPen(QColor(224, 149, 32), 1, Qt.SolidLine),
+                "box_bg_1": QColor(66, 66, 66),
+                "box_bg_2": QColor(45, 45, 45),
+                "box_shadow": QColor(0, 0, 0, 150),
+                "box_header_pixmap": None,
+                "box_header_height": 22,
+                "box_header_spacing": 0,
+                "box_text": QPen(QColor(204, 204, 204), 0),
+                "box_text_sel": QPen(QColor(255, 255, 255), 0),
+                "box_text_ypos": 16,
+                "box_font_name": "Deja Vu Sans",
+                "box_font_size": 10,
+                "box_font_state": QFont.Normal,
+                "box_bg_type": self.THEME_BG_SOLID,
+                "box_use_icon": False,
+                "port_text": QPen(QColor(204, 204, 204), 0),
+                "port_bg_pixmap": None,
+                "port_font_name": "Deja Vu Sans",
+                "port_font_size": 10,
+                "port_font_state": QFont.Normal,
+                "port_mode": self.THEME_PORT_POLYGON,
+                "port_audio_jack_pen": QPen(QColor(25, 25, 25), 1),
+                "port_audio_jack_pen_sel": QPen(QColor(224, 149, 32), 1),
+                "port_midi_jack_pen": QPen(QColor(25, 25, 25), 1),
+                "port_midi_jack_pen_sel": QPen(QColor(224, 149, 32), 1),
+                "port_midi_alsa_pen": QPen(QColor(25, 25, 25), 1),
+                "port_midi_alsa_pen_sel": QPen(QColor(224, 149, 32), 1),
+                "port_parameter_pen": QPen(QColor(25, 25, 25), 1),
+                "port_parameter_pen_sel": QPen(QColor(224, 149, 32), 1),
+                "port_audio_jack_bg": QColor(84, 133, 161),
+                "port_audio_jack_bg_sel": QColor(114, 163, 191),
+                "port_midi_jack_bg": QColor(186, 74, 74),
+                "port_midi_jack_bg_sel": QColor(216, 104, 104),
+                "port_midi_alsa_bg": QColor(95, 163, 85),
+                "port_midi_alsa_bg_sel": QColor(125, 193, 115),
+                "port_parameter_bg": QColor(135, 113, 168),
+                "port_parameter_bg_sel": QColor(165, 143, 198),
+                "port_audio_jack_text": QPen(QColor(204, 204, 204), 0),
+                "port_audio_jack_text_sel": QPen(QColor(255, 255, 255), 0),
+                "port_midi_jack_text": QPen(QColor(204, 204, 204), 0),
+                "port_midi_jack_text_sel": QPen(QColor(255, 255, 255), 0),
+                "port_midi_alsa_text": QPen(QColor(204, 204, 204), 0),
+                "port_midi_alsa_text_sel": QPen(QColor(255, 255, 255), 0),
+                "port_parameter_text": QPen(QColor(204, 204, 204), 0),
+                "port_parameter_text_sel": QPen(QColor(255, 255, 255), 0),
+                "port_height": 14,
+                "port_offset": 1,
+                "port_spacing": 3,
+                "port_spacingT": 1,
+                "line_audio_jack": QColor(84, 133, 161),
+                "line_audio_jack_sel": QColor(224, 149, 32),
+                "line_audio_jack_glow": QColor(114, 163, 191),
+                "line_midi_jack": QColor(186, 74, 74),
+                "line_midi_jack_sel": QColor(224, 149, 32),
+                "line_midi_jack_glow": QColor(216, 104, 104),
+                "line_midi_alsa": QColor(95, 163, 85),
+                "line_midi_alsa_sel": QColor(224, 149, 32),
+                "line_midi_alsa_glow": QColor(125, 193, 115),
+                "line_parameter": QColor(135, 113, 168),
+                "line_parameter_sel": QColor(224, 149, 32),
+                "line_parameter_glow": QColor(165, 143, 198),
+                "rubberband_pen": QPen(QColor(224, 149, 32), 1, Qt.SolidLine),
+                "rubberband_brush": QColor(255, 255, 255, 20),
+            },
+        }
 
-            self.box_text = QPen(QColor(240, 240, 240), 0)
-            self.box_text_sel = self.box_text
-            self.box_text_ypos = 16
-            self.box_font_name = "Deja Vu Sans"
-            self.box_font_size = 11
-            self.box_font_state = QFont.Bold
-
-            self.box_bg_type = self.THEME_BG_GRADIENT
-            self.box_use_icon = True
-
-            # Ports
-            self.port_text = QPen(QColor(250, 250, 250), 0)
-            self.port_text_ypos = 12
-            self.port_bg_pixmap = None
-            self.port_font_name = "Deja Vu Sans"
-            self.port_font_size = 11
-            self.port_font_state = QFont.Normal
-            self.port_mode = self.THEME_PORT_POLYGON
-
-            self.port_audio_jack_pen = QPen(QColor(63, 90, 126), 1)
-            self.port_audio_jack_pen_sel = QPen(QColor(63 + 30, 90 + 30, 126 + 30), 1)
-            self.port_midi_jack_pen = QPen(QColor(159, 44, 42), 1)
-            self.port_midi_jack_pen_sel = QPen(QColor(159 + 30, 44 + 30, 42 + 30), 1)
-            self.port_midi_alsa_pen = QPen(QColor(93, 141, 46), 1)
-            self.port_midi_alsa_pen_sel = QPen(QColor(93 + 30, 141 + 30, 46 + 30), 1)
-            self.port_parameter_pen = QPen(QColor(137, 76, 43), 1)
-            self.port_parameter_pen_sel = QPen(QColor(137 + 30, 76 + 30, 43 + 30), 1)
-
-            self.port_audio_jack_bg = QColor(35, 61, 99)
-            self.port_audio_jack_bg_sel = QColor(35 + 50, 61 + 50, 99 + 50)
-            self.port_midi_jack_bg = QColor(120, 15, 16)
-            self.port_midi_jack_bg_sel = QColor(120 + 50, 15 + 50, 16 + 50)
-            self.port_midi_alsa_bg = QColor(64, 112, 18)
-            self.port_midi_alsa_bg_sel = QColor(64 + 50, 112 + 50, 18 + 50)
-            self.port_parameter_bg = QColor(101, 47, 16)
-            self.port_parameter_bg_sel = QColor(101 + 50, 47 + 50, 16 + 50)
-
-            self.port_audio_jack_text = self.port_text
-            self.port_audio_jack_text_sel = self.port_text
-            self.port_midi_jack_text = self.port_text
-            self.port_midi_jack_text_sel = self.port_text
-            self.port_midi_alsa_text = self.port_text
-            self.port_midi_alsa_text_sel = self.port_text
-            self.port_parameter_text = self.port_text
-            self.port_parameter_text_sel = self.port_text
-
-            self.port_height = 16
-            self.port_offset = 0
-            self.port_spacing = 2
-            self.port_spacingT = 2
-
-            # Lines
-            self.line_audio_jack = QColor(63, 90, 126)
-            self.line_audio_jack_sel = QColor(63 + 90, 90 + 90, 126 + 90)
-            self.line_audio_jack_glow = QColor(100, 100, 200)
-            self.line_midi_jack = QColor(159, 44, 42)
-            self.line_midi_jack_sel = QColor(159 + 90, 44 + 90, 42 + 90)
-            self.line_midi_jack_glow = QColor(200, 100, 100)
-            self.line_midi_alsa = QColor(93, 141, 46)
-            self.line_midi_alsa_sel = QColor(93 + 90, 141 + 90, 46 + 90)
-            self.line_midi_alsa_glow = QColor(100, 200, 100)
-            self.line_parameter = QColor(137, 76, 43)
-            self.line_parameter_sel = QColor(137 + 90, 76 + 90, 43 + 90)
-            self.line_parameter_glow = QColor(166, 133, 133)
-
-            self.rubberband_pen = QPen(QColor(206, 207, 208), 1, Qt.SolidLine)
-            self.rubberband_brush = QColor(76, 77, 78, 100)
-
-        elif idx == self.THEME_MODERN_DARK_TINY:
-            # Canvas
-            self.canvas_bg = QColor(0, 0, 0)
-
-            # Boxes
-            self.box_pen = QPen(QColor(76, 77, 78), 1, Qt.SolidLine)
-            self.box_pen_sel = QPen(QColor(206, 207, 208), 1, Qt.DashLine)
-            self.box_bg_1 = QColor(32, 34, 35)
-            self.box_bg_2 = QColor(43, 47, 48)
-            self.box_shadow = QColor(89, 89, 89, 180)
-            self.box_header_pixmap = None
-            self.box_header_height = 14
-            self.box_header_spacing = 0
-
-            self.box_text = QPen(QColor(240, 240, 240), 0)
-            self.box_text_sel = self.box_text
-            self.box_text_ypos = 10
-            self.box_font_name = "Deja Vu Sans"
-            self.box_font_size = 10
-            self.box_font_state = QFont.Bold
-
-            self.box_bg_type = self.THEME_BG_GRADIENT
-            self.box_use_icon = False
-
-            # Ports
-            self.port_text = QPen(QColor(250, 250, 250), 0)
-            self.port_text_ypos = 9
-            self.port_bg_pixmap = None
-            self.port_font_name = "Deja Vu Sans"
-            self.port_font_size = 9
-            self.port_font_state = QFont.Normal
-            self.port_mode = self.THEME_PORT_POLYGON
-
-            self.port_audio_jack_pen = QPen(QColor(63, 90, 126), 1)
-            self.port_audio_jack_pen_sel = QPen(QColor(63 + 30, 90 + 30, 126 + 30), 1)
-            self.port_midi_jack_pen = QPen(QColor(159, 44, 42), 1)
-            self.port_midi_jack_pen_sel = QPen(QColor(159 + 30, 44 + 30, 42 + 30), 1)
-            self.port_midi_alsa_pen = QPen(QColor(93, 141, 46), 1)
-            self.port_midi_alsa_pen_sel = QPen(QColor(93 + 30, 141 + 30, 46 + 30), 1)
-            self.port_parameter_pen = QPen(QColor(137, 76, 43), 1)
-            self.port_parameter_pen_sel = QPen(QColor(137 + 30, 76 + 30, 43 + 30), 1)
-
-            self.port_audio_jack_bg = QColor(35, 61, 99)
-            self.port_audio_jack_bg_sel = QColor(35 + 50, 61 + 50, 99 + 50)
-            self.port_midi_jack_bg = QColor(120, 15, 16)
-            self.port_midi_jack_bg_sel = QColor(120 + 50, 15 + 50, 16 + 50)
-            self.port_midi_alsa_bg = QColor(64, 112, 18)
-            self.port_midi_alsa_bg_sel = QColor(64 + 50, 112 + 50, 18 + 50)
-            self.port_parameter_bg = QColor(101, 47, 16)
-            self.port_parameter_bg_sel = QColor(101 + 50, 47 + 50, 16 + 50)
-
-            self.port_audio_jack_text = self.port_text
-            self.port_audio_jack_text_sel = self.port_text
-            self.port_midi_jack_text = self.port_text
-            self.port_midi_jack_text_sel = self.port_text
-            self.port_midi_alsa_text = self.port_text
-            self.port_midi_alsa_text_sel = self.port_text
-            self.port_parameter_text = self.port_text
-            self.port_parameter_text_sel = self.port_text
-
-            self.port_height = 12
-            self.port_offset = 0
-            self.port_spacing = 1
-            self.port_spacingT = 1
-
-            # Lines
-            self.line_audio_jack = QColor(63, 90, 126)
-            self.line_audio_jack_sel = QColor(63 + 90, 90 + 90, 126 + 90)
-            self.line_audio_jack_glow = QColor(100, 100, 200)
-            self.line_midi_jack = QColor(159, 44, 42)
-            self.line_midi_jack_sel = QColor(159 + 90, 44 + 90, 42 + 90)
-            self.line_midi_jack_glow = QColor(200, 100, 100)
-            self.line_midi_alsa = QColor(93, 141, 46)
-            self.line_midi_alsa_sel = QColor(93 + 90, 141 + 90, 46 + 90)
-            self.line_midi_alsa_glow = QColor(100, 200, 100)
-            self.line_parameter = QColor(137, 76, 43)
-            self.line_parameter_sel = QColor(137 + 90, 76 + 90, 43 + 90)
-            self.line_parameter_glow = QColor(166, 133, 133)
-
-            self.rubberband_pen = QPen(QColor(206, 207, 208), 1, Qt.SolidLine)
-            self.rubberband_brush = QColor(76, 77, 78, 100)
-
-        elif idx == self.THEME_MODERN_LIGHT:
-            # Canvas
-            self.canvas_bg = QColor(248, 249, 250)
-
-            # Boxes
-            self.box_pen = QPen(QColor(176, 177, 178), 1, Qt.SolidLine)
-            self.box_pen_sel = QPen(QColor(1, 2, 3), 2, Qt.DashLine)
-            self.box_bg_1 = QColor(250, 250, 250)
-            self.box_bg_2 = QColor(200, 200, 200)
-            self.box_shadow = QColor(1, 1, 1, 100)
-            self.box_header_pixmap = None
-            self.box_header_height = 24
-            self.box_header_spacing = 0
-
-            self.box_text = QPen(QColor(1, 1, 1), 0)
-            self.box_text_sel = self.box_text
-            self.box_text_ypos = 16
-            self.box_font_name = "Ubuntu"
-            self.box_font_size = 11
-            self.box_font_state = QFont.Bold
-
-            self.box_bg_type = self.THEME_BG_GRADIENT
-            self.box_use_icon = True
-
-            # Ports
-            self.port_text = QPen(QColor(255, 255, 255), 1)
-            self.port_text_ypos = 12
-            self.port_bg_pixmap = None
-            self.port_font_name = "Ubuntu"
-            self.port_font_size = 11
-            self.port_font_state = QFont.Bold
-            self.port_mode = self.THEME_PORT_POLYGON
-
-            self.port_audio_jack_pen = QPen(QColor(103, 130, 166), 2)
-            self.port_audio_jack_pen_sel = QPen(QColor(103 + 136, 190 + 130, 226 + 130), 1)
-            self.port_midi_jack_pen = QPen(QColor(159, 44, 42), 1)
-            self.port_midi_jack_pen_sel = QPen(QColor(90 + 30, 44 + 30, 42 + 30), 1)
-            self.port_midi_alsa_pen = QPen(QColor(93, 141, 46), 1)
-            self.port_midi_alsa_pen_sel = QPen(QColor(93 + 30, 141 + 30, 46 + 30), 1)
-            self.port_parameter_pen = QPen(QColor(137, 76, 43), 1)
-            self.port_parameter_pen_sel = QPen(QColor(137 + 30, 76 + 30, 43 + 30), 1)
-
-            self.port_audio_jack_bg = QColor(0, 0, 180)
-            self.port_audio_jack_bg_sel = QColor(135 + 150, 161 + 150, 199 + 150)
-            self.port_midi_jack_bg = QColor(130, 15, 16)
-            self.port_midi_jack_bg_sel = QColor(90 + 30, 15 + 50, 16 + 50)
-            self.port_midi_alsa_bg = QColor(64, 112, 18)
-            self.port_midi_alsa_bg_sel = QColor(64 + 50, 112 + 50, 18 + 50)
-            self.port_parameter_bg = QColor(101, 47, 16)
-            self.port_parameter_bg_sel = QColor(101 + 50, 47 + 50, 16 + 50)
-
-            self.port_audio_jack_text = self.port_text
-            self.port_audio_jack_text_sel = self.port_text
-            self.port_midi_jack_text = self.port_text
-            self.port_midi_jack_text_sel = self.port_text
-            self.port_midi_alsa_text = self.port_text
-            self.port_midi_alsa_text_sel = self.port_text
-            self.port_parameter_text = self.port_text
-            self.port_parameter_text_sel = self.port_text
-
-            self.port_height = 16
-            self.port_offset = 0
-            self.port_spacing = 2
-            self.port_spacingT = 2
-
-            # Lines
-            self.line_audio_jack = QColor(63, 90, 126)
-            self.line_audio_jack_sel = QColor(63 + 63, 90 + 90, 126 + 90)
-            self.line_audio_jack_glow = QColor(100, 100, 200)
-            self.line_midi_jack = QColor(159, 44, 42)
-            self.line_midi_jack_sel = QColor(159 + 44, 44 + 90, 42 + 90)
-            self.line_midi_jack_glow = QColor(200, 100, 100)
-            self.line_midi_alsa = QColor(93, 141, 46)
-            self.line_midi_alsa_sel = QColor(93 + 90, 141 + 90, 46 + 90)
-            self.line_midi_alsa_glow = QColor(100, 200, 100)
-            self.line_parameter = QColor(137, 43, 43)
-            self.line_parameter_sel = QColor(137 + 90, 76 + 90, 43 + 90)
-            self.line_parameter_glow = QColor(166, 133, 133)
-
-            self.rubberband_pen = QPen(QColor(206, 207, 208), 1, Qt.SolidLine)
-            self.rubberband_brush = QColor(76, 77, 78, 100)
-
-        elif idx == self.THEME_CLASSIC_DARK:
-            # Canvas
-            self.canvas_bg = QColor(0, 0, 0)
-
-            # Boxes
-            self.box_pen = QPen(QColor(147 - 70, 151 - 70, 143 - 70), 2, Qt.SolidLine)
-            self.box_pen_sel = QPen(QColor(147, 151, 143), 2, Qt.DashLine)
-            self.box_bg_1 = QColor(30, 34, 36)
-            self.box_bg_2 = QColor(30, 34, 36)
-            self.box_shadow = QColor(89, 89, 89, 180)
-            self.box_header_pixmap = None
-            self.box_header_height = 19
-            self.box_header_spacing = 0
-
-            self.box_text = QPen(QColor(255, 255, 255), 0)
-            self.box_text_sel = self.box_text
-            self.box_text_ypos = 12
-            self.box_font_name = "Sans"
-            self.box_font_size = 12
-            self.box_font_state = QFont.Normal
-
-            self.box_bg_type = self.THEME_BG_GRADIENT
-            self.box_use_icon = False
-
-            # Ports
-            self.port_text = QPen(QColor(250, 250, 250), 0)
-            self.port_text_ypos = 11
-            self.port_bg_pixmap = None
-            self.port_font_name = "Sans"
-            self.port_font_size = 11
-            self.port_font_state = QFont.Normal
-            self.port_mode = self.THEME_PORT_SQUARE
-
-            self.port_audio_jack_pen = QPen(QColor(35, 61, 99), 0, Qt.NoPen)
-            self.port_audio_jack_pen_sel = QPen(QColor(255, 0, 0), 0, Qt.NoPen)
-            self.port_midi_jack_pen = QPen(QColor(120, 15, 16), 0, Qt.NoPen)
-            self.port_midi_jack_pen_sel = QPen(QColor(255, 0, 0), 0, Qt.NoPen)
-            self.port_midi_alsa_pen = QPen(QColor(63, 112, 19), 0, Qt.NoPen)
-            self.port_midi_alsa_pen_sel = QPen(QColor(255, 0, 0), 0, Qt.NoPen)
-            self.port_parameter_pen = QPen(QColor(101, 47, 17), 0, Qt.NoPen)
-            self.port_parameter_pen_sel = QPen(QColor(255, 0, 0), 0, Qt.NoPen)
-
-            self.port_audio_jack_bg = QColor(35, 61, 99)
-            self.port_audio_jack_bg_sel = QColor(255, 0, 0)
-            self.port_midi_jack_bg = QColor(120, 15, 16)
-            self.port_midi_jack_bg_sel = QColor(255, 0, 0)
-            self.port_midi_alsa_bg = QColor(63, 112, 19)
-            self.port_midi_alsa_bg_sel = QColor(255, 0, 0)
-            self.port_parameter_bg = QColor(101, 47, 17)
-            self.port_parameter_bg_sel = QColor(255, 0, 0)
-
-            self.port_audio_jack_text = self.port_text
-            self.port_audio_jack_text_sel = self.port_text
-            self.port_midi_jack_text = self.port_text
-            self.port_midi_jack_text_sel = self.port_text
-            self.port_midi_alsa_text = self.port_text
-            self.port_midi_alsa_text_sel = self.port_text
-            self.port_parameter_text = self.port_text
-            self.port_parameter_text_sel = self.port_text
-
-            self.port_height = 14
-            self.port_offset = 0
-            self.port_spacing = 1
-            self.port_spacingT = 0
-
-            # Lines
-            self.line_audio_jack = QColor(53, 78, 116)
-            self.line_audio_jack_sel = QColor(255, 0, 0)
-            self.line_audio_jack_glow = QColor(255, 0, 0)
-            self.line_midi_jack = QColor(139, 32, 32)
-            self.line_midi_jack_sel = QColor(255, 0, 0)
-            self.line_midi_jack_glow = QColor(255, 0, 0)
-            self.line_midi_alsa = QColor(81, 130, 36)
-            self.line_midi_alsa_sel = QColor(255, 0, 0)
-            self.line_midi_alsa_glow = QColor(255, 0, 0)
-            self.line_parameter = QColor(120, 65, 33)
-            self.line_parameter_sel = QColor(255, 0, 0)
-            self.line_parameter_glow = QColor(255, 0, 0)
-
-            self.rubberband_pen = QPen(QColor(147, 151, 143), 2, Qt.SolidLine)
-            self.rubberband_brush = QColor(35, 61, 99, 100)
-
-        elif idx == self.THEME_OOSTUDIO:
-            # Canvas
-            self.canvas_bg = QColor(11, 11, 11)
-
-            # Boxes
-            self.box_pen = QPen(QColor(76, 77, 78), 1, Qt.SolidLine)
-            self.box_pen_sel = QPen(QColor(189, 122, 214), 1, Qt.DashLine)
-            self.box_bg_1 = QColor(46, 46, 46)
-            self.box_bg_2 = QColor(23, 23, 23)
-            self.box_shadow = QColor(89, 89, 89, 180)
-            self.box_header_pixmap = QPixmap(":/bitmaps/canvas/frame_node_header.png")
-            self.box_header_height = 22
-            self.box_header_spacing = 6
-
-            self.box_text = QPen(QColor(144, 144, 144), 0)
-            self.box_text_sel = QPen(QColor(189, 122, 214), 0)
-            self.box_text_ypos = 16
-            self.box_font_name = "Deja Vu Sans"
-            self.box_font_size = 11
-            self.box_font_state = QFont.Bold
-
-            self.box_bg_type = self.THEME_BG_SOLID
-            self.box_use_icon = False
-
-            # Ports
-            normalPortBG = QColor(46, 46, 46)
-            selPortBG = QColor(23, 23, 23)
-
-            self.port_text = QPen(QColor(155, 155, 155), 0)
-            self.port_text_ypos = 14
-            self.port_bg_pixmap = QPixmap(":/bitmaps/canvas/frame_port_bg.png")
-            self.port_font_name = "Deja Vu Sans"
-            self.port_font_size = 11
-            self.port_font_state = QFont.Normal
-            self.port_mode = self.THEME_PORT_SQUARE
-
-            self.port_audio_jack_pen = QPen(selPortBG, 2)
-            self.port_audio_jack_pen_sel = QPen(QColor(1, 230, 238), 1)
-            self.port_midi_jack_pen = QPen(selPortBG, 2)
-            self.port_midi_jack_pen_sel = QPen(QColor(252, 118, 118), 1)
-            self.port_midi_alsa_pen = QPen(selPortBG, 2)
-            self.port_midi_alsa_pen_sel = QPen(QColor(129, 244, 118), 0)
-            self.port_parameter_pen = QPen(selPortBG, 2)
-            self.port_parameter_pen_sel = QPen(QColor(137, 76, 43), 1)
-
-            self.port_audio_jack_bg = normalPortBG
-            self.port_audio_jack_bg_sel = selPortBG
-            self.port_midi_jack_bg = normalPortBG
-            self.port_midi_jack_bg_sel = selPortBG
-            self.port_midi_alsa_bg = normalPortBG
-            self.port_midi_alsa_bg_sel = selPortBG
-            self.port_parameter_bg = normalPortBG
-            self.port_parameter_bg_sel = selPortBG
-
-            self.port_audio_jack_text = self.port_text
-            self.port_audio_jack_text_sel = self.port_audio_jack_pen_sel
-            self.port_midi_jack_text = self.port_text
-            self.port_midi_jack_text_sel = self.port_midi_jack_pen_sel
-            self.port_midi_alsa_text = self.port_text
-            self.port_midi_alsa_text_sel = self.port_midi_alsa_pen_sel
-            self.port_parameter_text = self.port_text
-            self.port_parameter_text_sel = self.port_parameter_pen_sel
-
-            # missing, ports 2
-            self.port_height = 21
-            self.port_offset = 1
-            self.port_spacing = 3
-            self.port_spacingT = 0
-
-            # Lines
-            self.line_audio_jack = QColor(64, 64, 64)
-            self.line_audio_jack_sel = QColor(1, 230, 238)
-            self.line_audio_jack_glow = QColor(100, 200, 100)
-            self.line_midi_jack = QColor(64, 64, 64)
-            self.line_midi_jack_sel = QColor(252, 118, 118)
-            self.line_midi_jack_glow = QColor(200, 100, 100)
-            self.line_midi_alsa = QColor(64, 64, 64)
-            self.line_midi_alsa_sel = QColor(129, 244, 118)
-            self.line_midi_alsa_glow = QColor(100, 200, 100)
-            self.line_parameter = QColor(64, 64, 64)
-            self.line_parameter_sel = QColor(137+90, 76+90, 43+90)
-            self.line_parameter_glow = QColor(166, 133, 133)
-
-            self.rubberband_pen = QPen(QColor(1, 230, 238), 2, Qt.SolidLine)
-            self.rubberband_brush = QColor(90, 90, 90, 100)
 
 # ------------------------------------------------------------------------------------------------------------
+
 
 def getDefaultTheme():
     return Theme.THEME_MODERN_DARK
 
+
 def getThemeName(idx):
-    if idx == Theme.THEME_MODERN_DARK:
-        return "Modern Dark"
-    if idx == Theme.THEME_MODERN_DARK_TINY:
-        return "Modern Dark (Tiny)"
-    if idx == Theme.THEME_MODERN_LIGHT:
-        return "Modern Light"
-    if idx == Theme.THEME_CLASSIC_DARK:
-        return "Classic Dark"
-    if idx == Theme.THEME_OOSTUDIO:
-        return "OpenOctave Studio"
-    return ""
+    names = {
+        Theme.THEME_MODERN_DARK: "Modern Dark",
+        Theme.THEME_MODERN_DARK_TINY: "Modern Dark (Tiny)",
+        Theme.THEME_MODERN_LIGHT: "Modern Light",
+        Theme.THEME_CLASSIC_DARK: "Classic Dark",
+        Theme.THEME_OOSTUDIO: "OpenOctave Studio",
+        Theme.THEME_BLENDER_DARK: "Blender Dark",
+    }
+    return names.get(idx, "")
+
 
 def getDefaultThemeName():
     return "Modern Dark"
+
 
 # ------------------------------------------------------------------------------------------------------------

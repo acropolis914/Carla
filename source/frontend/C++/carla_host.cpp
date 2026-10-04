@@ -471,11 +471,11 @@ struct CarlaHostWindow::PrivateData {
 
         updateStyle();
 
-        ui.rack->setStyleSheet("      \
-        CarlaRackList#CarlaRackList { \
-            background-color: black;  \
-        }                             \
-        ");
+        // ui.rack->setStyleSheet("      \
+        // CarlaRackList#CarlaRackList { \
+        //     background-color: black;  \
+        // }                             \
+        // ");
 
         //-------------------------------------------------------------------------------------------------------------
         // Set up GUI (patchbay)

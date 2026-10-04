@@ -555,7 +555,7 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
             QLabel#label_audio_out,
             QLabel#label_midi { font-size: 10px; }
         """
-        self.setStyleSheet(styleSheet)
+        # self.setStyleSheet(styleSheet)
 
         # -------------------------------------------------------------
         # Set-up parameters
