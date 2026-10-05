@@ -10,11 +10,11 @@ from qt_compat import qt_config
 if qt_config == 5:
     from PyQt5.QtCore import Qt, QRectF, QLineF, QTimer
     from PyQt5.QtGui import QColor, QFont, QFontDatabase, QPainter, QPainterPath, QPen
-    from PyQt5.QtWidgets import QColorDialog, QFrame, QLineEdit, QPushButton
+    from PyQt5.QtWidgets import QColorDialog, QFrame, QLineEdit, QPushButton, QSlider, QDoubleSpinBox, QVBoxLayout, QHBoxLayout, QScrollArea, QAbstractSpinBox, QLabel, QWidget
 elif qt_config == 6:
     from PyQt6.QtCore import Qt, QRectF, QLineF, QTimer
     from PyQt6.QtGui import QColor, QFont, QFontDatabase, QPainter, QPainterPath, QPen
-    from PyQt6.QtWidgets import QColorDialog, QFrame, QLineEdit, QPushButton
+    from PyQt6.QtWidgets import QColorDialog, QFrame, QLineEdit, QPushButton, QSlider, QDoubleSpinBox, QVBoxLayout, QHBoxLayout, QScrollArea, QAbstractSpinBox, QLabel, QWidget
 
 # ------------------------------------------------------------------------------------------------------------
 # Imports (Custom)
@@ -28,6 +28,8 @@ import ui_carla_plugin_presets
 from carla_backend import *
 from carla_shared import *
 from carla_widgets import *
+from utils import QSafeSettings
+from patchcanvas.theme import Theme
 from widgets.digitalpeakmeter import DigitalPeakMeter
 from widgets.paramspinbox import CustomInputDialog
 from widgets.scalabledial import ScalableDial
@@ -167,6 +169,28 @@ def setScalableDialStyle(widget, parameterId, parameterCount, whiteLabels, skinS
             widget.setImage(12)
         else:
             widget.setImage(11)
+
+    elif skinStyle.startswith("minimal"):
+        # Monochromatic flat knob arc
+        is_dark = (skinStyle == "minimal-dark")
+        
+        if is_dark:
+            color = QColor("#888888")
+        else:
+            color = QColor("#666666")
+            
+        widget.setCustomPaintColor(color)
+        widget.setCustomPaintMode(ScalableDial.CUSTOM_PAINT_MODE_FLAT)
+        
+        # Dial labels
+        if skinStyle == "minimal-dark":
+            colorEnabled  = QColor("#DDDDDD")
+            colorDisabled = QColor("#777777")
+        else:
+            colorEnabled  = QColor("#333333")
+            colorDisabled = QColor("#888888")
+
+        widget.setLabelColor(colorEnabled, colorDisabled)
 
     else:
         if parameterId == PARAMETER_DRYWET:
@@ -523,18 +547,24 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
             """ % (0.95 if isinstance(self, PluginSlot_Compact) else 0.35)
 
         else:
-            colorEnabled  = "#BBB"
-            colorDisabled = "#555"
+            settings = QSafeSettings("falkTX", "Carla2")
+            theme_name = settings.value(CARLA_KEY_CANVAS_THEME, CARLA_DEFAULT_CANVAS_THEME, str)
+            theme = Theme(theme_name)
+
+            box_bg_1 = theme.box_bg_1.name() if hasattr(theme, "box_bg_1") else "#444444"
+            box_bg_2 = theme.box_bg_2.name() if hasattr(theme, "box_bg_2") else "#333333"
+            box_text = theme.box_text.color().name() if hasattr(theme, "box_text") else "#FFFFFF"
+
+            colorEnabled  = box_text
+            colorDisabled = "#777777"
 
             if self.fSkinStyle in ("3bandeq", "calf_black", "calf_blue", "nekobi", "zynfx"):
-                styleSheet2  = "background-image: url(:/bitmaps/background_%s.png);" % self.fSkinStyle
+                styleSheet2  = "background-color: %s;" % box_bg_2
+                styleSheet2 += "background-image: url(:/bitmaps/background_%s.png);" % self.fSkinStyle
             else:
-                styleSheet2  = "background-color: rgb(200, 200, 200);"
-                styleSheet2 += "background-image: url(:/bitmaps/background_noise1.png);"
-
-                if not self.fDarkStyle:
-                    colorEnabled  = "#111"
-                    colorDisabled = "#AAA"
+                styleSheet2  = "background-color: %s;" % box_bg_2
+                styleSheet2 += "border: 1px solid %s;" % box_bg_1
+                styleSheet2 += "border-radius: 4px;"
 
             styleSheet = """
                 QFrame#PluginWidget {
@@ -555,7 +585,7 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
             QLabel#label_audio_out,
             QLabel#label_midi { font-size: 10px; }
         """
-        # self.setStyleSheet(styleSheet)
+        self.setStyleSheet(styleSheet)
 
         # -------------------------------------------------------------
         # Set-up parameters
@@ -1046,6 +1076,7 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
         actCompact = menu.addAction(self.tr("Expand") if isinstance(self, PluginSlot_Compact) else self.tr("Minimize"))
         actColor   = menu.addAction(self.tr("Change Color..."))
         actSkin    = menu.addAction(self.tr("Change Skin..."))
+        actNextSkin = menu.addAction(self.tr(f"Next Skin ({self.fSkinStyle})"))
         menu.addSeparator()
 
         # -------------------------------------------------------------
@@ -1157,8 +1188,38 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
             colorStr = "%i;%i;%i" % color
             gCarla.gui.changePluginColor(self.fPluginId, color, colorStr)
 
+        elif actSel == actNextSkin:
+            skinList = [
+                "minimal-dark",
+                "minimal-light",
+                "sliders-dark",
+                "sliders-light",
+                "default",
+                "3bandeq",
+                "rncbc",
+                "calf_black",
+                "calf_blue",
+                "classic",
+                "openav-old",
+                "openav",
+                "zynfx",
+                "presets",
+                "mpresets",
+            ]
+            try:
+                index = skinList.index(self.fSkinStyle)
+                next_index = (index + 1) % len(skinList)
+            except ValueError:
+                next_index = 0
+            
+            gCarla.gui.changePluginSkin(self.fPluginId, skinList[next_index])
+
         elif actSel == actSkin:
             skinList = [
+                "minimal-dark",
+                "minimal-light",
+                "sliders-dark",
+                "sliders-light",
                 "default",
                 "3bandeq",
                 "rncbc",
@@ -1766,16 +1827,115 @@ class PluginSlot_Default(AbstractPluginSlot):
     # -----------------------------------------------------------------
 
     def paintEvent(self, event):
-        painter = QPainter(self)
-        painter.setBrush(Qt.transparent)
-
-        painter.setPen(QPen(QColor(42, 42, 42), 1))
-        painter.drawRect(0, 1, self.width()-1, self.getFixedHeight()-3)
-
-        painter.setPen(QPen(QColor(60, 60, 60), 1))
-        painter.drawLine(0, 0, self.width(), 0)
-
         AbstractPluginSlot.paintEvent(self, event)
+
+class PluginSlot_Minimal(PluginSlot_Default):
+    def __init__(self, parent, host, pluginId, skinColor, skinStyle):
+        PluginSlot_Default.__init__(self, parent, host, pluginId, skinColor, skinStyle)
+        
+        self.is_dark = (skinStyle == "minimal-dark")
+        
+        if skinColor != (0, 0, 0):
+            bg_r, bg_g, bg_b = skinColor
+            if self.is_dark:
+                # Dim the category/custom color for dark mode
+                bg_r = int(bg_r * 0.3)
+                bg_g = int(bg_g * 0.3)
+                bg_b = int(bg_b * 0.3)
+            else:
+                # Lighten it for light mode (pastel)
+                bg_r = int(bg_r + (255 - bg_r) * 0.7)
+                bg_g = int(bg_g + (255 - bg_g) * 0.7)
+                bg_b = int(bg_b + (255 - bg_b) * 0.7)
+        else:
+            if self.is_dark:
+                bg_r, bg_g, bg_b = 30, 30, 30
+            else:
+                bg_r, bg_g, bg_b = 250, 250, 250
+
+        self.minimal_bg_color = QColor(bg_r, bg_g, bg_b)
+
+        # Dynamic contrast: compute luminance
+        luminance = (0.299 * bg_r + 0.587 * bg_g + 0.114 * bg_b)
+        
+        if luminance > 130:
+            text_color = "#111111"
+            text_disabled = "#777777"
+            combo_bg = "#FFFFFF"
+            combo_border = "#CCCCCC"
+            self.border_color = QColor(max(0, bg_r - 30), max(0, bg_g - 30), max(0, bg_b - 30))
+        else:
+            text_color = "#EEEEEE"
+            text_disabled = "#888888"
+            combo_bg = "#2A2A2A"
+            combo_border = "#444444"
+            self.border_color = QColor(min(255, bg_r + 30), min(255, bg_g + 30), min(255, bg_b + 30))
+
+        # Explicit minimal stylesheet for high readability
+        styleSheet = f"""
+            QFrame#PluginWidget {{
+                background: transparent;
+            }}
+            QLabel,
+            QLabel#label_name,
+            QLabel#label_audio_in,
+            QLabel#label_audio_out,
+            QLabel#label_midi,
+            QLabel#label_presets {{
+                color: {text_color};
+                font-weight: 600;
+            }}
+            QLabel#label_name {{
+                font-weight: bold;
+                font-size: 11px;
+            }}
+            QLabel:disabled,
+            QLabel#label_name:disabled {{
+                color: {text_disabled};
+            }}
+            QComboBox, QDoubleSpinBox {{
+                background: {combo_bg};
+                border: 1px solid {combo_border};
+                color: {text_color};
+                border-radius: 3px;
+                padding: 2px;
+            }}
+            QComboBox#cb_presets,
+            QLabel#label_audio_in,
+            QLabel#label_audio_out,
+            QLabel#label_midi {{
+                font-size: 10px;
+            }}
+            QSlider::groove:horizontal {{
+                background: {combo_border};
+                height: 4px;
+                border-radius: 2px;
+            }}
+            QSlider::handle:horizontal {{
+                background: {text_color};
+                width: 14px;
+                margin: -5px 0;
+                border-radius: 7px;
+            }}
+        """
+        self.setStyleSheet(styleSheet)
+
+    def getFixedHeight(self):
+        return 100
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        
+        rect = QRectF(1.0, 1.0, self.width()-2.0, self.getFixedHeight()-2.0)
+        
+        painter.setBrush(self.minimal_bg_color)
+        painter.setPen(QPen(self.border_color, 1.0))
+        painter.drawRoundedRect(rect, 4, 4)
+        
+        # Draw outline manually to avoid AbstractPluginSlot's multiply blend
+        self.drawOutline(painter)
+        QFrame.paintEvent(self, event)
 
 # ------------------------------------------------------------------------------------------------------------
 
@@ -2057,7 +2217,7 @@ def getColorAndSkinStyle(host, pluginId):
         if skinStyle in ("3bandeq", "nekobi"):
             return (colorNone, skinStyle)
 
-    return (colorCategory, "default")
+    return (colorCategory, "minimal-dark")
 
 def createPluginSlot(parent, host, pluginId, options):
     skinColor, skinStyle = getColorAndSkinStyle(host, pluginId)
@@ -2071,6 +2231,12 @@ def createPluginSlot(parent, host, pluginId, options):
     if skinStyle == "classic":
         return PluginSlot_Classic(parent, host, pluginId)
 
+    if skinStyle.startswith("sliders"):
+        return PluginSlot_Sliders(parent, host, pluginId, skinColor, skinStyle)
+
+    if skinStyle.startswith("minimal"):
+        return PluginSlot_Minimal(parent, host, pluginId, skinColor, skinStyle)
+
     if "compact" in skinStyle or options['compact']:
         return PluginSlot_Compact(parent, host, pluginId, skinColor, skinStyle)
 
@@ -2081,6 +2247,156 @@ def createPluginSlot(parent, host, pluginId, options):
         return PluginSlot_Presets(parent, host, pluginId, skinColor, skinStyle)
 
     return PluginSlot_Default(parent, host, pluginId, skinColor, skinStyle)
+
+class SliderParamWidget(QWidget):
+    realValueChanged = pyqtSignal(float)
+    dragStateChanged = pyqtSignal(bool) # dummy
+
+    def __init__(self, parent, index, name, min_val, max_val, is_integer):
+        QWidget.__init__(self, parent)
+        self.fIndex = index
+        self.fMinimum = min_val
+        self.fMaximum = max_val
+        self.fIsInteger = is_integer
+        
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(4,2,4,2)
+        
+        self.label = QLabel(name)
+        self.label.setMinimumWidth(80)
+        self.label.setMaximumWidth(120)
+        layout.addWidget(self.label)
+        
+        self.slider = QSlider(Qt.Horizontal)
+        self.slider.setMinimum(0)
+        self.slider.setMaximum(1000)
+        layout.addWidget(self.slider)
+        
+        self.spinbox = QDoubleSpinBox()
+        self.spinbox.setMinimum(min_val)
+        self.spinbox.setMaximum(max_val)
+        self.spinbox.setDecimals(0 if is_integer else 2)
+        self.spinbox.setButtonSymbols(QAbstractSpinBox.NoButtons)
+        self.spinbox.setMinimumWidth(60)
+        self.spinbox.setMaximumWidth(80)
+        layout.addWidget(self.spinbox)
+        
+        self.slider.valueChanged.connect(self._on_slider)
+        self.spinbox.valueChanged.connect(self._on_spinbox)
+        
+        self.fRealValue = min_val
+        
+    def getIndex(self):
+        return self.fIndex
+        
+    def blockSignals(self, block):
+        self.slider.blockSignals(block)
+        self.spinbox.blockSignals(block)
+        QWidget.blockSignals(self, block)
+        
+    def setValue(self, value, emitSignal=False):
+        self.fRealValue = value
+        
+        self.slider.blockSignals(True)
+        self.spinbox.blockSignals(True)
+        
+        slider_val = int((value - self.fMinimum) / (self.fMaximum - self.fMinimum) * 1000.0) if self.fMaximum > self.fMinimum else 0
+        self.slider.setValue(slider_val)
+        self.spinbox.setValue(value)
+        
+        self.spinbox.blockSignals(False)
+        self.slider.blockSignals(False)
+        
+        if emitSignal:
+            self.realValueChanged.emit(self.fRealValue)
+            
+    def _on_slider(self, value):
+        val = (value / 1000.0) * (self.fMaximum - self.fMinimum) + self.fMinimum
+        if self.fIsInteger:
+            val = round(val)
+        self.fRealValue = val
+        self.spinbox.blockSignals(True)
+        self.spinbox.setValue(val)
+        self.spinbox.blockSignals(False)
+        self.realValueChanged.emit(self.fRealValue)
+        
+    def _on_spinbox(self, value):
+        self.fRealValue = value
+        slider_val = int((value - self.fMinimum) / (self.fMaximum - self.fMinimum) * 1000.0) if self.fMaximum > self.fMinimum else 0
+        self.slider.blockSignals(True)
+        self.slider.setValue(slider_val)
+        self.slider.blockSignals(False)
+        self.realValueChanged.emit(self.fRealValue)
+
+class PluginSlot_Sliders(PluginSlot_Minimal):
+    def __init__(self, parent, host, pluginId, skinColor, skinStyle):
+        # Prevent default initialization of w_knobs_left from adding ScalableDials
+        PluginSlot_Minimal.__init__(self, parent, host, pluginId, skinColor, skinStyle)
+        
+        # Clear out the default bottom layout containing the dials
+        self.ui.w_knobs_left.hide()
+        self.ui.w_knobs_right.hide()
+        self.ui.layout_bottom.removeItem(self.ui.layout_bottom.itemAt(1))
+        
+        # We need a new widget to hold all sliders
+        self.sliders_container = QWidget()
+        self.sliders_layout = QVBoxLayout(self.sliders_container)
+        self.sliders_layout.setContentsMargins(4,4,4,4)
+        
+        # Add a scroll area to handle many parameters gracefully
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setWidget(self.sliders_container)
+        self.scroll_area.setStyleSheet("QScrollArea { border: none; background: transparent; }")
+        
+        self.ui.verticalLayout.addWidget(self.scroll_area)
+        
+        # Build the sliders
+        self.fParameterList = []
+        parameterCount = self.host.get_parameter_count(self.fPluginId)
+        
+        for i in range(parameterCount):
+            paramInfo   = self.host.get_parameter_info(self.fPluginId, i)
+            paramData   = self.host.get_parameter_data(self.fPluginId, i)
+            paramRanges = self.host.get_parameter_ranges(self.fPluginId, i)
+            isInteger   = (paramData['hints'] & PARAMETER_IS_INTEGER) != 0
+
+            if paramData['type'] != PARAMETER_INPUT: continue
+            if paramData['hints'] & PARAMETER_IS_BOOLEAN: continue
+            if (paramData['hints'] & PARAMETER_IS_ENABLED) == 0: continue
+            if paramInfo['name'].startswith("unused"): continue
+            
+            paramName = getParameterShortName(paramInfo['name'])
+            
+            widget = SliderParamWidget(self, i, paramName, paramRanges['min'], paramRanges['max'], isInteger)
+            self.fParameterList.append([i, widget])
+            self.sliders_layout.addWidget(widget)
+            
+            widget.realValueChanged.connect(self.slot_parameterValueChanged)
+
+        if self.fPluginInfo['hints'] & PLUGIN_CAN_DRYWET:
+            widget = SliderParamWidget(self, PARAMETER_DRYWET, "Dry/Wet", 0.0, 1.0, False)
+            self.fParameterList.append([PARAMETER_DRYWET, widget])
+            self.sliders_layout.addWidget(widget)
+            widget.realValueChanged.connect(self.slot_parameterValueChanged)
+            
+        if self.fPluginInfo['hints'] & PLUGIN_CAN_VOLUME:
+            widget = SliderParamWidget(self, PARAMETER_VOLUME, "Volume", 0.0, 1.27, False)
+            self.fParameterList.append([PARAMETER_VOLUME, widget])
+            self.sliders_layout.addWidget(widget)
+            widget.realValueChanged.connect(self.slot_parameterValueChanged)
+            
+        # Add stretching so sliders pack at the top
+        self.sliders_layout.addStretch()
+        
+        self.updateParameterValues()
+        
+    def getFixedHeight(self):
+        # We need more height for a slider rack
+        # Default minimal is 88. Let's make this dynamically sized but capped
+        count = len(self.fParameterList)
+        req_height = 40 + (count * 30)
+        return max(150, min(req_height, 400))
 
 # ------------------------------------------------------------------------------------------------------------
 # Main Testing

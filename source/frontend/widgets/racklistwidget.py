@@ -25,8 +25,10 @@ elif qt_config == 6:
 # Imports (Custom Stuff)
 
 from carla_backend import CARLA_OS_MAC, CUSTOM_DATA_TYPE_PROPERTY
-from carla_shared import gCarla, CustomMessageBox
+from carla_shared import gCarla, CustomMessageBox, CARLA_KEY_CANVAS_THEME, CARLA_DEFAULT_CANVAS_THEME
 from carla_skin import createPluginSlot
+from utils import QSafeSettings
+from patchcanvas.theme import Theme
 
 # ------------------------------------------------------------------------------------------------------------
 # Rack Widget item
@@ -374,23 +376,19 @@ class RackListWidget(QListWidget):
 
         width = self.width()
         height = self.height()
-        imgL_rect = QRect(0, 0, self.fPixmapWidth, height)
-        imgR_rect = QRect(width-self.fPixmapWidth, 0, self.fPixmapWidth, height)
+        
+        settings = QSafeSettings("falkTX", "Carla2")
+        theme_name = settings.value(CARLA_KEY_CANVAS_THEME, CARLA_DEFAULT_CANVAS_THEME, str)
+        theme = Theme(theme_name)
+        
+        bg_col = theme.canvas_bg if hasattr(theme, 'canvas_bg') else QColor("#222222")
 
-        painter.setBrush(self.rail_col)
-        painter.setPen(Qt.NoPen)
-        painter.drawRects(imgL_rect, imgR_rect)
-        painter.setCompositionMode(QPainter.CompositionMode_Multiply)
-        painter.drawTiledPixmap(imgL_rect, self.fPixmapL)
-        painter.drawTiledPixmap(imgR_rect, self.fPixmapR)
-        painter.setCompositionMode(QPainter.CompositionMode_Plus)
-        painter.drawTiledPixmap(imgL_rect, self.fPixmapL)
-        painter.drawTiledPixmap(imgR_rect, self.fPixmapR)
-        painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
-
-        painter.setPen(self.edge_col)
-        painter.setBrush(Qt.NoBrush)
-        painter.drawRect(self.fPixmapWidth, 0, width-self.fPixmapWidth*2, height)
+        painter.fillRect(0, 0, width, height, bg_col)
+        
+        if hasattr(theme, 'box_bg_1'):
+            painter.setPen(theme.box_bg_1)
+            painter.setBrush(Qt.NoBrush)
+            painter.drawRect(self.fPixmapWidth, 0, width-self.fPixmapWidth*2, height)
 
         QListWidget.paintEvent(self, event)
 
@@ -410,15 +408,6 @@ class RackListWidget(QListWidget):
     # --------------------------------------------------------------------------------------------------------
 
     def _updateStyle(self):
-        palette = self.palette()
-
-        bg_color = palette.window().color()
-        base_color = palette.base().color()
-        text_color = palette.text().color()
-        r0,g0,b0,_ = bg_color.getRgb()
-        r1,g1,b1,_ = text_color.getRgb()
-
-        self.rail_col = QColor(int((r0*3+r1)/4), int((g0*3+g1)/4), int((b0*3+b1)/4))
-        self.edge_col = (self.rail_col if self.rail_col.blackF() > base_color.blackF() else base_color).darker(115)
+        pass
 
 # ------------------------------------------------------------------------------------------------------------

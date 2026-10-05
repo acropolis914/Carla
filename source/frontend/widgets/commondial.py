@@ -36,6 +36,7 @@ class CommonDial(QDial):
     CUSTOM_PAINT_MODE_COLOR       = 6 # color, selectable (reserved #3)
     CUSTOM_PAINT_MODE_ZITA        = 7 # custom zita knob (reserved #6)
     CUSTOM_PAINT_MODE_NO_GRADIENT = 8 # skip label gradient
+    CUSTOM_PAINT_MODE_FLAT        = 9 # flat solid color arc
 
     # enum Orientation
     HORIZONTAL = 0
@@ -158,8 +159,19 @@ class CommonDial(QDial):
         QDial.setValue(self, qtValue)
         self.blockSignals(False)
 
+        self._updateTooltip()
+
         if emitSignal:
             self.realValueChanged.emit(self.fRealValue)
+
+    def _updateTooltip(self):
+        val_str = "{:.2f}".format(self.fRealValue)
+        if val_str.endswith(".00"):
+            val_str = val_str[:-3]
+        elif val_str[-1] == '0':
+            val_str = val_str[:-1]
+        self.setToolTip(f"{self.fLabel} ({val_str})")
+        self.update()
 
     def setCustomPaintMode(self, paintMode):
         if self.fCustomPaintMode == paintMode:
@@ -186,6 +198,7 @@ class CommonDial(QDial):
     @pyqtSlot(int)
     def slot_valueChanged(self, value):
         self.fRealValue = float(value)/self.fPrecision * (self.fMaximum - self.fMinimum) + self.fMinimum
+        self._updateTooltip()
         self.realValueChanged.emit(self.fRealValue)
 
     def enterEvent(self, event):
@@ -258,7 +271,20 @@ class CommonDial(QDial):
 
             painter.setFont(self.fLabelFont)
             painter.setPen(self.fLabelGradientColorT[0 if self.isEnabled() else 1])
-            painter.drawText(self.fLabelPos, self.fLabel)
+            
+            val_str = "{:.2f}".format(self.fRealValue)
+            if val_str.endswith(".00"): val_str = val_str[:-3]
+            elif val_str[-1] == '0': val_str = val_str[:-1]
+            
+            fm = painter.fontMetrics()
+            line_height = fm.lineSpacing() if hasattr(fm, 'lineSpacing') else fm.height()
+            
+            y = self.fLabelPos.y()
+            for line in (self.fLabel, f"({val_str})"):
+                w = fm.horizontalAdvance(line) if hasattr(fm, 'horizontalAdvance') else fm.width(line)
+                x = (self.width() - w) / 2.0
+                painter.drawText(QPointF(x, y), line)
+                y += line_height
 
         self.paintDial(painter)
 

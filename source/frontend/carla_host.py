@@ -453,13 +453,7 @@ class HostWindow(QMainWindow):
         if QSafeSettings("falkTX", "Carla2").value(
             CARLA_KEY_MAIN_USE_PRO_THEME, CARLA_DEFAULT_MAIN_USE_PRO_THEME, bool
         ):
-            self.ui.rack.setStyleSheet("""
-                            CarlaRackList#CarlaRackList {
-                                background-color: black;
-                            }
-                        """)
-        else:
-            self.ui.rack.setStyleSheet("")
+            pass
 
         # ----------------------------------------------------------------------------------------------------
         # Set up GUI (patchbay)
@@ -1186,6 +1180,10 @@ class HostWindow(QMainWindow):
                 break
 
         if recent_file:
+            if getattr(gCarla, "autoload_lastsave", False):
+                self.loadProjectLater(recent_file)
+                return
+
             name = os.path.basename(recent_file)
             ask = QMessageBox.question(
                 self,
@@ -2928,6 +2926,14 @@ class HostWindow(QMainWindow):
 
         self.loadSettings(False)
 
+        # Recreate rack items to apply new theme
+        if self.ui.listWidget is not None:
+            for i in range(self.ui.listWidget.count()):
+                item = self.ui.listWidget.item(i)
+                if item and hasattr(item, 'recreateWidget'):
+                    item.recreateWidget(firstInit=True)
+            self.ui.listWidget.update()
+
         if self.fWithCanvas:
             patchcanvas.clear()
             self.setupCanvas()
@@ -3261,18 +3267,39 @@ class HostWindow(QMainWindow):
 
         wasCompacted = pitem.isCompacted()
         isCompacted = wasCompacted
+        needsRecreate = False
 
         check = self.host.get_custom_data_value(
             pluginId, CUSTOM_DATA_TYPE_PROPERTY, "CarlaSkinIsCompacted"
         )
-        if not check:
-            return
-        isCompacted = bool(check == "true")
+        if check:
+            isCompacted = bool(check == "true")
+            if wasCompacted != isCompacted:
+                pitem.fOptions['compact'] = isCompacted
+                needsRecreate = True
 
-        if wasCompacted == isCompacted:
-            return
+        newSkin = self.host.get_custom_data_value(
+            pluginId, CUSTOM_DATA_TYPE_PROPERTY, "CarlaSkin"
+        )
+        if newSkin and newSkin != pitem.fOptions.get('skin'):
+            pitem.fOptions['skin'] = newSkin
+            needsRecreate = True
 
-        pitem.recreateWidget(True)
+        newColor = self.host.get_custom_data_value(
+            pluginId, CUSTOM_DATA_TYPE_PROPERTY, "CarlaColor"
+        )
+        if newColor:
+            try:
+                parsed_color = tuple(int(i) for i in newColor.split(";",3))
+                if parsed_color != pitem.fOptions.get('color'):
+                    pitem.fOptions['color'] = parsed_color
+                    needsRecreate = True
+            except Exception:
+                pass
+
+        if needsRecreate:
+            wasGuiShown = pitem.fWidget.b_gui.isChecked() if pitem.fWidget and pitem.fWidget.b_gui else False
+            pitem.recreateWidget2(isCompacted, wasGuiShown)
 
     # --------------------------------------------------------------------------------------------------------
     # MiniCanvas stuff
@@ -3702,8 +3729,11 @@ class HostWindow(QMainWindow):
         for pitem in self.fPluginList:
             if pitem is None:
                 break
-
-            pitem.getWidget().idleFast()
+                
+            widget = pitem.getWidget()
+            if widget is not None:
+                if hasattr(widget, 'idleFast'):
+                    widget.idleFast()
 
         for pluginId in self.fSelectedPlugins:
             self.fPeaksCleared = False
@@ -3742,7 +3772,10 @@ class HostWindow(QMainWindow):
             if pitem is None:
                 break
 
-            pitem.getWidget().idleSlow()
+            widget = pitem.getWidget()
+            if widget is not None:
+                if hasattr(widget, 'idleSlow'):
+                    widget.idleSlow()
 
     def timerEvent(self, event):
         if event.timerId() == self.fIdleTimerFast:

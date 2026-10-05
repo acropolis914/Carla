@@ -618,6 +618,7 @@ class CarlaObject():
         self.utils       = None     # Utils object
         self.debug_level = "info"   # "info", "warn", "critical"
         self.log_file    = None     # Log file path
+        self.autoload_lastsave = False # Autoload last saved project on startup without prompting
 
 gCarla = CarlaObject()
 
@@ -780,6 +781,9 @@ def handleInitialCommandLineArguments(file):
         elif arg == "--gdb":
             pass
 
+        elif arg in ("--autoload-lastsave", "--autoload-last-save", "-autoload-lastsave"):
+            gCarla.autoload_lastsave = True
+
         elif arg in ("-n", "--n", "-no-gui", "--no-gui", "-nogui", "--nogui"):
             gCarla.nogui = True
 
@@ -793,9 +797,10 @@ def handleInitialCommandLineArguments(file):
             print("")
             print(" and OPTION can be one or more of the following:")
             print("")
-            print("    --cnprefix     \t Set a prefix for client names in multi-client mode.")
-            print("    --debug [level]\t Set debug level: info, warn, critical.")
-            print("    --log [path]   \t Log output to file (defaults to carla.log).")
+            print("    --cnprefix          \t Set a prefix for client names in multi-client mode.")
+            print("    --debug [level]     \t Set debug level: info, warn, critical.")
+            print("    --log [path]        \t Log output to file (defaults to carla.log).")
+            print("    --autoload-lastsave \t Autoload most recent saved project without prompting.")
             if isinstance(gCarla.nogui, bool):
                 if X_LIBDIR_X is not None:
                     print("    --gdb          \t Run Carla inside gdb.")
@@ -856,9 +861,7 @@ def getInitialProjectFile(skipExistCheck = False):
         if arg == "--cnprefix":
             readPrefixNext = True
             continue
-        if arg in ("-n", "--n", "-no-gui", "--no-gui", "-nogui", "--nogui", "--gdb"):
-            continue
-        if CARLA_OS_MAC and arg.startswith("-psn_"):
+        if arg.startswith("-"):
             continue
         arg = os.path.expanduser(arg)
         if skipExistCheck or os.path.exists(arg):

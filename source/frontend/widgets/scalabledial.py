@@ -158,11 +158,39 @@ class ScalableDial(CommonDial):
 
             source = QRectF(xpos, ypos, self.fImageBaseSize, self.fImageBaseSize)
 
-            if isinstance(self.fImage, QPixmap):
-                target = QRectF(0.0, 0.0, self.fImageBaseSize, self.fImageBaseSize)
-                painter.drawPixmap(target, self.fImage, source)
+            if self.fCustomPaintMode == self.CUSTOM_PAINT_MODE_FLAT:
+                # Draw flat background circle
+                bg_color = QColor("#D0D0D0" if self.fHoverStep == 0 else "#C0C0C0")
+                painter.setBrush(bg_color)
+                painter.setPen(Qt.NoPen)
+                painter.drawEllipse(QRectF(3.0, 3.0, 24.0, 24.0))
+
+                # Draw indicator
+                color = self.fCustomPaintColor.lighter(100 + self.fHoverStep*6)
+                painter.setPen(QPen(color, 2.5, Qt.SolidLine, Qt.RoundCap))
+                
+                startAngle = 218 * 16
+                spanAngle  = -255 * 16 * normValue
+                painter.drawArc(QRectF(7.0, 7.0, 16.0, 16.0), int(startAngle), int(spanAngle))
+
+                # draw ball point
+                ballRect = QRectF(7.0, 7.0, 16.0, 16.0)
+                ballPath = QPainterPath()
+                ballPath.addEllipse(ballRect)
+                tmpValue  = (0.375 + 0.75*normValue)
+                ballValue = tmpValue - floor(tmpValue)
+                ballPoint = ballPath.pointAtPercent(ballValue)
+                
+                painter.setBrush(color)
+                painter.setPen(Qt.NoPen)
+                painter.drawEllipse(QRectF(ballPoint.x()-1.5, ballPoint.y()-1.5, 3.0, 3.0))
+
             else:
-                self.fImage.renderer().render(painter, source)
+                if isinstance(self.fImage, QPixmap):
+                    target = QRectF(0.0, 0.0, self.fImageBaseSize, self.fImageBaseSize)
+                    painter.drawPixmap(target, self.fImage, source)
+                else:
+                    self.fImage.renderer().render(painter, source)
 
             # Custom knobs (Dry/Wet and Volume)
             if self.fCustomPaintMode in (self.CUSTOM_PAINT_MODE_CARLA_WET, self.CUSTOM_PAINT_MODE_CARLA_VOL):

@@ -17,10 +17,11 @@ This is an enhanced fork of [Carla](https://github.com/falkTX/Carla) by [falkTX]
 * **Persistent Canvas Node Positioning**:
   * Node layout and split coordinates are automatically preserved and saved directly within `.carxp` project files.
   * Positions seamlessly restore when loading projects.
-* **Recent Projects in File Menu**:
+* **Recent Projects & Autoloading**:
   * Quick access to recently opened and saved projects directly from the `File` menu.
   * Filenames displayed cleanly with full paths accessible via tooltip and status bar.
   * Startup prompt to resume the most recent project if none is loaded.
+  * CLI flag `--autoload-lastsave` to instantly restore the last saved project on startup without asking.
 * **Modernized Patch Canvas Aesthetics**:
   * Blender-inspired socket aesthetics, rounded node containers, and refined port colors.
   * Improved node properties, auto-arrange centering, and text eliding for clean layouts.
@@ -28,9 +29,10 @@ This is an enhanced fork of [Carla](https://github.com/falkTX/Carla) by [falkTX]
 * **Pianoroll & Theme Refinements**:
   * Enhanced pianoroll styling, improved piano keyboard bitmaps, and data-driven theme configurations.
   * CLI debug/logging flags (`--debug-ui`, etc.) for frontend diagnostics.
-* **Arch Linux / Pacman Integration**:
+* **Arch Linux / Pacman Integration & Installation**:
   * Bundled [`PKGBUILD`](PKGBUILD) package (`carla-improved`) targeting Qt6 for clean package management.
   * Helper `build.sh` script for rapid local builds and testing.
+  * See [`installation.md`](installation.md) for full AUR / makepkg and build-from-source guides.
 
 ---
 
