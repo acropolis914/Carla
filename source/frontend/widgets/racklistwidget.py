@@ -366,6 +366,38 @@ class RackListWidget(QListWidget):
 
         QListWidget.mousePressEvent(self, event)
 
+    def keyPressEvent(self, event):
+        items = self.selectedItems()
+        if not items:
+            QListWidget.keyPressEvent(self, event)
+            return
+
+        item = items[0]
+        pluginId = item.getPluginId()
+
+        if event.key() == Qt.Key_Delete:
+            msg = QMessageBox(self)
+            msg.setIcon(QMessageBox.Question)
+            msg.setWindowTitle("Remove Plugin")
+            msg.setText("Are you sure you want to remove the selected plugin?")
+            msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+            if msg.exec_() == QMessageBox.Yes:
+                gCarla.gui.removePlugin(pluginId)
+            event.accept()
+            return
+
+        if event.modifiers() & Qt.ControlModifier:
+            if event.key() == Qt.Key_Up:
+                gCarla.gui.switchPlugins(pluginId, pluginId - 1)
+                event.accept()
+                return
+            elif event.key() == Qt.Key_Down:
+                gCarla.gui.switchPlugins(pluginId, pluginId + 1)
+                event.accept()
+                return
+
+        QListWidget.keyPressEvent(self, event)
+
     def changeEvent(self, event):
         if event.type() in (QEvent.StyleChange, QEvent.PaletteChange):
             self._updateStyle()

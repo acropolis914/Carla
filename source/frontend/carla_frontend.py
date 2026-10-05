@@ -99,6 +99,9 @@ class CarlaFrontendLib():
         self.lib.carla_frontend_execPluginListDialog.argtypes = (c_void_p,)
         self.lib.carla_frontend_execPluginListDialog.restype = POINTER(PluginListDialogResults)
 
+        self.lib.carla_frontend_get_cached_plugins_csv.argtypes = (c_void_p,)
+        self.lib.carla_frontend_get_cached_plugins_csv.restype = c_char_p
+
     # --------------------------------------------------------------------------------------------------------
 
     def createAndExecAboutDialog(self, parent, hostHandle, isControl, isPlugin):
@@ -130,5 +133,10 @@ class CarlaFrontendLib():
 
     def execPluginListDialog(self, dialog):
         return structToDictOrNull(self.lib.carla_frontend_execPluginListDialog(dialog))
+
+    def getCachedPluginsCsv(self, dialog):
+        res = self.lib.carla_frontend_get_cached_plugins_csv(dialog)
+        return res.decode('utf-8') if res else ""
+
 
 # ------------------------------------------------------------------------------------------------------------

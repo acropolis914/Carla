@@ -619,6 +619,7 @@ class CarlaObject():
         self.debug_level = "info"   # "info", "warn", "critical"
         self.log_file    = None     # Log file path
         self.autoload_lastsave = False # Autoload last saved project on startup without prompting
+        self.hidden = False # Start minimized/hidden to system tray
 
 gCarla = CarlaObject()
 
@@ -781,8 +782,11 @@ def handleInitialCommandLineArguments(file):
         elif arg == "--gdb":
             pass
 
-        elif arg in ("--autoload-lastsave", "--autoload-last-save", "-autoload-lastsave"):
+        elif arg in ("--autoload-lastsave", "--autoload-last-save", "-autoload-lastsave", "--load-autosave", "-load-autosave"):
             gCarla.autoload_lastsave = True
+
+        elif arg in ("--hidden", "-hidden", "--start-hidden"):
+            gCarla.hidden = True
 
         elif arg in ("-n", "--n", "-no-gui", "--no-gui", "-nogui", "--nogui"):
             gCarla.nogui = True

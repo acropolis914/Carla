@@ -18,6 +18,42 @@
 
 #include "extra/ScopedPointer.hpp"
 
+#if !defined(CARLA_OS_WIN) && !defined(BUILD_BRIDGE)
+# include <sys/wait.h>
+# include <unistd.h>
+# include <signal.h>
+# define DISCOVERY_TEST_START(doInit, pluginName) \
+    pid_t __test_pid = -1; \
+    if (doInit) { \
+        __test_pid = fork(); \
+        if (__test_pid > 0) { \
+            int status = 0; \
+            for (int __i = 0; __i < 3000; ++__i) { /* 30s timeout */ \
+                pid_t res = waitpid(__test_pid, &status, WNOHANG); \
+                if (res == __test_pid) { __test_pid = 0; break; } \
+                if (res == -1 && errno != EINTR) { __test_pid = 0; break; } \
+                d_msleep(10); \
+            } \
+            if (__test_pid > 0) { \
+                kill(__test_pid, SIGKILL); \
+                waitpid(__test_pid, &status, 0); \
+                std::stringstream __msg; \
+                __msg << "Plugin probe timed out: " << (pluginName); \
+                DISCOVERY_OUT("warning", __msg.str().c_str()); \
+            } \
+            continue; \
+        } \
+    } \
+    do {
+
+# define DISCOVERY_TEST_END(doInit) \
+    } while (0); \
+    if (doInit && __test_pid == 0) _exit(0);
+#else
+# define DISCOVERY_TEST_START(doInit, pluginName) {
+# define DISCOVERY_TEST_END(doInit) }
+#endif
+
 #ifndef BUILDING_CARLA_FOR_WINE
 # include "CarlaPipeUtils.cpp"
 #endif
@@ -302,6 +338,7 @@ static void do_ladspa_check(lib_t& libHandle, const char* const filename, const 
 
     while ((descriptor = descFn(i++)) != nullptr)
     {
+        DISCOVERY_TEST_START(doInit, descriptor->Name)
         if (descriptor->instantiate == nullptr)
         {
             DISCOVERY_OUT("error", "Plugin '" << descriptor->Name << "' has no instantiate()");
@@ -479,6 +516,7 @@ static void do_ladspa_check(lib_t& libHandle, const char* const filename, const 
         DISCOVERY_OUT("parameters.ins", parametersIns);
         DISCOVERY_OUT("parameters.outs", parametersOuts);
         DISCOVERY_OUT("end", "------------");
+        DISCOVERY_TEST_END(doInit)
     }
 }
 
@@ -549,6 +587,7 @@ static void do_dssi_check(lib_t& libHandle, const char* const filename, const bo
 
     while ((descriptor = descFn(i++)) != nullptr)
     {
+        DISCOVERY_TEST_START(doInit, descriptor->LADSPA_Plugin ? descriptor->LADSPA_Plugin->Name : "DSSI Plugin")
         const LADSPA_Descriptor* const ldescriptor = descriptor->LADSPA_Plugin;
 
         if (ldescriptor == nullptr)
@@ -787,6 +826,7 @@ static void do_dssi_check(lib_t& libHandle, const char* const filename, const bo
         DISCOVERY_OUT("parameters.ins", parametersIns);
         DISCOVERY_OUT("parameters.outs", parametersOuts);
         DISCOVERY_OUT("end", "------------");
+        DISCOVERY_TEST_END(doInit)
     }
 }
 
@@ -832,6 +872,7 @@ static void do_lv2_check(const char* const bundle, const bool doInit)
     // Get & check every plugin-instance
     for (CarlaStringList::Itenerator it=URIs.begin2(); it.valid(); it.next())
     {
+        DISCOVERY_TEST_START(doInit, it.getValue(nullptr))
         const char* const URI = it.getValue(nullptr);
         CARLA_SAFE_ASSERT_CONTINUE(URI != nullptr);
 
@@ -876,6 +917,7 @@ static void do_lv2_check(const char* const bundle, const bool doInit)
         CARLA_SAFE_ASSERT_CONTINUE(lilvPlugin.get_uri().is_uri());
 
         print_cached_plugin(get_cached_plugin_lv2(lv2World, lilvPlugin));
+        DISCOVERY_TEST_END(doInit)
     }
 }
 #endif // ! BUILD_BRIDGE
@@ -1671,8 +1713,6 @@ static bool do_vst3_check(lib_t& libHandle, const char* const filename, const bo
     // go through all relevant classes
     for (int32_t i=0; i<numClasses; ++i)
     {
-        v3_result res;
-
         // v3_class_info_2 is ABI compatible with v3_class_info
         union {
             v3_class_info v1;
@@ -1683,6 +1723,9 @@ static bool do_vst3_check(lib_t& libHandle, const char* const filename, const bo
             v3_cpp_obj(factory2)->get_class_info_2(factory2, i, &classInfo.v2);
         else
             v3_cpp_obj(factory1)->get_class_info(factory1, i, &classInfo.v1);
+
+        DISCOVERY_TEST_START(doInit, classInfo.v1.name)
+        v3_result res;
 
         // safety check
         CARLA_SAFE_ASSERT_CONTINUE(classInfo.v1.cardinality == 0x7FFFFFFF);
@@ -2007,6 +2050,7 @@ static bool do_vst3_check(lib_t& libHandle, const char* const filename, const bo
         DISCOVERY_OUT("parameters.ins", parameterIns);
         DISCOVERY_OUT("parameters.outs", parameterOuts);
         DISCOVERY_OUT("end", "------------");
+        DISCOVERY_TEST_END(doInit)
     }
 
     // unref interfaces
@@ -2522,6 +2566,8 @@ static bool do_clap_check(lib_t& libHandle, const char* const filename, const bo
         {
             const clap_plugin_descriptor_t* const desc = factory->get_plugin_descriptor(factory, i);
             CARLA_SAFE_ASSERT_CONTINUE(desc != nullptr);
+            
+            DISCOVERY_TEST_START(doInit, desc->name)
 
             const clap_plugin_t* const plugin = factory->create_plugin(factory, &host, desc->id);
             CARLA_SAFE_ASSERT_CONTINUE(plugin != nullptr);
@@ -2673,6 +2719,7 @@ static bool do_clap_check(lib_t& libHandle, const char* const filename, const bo
             DISCOVERY_OUT("parameters.ins", parametersIns);
             DISCOVERY_OUT("parameters.outs", parametersOuts);
             DISCOVERY_OUT("end", "------------");
+        DISCOVERY_TEST_END(doInit)
         }
     }
 

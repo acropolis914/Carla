@@ -126,48 +126,114 @@ class DraggableGraphicsView(QGraphicsView):
     # -----------------------------------------------------------------------------------------------------------------
 
     def mousePressEvent(self, event):
-        if event.button() == Qt.MiddleButton and not (event.modifiers() & Qt.ControlModifier):
-            buttons  = event.buttons()
-            buttons &= ~Qt.MiddleButton
-            buttons |= Qt.LeftButton
-            timestamp = event.timestamp()
-            self.fPanning = True
+        item = self.itemAt(event.pos() if hasattr(event, "pos") else event.position().toPoint())
+        
+        if event.button() == Qt.LeftButton and not item:
+            self.fLeftPanning = True
             self.setDragMode(QGraphicsView.ScrollHandDrag)
-        else:
-            timestamp = None
-
-        QGraphicsView.mousePressEvent(self, event)
-
-        if timestamp is None:
+            QGraphicsView.mousePressEvent(self, event)
             return
 
-        if qt_config == 5:
-            event = QMouseEvent(QEvent.MouseButtonPress,
-                                event.localPos(), event.windowPos(), event.screenPos(),
-                                Qt.LeftButton, Qt.LeftButton,
-                                Qt.NoModifier,
-                                Qt.MouseEventSynthesizedByApplication)
-            event.setTimestamp(timestamp)
-        else:
-            event = QMouseEvent(QEvent.MouseButtonPress,
-                                event.position(), event.scenePosition(), event.globalPosition(),
-                                Qt.LeftButton, Qt.LeftButton,
-                                Qt.NoModifier)
+        if event.button() == Qt.RightButton and not item:
+            self.fRightSelecting = True
+            self.setDragMode(QGraphicsView.RubberBandDrag)
+            
+            if qt_config == 5:
+                synth_event = QMouseEvent(QEvent.MouseButtonPress,
+                                    event.localPos(), event.windowPos(), event.screenPos(),
+                                    Qt.LeftButton, Qt.LeftButton,
+                                    Qt.NoModifier,
+                                    Qt.MouseEventSynthesizedByApplication)
+                synth_event.setTimestamp(event.timestamp())
+            else:
+                synth_event = QMouseEvent(QEvent.MouseButtonPress,
+                                    event.position(), event.scenePosition(), event.globalPosition(),
+                                    Qt.LeftButton, Qt.LeftButton,
+                                    Qt.NoModifier)
+            QGraphicsView.mousePressEvent(self, synth_event)
+            return
 
         QGraphicsView.mousePressEvent(self, event)
 
-    def mouseReleaseEvent(self, event):
-        QGraphicsView.mouseReleaseEvent(self, event)
+    def mouseMoveEvent(self, event):
+        if getattr(self, "fRightSelecting", False):
+            buttons = event.buttons()
+            if buttons & Qt.RightButton:
+                buttons &= ~Qt.RightButton
+                buttons |= Qt.LeftButton
+                if qt_config == 5:
+                    synth_event = QMouseEvent(QEvent.MouseMove,
+                                        event.localPos(), event.windowPos(), event.screenPos(),
+                                        Qt.LeftButton, buttons,
+                                        Qt.NoModifier,
+                                        Qt.MouseEventSynthesizedByApplication)
+                    synth_event.setTimestamp(event.timestamp())
+                else:
+                    synth_event = QMouseEvent(QEvent.MouseMove,
+                                        event.position(), event.scenePosition(), event.globalPosition(),
+                                        Qt.LeftButton, buttons,
+                                        Qt.NoModifier)
+                QGraphicsView.mouseMoveEvent(self, synth_event)
+                return
 
-        if event.button() == Qt.MiddleButton and self.fPanning:
-            self.fPanning = False
+        QGraphicsView.mouseMoveEvent(self, event)
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.LeftButton and getattr(self, "fLeftPanning", False):
+            self.fLeftPanning = False
             self.setDragMode(QGraphicsView.NoDrag)
             self.setCursor(QCursor(Qt.ArrowCursor))
+            QGraphicsView.mouseReleaseEvent(self, event)
+            return
+
+        if event.button() == Qt.RightButton and getattr(self, "fRightSelecting", False):
+            self.fRightSelecting = False
+            self.setDragMode(QGraphicsView.NoDrag)
+            self.setCursor(QCursor(Qt.ArrowCursor))
+            if qt_config == 5:
+                synth_event = QMouseEvent(QEvent.MouseButtonRelease,
+                                    event.localPos(), event.windowPos(), event.screenPos(),
+                                    Qt.LeftButton, Qt.NoButton,
+                                    Qt.NoModifier,
+                                    Qt.MouseEventSynthesizedByApplication)
+                synth_event.setTimestamp(event.timestamp())
+            else:
+                synth_event = QMouseEvent(QEvent.MouseButtonRelease,
+                                    event.position(), event.scenePosition(), event.globalPosition(),
+                                    Qt.LeftButton, Qt.NoButton,
+                                    Qt.NoModifier)
+            QGraphicsView.mouseReleaseEvent(self, synth_event)
+            return
+
+        QGraphicsView.mouseReleaseEvent(self, event)
 
     def wheelEvent(self, event):
         if event.buttons() & Qt.MiddleButton:
             event.ignore()
             return
+            
+        # Standard: Ctrl+Scroll -> Zoom
+        if event.modifiers() & Qt.ControlModifier:
+            delta = event.angleDelta().y() if hasattr(event, "angleDelta") else event.delta()
+            zoom_factor = 1.15 if delta > 0 else 1.0 / 1.15
+            self.scale(zoom_factor, zoom_factor)
+            event.accept()
+            return
+            
+        # Standard: Shift+Scroll -> Horizontal Pan
+        if event.modifiers() & Qt.ShiftModifier:
+            delta = event.angleDelta().y() if hasattr(event, "angleDelta") else event.delta()
+            # If the user is actually using a trackpad that sends X delta natively:
+            if hasattr(event, "angleDelta") and event.angleDelta().x() != 0:
+                delta = event.angleDelta().x()
+                
+            sb = self.horizontalScrollBar()
+            if sb:
+                # Invert delta so scrolling down moves right, up moves left (standard)
+                sb.setValue(sb.value() - delta)
+            event.accept()
+            return
+
         QGraphicsView.wheelEvent(self, event)
 
     # -----------------------------------------------------------------------------------------------------------------

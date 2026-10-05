@@ -32,6 +32,7 @@ elif qt_config == 6:
         QMessageBox,
         QSizePolicy,
         QStyle,
+        QSystemTrayIcon,
     )
 
     Qt.AlignCenter = Qt.AlignmentFlag.AlignCenter
@@ -88,6 +89,10 @@ elif qt_config == 6:
     Qt.Key_Comma = Qt.Key.Key_Comma
     Qt.Key_D = Qt.Key.Key_D
     Qt.Key_Delete = Qt.Key.Key_Delete
+    Qt.Key_Up = Qt.Key.Key_Up
+    Qt.Key_Down = Qt.Key.Key_Down
+    Qt.Key_Left = Qt.Key.Key_Left
+    Qt.Key_Right = Qt.Key.Key_Right
     Qt.Key_E = Qt.Key.Key_E
     Qt.Key_Eacute = Qt.Key.Key_Eacute
     Qt.Key_Egrave = Qt.Key.Key_Egrave
@@ -203,6 +208,12 @@ elif qt_config == 6:
     QEvent.PaletteChange = QEvent.Type.PaletteChange
     QEvent.StyleChange = QEvent.Type.StyleChange
     QEvent.User = QEvent.Type.User
+    QEvent.WindowStateChange = QEvent.Type.WindowStateChange
+
+    QSystemTrayIcon.Trigger = QSystemTrayIcon.ActivationReason.Trigger
+    QSystemTrayIcon.DoubleClick = QSystemTrayIcon.ActivationReason.DoubleClick
+    QSystemTrayIcon.MiddleClick = QSystemTrayIcon.ActivationReason.MiddleClick
+    QSystemTrayIcon.Context = QSystemTrayIcon.ActivationReason.Context
 
     QEventLoop.ExcludeUserInputEvents = QEventLoop.ProcessEventsFlag.ExcludeUserInputEvents
 
@@ -251,8 +262,10 @@ elif qt_config == 6:
     QMessageBox.exec_ = lambda mb: mb.exec()
 
     QMessageBox.Cancel = QMessageBox.StandardButton.Cancel
+    QMessageBox.Discard = QMessageBox.StandardButton.Discard
     QMessageBox.No = QMessageBox.StandardButton.No
     QMessageBox.Ok = QMessageBox.StandardButton.Ok
+    QMessageBox.Save = QMessageBox.StandardButton.Save
     QMessageBox.Yes = QMessageBox.StandardButton.Yes
 
     QMessageBox.Critical = QMessageBox.Icon.Critical

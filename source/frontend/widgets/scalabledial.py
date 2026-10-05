@@ -62,8 +62,9 @@ class ScalableDial(CommonDial):
             self.fImageBaseSize    = self.fImageWidth
             self.fImageLayersCount = self.fImageHeight / self.fImageWidth
 
-        self.setMinimumSize(self.fImageBaseSize, self.fImageBaseSize + self.fLabelHeight + 5)
-        self.setMaximumSize(self.fImageBaseSize, self.fImageBaseSize + self.fLabelHeight + 5)
+        dialWidth = max(self.fImageBaseSize, self.fLabelWidth + 8)
+        self.setMinimumSize(dialWidth, self.fImageBaseSize + self.fLabelHeight + 5)
+        self.setMaximumSize(dialWidth, self.fImageBaseSize + self.fLabelHeight + 5)
 
         if not self.fLabel:
             self.fLabelHeight = 0
@@ -145,6 +146,10 @@ class ScalableDial(CommonDial):
             self.slot_updateImage()
 
     def paintDial(self, painter):
+        painter.save()
+        xOffset = max(0.0, float(self.width() - self.fImageBaseSize) / 2.0)
+        painter.translate(xOffset, 0.0)
+
         if self.isEnabled():
             normValue = float(self.fRealValue - self.fMinimum) / float(self.fMaximum - self.fMinimum)
             curLayer = int((self.fImageLayersCount - 1) * normValue)
@@ -304,6 +309,7 @@ class ScalableDial(CommonDial):
 
             # Custom knobs
             else:
+                painter.restore()
                 return
 
             if self.HOVER_MIN < self.fHoverStep < self.HOVER_MAX:
@@ -316,5 +322,7 @@ class ScalableDial(CommonDial):
                 painter.drawPixmap(target, self.fImage, target)
             else:
                 self.fImage.renderer().render(painter, target)
+
+        painter.restore()
 
 # ---------------------------------------------------------------------------------------------------------------------

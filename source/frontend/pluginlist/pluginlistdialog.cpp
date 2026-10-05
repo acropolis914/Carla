@@ -773,24 +773,33 @@ struct PluginListDialog::PrivateData {
 
         bool add(const PluginInfo& pinfo)
         {
+            auto checkDup = [&pinfo](const std::vector<PluginInfo>& vec) {
+                for (const auto& existing : vec) {
+                    if (existing.filename == pinfo.filename && existing.uniqueId == pinfo.uniqueId && existing.name == pinfo.name) {
+                        return true;
+                    }
+                }
+                return false;
+            };
+
             switch (pinfo.type)
             {
            #ifndef CARLA_FRONTEND_ONLY_EMBEDDABLE_PLUGINS
-            case PLUGIN_INTERNAL: internal.push_back(pinfo); return true;
-            case PLUGIN_LADSPA:   ladspa.push_back(pinfo);   return true;
-            case PLUGIN_DSSI:     dssi.push_back(pinfo);     return true;
+            case PLUGIN_INTERNAL: if (!checkDup(internal)) internal.push_back(pinfo); return true;
+            case PLUGIN_LADSPA:   if (!checkDup(ladspa)) ladspa.push_back(pinfo);   return true;
+            case PLUGIN_DSSI:     if (!checkDup(dssi)) dssi.push_back(pinfo);     return true;
            #endif
-            case PLUGIN_LV2:      lv2.push_back(pinfo);      return true;
-            case PLUGIN_VST2:     vst2.push_back(pinfo);     return true;
-            case PLUGIN_VST3:     vst3.push_back(pinfo);     return true;
-            case PLUGIN_CLAP:     clap.push_back(pinfo);     return true;
+            case PLUGIN_LV2:      if (!checkDup(lv2)) lv2.push_back(pinfo);      return true;
+            case PLUGIN_VST2:     if (!checkDup(vst2)) vst2.push_back(pinfo);     return true;
+            case PLUGIN_VST3:     if (!checkDup(vst3)) vst3.push_back(pinfo);     return true;
+            case PLUGIN_CLAP:     if (!checkDup(clap)) clap.push_back(pinfo);     return true;
            #ifdef CARLA_OS_MAC
-            case PLUGIN_AU:       au.push_back(pinfo);       return true;
+            case PLUGIN_AU:       if (!checkDup(au)) au.push_back(pinfo);       return true;
            #endif
            #ifndef CARLA_FRONTEND_ONLY_EMBEDDABLE_PLUGINS
-            case PLUGIN_JSFX:     jsfx.push_back(pinfo);     return true;
+            case PLUGIN_JSFX:     if (!checkDup(jsfx)) jsfx.push_back(pinfo);     return true;
             case PLUGIN_SF2:
-            case PLUGIN_SFZ:      kits.push_back(pinfo);     return true;
+            case PLUGIN_SFZ:      if (!checkDup(kits)) kits.push_back(pinfo);     return true;
            #endif
             default: return false;
             }
@@ -1162,9 +1171,9 @@ void PluginListDialog::showEvent(QShowEvent* const event)
         QObject::connect(p->discovery.dialog, &QDialog::finished,
                          this, &PluginListDialog::refreshPluginsStop);
 
-        p->timerId = startTimer(0);
+        addPluginsToTable(); // Show instantly from cache
+        p->timerId = startTimer(0); // Start background scan silently without exec()
 
-        QTimer::singleShot(0, p->discovery.dialog, &QDialog::exec);
     }
 }
 
@@ -1550,7 +1559,12 @@ void PluginListDialog::loadSettings()
         if (data.isEmpty())
             p->plugins.cache.insert(key.sliced(12), {});
         else
-            p->plugins.cache.insert(key.sliced(12), asPluginInfoList(data));
+        {
+            QList<PluginInfo> plist = asPluginInfoList(data);
+            p->plugins.cache.insert(key.sliced(12), plist);
+            for (const PluginInfo& info : plist)
+                p->plugins.add(info);
+        }
     }
 
    #ifdef CARLA_FRONTEND_ONLY_EMBEDDABLE_PLUGINS
@@ -2065,3 +2079,49 @@ void PluginListDialog::saveSettings()
 }
 
 // --------------------------------------------------------------------------------------------------------------------
+
+
+void PluginListDialog::appendToCSV(QByteArray& ret) const
+{
+    auto appendVec = [&](const std::vector<PluginInfo>& vec) {
+        for (const PluginInfo& info : vec)
+        {
+            ret.append((QString::number(info.build) + "|").toUtf8());
+            ret.append((QString::number(info.type) + "|").toUtf8());
+            ret.append((QString::number(info.hints) + "|").toUtf8());
+            ret.append((info.category + "|").toUtf8());
+            ret.append((info.filename + "|").toUtf8());
+            ret.append((info.name + "|").toUtf8());
+            ret.append((info.label + "|").toUtf8());
+            ret.append((info.maker + "|").toUtf8());
+            ret.append((QString::number(info.uniqueId) + "\n").toUtf8());
+        }
+    };
+
+#ifndef CARLA_FRONTEND_ONLY_EMBEDDABLE_PLUGINS
+    appendVec(p->plugins.internal);
+    appendVec(p->plugins.ladspa);
+    appendVec(p->plugins.dssi);
+#endif
+    appendVec(p->plugins.lv2);
+    appendVec(p->plugins.vst2);
+    appendVec(p->plugins.vst3);
+    appendVec(p->plugins.clap);
+#ifdef CARLA_OS_MAC
+    appendVec(p->plugins.au);
+#endif
+#ifndef CARLA_FRONTEND_ONLY_EMBEDDABLE_PLUGINS
+    appendVec(p->plugins.jsfx);
+    appendVec(p->plugins.kits);
+#endif
+}
+
+extern "C" CARLA_PLUGIN_EXPORT const char* carla_frontend_get_cached_plugins_csv(PluginListDialog* dialog)
+{
+    static QByteArray ret;
+    ret.clear();
+    if (!dialog) return nullptr;
+
+    dialog->appendToCSV(ret);
+    return ret.constData();
+}

@@ -170,7 +170,8 @@ class CommonDial(QDial):
             val_str = val_str[:-3]
         elif val_str[-1] == '0':
             val_str = val_str[:-1]
-        self.setToolTip(f"{self.fLabel} ({val_str})")
+        name = getattr(self, "fFullLabel", "") or self.fLabel
+        self.setToolTip(f"{name} ({val_str})")
         self.update()
 
     def setCustomPaintMode(self, paintMode):
@@ -187,12 +188,15 @@ class CommonDial(QDial):
         self.fCustomPaintColor = color
         self.update()
 
-    def setLabel(self, label):
+    def setLabel(self, label, fullLabel=""):
+        self.fFullLabel = fullLabel or label
         if self.fLabel == label:
+            self._updateTooltip()
             return
 
         self.fLabel = label
         self.updateSizes()
+        self._updateTooltip()
         self.update()
 
     @pyqtSlot(int)

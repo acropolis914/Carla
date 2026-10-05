@@ -73,6 +73,10 @@ class PluginListDialog : public QDialog
 
     struct PrivateData;
     PrivateData *const p;
+public:
+    void appendToCSV(QByteArray& ret) const;
+
+
 
     Ui_PluginListDialog ui;
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-FileCopyrightText: 2011-2024 Filipe Coelho <falktx@falktx.com>
+# SPDX-FileCopyrightText: 2011-2025 Filipe Coelho <falktx@falktx.com>
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 # ------------------------------------------------------------------------------------------------------------
@@ -10,11 +10,11 @@ from qt_compat import qt_config
 if qt_config == 5:
     from PyQt5.QtCore import Qt, QRectF, QLineF, QTimer
     from PyQt5.QtGui import QColor, QFont, QFontDatabase, QPainter, QPainterPath, QPen
-    from PyQt5.QtWidgets import QColorDialog, QFrame, QLineEdit, QPushButton, QSlider, QDoubleSpinBox, QVBoxLayout, QHBoxLayout, QScrollArea, QAbstractSpinBox, QLabel, QWidget
+    from PyQt5.QtWidgets import QColorDialog, QFrame, QLineEdit, QPushButton, QSlider, QDoubleSpinBox, QVBoxLayout, QHBoxLayout, QScrollArea, QAbstractSpinBox, QLabel, QWidget, QMenu, QMessageBox, QInputDialog
 elif qt_config == 6:
     from PyQt6.QtCore import Qt, QRectF, QLineF, QTimer
     from PyQt6.QtGui import QColor, QFont, QFontDatabase, QPainter, QPainterPath, QPen
-    from PyQt6.QtWidgets import QColorDialog, QFrame, QLineEdit, QPushButton, QSlider, QDoubleSpinBox, QVBoxLayout, QHBoxLayout, QScrollArea, QAbstractSpinBox, QLabel, QWidget
+    from PyQt6.QtWidgets import QColorDialog, QFrame, QLineEdit, QPushButton, QSlider, QDoubleSpinBox, QVBoxLayout, QHBoxLayout, QScrollArea, QAbstractSpinBox, QLabel, QWidget, QMenu, QMessageBox, QInputDialog
 
 # ------------------------------------------------------------------------------------------------------------
 # Imports (Custom)
@@ -25,6 +25,7 @@ import ui_carla_plugin_compact
 import ui_carla_plugin_default
 import ui_carla_plugin_presets
 
+from widgets.scalablebutton import ScalableButton
 from carla_backend import *
 from carla_shared import *
 from carla_widgets import *
@@ -50,9 +51,9 @@ from widgets.scalabledial import ScalableDial
 #  T O P  A R E A
 #
 #  -----------------------------------------------------------------
-# |         <> | <>                            [ WIDGETS ] [ LEDS ] |
+# |          <> | <>                            [ WIDGETS ] [ LEDS ] |
 # | BUTTONS <> | <> PLUGIN NAME   < spacer >   [ WIDGETS ] [ LEDS ] |
-# |         <> | <>                            [ WIDGETS ] [ LEDS ] |
+# |          <> | <>                            [ WIDGETS ] [ LEDS ] |
 #  -----------------------------------------------------------------
 #
 # Buttons area has size fixed. (TBA)
@@ -115,12 +116,9 @@ def getParameterShortName(paramName):
         if (name1[-1].islower() and name2[0].isupper()) or name2.isdigit():
             paramName = paramName.replace(" ", "", 1)
 
-    # cut stuff if too big
-    if len(paramName) > 7:
-        paramName = paramName.replace("a","").replace("e","").replace("i","").replace("o","").replace("u","")
-
-        if len(paramName) > 7:
-            paramName = paramName[:7]
+    # Keep names readable without dropping vowels
+    if len(paramName) > 10:
+        paramName = paramName[:10]
 
     return paramName.strip()
 
@@ -173,15 +171,15 @@ def setScalableDialStyle(widget, parameterId, parameterCount, whiteLabels, skinS
     elif skinStyle.startswith("minimal"):
         # Monochromatic flat knob arc
         is_dark = (skinStyle == "minimal-dark")
-        
+
         if is_dark:
             color = QColor("#888888")
         else:
             color = QColor("#666666")
-            
+
         widget.setCustomPaintColor(color)
         widget.setCustomPaintMode(ScalableDial.CUSTOM_PAINT_MODE_FLAT)
-        
+
         # Dial labels
         if skinStyle == "minimal-dark":
             colorEnabled  = QColor("#DDDDDD")
@@ -191,6 +189,7 @@ def setScalableDialStyle(widget, parameterId, parameterCount, whiteLabels, skinS
             colorDisabled = QColor("#888888")
 
         widget.setLabelColor(colorEnabled, colorDisabled)
+        widget.setImage(3)
 
     else:
         if parameterId == PARAMETER_DRYWET:
@@ -232,7 +231,13 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
         self.fPluginInfo = host.get_plugin_info(self.fPluginId)
         self.fSkinColor  = skinColor
         self.fSkinStyle  = skinStyle
-        self.fDarkStyle  = QColor(skinColor[0], skinColor[1], skinColor[2]).blackF() > 0.4
+
+        if skinStyle in ("minimal-light", "sliders-light"):
+            self.fDarkStyle = False
+        elif skinStyle in ("minimal-dark", "sliders-dark"):
+            self.fDarkStyle = True
+        else:
+            self.fDarkStyle = QColor(skinColor[0], skinColor[1], skinColor[2]).blackF() > 0.4
 
         # -------------------------------------------------------------
         # Internal stuff
@@ -374,18 +379,43 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
 
     # ------------------------------------------------------------------
 
+    def refreshState(self):
+        """Called when project loading completes or state updates to synchronize GUI state with engine values."""
+        self.fIsActive = bool(self.host.get_internal_parameter_value(self.fPluginId, PARAMETER_ACTIVE) >= 0.5)
+
+        if self.b_enable is not None:
+            self.b_enable.blockSignals(True)
+            self.b_enable.setChecked(self.fIsActive)
+            self.b_enable.blockSignals(False)
+
+        if self.label_name is not None:
+            self.label_name.setEnabled(self.fIsActive)
+
+        if self.b_gui is not None:
+            self.b_gui.setEnabled(bool(self.fPluginInfo['hints'] & PLUGIN_HAS_CUSTOM_UI))
+
+        self.updateParameterValues()
+
+        if not self.fAdjustViewableKnobCountScheduled:
+            self.fAdjustViewableKnobCountScheduled = True
+            QTimer.singleShot(50, self.adjustViewableKnobCount)
+
     def ready(self):
         self.fIsActive = bool(self.host.get_internal_parameter_value(self.fPluginId, PARAMETER_ACTIVE) >= 0.5)
 
         isCalfSkin  = self.fSkinStyle.startswith("calf") and not isinstance(self, PluginSlot_Compact)
-        imageSuffix = "white" if self.fDarkStyle else "black"
-        whiteLabels = self.fDarkStyle
 
-        if self.fSkinStyle.startswith("calf") or self.fSkinStyle.startswith("openav") or self.fSkinStyle in (
+        if self.fSkinStyle in ("minimal-light", "sliders-light"):
+            imageSuffix = "black"
+            whiteLabels = False
+        elif self.fSkinStyle in ("minimal-dark", "sliders-dark") or self.fSkinStyle.startswith("calf") or self.fSkinStyle.startswith("openav") or self.fSkinStyle in (
             "3bandeq", "3bandsplitter", "pingpongpan", "nekobi", "calf_black", "zynfx"):
 
             imageSuffix = "white"
             whiteLabels = True
+        else:
+            imageSuffix = "white" if self.fDarkStyle else "black"
+            whiteLabels = self.fDarkStyle
 
         if self.b_enable is not None:
             self.b_enable.setChecked(self.fIsActive)
@@ -622,7 +652,7 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
                 paramName = getParameterShortName(paramInfo['name'])
 
                 widget = ScalableDial(self, i)
-                widget.setLabel(paramName)
+                widget.setLabel(paramName, paramInfo['name'])
                 widget.setMinimum(paramRanges['min'])
                 widget.setMaximum(paramRanges['max'])
                 widget.hide()
@@ -662,7 +692,10 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
             paramWidget.dragStateChanged.connect(self.slot_parameterDragStateChanged)
             paramWidget.realValueChanged.connect(self.slot_parameterValueChanged)
             paramWidget.blockSignals(True)
-            paramWidget.setValue(self.host.get_internal_parameter_value(self.fPluginId, paramIndex))
+            if paramIndex < 0:
+                paramWidget.setValue(self.host.get_internal_parameter_value(self.fPluginId, paramIndex))
+            else:
+                paramWidget.setValue(self.host.get_current_parameter_value(self.fPluginId, paramIndex))
             paramWidget.blockSignals(False)
 
         # -------------------------------------------------------------
@@ -719,6 +752,11 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
         if active:
             self.fEditDialog.clearNotes()
             self.midiActivityChanged(False)
+
+        if self.b_enable is not None:
+            self.b_enable.blockSignals(True)
+            self.b_enable.setChecked(active)
+            self.b_enable.blockSignals(False)
 
         if self.label_name is not None:
             self.label_name.setEnabled(self.fIsActive)
@@ -870,6 +908,9 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
         self.b_enable.blockSignals(True)
         self.b_enable.setChecked(onOff)
         self.b_enable.blockSignals(False)
+
+        if self.label_name is not None:
+            self.label_name.setEnabled(onOff)
 
     def customUiStateChanged(self, state):
         if self.b_gui is None:
@@ -1053,11 +1094,11 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
 
     def updateParameterValues(self):
         for paramIndex, paramWidget in self.fParameterList:
-            if paramIndex < 0:
-                continue
-
             paramWidget.blockSignals(True)
-            paramWidget.setValue(self.host.get_current_parameter_value(self.fPluginId, paramIndex))
+            if paramIndex < 0:
+                paramWidget.setValue(self.host.get_internal_parameter_value(self.fPluginId, paramIndex))
+            else:
+                paramWidget.setValue(self.host.get_current_parameter_value(self.fPluginId, paramIndex))
             paramWidget.blockSignals(False)
 
     # -----------------------------------------------------------------
@@ -1075,7 +1116,33 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
 
         actCompact = menu.addAction(self.tr("Expand") if isinstance(self, PluginSlot_Compact) else self.tr("Minimize"))
         actColor   = menu.addAction(self.tr("Change Color..."))
-        actSkin    = menu.addAction(self.tr("Change Skin..."))
+        
+        menuSkin = menu.addMenu(self.tr("Skin"))
+        skinList = [
+            "default",
+            "classic",
+            "compact",
+            "calf",
+            "minimal-dark",
+            "minimal-light",
+            "sliders-dark",
+            "sliders-light",
+            "openav",
+            "zynfx",
+            "presets",
+            "mpresets",
+        ]
+        skinActions = {}
+        for s in skinList:
+            act = menuSkin.addAction(s)
+            act.setCheckable(True)
+            if s == self.fSkinStyle:
+                act.setChecked(True)
+                font = act.font()
+                font.setBold(True)
+                act.setFont(font)
+            skinActions[act] = s
+            
         actNextSkin = menu.addAction(self.tr(f"Next Skin ({self.fSkinStyle})"))
         menu.addSeparator()
 
@@ -1211,38 +1278,11 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
                 next_index = (index + 1) % len(skinList)
             except ValueError:
                 next_index = 0
-            
+
             gCarla.gui.changePluginSkin(self.fPluginId, skinList[next_index])
 
-        elif actSel == actSkin:
-            skinList = [
-                "minimal-dark",
-                "minimal-light",
-                "sliders-dark",
-                "sliders-light",
-                "default",
-                "3bandeq",
-                "rncbc",
-                "calf_black",
-                "calf_blue",
-                "classic",
-                "openav-old",
-                "openav",
-                "zynfx",
-                "presets",
-                "mpresets",
-            ]
-            try:
-                index = skinList.index(self.fSkinStyle)
-            except:
-                index = 0
-
-            skin = QInputDialog.getItem(self, self.tr("Change Skin"),
-                                              self.tr("Change Skin to:"),
-                                              skinList, index, False)
-            if not all(skin):
-                return
-            gCarla.gui.changePluginSkin(self.fPluginId, skin[0])
+        elif actSel in skinActions:
+            gCarla.gui.changePluginSkin(self.fPluginId, skinActions[actSel])
 
         # -------------------------------------------------------------
         # Find in patchbay
@@ -1420,7 +1460,7 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
                     suffix = " " + suffix
 
                 dialog = CustomInputDialog(self, label, current, minimum, maximum,
-                                                 paramRanges['step'], paramRanges['stepSmall'], scalePoints, prefix, suffix)
+                                                  paramRanges['step'], paramRanges['stepSmall'], scalePoints, prefix, suffix)
 
                 if not dialog.exec_():
                     return
@@ -1475,6 +1515,9 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
             self.host.set_parameter_value(self.fPluginId, index, value)
             self.setParameterValue(index, value, False)
 
+        if hasattr(gCarla, "gui") and gCarla.gui is not None:
+            gCarla.gui.fHasUnsavedChanges = True
+
     @pyqtSlot(int)
     def slot_programChanged(self, index):
         self.host.set_program(self.fPluginId, index)
@@ -1491,8 +1534,13 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
         if self.w_knobs_left is None or self.spacer_knobs is None:
             return
 
-        curWidth = 2
         maxWidth = self.w_knobs_left.width() + self.spacer_knobs.geometry().width() + 2
+        if maxWidth <= 10:
+            self.fAdjustViewableKnobCountScheduled = True
+            QTimer.singleShot(50, self.adjustViewableKnobCount)
+            return
+
+        curWidth = 2
 
         plen = len(self.fParameterList)
         for i in range(plen):
@@ -1522,6 +1570,12 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
         self.fIdleTimerId = self.startTimer(25)
 
     # -----------------------------------------------------------------
+
+    def showEvent(self, event):
+        QFrame.showEvent(self, event)
+        if not self.fAdjustViewableKnobCountScheduled:
+            self.fAdjustViewableKnobCountScheduled = True
+            QTimer.singleShot(50, self.adjustViewableKnobCount)
 
     def mouseDoubleClickEvent(self, event):
         QFrame.mouseDoubleClickEvent(self, event)
@@ -1780,6 +1834,18 @@ class PluginSlot_Compact(AbstractPluginSlot):
         self.peak_in  = self.ui.peak_in
         self.peak_out = self.ui.peak_out
 
+        
+        # --- User requested expand button ---
+        self.b_expand = ScalableButton(parent=self)
+        self.b_expand.setMinimumSize(24, 24)
+        self.b_expand.setMaximumSize(24, 24)
+        self.b_expand.setToolTip("Expand")
+        self.b_expand.setSvgs(":/scalable/button_off.svg", ":/scalable/button_on.svg", ":/scalable/button_off.svg")
+        font3 = QFont()
+        font3.setBold(True)
+        self.b_expand.setTopText(" + ", QColor(220, 220, 220), font3)
+        self.b_expand.clicked.connect(lambda _=None: gCarla.gui.compactPlugin(self.fPluginId))
+        self.ui.horizontalLayout_2.addWidget(self.b_expand)
         self.ready()
 
     # -----------------------------------------------------------------
@@ -1832,10 +1898,10 @@ class PluginSlot_Default(AbstractPluginSlot):
 class PluginSlot_Minimal(PluginSlot_Default):
     def __init__(self, parent, host, pluginId, skinColor, skinStyle):
         PluginSlot_Default.__init__(self, parent, host, pluginId, skinColor, skinStyle)
-        
-        self.is_dark = (skinStyle == "minimal-dark")
-        
-        if skinColor != (0, 0, 0):
+
+        self.is_dark = skinStyle in ("minimal-dark", "sliders-dark")
+
+        if skinColor != (0, 0, 0) and skinColor != (255, 255, 255):
             bg_r, bg_g, bg_b = skinColor
             if self.is_dark:
                 # Dim the category/custom color for dark mode
@@ -1857,7 +1923,7 @@ class PluginSlot_Minimal(PluginSlot_Default):
 
         # Dynamic contrast: compute luminance
         luminance = (0.299 * bg_r + 0.587 * bg_g + 0.114 * bg_b)
-        
+
         if luminance > 130:
             text_color = "#111111"
             text_disabled = "#777777"
@@ -1870,9 +1936,70 @@ class PluginSlot_Minimal(PluginSlot_Default):
             combo_bg = "#2A2A2A"
             combo_border = "#444444"
             self.border_color = QColor(min(255, bg_r + 30), min(255, bg_g + 30), min(255, bg_b + 30))
+        if skinColor != (0, 0, 0) and skinColor != (255, 255, 255):
+            sr, sg, sb = skinColor
+            if self.is_dark:
+                # Ensure high contrast active track against dark backgrounds
+                sr = min(255, int(sr * 0.7 + 60))
+                sg = min(255, int(sg * 0.7 + 60))
+                sb = min(255, int(sb * 0.7 + 60))
+            else:
+                sr = max(0, int(sr * 0.7))
+                sg = max(0, int(sg * 0.7))
+                sb = max(0, int(sb * 0.7))
+            accent_color = f"rgb({sr},{sg},{sb})"
+        else:
+            accent_color = "#52BAFF" if self.is_dark else "#0066CC"
+
+        # --- User requested additions ---
+        if not bool(self.getHints() & PLUGIN_HAS_CUSTOM_UI):
+            self.b_gui.hide()
+            
+        # Expand buttons container to fit 4 buttons (24 * 4 = 96)
+        self.ui.w_buttons.setMinimumSize(96, 24)
+        self.ui.w_buttons.setMaximumSize(96, 24)
+        
+        # Bypass Button
+        self.b_bypass = ScalableButton(parent=self.ui.w_buttons)
+        self.b_bypass.setMinimumSize(24, 24)
+        self.b_bypass.setMaximumSize(24, 24)
+        self.b_bypass.setCheckable(True)
+        self.b_bypass.setToolTip("Bypass")
+        self.b_bypass.setSvgs(":/scalable/button_off.svg", ":/scalable/button_on.svg", ":/scalable/button_off.svg")
+        font = QFont()
+        font.setBold(True)
+        self.b_bypass.setTopText(" B ", QColor(220, 220, 220), font)
+        
+        if bool(self.getHints() & PLUGIN_CAN_DRYWET):
+            self.b_bypass.setChecked(self.host.get_internal_parameter_value(self.fPluginId, PARAMETER_DRYWET) == 0.0)
+            def _on_bypass_clicked(checked):
+                val = 0.0 if self.b_bypass.isChecked() else 1.0
+                self.host.set_drywet(self.fPluginId, val)
+                self.setParameterValue(PARAMETER_DRYWET, val, True)
+            self.b_bypass.clicked.connect(_on_bypass_clicked)
+        else:
+            self.b_bypass.hide()
+            
+        self.ui.horizontalLayout.insertWidget(1, self.b_bypass)
+        
+        # Minimize/Expand button
+        self.b_minimize = ScalableButton(parent=self)
+        self.b_minimize.setMinimumSize(24, 24)
+        self.b_minimize.setMaximumSize(24, 24)
+        self.b_minimize.setToolTip("Minimize")
+        self.b_minimize.setSvgs(":/scalable/button_off.svg", ":/scalable/button_on.svg", ":/scalable/button_off.svg")
+        font2 = QFont()
+        font2.setBold(True)
+        self.b_minimize.setTopText(" - ", QColor(220, 220, 220), font2)
+        self.b_minimize.clicked.connect(lambda _=None: gCarla.gui.compactPlugin(self.fPluginId))
+        self.ui.layout_top.addWidget(self.b_minimize)
+        
+
 
         # Explicit minimal stylesheet for high readability
         styleSheet = f"""
+            QPushButton {{ border-radius: 3px; font-weight: bold; background: #333; color: #fff; }}
+            QPushButton:checked {{ background: #b33; color: #fff; }}
             QFrame#PluginWidget {{
                 background: transparent;
             }}
@@ -1893,12 +2020,21 @@ class PluginSlot_Minimal(PluginSlot_Default):
             QLabel#label_name:disabled {{
                 color: {text_disabled};
             }}
-            QComboBox, QDoubleSpinBox {{
+            QComboBox {{
                 background: {combo_bg};
                 border: 1px solid {combo_border};
                 color: {text_color};
+                border-radius: 2px;
+                padding: 1px 2px;
+                font-size: 10px;
+            }}
+            QDoubleSpinBox {{
+                background: rgba(128, 128, 128, 0.10);
+                border: none;
+                color: {text_color};
                 border-radius: 3px;
-                padding: 2px;
+                padding: 1px 0px;
+                font-size: 10px;
             }}
             QComboBox#cb_presets,
             QLabel#label_audio_in,
@@ -1911,14 +2047,28 @@ class PluginSlot_Minimal(PluginSlot_Default):
                 height: 4px;
                 border-radius: 2px;
             }}
+            QSlider::sub-page:horizontal {{
+                background: {"#E0E0E0" if self.is_dark else "#757575"};
+                height: 4px;
+                border-radius: 2px;
+            }}
             QSlider::handle:horizontal {{
-                background: {text_color};
-                width: 14px;
-                margin: -5px 0;
-                border-radius: 7px;
+                background: {"#FFFFFF" if self.is_dark else "#1A1A1A"};
+                border: 1px solid {"#D0D0D0" if self.is_dark else "#444444"};
+                width: 10px;
+                height: 10px;
+                margin: -3px 0;
+                border-radius: 5px;
             }}
         """
         self.setStyleSheet(styleSheet)
+
+        # Update dial label colors to match the computed text contrast
+        colorEnabled = QColor(text_color)
+        colorDisabled = QColor(text_disabled)
+        for _, paramWidget in self.fParameterList:
+            if hasattr(paramWidget, "setLabelColor"):
+                paramWidget.setLabelColor(colorEnabled, colorDisabled)
 
     def getFixedHeight(self):
         return 100
@@ -1926,13 +2076,13 @@ class PluginSlot_Minimal(PluginSlot_Default):
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
-        
+
         rect = QRectF(1.0, 1.0, self.width()-2.0, self.getFixedHeight()-2.0)
-        
+
         painter.setBrush(self.minimal_bg_color)
         painter.setPen(QPen(self.border_color, 1.0))
         painter.drawRoundedRect(rect, 4, 4)
-        
+
         # Draw outline manually to avoid AbstractPluginSlot's multiply blend
         self.drawOutline(painter)
         QFrame.paintEvent(self, event)
@@ -2005,6 +2155,13 @@ class PluginSlot_Presets(AbstractPluginSlot):
             self.w_knobs_left  = self.ui.w_knobs_left
             self.w_knobs_right = self.ui.w_knobs_right
             self.spacer_knobs  = self.ui.layout_bottom.itemAt(1).spacerItem()
+
+            if self.w_knobs_left.layout() is not None:
+                self.w_knobs_left.layout().setSpacing(8)
+                self.w_knobs_left.layout().setContentsMargins(6, 2, 6, 2)
+            if self.w_knobs_right.layout() is not None:
+                self.w_knobs_right.layout().setSpacing(8)
+                self.w_knobs_right.layout().setContentsMargins(6, 2, 6, 2)
 
         self.ready()
 
@@ -2101,7 +2258,7 @@ class PluginSlot_Presets(AbstractPluginSlot):
 
             widget = ScalableDial(self, i)
 
-            widget.setLabel(paramName)
+            widget.setLabel(paramName, paramInfo['name'])
             widget.setMinimum(paramRanges['min'])
             widget.setMaximum(paramRanges['max'])
             widget.setImage(3)
@@ -2175,6 +2332,17 @@ def getColorAndSkinStyle(host, pluginId):
 
     colorCategory = getColorFromCategory(pluginInfo['category'])
     colorNone     = (0,0,0)
+
+    savedSkin = host.get_custom_data_value(pluginId, CUSTOM_DATA_TYPE_PROPERTY, "CarlaSkin")
+    savedColor = host.get_custom_data_value(pluginId, CUSTOM_DATA_TYPE_PROPERTY, "CarlaColor")
+    if savedSkin:
+        parsedColor = None
+        if savedColor:
+            try:
+                parsedColor = tuple(int(i) for i in savedColor.split(";", 3))
+            except Exception:
+                pass
+        return (parsedColor if parsedColor is not None else colorCategory, savedSkin)
 
     # Samplers
     if pluginInfo['type'] == PLUGIN_SF2:
@@ -2252,64 +2420,86 @@ class SliderParamWidget(QWidget):
     realValueChanged = pyqtSignal(float)
     dragStateChanged = pyqtSignal(bool) # dummy
 
-    def __init__(self, parent, index, name, min_val, max_val, is_integer):
+    def __init__(self, parent, index, name, min_val, max_val, is_integer, full_name=""):
         QWidget.__init__(self, parent)
         self.fIndex = index
+        self.fName = name
+        self.fFullName = full_name or name
         self.fMinimum = min_val
         self.fMaximum = max_val
         self.fIsInteger = is_integer
-        
+
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(4,2,4,2)
-        
+        layout.setContentsMargins(2, 0, 2, 0)
+        layout.setSpacing(4)
+
         self.label = QLabel(name)
-        self.label.setMinimumWidth(80)
-        self.label.setMaximumWidth(120)
+        self.label.setMinimumWidth(65)
+        self.label.setMaximumWidth(95)
+        f = self.label.font()
+        f.setPointSize(8)
+        self.label.setFont(f)
         layout.addWidget(self.label)
-        
+
         self.slider = QSlider(Qt.Horizontal)
         self.slider.setMinimum(0)
         self.slider.setMaximum(1000)
+        self.slider.setMaximumHeight(16)
         layout.addWidget(self.slider)
-        
+
         self.spinbox = QDoubleSpinBox()
         self.spinbox.setMinimum(min_val)
         self.spinbox.setMaximum(max_val)
         self.spinbox.setDecimals(0 if is_integer else 2)
         self.spinbox.setButtonSymbols(QAbstractSpinBox.NoButtons)
-        self.spinbox.setMinimumWidth(60)
-        self.spinbox.setMaximumWidth(80)
+        self.spinbox.setAlignment(Qt.AlignCenter)
+        self.spinbox.setFixedWidth(42)
+        self.spinbox.setMaximumHeight(18)
+        self.spinbox.setFont(f)
         layout.addWidget(self.spinbox)
-        
+
         self.slider.valueChanged.connect(self._on_slider)
         self.spinbox.valueChanged.connect(self._on_spinbox)
-        
+
         self.fRealValue = min_val
-        
+        self._updateTooltip()
+
+    def _updateTooltip(self):
+        val_str = "{:.2f}".format(self.fRealValue)
+        if val_str.endswith(".00"):
+            val_str = val_str[:-3]
+        elif val_str[-1] == '0':
+            val_str = val_str[:-1]
+        tip = f"{self.fFullName} ({val_str})"
+        self.label.setToolTip(tip)
+        self.slider.setToolTip(tip)
+        self.spinbox.setToolTip(tip)
+
     def getIndex(self):
         return self.fIndex
-        
+
     def blockSignals(self, block):
         self.slider.blockSignals(block)
         self.spinbox.blockSignals(block)
         QWidget.blockSignals(self, block)
-        
+
     def setValue(self, value, emitSignal=False):
         self.fRealValue = value
-        
+
         self.slider.blockSignals(True)
         self.spinbox.blockSignals(True)
-        
+
         slider_val = int((value - self.fMinimum) / (self.fMaximum - self.fMinimum) * 1000.0) if self.fMaximum > self.fMinimum else 0
         self.slider.setValue(slider_val)
         self.spinbox.setValue(value)
-        
+
         self.spinbox.blockSignals(False)
         self.slider.blockSignals(False)
-        
+        self._updateTooltip()
+
         if emitSignal:
             self.realValueChanged.emit(self.fRealValue)
-            
+
     def _on_slider(self, value):
         val = (value / 1000.0) * (self.fMaximum - self.fMinimum) + self.fMinimum
         if self.fIsInteger:
@@ -2318,43 +2508,59 @@ class SliderParamWidget(QWidget):
         self.spinbox.blockSignals(True)
         self.spinbox.setValue(val)
         self.spinbox.blockSignals(False)
+        self._updateTooltip()
+        if hasattr(gCarla, "gui") and gCarla.gui is not None:
+            gCarla.gui.fHasUnsavedChanges = True
         self.realValueChanged.emit(self.fRealValue)
-        
+
     def _on_spinbox(self, value):
         self.fRealValue = value
         slider_val = int((value - self.fMinimum) / (self.fMaximum - self.fMinimum) * 1000.0) if self.fMaximum > self.fMinimum else 0
         self.slider.blockSignals(True)
         self.slider.setValue(slider_val)
         self.slider.blockSignals(False)
+        self._updateTooltip()
+        if hasattr(gCarla, "gui") and gCarla.gui is not None:
+            gCarla.gui.fHasUnsavedChanges = True
         self.realValueChanged.emit(self.fRealValue)
+
+
+
+
+    def setParameterValue(self, parameterId, value, sendCallback):
+        PluginSlot_Default.setParameterValue(self, parameterId, value, sendCallback)
+        if parameterId == PARAMETER_DRYWET and hasattr(self, "b_bypass"):
+            self.b_bypass.blockSignals(True)
+            self.b_bypass.setChecked(value == 0.0)
+            self.b_bypass.blockSignals(False)
 
 class PluginSlot_Sliders(PluginSlot_Minimal):
     def __init__(self, parent, host, pluginId, skinColor, skinStyle):
-        # Prevent default initialization of w_knobs_left from adding ScalableDials
         PluginSlot_Minimal.__init__(self, parent, host, pluginId, skinColor, skinStyle)
-        
-        # Clear out the default bottom layout containing the dials
-        self.ui.w_knobs_left.hide()
-        self.ui.w_knobs_right.hide()
+
+        # Hide the default bottom layout containing the dials
+        self.ui.w_knobs_left.setVisible(False)
+        self.ui.w_knobs_right.setVisible(False)
         self.ui.layout_bottom.removeItem(self.ui.layout_bottom.itemAt(1))
-        
+
         # We need a new widget to hold all sliders
         self.sliders_container = QWidget()
         self.sliders_layout = QVBoxLayout(self.sliders_container)
-        self.sliders_layout.setContentsMargins(4,4,4,4)
-        
+        self.sliders_layout.setContentsMargins(2, 2, 2, 2)
+        self.sliders_layout.setSpacing(2)
+
         # Add a scroll area to handle many parameters gracefully
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setWidget(self.sliders_container)
         self.scroll_area.setStyleSheet("QScrollArea { border: none; background: transparent; }")
-        
-        self.ui.verticalLayout.addWidget(self.scroll_area)
-        
+
+        self.ui.verticalLayout.addWidget(self.scroll_area, 1)
+
         # Build the sliders
         self.fParameterList = []
         parameterCount = self.host.get_parameter_count(self.fPluginId)
-        
+
         for i in range(parameterCount):
             paramInfo   = self.host.get_parameter_info(self.fPluginId, i)
             paramData   = self.host.get_parameter_data(self.fPluginId, i)
@@ -2365,38 +2571,45 @@ class PluginSlot_Sliders(PluginSlot_Minimal):
             if paramData['hints'] & PARAMETER_IS_BOOLEAN: continue
             if (paramData['hints'] & PARAMETER_IS_ENABLED) == 0: continue
             if paramInfo['name'].startswith("unused"): continue
-            
+
             paramName = getParameterShortName(paramInfo['name'])
-            
-            widget = SliderParamWidget(self, i, paramName, paramRanges['min'], paramRanges['max'], isInteger)
+
+            widget = SliderParamWidget(self.sliders_container, i, paramName, paramRanges['min'], paramRanges['max'], isInteger, paramInfo['name'])
             self.fParameterList.append([i, widget])
             self.sliders_layout.addWidget(widget)
-            
+
             widget.realValueChanged.connect(self.slot_parameterValueChanged)
 
         if self.fPluginInfo['hints'] & PLUGIN_CAN_DRYWET:
-            widget = SliderParamWidget(self, PARAMETER_DRYWET, "Dry/Wet", 0.0, 1.0, False)
+            widget = SliderParamWidget(self.sliders_container, PARAMETER_DRYWET, "Dry/Wet", 0.0, 1.0, False)
             self.fParameterList.append([PARAMETER_DRYWET, widget])
             self.sliders_layout.addWidget(widget)
             widget.realValueChanged.connect(self.slot_parameterValueChanged)
-            
+
         if self.fPluginInfo['hints'] & PLUGIN_CAN_VOLUME:
-            widget = SliderParamWidget(self, PARAMETER_VOLUME, "Volume", 0.0, 1.27, False)
+            widget = SliderParamWidget(self.sliders_container, PARAMETER_VOLUME, "Volume", 0.0, 1.27, False)
             self.fParameterList.append([PARAMETER_VOLUME, widget])
             self.sliders_layout.addWidget(widget)
             widget.realValueChanged.connect(self.slot_parameterValueChanged)
-            
+
         # Add stretching so sliders pack at the top
         self.sliders_layout.addStretch()
-        
+
+        for _, widget in self.fParameterList:
+            widget.show()
+
+        self.setFixedHeight(self.getFixedHeight())
         self.updateParameterValues()
-        
+
+    def adjustViewableKnobCount(self):
+        # In slider mode, all parameters are inside a vertical scroll area; never hide them
+        pass
+
     def getFixedHeight(self):
-        # We need more height for a slider rack
-        # Default minimal is 88. Let's make this dynamically sized but capped
+        # Compact slider rack height
         count = len(self.fParameterList)
-        req_height = 40 + (count * 30)
-        return max(150, min(req_height, 400))
+        req_height = 42 + (count * 20)
+        return max(110, min(req_height, 350))
 
 # ------------------------------------------------------------------------------------------------------------
 # Main Testing
@@ -2412,14 +2625,11 @@ if __name__ == '__main__':
 
     host.engine_init("JACK", "Carla-Widgets")
     host.add_plugin(BINARY_NATIVE, PLUGIN_INTERNAL, "", "", "zynreverb", 0, None, PLUGIN_OPTIONS_NULL)
-    #host.add_plugin(BINARY_NATIVE, PLUGIN_DSSI, "/usr/lib/dssi/karplong.so", "karplong", "karplong", 0, None, PLUGIN_OPTIONS_NULL)
-    #host.add_plugin(BINARY_NATIVE, PLUGIN_LV2, "", "", "http://www.openavproductions.com/sorcer", 0, None, PLUGIN_OPTIONS_NULL)
-    #host.add_plugin(BINARY_NATIVE, PLUGIN_LV2, "", "", "http://calf.sourceforge.net/plugins/Compressor", 0, None, PLUGIN_OPTIONS_NULL)
     host.set_active(0, True)
 
-    #gui = createPluginSlot(None, host, 0, True)
     gui = PluginSlot_Compact(None, host, 0, (0, 0, 0), "default")
     gui.testTimer()
     gui.show()
 
     app.exec_()
+

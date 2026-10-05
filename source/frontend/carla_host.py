@@ -54,6 +54,7 @@ if qt_config == 5:
         QGraphicsView,
         QMainWindow,
         QMenu,
+        QSystemTrayIcon,
     )
 
 elif qt_config == 6:
@@ -87,6 +88,7 @@ elif qt_config == 6:
         QGraphicsView,
         QMainWindow,
         QMenu,
+        QSystemTrayIcon,
     )
 
 # ------------------------------------------------------------------------------------------------------------
@@ -226,6 +228,7 @@ class HostWindow(QMainWindow):
         self.fIsProjectLoading = False
         self.fCurrentlyRemovingAllPlugins = False
         self.fHasLoadedLv2Plugins = False
+        self.fHasUnsavedChanges = False
 
         self.fLastTransportBPM = 0.0
         self.fLastTransportFrame = 0
@@ -784,6 +787,10 @@ class HostWindow(QMainWindow):
             if projectFile:
                 self.loadProjectLater(projectFile)
 
+        self.fTrayIcon = None
+        self.setupTray()
+        self.inject_plugin_sidebar()
+
         # For NSM we wait for the open message
         if NSM_URL and host.nsmOK:
             host.nsm_ready(NSM_CALLBACK_INIT)
@@ -794,6 +801,46 @@ class HostWindow(QMainWindow):
                 QTimer.singleShot(0, self.checkRecentOnStartup)
             else:
                 QTimer.singleShot(0, self.slot_engineStart)
+
+    def setupTray(self):
+        if not QSystemTrayIcon.isSystemTrayAvailable():
+            return
+
+        self.fTrayIcon = QSystemTrayIcon(getIcon("carla", 16, "png"), self)
+        self.fTrayIcon.setToolTip("Carla")
+
+        menu = QMenu(self)
+        self.fTrayActionToggle = menu.addAction(self.tr("Show / Hide"))
+        self.fTrayActionToggle.triggered.connect(self.slot_trayToggle)
+        menu.addSeparator()
+        actionQuit = menu.addAction(self.tr("Quit"))
+        actionQuit.triggered.connect(self.close)
+
+        self.fTrayIcon.setContextMenu(menu)
+        self.fTrayIcon.activated.connect(self.slot_trayActivated)
+        self.fTrayIcon.show()
+
+    def slot_trayActivated(self, reason):
+        # Trigger on left click (Trigger) or double click (DoubleClick)
+        trigger = getattr(QSystemTrayIcon, "Trigger", None)
+        double_click = getattr(QSystemTrayIcon, "DoubleClick", None)
+        if trigger is not None and reason in (trigger, double_click):
+            self.slot_trayOpen()
+        elif hasattr(reason, "value") and reason.value in (3, 2):
+            self.slot_trayOpen()
+        elif getattr(reason, "name", "") in ("Trigger", "DoubleClick"):
+            self.slot_trayOpen()
+
+    def slot_trayOpen(self):
+        self.showNormal()
+        self.activateWindow()
+        self.raise_()
+
+    def slot_trayToggle(self):
+        if self.isVisible() and not self.isMinimized():
+            self.hide()
+        else:
+            self.slot_trayOpen()
 
     # --------------------------------------------------------------------------------------------------------
     # Manage visibility state, needed for NSM
@@ -806,6 +853,11 @@ class HostWindow(QMainWindow):
         self.hide()
 
     def showIfNeeded(self):
+        if getattr(gCarla, "hidden", False):
+            # Started with --hidden: do not show window, stay in tray
+            QApplication.instance().setQuitOnLastWindowClosed(False)
+            return
+
         if self.host.nsmOK:
             self.ui.act_file_quit.setText(self.tr("Hide"))
             QApplication.instance().setQuitOnLastWindowClosed(False)
@@ -838,6 +890,7 @@ class HostWindow(QMainWindow):
         self.host.set_custom_data(
             pluginId, CUSTOM_DATA_TYPE_PROPERTY, "CarlaColor", colorStr
         )
+        self.fHasUnsavedChanges = True
         pitem.recreateWidget(newColor=color)
 
     def changePluginSkin(self, pluginId, skin):
@@ -852,7 +905,20 @@ class HostWindow(QMainWindow):
         self.host.set_custom_data(
             pluginId, CUSTOM_DATA_TYPE_PROPERTY, "CarlaSkin", skin
         )
+        self.fHasUnsavedChanges = True
+        existingColor = self.host.get_custom_data_value(pluginId, CUSTOM_DATA_TYPE_PROPERTY, "CarlaColor")
+        if existingColor:
+            try:
+                col = tuple(int(i) for i in existingColor.split(";", 3))
+                pitem.recreateWidget(newSkin=skin, newColor=col)
+                return
+            except Exception:
+                pass
+
         if skin not in ("default", "rncbc", "presets", "mpresets"):
+            self.host.set_custom_data(
+                pluginId, CUSTOM_DATA_TYPE_PROPERTY, "CarlaColor", "255;255;255"
+            )
             pitem.recreateWidget(newSkin=skin, newColor=(255, 255, 255))
         else:
             pitem.recreateWidget(newSkin=skin)
@@ -956,6 +1022,17 @@ class HostWindow(QMainWindow):
                 QMessageBox.Ok,
                 QMessageBox.Ok,
             )
+            return
+
+        self.fIsProjectLoading = False
+        self.projectLoadingFinished(False)
+
+        for pitem in self.fPluginList:
+            if pitem is None:
+                continue
+            widget = pitem.getWidget()
+            if widget is not None and hasattr(widget, "refreshState"):
+                widget.refreshState()
 
     def loadProjectLater(self, filename):
         self.fProjectFilename = QFileInfo(filename).absoluteFilePath()
@@ -1004,6 +1081,7 @@ class HostWindow(QMainWindow):
                 print("Failed to inject CanvasPositions into project file:", e)
 
         self.addRecentProject(self.fProjectFilename)
+        self.fHasUnsavedChanges = False
 
     def projectLoadingStarted(self):
         self.ui.rack.setEnabled(False)
@@ -1012,6 +1090,7 @@ class HostWindow(QMainWindow):
     def projectLoadingFinished(self, refreshCanvas):
         self.ui.rack.setEnabled(True)
         self.ui.graphicsView.setEnabled(True)
+        self.fHasUnsavedChanges = False
 
         if (
             self.fCustomStopAction == self.CUSTOM_ACTION_APP_CLOSE
@@ -1271,7 +1350,8 @@ class HostWindow(QMainWindow):
     def slot_fileSave(self, *args, **kwargs):
         saveAs = kwargs.get("saveAs", False)
         if self.fProjectFilename and not saveAs:
-            return self.saveProjectNow()
+            self.saveProjectNow()
+            return True
 
         fileFilter = self.tr("Carla Project File (*.carxp)")
         filename, ok = QFileDialog.getSaveFileName(
@@ -1283,7 +1363,7 @@ class HostWindow(QMainWindow):
 
         # FIXME use ok value, test if it works as expected
         if not filename:
-            return
+            return False
 
         if not filename.lower().endswith(".carxp"):
             filename += ".carxp"
@@ -1294,6 +1374,7 @@ class HostWindow(QMainWindow):
 
         self.saveProjectNow()
         self.ui.act_file_save.setEnabled(True)
+        return True
 
     @pyqtSlot()
     def slot_fileSaveAs(self, *args, **kwargs):
@@ -1609,6 +1690,14 @@ class HostWindow(QMainWindow):
         self.fIsProjectLoading = False
         self.projectLoadingFinished(False)
 
+        # Synchronize active state, button styles, labels, and parameters across all plugin widgets
+        for pitem in self.fPluginList:
+            if pitem is None:
+                continue
+            widget = pitem.getWidget()
+            if widget is not None and hasattr(widget, "refreshState"):
+                widget.refreshState()
+
     # --------------------------------------------------------------------------------------------------------
     # Plugins
 
@@ -1634,8 +1723,7 @@ class HostWindow(QMainWindow):
     # --------------------------------------------------------------------------------------------------------
     # Plugins (menu actions)
 
-    def showAddPluginDialog(self):
-        # TODO self.fHasLoadedLv2Plugins
+    def initPluginListDialog(self):
         if self.fPluginListDialog is None:
             hostSettings = {
                 "showPluginBridges": self.fSavedSettings[
@@ -1683,6 +1771,115 @@ class HostWindow(QMainWindow):
                 d, PLUGIN_CLAP, self.fSavedSettings[CARLA_KEY_PATHS_CLAP]
             )
 
+
+    def inject_plugin_sidebar(self):
+        try:
+            from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QListWidget, QPushButton, QListWidgetItem, QTextEdit, QLabel
+            from PyQt5 import QtCore
+        except ImportError:
+            from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QListWidget, QPushButton, QListWidgetItem, QTextEdit, QLabel
+            from PyQt6 import QtCore
+            
+        self.initPluginListDialog()
+        
+        self.sidebar_widget = QWidget()
+        layout = QVBoxLayout(self.sidebar_widget)
+        
+        top_layout = QHBoxLayout()
+        self.search_bar = QLineEdit()
+        self.search_bar.setPlaceholderText("Search name, maker, category...")
+        
+        btn_refresh = QPushButton("↻")
+        btn_full = QPushButton("⛶")
+        
+        btn_refresh.setFixedSize(28, 28)
+        btn_full.setFixedSize(28, 28)
+        
+        top_layout.addWidget(self.search_bar)
+        top_layout.addWidget(btn_refresh)
+        top_layout.addWidget(btn_full)
+        
+        self.sidebar_list = QListWidget()
+        self.info_box = QTextEdit()
+        self.info_box.setReadOnly(True)
+        self.info_box.setMaximumHeight(120)
+        
+        layout.addLayout(top_layout)
+        layout.addWidget(self.sidebar_list)
+        layout.addWidget(self.info_box)
+        
+        self.ui.tabUtils.addTab(self.sidebar_widget, "Plugins")
+        
+        btn_full.clicked.connect(self.showAddPluginDialog)
+        
+        def refreshList():
+            csv = gCarla.felib.getCachedPluginsCsv(self.fPluginListDialog)
+            print(f'CSV length: {len(csv)}, first line: {csv.split(chr(10))[0]}')
+            self.sidebar_list.clear()
+            self.plugin_data = []
+            for line in csv.strip().split('\n'):
+                if not line: continue
+                try:
+                    parts = line.split('|')
+                    if len(parts) >= 9:
+                        build, ptype, hints, category, filename, name, label, maker, uniqueId = parts[:9]
+                        item = QListWidgetItem(name)
+                        data_tuple = (int(build), int(ptype), int(hints), category, filename, name, label, maker, int(uniqueId))
+                        # Fallback to integer 256 since PyQt6 uses ItemDataRole.UserRole
+                        item.setData(256, data_tuple)
+                        
+                        # Store metadata for searching
+                        item.setData(257, f"{name} {maker} {category} {filename}".lower())
+                        self.sidebar_list.addItem(item)
+                except Exception as e:
+                    print("Error parsing plugin line:", line, e)
+                    
+        btn_refresh.clicked.connect(refreshList)
+        
+        def on_search(text):
+            text = text.lower()
+            for i in range(self.sidebar_list.count()):
+                item = self.sidebar_list.item(i)
+                meta = item.data(257) or ""
+                item.setHidden(text not in meta)
+                
+        self.search_bar.textChanged.connect(on_search)
+        
+        def on_selection_changed():
+            items = self.sidebar_list.selectedItems()
+            if not items:
+                self.info_box.setText("")
+                return
+            item = items[0]
+            data = item.data(256)
+            if data:
+                build, ptype, hints, category, filename, name, label, maker, uniqueId = data
+                info_text = f"<b>{name}</b><br/>"
+                info_text += f"<b>Maker:</b> {maker or 'Unknown'}<br/>"
+                info_text += f"<b>Category:</b> {category}<br/>"
+                info_text += f"<b>File:</b> {filename.split('/')[-1]}<br/>"
+                self.info_box.setHtml(info_text)
+                
+        self.sidebar_list.itemSelectionChanged.connect(on_selection_changed)
+        
+        def on_double_click(item):
+            data = item.data(256)
+            if data:
+                build, ptype, hints, category, filename, name, label, maker, uniqueId = data
+                # Name is sometimes passed as None in backend calls depending on the type
+                try:
+                    self.host.add_plugin(build, ptype, filename, None, label, uniqueId, None, 0x10000)
+                except Exception as e:
+                    print("Error adding plugin:", e)
+                    self.info_box.setHtml(f"<b style='color:red;'>Error adding plugin:</b> {e}")
+            
+        self.sidebar_list.itemDoubleClicked.connect(on_double_click)
+        
+        # Initial populate
+        refreshList()
+
+    def showAddPluginDialog(self):
+        self.initPluginListDialog()
         ret = gCarla.felib.execPluginListDialog(self.fPluginListDialog)
 
         # TODO
@@ -2033,7 +2230,8 @@ class HostWindow(QMainWindow):
         pitem = self.getPluginItem(pluginId)
 
         self.fPluginCount -= 1
-        self.fPluginList.pop(pluginId)
+        if pluginId < len(self.fPluginList):
+            self.fPluginList.pop(pluginId)
         self.ui.listWidget.takeItem(pluginId)
 
         if pitem is not None:
@@ -2605,7 +2803,7 @@ class HostWindow(QMainWindow):
                 self.ui.cb_disk.addItem(os.path.basename(folder), folder)
 
             # if CARLA_OS_MAC and not settings.value(CARLA_KEY_MAIN_USE_PRO_THEME, True, bool):
-            #    self.setUnifiedTitleAndToolBarOnMac(True)
+            #     self.setUnifiedTitleAndToolBarOnMac(True)
 
             showMeters = settings.value("ShowMeters", True, bool)
             self.ui.act_settings_show_meters.setChecked(showMeters)
@@ -3301,6 +3499,10 @@ class HostWindow(QMainWindow):
             wasGuiShown = pitem.fWidget.b_gui.isChecked() if pitem.fWidget and pitem.fWidget.b_gui else False
             pitem.recreateWidget2(isCompacted, wasGuiShown)
 
+        widget = pitem.getWidget()
+        if widget is not None and hasattr(widget, "refreshState"):
+            widget.refreshState()
+
     # --------------------------------------------------------------------------------------------------------
     # MiniCanvas stuff
 
@@ -3790,7 +3992,10 @@ class HostWindow(QMainWindow):
     # color/style change event
 
     def changeEvent(self, event):
-        if event.type() in (QEvent.PaletteChange, QEvent.StyleChange):
+        if event.type() == QEvent.WindowStateChange:
+            if self.isMinimized() and self.fTrayIcon is not None and self.fTrayIcon.isVisible():
+                QTimer.singleShot(0, self.hide)
+        elif event.type() in (QEvent.PaletteChange, QEvent.StyleChange):
             self.updateStyle()
         QMainWindow.changeEvent(self, event)
 
@@ -3867,20 +4072,6 @@ class HostWindow(QMainWindow):
         )
 
     # --------------------------------------------------------------------------------------------------------
-    # paint event
-
-    # def paintEvent(self, event):
-    # QMainWindow.paintEvent(self, event)
-
-    # if CARLA_OS_MAC or not self.fSavedSettings[CARLA_KEY_CUSTOM_PAINTING]:
-    # return
-
-    # painter = QPainter(self)
-    # painter.setBrush(QColor(36, 36, 36))
-    # painter.setPen(QColor(62, 62, 62))
-    # painter.drawRect(1, self.height()/2, self.width()-3, self.height()-self.height()/2-1)
-
-    # --------------------------------------------------------------------------------------------------------
     # close event
 
     def shouldIgnoreClose(self):
@@ -3890,6 +4081,27 @@ class HostWindow(QMainWindow):
             return False
         if self.fWindowCloseHideGui:
             return False
+
+        # If there are unsaved changes or active plugins in an unsaved session, ask to save changes
+        if self.fHasUnsavedChanges or (self.fPluginCount > 0 and not self.fProjectFilename):
+            ret = QMessageBox.question(
+                self,
+                self.tr("Unsaved Changes"),
+                self.tr("Save changes before closing?"),
+                QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
+                QMessageBox.Save,
+            )
+
+            if ret == QMessageBox.Save:
+                saved = self.slot_fileSave()
+                if not saved:
+                    return True
+                return False
+            elif ret == QMessageBox.Cancel:
+                return True
+            else:
+                return False
+
         if self.fSavedSettings[CARLA_KEY_MAIN_CONFIRM_EXIT]:
             return (
                 QMessageBox.question(
@@ -4865,3 +5077,4 @@ def runHostWithoutUI(host):
 
 
 # ------------------------------------------------------------------------------------------------------------
+

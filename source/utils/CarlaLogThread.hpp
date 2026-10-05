@@ -61,6 +61,7 @@ public:
        #else
         CARLA_SAFE_ASSERT_RETURN(pipe(fPipe) == 0,);
 
+        fcntl(fPipe[1], F_SETFL, O_NONBLOCK);
         if (fcntl(fPipe[0], F_SETFL, O_NONBLOCK) != 0)
         {
             close(fPipe[0]);
