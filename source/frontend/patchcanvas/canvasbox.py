@@ -21,6 +21,7 @@ if qt_config == 5:
         QTimer,
     )
     from PyQt5.QtGui import (
+        QColor,
         QCursor,
         QFont,
         QFontMetrics,
@@ -65,6 +66,7 @@ elif qt_config == 6:
         QTimer,
     )
     from PyQt6.QtGui import (
+        QColor,
         QCursor,
         QFont,
         QFontMetrics,
@@ -708,6 +710,7 @@ class CanvasBox(QGraphicsObject):
 
         self.m_port_list_ids = []
         self.m_connection_lines = []
+        self.m_search_highlight = 0  # 0: None, 1: Matched (orange), 2: Active/Hovered (bright/thick orange)
 
         # Set Font
         self.m_font_name = getSystemFont(
@@ -1190,6 +1193,7 @@ class CanvasBox(QGraphicsObject):
 
         menu.addSeparator()
         act_x_properties = menu.addAction("Properties")
+        act_x_arrange = menu.addAction("Auto-arrange")
 
         if not features.group_info:
             act_x_info.setVisible(False)
@@ -1240,6 +1244,10 @@ class CanvasBox(QGraphicsObject):
 
         elif act_selected == act_x_properties:
             self.showPropertiesDialog()
+
+        elif act_selected == act_x_arrange:
+            from .patchcanvas import arrange
+            arrange()
 
         elif act_selected == act_x_disc_all:
             for conn_id in conn_list_ids:
@@ -1393,9 +1401,14 @@ class CanvasBox(QGraphicsObject):
         rect = QRectF(0, 0, self.p_width, self.p_height)
 
         # Draw rectangle
-        pen = QPen(
-            canvas.theme.box_pen_sel if self.isSelected() else canvas.theme.box_pen
-        )
+        if getattr(self, "m_search_highlight", 0) == 2:
+            pen = QPen(QColor(255, 170, 0), 3.0)
+        elif getattr(self, "m_search_highlight", 0) == 1:
+            pen = QPen(QColor(240, 110, 0), 1.8)
+        else:
+            pen = QPen(
+                canvas.theme.box_pen_sel if self.isSelected() else canvas.theme.box_pen
+            )
         pen.setWidthF(pen.widthF() + 0.00001)
         painter.setPen(pen)
         lineHinting = pen.widthF() / 2

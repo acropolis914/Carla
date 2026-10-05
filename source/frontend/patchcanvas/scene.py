@@ -278,6 +278,12 @@ class PatchScene(QGraphicsScene):
             return
 
         if event.modifiers() & Qt.ControlModifier:
+            if event.key() == Qt.Key_F:
+                if hasattr(self.m_view, "toggleSearch"):
+                    event.accept()
+                    self.m_view.toggleSearch()
+                    return
+
             if event.key() == Qt.Key_Plus:
                 event.accept()
                 self.zoom_in()

@@ -190,6 +190,7 @@ CARLA_KEY_MAIN_CLASSIC_SKIN     = "Main/ClassicSkin"     # bool
 CARLA_KEY_MAIN_SHOW_LOGS        = "Main/ShowLogs"        # bool
 CARLA_KEY_MAIN_SYSTEM_ICONS     = "Main/SystemIcons"     # bool
 CARLA_KEY_MAIN_EXPERIMENTAL     = "Main/Experimental"    # bool
+CARLA_KEY_MAIN_RECENT_PROJECTS   = "Main/RecentProjects"  # str list / json
 
 CARLA_KEY_CANVAS_THEME             = "Canvas/Theme"           # str
 CARLA_KEY_CANVAS_SIZE              = "Canvas/Size"            # str "NxN"
