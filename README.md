@@ -1,5 +1,5 @@
 # ![Carla Logo](resources/48x48/carla.png) Carla Improved (Fork)
-[![build](https://github.com/falkTX/Carla/actions/workflows/build.yml/badge.svg)](https://github.com/falkTX/Carla/actions/workflows/build.yml)
+
 
 
 ![Screenshot](./resources/screenshots/image.png)
