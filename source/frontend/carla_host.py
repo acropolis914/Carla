@@ -53,6 +53,7 @@ if qt_config == 5:
         QListWidgetItem,
         QGraphicsView,
         QMainWindow,
+        QMenu,
     )
 
 elif qt_config == 6:
@@ -85,6 +86,7 @@ elif qt_config == 6:
         QListWidgetItem,
         QGraphicsView,
         QMainWindow,
+        QMenu,
     )
 
 # ------------------------------------------------------------------------------------------------------------
@@ -219,6 +221,8 @@ class HostWindow(QMainWindow):
         self.fFavoritePlugins = []
 
         self.fProjectFilename = ""
+        self.fRecentProjects = []
+        self.fRecentProjectActions = []
         self.fIsProjectLoading = False
         self.fCurrentlyRemovingAllPlugins = False
         self.fHasLoadedLv2Plugins = False
@@ -582,6 +586,8 @@ class HostWindow(QMainWindow):
         self.ui.act_file_save.triggered.connect(self.slot_fileSave)
         self.ui.act_file_save_as.triggered.connect(self.slot_fileSaveAs)
 
+        self.updateRecentProjectsMenu()
+
         self.ui.act_engine_start.triggered.connect(self.slot_engineStart)
         self.ui.act_engine_stop.triggered.connect(self.slot_engineStop)
         self.ui.act_engine_panic.triggered.connect(self.slot_pluginsDisable)
@@ -790,7 +796,10 @@ class HostWindow(QMainWindow):
             return
 
         if not host.isControl:
-            QTimer.singleShot(0, self.slot_engineStart)
+            if not (self.host.isPlugin or projectFile):
+                QTimer.singleShot(0, self.checkRecentOnStartup)
+            else:
+                QTimer.singleShot(0, self.slot_engineStart)
 
     # --------------------------------------------------------------------------------------------------------
     # Manage visibility state, needed for NSM
@@ -934,6 +943,9 @@ class HostWindow(QMainWindow):
         if self.host.nsmOK and not os.path.exists(self.fProjectFilename):
             return
 
+        if not (self.host.isControl or self.host.is_engine_running()):
+            self.slot_engineStart()
+
         self.projectLoadingStarted()
         self.fIsProjectLoading = True
 
@@ -997,6 +1009,8 @@ class HostWindow(QMainWindow):
             except Exception as e:
                 print("Failed to inject CanvasPositions into project file:", e)
 
+        self.addRecentProject(self.fProjectFilename)
+
     def projectLoadingStarted(self):
         self.ui.rack.setEnabled(False)
         self.ui.graphicsView.setEnabled(False)
@@ -1014,6 +1028,7 @@ class HostWindow(QMainWindow):
         # Restore positions from .carxp if present
         positions_loaded = False
         if self.fProjectFilename and os.path.exists(self.fProjectFilename):
+            self.addRecentProject(self.fProjectFilename)
             positions_loaded = self.loadCanvasGroupPositionsFromProject(self.fProjectFilename)
 
         if not positions_loaded and refreshCanvas and not self.loadExternalCanvasGroupPositionsIfNeeded(
@@ -1099,6 +1114,97 @@ class HostWindow(QMainWindow):
         return True
 
     # --------------------------------------------------------------------------------------------------------
+    # Recent Projects
+
+    def addRecentProject(self, filename):
+        if not filename or not filename.endswith(".carxp"):
+            return
+        absPath = os.path.abspath(filename)
+        if absPath in self.fRecentProjects:
+            self.fRecentProjects.remove(absPath)
+        self.fRecentProjects.insert(0, absPath)
+        self.fRecentProjects = self.fRecentProjects[:10]
+        self.updateRecentProjectsMenu()
+
+    def updateRecentProjectsMenu(self):
+        for act in self.fRecentProjectActions:
+            self.ui.menu_File.removeAction(act)
+        self.fRecentProjectActions = []
+
+        valid_recents = [f for f in self.fRecentProjects if os.path.exists(f)]
+        if not valid_recents:
+            return
+
+        for path in valid_recents:
+            act = QAction(os.path.basename(path), self)
+            act.setToolTip(path)
+            act.setStatusTip(path)
+            act.triggered.connect(lambda checked=False, p=path: self.loadRecentProject(p))
+            self.ui.menu_File.insertAction(self.ui.act_file_save, act)
+            self.fRecentProjectActions.append(act)
+
+        sep = self.ui.menu_File.insertSeparator(self.ui.act_file_save)
+        self.fRecentProjectActions.append(sep)
+
+    def loadRecentProject(self, filename):
+        if not os.path.exists(filename):
+            CustomMessageBox(
+                self,
+                QMessageBox.Critical,
+                self.tr("Error"),
+                self.tr("File does not exist"),
+                filename,
+                QMessageBox.Ok,
+                QMessageBox.Ok,
+            )
+            return
+
+        if self.fPluginCount > 0:
+            ask = QMessageBox.question(
+                self,
+                self.tr("Question"),
+                self.tr("There are some plugins loaded, do you want to remove them now?"),
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No,
+            )
+            if ask != QMessageBox.Yes:
+                return
+
+        self.pluginRemoveAll()
+        self.loadProjectLater(filename)
+
+    def checkRecentOnStartup(self):
+        if self.fProjectFilename or self.host.isControl or self.host.isPlugin:
+            if not self.host.isControl:
+                self.slot_engineStart()
+            return
+
+        recent_file = None
+        for path in self.fRecentProjects:
+            if os.path.exists(path):
+                recent_file = path
+                break
+
+        if recent_file:
+            name = os.path.basename(recent_file)
+            ask = QMessageBox.question(
+                self,
+                self.tr("Load Recent Project"),
+                self.tr("No project is loaded. Would you like to load recent project '%s'?" % name),
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.Yes,
+            )
+            if ask == QMessageBox.Yes:
+                self.loadProjectLater(recent_file)
+                return
+
+        # Not loading recent: start engine and auto-arrange canvas
+        if not self.host.isControl:
+            self.slot_engineStart()
+            if self.fWithCanvas:
+                QTimer.singleShot(600, self.slot_canvasArrange)
+
+    # --------------------------------------------------------------------------------------------------------
     # Files (menu actions)
 
     @pyqtSlot()
@@ -1164,7 +1270,8 @@ class HostWindow(QMainWindow):
             self.fProjectFilename = filenameOld
 
     @pyqtSlot()
-    def slot_fileSave(self, saveAs=False):
+    def slot_fileSave(self, *args, **kwargs):
+        saveAs = kwargs.get("saveAs", False)
         if self.fProjectFilename and not saveAs:
             return self.saveProjectNow()
 
@@ -1188,14 +1295,17 @@ class HostWindow(QMainWindow):
             self.setProperWindowTitle()
 
         self.saveProjectNow()
+        self.ui.act_file_save.setEnabled(True)
 
     @pyqtSlot()
-    def slot_fileSaveAs(self):
-        self.slot_fileSave(True)
+    def slot_fileSaveAs(self, *args, **kwargs):
+        self.slot_fileSave(saveAs=True)
 
     @pyqtSlot()
     def slot_loadProjectNow(self):
         self.loadProjectNow()
+        if self.fProjectFilename and os.path.exists(self.fProjectFilename):
+            self.ui.act_file_save.setEnabled(True)
 
     # --------------------------------------------------------------------------------------------------------
     # Engine (menu actions)
@@ -1688,6 +1798,8 @@ class HostWindow(QMainWindow):
         menu.addSeparator()
         menu.addAction(self.ui.act_plugins_compact)
         menu.addAction(self.ui.act_plugins_expand)
+        menu.addSeparator()
+        menu.addAction(self.ui.act_canvas_arrange)
 
         menu.exec_(QCursor.pos())
 
@@ -2452,6 +2564,7 @@ class HostWindow(QMainWindow):
 
         settings.setValue(CARLA_KEY_ENGINE_TRANSPORT_MODE, self.host.transportMode)
         settings.setValue(CARLA_KEY_ENGINE_TRANSPORT_EXTRA, self.host.transportExtra)
+        settings.setValue(CARLA_KEY_MAIN_RECENT_PROJECTS, self.fRecentProjects)
 
         return settings
 
@@ -2509,6 +2622,11 @@ class HostWindow(QMainWindow):
             self.fFavoritePlugins = settingsDBf.value(
                 "PluginDatabase/Favorites", [], list
             )
+
+            rawRecents = settings.value(CARLA_KEY_MAIN_RECENT_PROJECTS, [], list)
+            if isinstance(rawRecents, list):
+                self.fRecentProjects = [p for p in rawRecents if isinstance(p, str) and os.path.exists(p)]
+            self.updateRecentProjectsMenu()
 
             QTimer.singleShot(100, self.slot_restoreCanvasScrollbarValues)
 
@@ -2885,6 +3003,24 @@ class HostWindow(QMainWindow):
     def slot_fileTreeDoubleClicked(self, modelIndex):
         filename = self.fDirModel.filePath(modelIndex)
 
+        if filename.endswith(".carxp"):
+            if self.fPluginCount > 0:
+                ask = QMessageBox.question(
+                    self,
+                    self.tr("Question"),
+                    self.tr(
+                        "There are some plugins loaded, do you want to remove them now?"
+                    ),
+                    QMessageBox.Yes | QMessageBox.No,
+                    QMessageBox.No,
+                )
+                if ask != QMessageBox.Yes:
+                    return
+
+            self.pluginRemoveAll()
+            self.loadProjectLater(filename)
+            return
+
         if not self.ui.listWidget.isDragUrlValid(filename):
             return
 
@@ -2899,10 +3035,6 @@ class HostWindow(QMainWindow):
                 QMessageBox.Ok,
             )
             return
-
-        if filename.endswith(".carxp"):
-            if not self.loadCanvasGroupPositionsFromProject(filename):
-                self.loadExternalCanvasGroupPositionsIfNeeded(filename)
 
     # --------------------------------------------------------------------------------------------------------
     # Transport
