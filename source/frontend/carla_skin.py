@@ -1846,7 +1846,11 @@ class PluginSlot_Compact(AbstractPluginSlot):
         self.b_expand.setTopText(" + ", QColor(220, 220, 220), font3)
         self.b_expand.clicked.connect(lambda _=None: gCarla.gui.compactPlugin(self.fPluginId))
         self.ui.horizontalLayout_2.addWidget(self.b_expand)
-        self.ready()
+        
+        if not bool(self.getHints() & PLUGIN_HAS_CUSTOM_UI):
+            self.b_gui.hide()
+        
+self.ready()
 
     # -----------------------------------------------------------------
 
@@ -2396,6 +2400,9 @@ def createPluginSlot(parent, host, pluginId, options):
     if options['skin']:
         skinStyle = options['skin']
 
+    if "compact" in skinStyle or options.get('compact', False):
+        return PluginSlot_Compact(parent, host, pluginId, skinColor, skinStyle)
+
     if skinStyle == "classic":
         return PluginSlot_Classic(parent, host, pluginId)
 
@@ -2404,9 +2411,6 @@ def createPluginSlot(parent, host, pluginId, options):
 
     if skinStyle.startswith("minimal"):
         return PluginSlot_Minimal(parent, host, pluginId, skinColor, skinStyle)
-
-    if "compact" in skinStyle or options['compact']:
-        return PluginSlot_Compact(parent, host, pluginId, skinColor, skinStyle)
 
     if skinStyle.startswith("calf"):
         return PluginSlot_Calf(parent, host, pluginId, skinColor, skinStyle)
