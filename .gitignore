@@ -188,3 +188,9 @@ data/windows/Carla_*
 data/windows/python/
 
 Makefile.user.mk
+
+# Arch / makepkg artifacts
+/src/
+/pkg/
+/Carla/
+*.pkg.tar.*
