@@ -945,13 +945,6 @@ class HostWindow(QMainWindow):
         if pluginIdA >= self.fPluginCount or pluginIdB >= self.fPluginCount:
             return
 
-        # Remember which row was selected to restore it after the swap
-        selected_id = None
-        if self.fPluginList[pluginIdA].isSelected():
-            selected_id = pluginIdB
-        elif self.fPluginList[pluginIdB].isSelected():
-            selected_id = pluginIdA
-
         self.host.switch_plugins(pluginIdA, pluginIdB)
 
         itemA = self.fPluginList[pluginIdA]
@@ -964,38 +957,16 @@ class HostWindow(QMainWindow):
         itemA.setPluginId(pluginIdB)
         itemB.setPluginId(pluginIdA)
 
-        # Visually swap the rows in the QListWidget without recreating the UI (eliminates lag)
+        # Visually swap the rows natively using Qt's internal model to preserve widgets and selection automatically
         row1, row2 = min(pluginIdA, pluginIdB), max(pluginIdA, pluginIdB)
+        model = self.ui.listWidget.model()
+        from PyQt6.QtCore import QModelIndex
         
-        # Reparent widgets safely to a hidden dummy BEFORE taking items to prevent Qt from deleting them!
-        if getattr(self, "fDummyContainer", None) is None:
-            self.fDummyContainer = QWidget()
-            
-        qitem2 = self.ui.listWidget.item(row2)
-        qitem1 = self.ui.listWidget.item(row1)
-        if hasattr(qitem2, "fWidget") and qitem2.fWidget is not None:
-            qitem2.fWidget.setParent(self.fDummyContainer)
-        if hasattr(qitem1, "fWidget") and qitem1.fWidget is not None:
-            qitem1.fWidget.setParent(self.fDummyContainer)
-        
-        qitem2 = self.ui.listWidget.takeItem(row2)
-        qitem1 = self.ui.listWidget.takeItem(row1)
-        
-        self.ui.listWidget.insertItem(row1, qitem2)
-        self.ui.listWidget.insertItem(row2, qitem1)
-        
-        self.ui.listWidget.setItemWidget(qitem2, qitem2.fWidget)
-        self.ui.listWidget.setItemWidget(qitem1, qitem1.fWidget)
-        
-        # Ensure they are visible
-        if qitem2.fWidget is not None:
-            qitem2.fWidget.show()
-        if qitem1.fWidget is not None:
-            qitem1.fWidget.show()
-
-        # Restore selection
-        if selected_id is not None:
-            self.ui.listWidget.setCurrentRow(selected_id)
+        if row2 == row1 + 1:
+            model.moveRow(QModelIndex(), row2, QModelIndex(), row1)
+        else:
+            model.moveRow(QModelIndex(), row2, QModelIndex(), row1)
+            model.moveRow(QModelIndex(), row1 + 1, QModelIndex(), row2 + 1)
 
         if self.fWithCanvas:
             self.slot_canvasRefresh()
