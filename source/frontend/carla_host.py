@@ -967,11 +967,13 @@ class HostWindow(QMainWindow):
         # Visually swap the rows in the QListWidget without recreating the UI (eliminates lag)
         row1, row2 = min(pluginIdA, pluginIdB), max(pluginIdA, pluginIdB)
         
-        # Remove widgets BEFORE taking items to prevent Qt from hiding/deleting them!
+        # Detach widgets safely BEFORE taking items to prevent Qt from deleting them!
         qitem2 = self.ui.listWidget.item(row2)
         qitem1 = self.ui.listWidget.item(row1)
-        self.ui.listWidget.removeItemWidget(qitem2)
-        self.ui.listWidget.removeItemWidget(qitem1)
+        if hasattr(qitem2, "fWidget") and qitem2.fWidget is not None:
+            qitem2.fWidget.setParent(None)
+        if hasattr(qitem1, "fWidget") and qitem1.fWidget is not None:
+            qitem1.fWidget.setParent(None)
         
         qitem2 = self.ui.listWidget.takeItem(row2)
         qitem1 = self.ui.listWidget.takeItem(row1)
