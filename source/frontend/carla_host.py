@@ -945,21 +945,40 @@ class HostWindow(QMainWindow):
         if pluginIdA >= self.fPluginCount or pluginIdB >= self.fPluginCount:
             return
 
+        # Remember which row was selected to restore it after the swap
+        selected_id = None
+        if self.fPluginList[pluginIdA].isSelected():
+            selected_id = pluginIdB
+        elif self.fPluginList[pluginIdB].isSelected():
+            selected_id = pluginIdA
+
         self.host.switch_plugins(pluginIdA, pluginIdB)
 
         itemA = self.fPluginList[pluginIdA]
-        compactA = itemA.isCompacted()
-        guiShownA = itemA.isGuiShown()
-
         itemB = self.fPluginList[pluginIdB]
-        compactB = itemB.isCompacted()
-        guiShownB = itemB.isGuiShown()
 
-        itemA.setPluginId(pluginIdA)
-        itemA.recreateWidget2(compactB, guiShownB)
+        # Swap in the backend tracking list
+        self.fPluginList[pluginIdA] = itemB
+        self.fPluginList[pluginIdB] = itemA
 
-        itemB.setPluginId(pluginIdB)
-        itemB.recreateWidget2(compactA, guiShownA)
+        itemA.setPluginId(pluginIdB)
+        itemB.setPluginId(pluginIdA)
+
+        # Visually swap the rows in the QListWidget without recreating the UI (eliminates lag)
+        row1, row2 = min(pluginIdA, pluginIdB), max(pluginIdA, pluginIdB)
+        
+        qitem2 = self.ui.listWidget.takeItem(row2)
+        qitem1 = self.ui.listWidget.takeItem(row1)
+        
+        self.ui.listWidget.insertItem(row1, qitem2)
+        self.ui.listWidget.insertItem(row2, qitem1)
+        
+        self.ui.listWidget.setItemWidget(qitem2, qitem2.fWidget)
+        self.ui.listWidget.setItemWidget(qitem1, qitem1.fWidget)
+
+        # Restore selection
+        if selected_id is not None:
+            self.ui.listWidget.setCurrentRow(selected_id)
 
         if self.fWithCanvas:
             self.slot_canvasRefresh()
