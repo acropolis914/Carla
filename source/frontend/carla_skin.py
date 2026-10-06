@@ -1843,21 +1843,21 @@ class PluginSlot_Compact(AbstractPluginSlot):
         self.b_expand.setSvgs(":/scalable/button_off.svg", ":/scalable/button_on.svg", ":/scalable/button_off.svg")
         font3 = QFont()
         font3.setBold(True)
-        self.b_expand.setTopText(" + ", QColor(220, 220, 220), font3)
+        self.b_expand.setTopText(" ▼ ", QColor(220, 220, 220), font3)
         self.b_expand.clicked.connect(lambda _=None: gCarla.gui.compactPlugin(self.fPluginId))
         self.ui.horizontalLayout_2.addWidget(self.b_expand)
         
         if not bool(self.getHints() & PLUGIN_HAS_CUSTOM_UI):
             self.b_gui.hide()
         
-self.ready()
+        self.ready()
 
     # -----------------------------------------------------------------
 
-    def getFixedHeight(self):
-        if self.fSkinStyle == "calf_blue":
-            return 36
-        return 30
+def getFixedHeight(self):
+    if self.fSkinStyle == "calf_blue":
+        return 36
+    return 30
 
 # ------------------------------------------------------------------------------------------------------------
 
@@ -1972,7 +1972,7 @@ class PluginSlot_Minimal(PluginSlot_Default):
         self.b_bypass.setSvgs(":/scalable/button_off.svg", ":/scalable/button_on.svg", ":/scalable/button_off.svg")
         font = QFont()
         font.setBold(True)
-        self.b_bypass.setTopText(" B ", QColor(220, 220, 220), font)
+        self.b_bypass.setTopText(" ↯ ", QColor(220, 220, 220), font)
         
         if bool(self.getHints() & PLUGIN_CAN_DRYWET):
             self.b_bypass.setChecked(self.host.get_internal_parameter_value(self.fPluginId, PARAMETER_DRYWET) == 0.0)
@@ -1994,7 +1994,7 @@ class PluginSlot_Minimal(PluginSlot_Default):
         self.b_minimize.setSvgs(":/scalable/button_off.svg", ":/scalable/button_on.svg", ":/scalable/button_off.svg")
         font2 = QFont()
         font2.setBold(True)
-        self.b_minimize.setTopText(" - ", QColor(220, 220, 220), font2)
+        self.b_minimize.setTopText(" ▲ ", QColor(220, 220, 220), font2)
         self.b_minimize.clicked.connect(lambda _=None: gCarla.gui.compactPlugin(self.fPluginId))
         self.ui.layout_top.addWidget(self.b_minimize)
         
