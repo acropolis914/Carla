@@ -1836,14 +1836,11 @@ class PluginSlot_Compact(AbstractPluginSlot):
 
         
         # --- User requested expand button ---
-        self.b_expand = ScalableButton(parent=self)
+        self.b_expand = QPushButton(" ▼ ", parent=self)
         self.b_expand.setMinimumSize(24, 24)
         self.b_expand.setMaximumSize(24, 24)
         self.b_expand.setToolTip("Expand")
-        self.b_expand.setSvgs(":/scalable/button_off.svg", ":/scalable/button_on.svg", ":/scalable/button_off.svg")
-        font3 = QFont()
-        font3.setBold(True)
-        self.b_expand.setTopText(" ▼ ", QColor(220, 220, 220), font3)
+        self.b_expand.setStyleSheet("QPushButton { border-radius: 3px; font-weight: bold; background: #333; color: #fff; border: 1px solid #111; } QPushButton:hover { background: #444; }")
         self.b_expand.clicked.connect(lambda _=None: gCarla.gui.compactPlugin(self.fPluginId))
         self.ui.horizontalLayout_2.addWidget(self.b_expand)
         
@@ -1964,15 +1961,11 @@ class PluginSlot_Minimal(PluginSlot_Default):
         self.ui.w_buttons.setMaximumSize(96, 24)
         
         # Bypass Button
-        self.b_bypass = ScalableButton(parent=self.ui.w_buttons)
+        self.b_bypass = QPushButton(" ↯ ", parent=self.ui.w_buttons)
         self.b_bypass.setMinimumSize(24, 24)
         self.b_bypass.setMaximumSize(24, 24)
         self.b_bypass.setCheckable(True)
         self.b_bypass.setToolTip("Bypass")
-        self.b_bypass.setSvgs(":/scalable/button_off.svg", ":/scalable/button_on.svg", ":/scalable/button_off.svg")
-        font = QFont()
-        font.setBold(True)
-        self.b_bypass.setTopText(" ↯ ", QColor(220, 220, 220), font)
         
         if bool(self.getHints() & PLUGIN_CAN_DRYWET):
             self.b_bypass.setChecked(self.host.get_internal_parameter_value(self.fPluginId, PARAMETER_DRYWET) == 0.0)
@@ -1987,14 +1980,10 @@ class PluginSlot_Minimal(PluginSlot_Default):
         self.ui.horizontalLayout.insertWidget(1, self.b_bypass)
         
         # Minimize/Expand button
-        self.b_minimize = ScalableButton(parent=self)
+        self.b_minimize = QPushButton(" ▲ ", parent=self)
         self.b_minimize.setMinimumSize(24, 24)
         self.b_minimize.setMaximumSize(24, 24)
         self.b_minimize.setToolTip("Minimize")
-        self.b_minimize.setSvgs(":/scalable/button_off.svg", ":/scalable/button_on.svg", ":/scalable/button_off.svg")
-        font2 = QFont()
-        font2.setBold(True)
-        self.b_minimize.setTopText(" ▲ ", QColor(220, 220, 220), font2)
         self.b_minimize.clicked.connect(lambda _=None: gCarla.gui.compactPlugin(self.fPluginId))
         self.ui.layout_top.addWidget(self.b_minimize)
         
