@@ -969,7 +969,14 @@ class HostWindow(QMainWindow):
             model.moveRow(QModelIndex(), row1 + 1, QModelIndex(), row2 + 1)
 
         if self.fWithCanvas:
-            self.slot_canvasRefresh()
+            # Debounce the heavy canvas rebuild so spamming Ctrl+Up/Down is perfectly smooth
+            if not hasattr(self, 'fCanvasRefreshTimer'):
+                from qt_compat import QTimer
+                self.fCanvasRefreshTimer = QTimer(self)
+                self.fCanvasRefreshTimer.setSingleShot(True)
+                self.fCanvasRefreshTimer.setInterval(150)
+                self.fCanvasRefreshTimer.timeout.connect(self.slot_canvasRefresh)
+            self.fCanvasRefreshTimer.start()
 
     def setLoadRDFsNeeded(self):
         self.fLadspaRdfNeedsUpdate = True
