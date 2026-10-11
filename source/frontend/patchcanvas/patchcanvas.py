@@ -1877,13 +1877,31 @@ def alignSelected(mode="horizontal"):
 
     if mode == "horizontal":
         target_y = sum(n.y() for n in nodes) / float(len(nodes))
+        nodes.sort(key=lambda n: n.x())
+        # First align all Y to target_y
         for n in nodes:
             n.setPos(n.x(), target_y)
+        # Push overlapping nodes horizontally to maintain at least node_gap
+        for i in range(len(nodes) - 1):
+            curr_node = nodes[i]
+            next_node = nodes[i + 1]
+            min_next_x = curr_node.x() + curr_node.boundingRect().width() + node_gap
+            if next_node.x() < min_next_x:
+                next_node.setPos(min_next_x, target_y)
 
     elif mode == "vertical":
         target_x = sum(n.x() for n in nodes) / float(len(nodes))
+        nodes.sort(key=lambda n: n.y())
+        # First align all X to target_x
         for n in nodes:
             n.setPos(target_x, n.y())
+        # Push overlapping nodes vertically to maintain at least node_gap
+        for i in range(len(nodes) - 1):
+            curr_node = nodes[i]
+            next_node = nodes[i + 1]
+            min_next_y = curr_node.y() + curr_node.boundingRect().height() + node_gap
+            if next_node.y() < min_next_y:
+                next_node.setPos(target_x, min_next_y)
 
     elif mode == "distribute_h":
         nodes.sort(key=lambda n: n.x())

@@ -201,16 +201,23 @@ class PatchScene(QGraphicsScene):
                 self.fixScaleFactor()
 
             else:
+                orig_x = self.m_rubberband_orig_point.x()
+                curr_x = getattr(self, "m_rubberband_last_pos", self.m_rubberband_orig_point).x()
+                # Left -> Right: select all touched (intersecting)
+                # Right -> Left: select only fully enclosed
+                select_touched = (curr_x >= orig_x)
+
+                rb_rect = self.m_rubberband.rect()
                 items_list = self.items()
                 for item in items_list:
                     if item and item.isVisible() and item.type() == CanvasBoxType:
                         item_rect = item.sceneBoundingRect()
-                        item_top_left = QPointF(item_rect.x(), item_rect.y())
-                        item_bottom_right = QPointF(item_rect.x() + item_rect.width(),
-                                                    item_rect.y() + item_rect.height())
-
-                        if self.m_rubberband.contains(item_top_left) and self.m_rubberband.contains(item_bottom_right):
-                            item.setSelected(True)
+                        if select_touched:
+                            if rb_rect.intersects(item_rect):
+                                item.setSelected(True)
+                        else:
+                            if rb_rect.contains(item_rect):
+                                item.setSelected(True)
 
             self.m_rubberband.hide()
             self.m_rubberband.setRect(0, 0, 0, 0)
@@ -308,10 +315,9 @@ class PatchScene(QGraphicsScene):
     def mousePressEvent(self, event):
         ctrlDown = bool(event.modifiers() & Qt.ControlModifier)
 
-        self.m_mouse_down_init = (
-            (event.button() == Qt.LeftButton) or ((event.button() == Qt.RightButton) and ctrlDown)
-        )
+        self.m_mouse_down_init = (event.button() == Qt.RightButton)
         self.m_mouse_rubberband = False
+        self.m_rubberband_last_pos = event.scenePos()
 
         if event.button() == Qt.MiddleButton and ctrlDown:
             self.startConnectionCut()
@@ -336,6 +342,7 @@ class PatchScene(QGraphicsScene):
         if self.m_mouse_rubberband:
             event.accept()
             pos = event.scenePos()
+            self.m_rubberband_last_pos = pos
             pos_x = pos.x()
             pos_y = pos.y()
             if not self.m_rubberband_selection:
