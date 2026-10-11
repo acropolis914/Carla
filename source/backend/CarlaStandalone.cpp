@@ -2018,6 +2018,12 @@ const CarlaInlineDisplayImageSurface* carla_render_inline_display(CarlaHostHandl
 
     if (const CarlaPluginPtr plugin = handle->engine->getPlugin(pluginId))
     {
+        if (plugin->getHints() & CB::PLUGIN_IS_BRIDGE)
+            return nullptr;
+
+        if (! (plugin->getHints() & CB::PLUGIN_HAS_INLINE_DISPLAY))
+            return nullptr;
+
         switch (plugin->getType())
         {
 #if !(defined(BUILD_BRIDGE_ALTERNATIVE_ARCH) || defined(CARLA_PLUGIN_ONLY_BRIDGE))
