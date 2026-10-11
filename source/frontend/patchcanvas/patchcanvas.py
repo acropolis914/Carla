@@ -2104,8 +2104,8 @@ def moveAsideNonConnectedNodes(anchor_node=None):
     # Find connected nodes
     connected_nodes = set()
     for connection in canvas.connection_list:
-        p1 = (connection.group_id_1, connection.port_id_1)
-        p2 = (connection.group_id_2, connection.port_id_2)
+        p1 = (connection.group_out_id, connection.port_out_id)
+        p2 = (connection.group_in_id, connection.port_in_id)
         n1 = port_nodes.get(p1)
         n2 = port_nodes.get(p2)
         if n1 and n2 and n1 != n2:
