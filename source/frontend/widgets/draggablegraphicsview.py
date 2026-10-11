@@ -126,8 +126,14 @@ class DraggableGraphicsView(QGraphicsView):
     # -----------------------------------------------------------------------------------------------------------------
 
     def mousePressEvent(self, event):
-        item = self.itemAt(event.pos() if hasattr(event, "pos") else event.position().toPoint())
+        pos_point = event.pos() if hasattr(event, "pos") else event.position().toPoint()
+        item = self.itemAt(pos_point)
         
+        if not item:
+            # Clicking empty canvas background clears current selection
+            if self.scene():
+                self.scene().clearSelection()
+
         if event.button() == Qt.LeftButton and not item:
             self.fLeftPanning = True
             self.setDragMode(QGraphicsView.ScrollHandDrag)
@@ -135,45 +141,41 @@ class DraggableGraphicsView(QGraphicsView):
             return
 
         if event.button() == Qt.RightButton and not item:
-            self.fRightSelecting = True
-            self.setDragMode(QGraphicsView.RubberBandDrag)
-            
-            if qt_config == 5:
-                synth_event = QMouseEvent(QEvent.MouseButtonPress,
-                                    event.localPos(), event.windowPos(), event.screenPos(),
-                                    Qt.LeftButton, Qt.LeftButton,
-                                    Qt.NoModifier,
-                                    Qt.MouseEventSynthesizedByApplication)
-                synth_event.setTimestamp(event.timestamp())
-            else:
-                synth_event = QMouseEvent(QEvent.MouseButtonPress,
-                                    event.position(), event.scenePosition(), event.globalPosition(),
-                                    Qt.LeftButton, Qt.LeftButton,
-                                    Qt.NoModifier)
-            QGraphicsView.mousePressEvent(self, synth_event)
+            self.fRightSelecting = False
+            self.fRightDragOrigin = event.pos() if hasattr(event, "pos") else event.position().toPoint()
+            self.fRightSceneOrigin = self.mapToScene(self.fRightDragOrigin)
+            event.accept()
             return
 
         QGraphicsView.mousePressEvent(self, event)
 
     def mouseMoveEvent(self, event):
-        if getattr(self, "fRightSelecting", False):
-            buttons = event.buttons()
-            if buttons & Qt.RightButton:
-                buttons &= ~Qt.RightButton
-                buttons |= Qt.LeftButton
-                if qt_config == 5:
-                    synth_event = QMouseEvent(QEvent.MouseMove,
-                                        event.localPos(), event.windowPos(), event.screenPos(),
-                                        Qt.LeftButton, buttons,
-                                        Qt.NoModifier,
-                                        Qt.MouseEventSynthesizedByApplication)
-                    synth_event.setTimestamp(event.timestamp())
-                else:
-                    synth_event = QMouseEvent(QEvent.MouseMove,
-                                        event.position(), event.scenePosition(), event.globalPosition(),
-                                        Qt.LeftButton, buttons,
-                                        Qt.NoModifier)
-                QGraphicsView.mouseMoveEvent(self, synth_event)
+        if hasattr(self, "fRightDragOrigin") and self.fRightDragOrigin is not None:
+            curr_pos = event.pos() if hasattr(event, "pos") else event.position().toPoint()
+            delta = curr_pos - self.fRightDragOrigin
+            if not getattr(self, "fRightSelecting", False) and delta.manhattanLength() >= 6:
+                self.fRightSelecting = True
+                self.setDragMode(QGraphicsView.RubberBandDrag)
+                # Initialize scene rubberband
+                sc = self.scene()
+                if sc and hasattr(sc, "m_rubberband"):
+                    sc.m_mouse_rubberband = True
+                    sc.m_rubberband_selection = True
+                    sc.m_rubberband_orig_point = self.fRightSceneOrigin
+                    sc.m_rubberband.show()
+
+            if getattr(self, "fRightSelecting", False):
+                sc = self.scene()
+                if sc and hasattr(sc, "m_rubberband"):
+                    scene_pos = self.mapToScene(curr_pos)
+                    sc.m_rubberband_last_pos = scene_pos
+                    orig_pos = sc.m_rubberband_orig_point
+                    rx = min(scene_pos.x(), orig_pos.x())
+                    ry = min(scene_pos.y(), orig_pos.y())
+                    rw = abs(scene_pos.x() - orig_pos.x())
+                    rh = abs(scene_pos.y() - orig_pos.y())
+                    sc.m_rubberband.setRect(rx, ry, rw, rh)
+                event.accept()
                 return
 
         QGraphicsView.mouseMoveEvent(self, event)
@@ -186,24 +188,24 @@ class DraggableGraphicsView(QGraphicsView):
             QGraphicsView.mouseReleaseEvent(self, event)
             return
 
-        if event.button() == Qt.RightButton and getattr(self, "fRightSelecting", False):
+        if event.button() == Qt.RightButton:
+            was_selecting = getattr(self, "fRightSelecting", False)
             self.fRightSelecting = False
+            self.fRightDragOrigin = None
             self.setDragMode(QGraphicsView.NoDrag)
             self.setCursor(QCursor(Qt.ArrowCursor))
-            if qt_config == 5:
-                synth_event = QMouseEvent(QEvent.MouseButtonRelease,
-                                    event.localPos(), event.windowPos(), event.screenPos(),
-                                    Qt.LeftButton, Qt.NoButton,
-                                    Qt.NoModifier,
-                                    Qt.MouseEventSynthesizedByApplication)
-                synth_event.setTimestamp(event.timestamp())
-            else:
-                synth_event = QMouseEvent(QEvent.MouseButtonRelease,
-                                    event.position(), event.scenePosition(), event.globalPosition(),
-                                    Qt.LeftButton, Qt.NoButton,
-                                    Qt.NoModifier)
-            QGraphicsView.mouseReleaseEvent(self, synth_event)
-            return
+
+            sc = self.scene()
+            if was_selecting and sc and hasattr(sc, "handleMouseRelease"):
+                sc.handleMouseRelease()
+                event.accept()
+                return
+            elif not was_selecting:
+                # Simple right click without dragging: trigger background context menu
+                event.accept()
+                from patchcanvas import canvas, ACTION_BG_RIGHT_CLICK
+                canvas.callback(ACTION_BG_RIGHT_CLICK, 0, 0, "")
+                return
 
         QGraphicsView.mouseReleaseEvent(self, event)
 

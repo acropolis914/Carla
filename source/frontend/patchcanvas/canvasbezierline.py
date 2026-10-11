@@ -145,6 +145,13 @@ class CanvasBezierLine(QGraphicsPathItem):
         painter.setRenderHint(QPainter.Antialiasing, bool(options.antialiasing))
 
         pen = self.pen()
+        scale = canvas.scene.getScaleFactor() if hasattr(canvas.scene, "getScaleFactor") else 1.0
+        min_width = max(2.0, 2.0 / scale)
+        if pen.widthF() < min_width:
+            pen = QPen(pen)
+            pen.setWidthF(min_width)
+            painter.setPen(pen)
+
         cosm_pen = QPen(pen)
         cosm_pen.setCosmetic(True)
         cosm_pen.setWidthF(1.00001)

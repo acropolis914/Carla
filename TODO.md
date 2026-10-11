@@ -14,3 +14,4 @@
 - [ ] feat: Minified rack mode exposing only essential controls
 - [ ] feat: Offer to save dirty edits on exit (Yes, No, Cancel) with visual save status indicator (dirty/saved)
 - [ ] feat: Status indicator for last autosave timestamp and countdown timer to next autosave
+- [ ] feat: Subtle canvas alignment dots/grid with snapping; align functions respect grid snap

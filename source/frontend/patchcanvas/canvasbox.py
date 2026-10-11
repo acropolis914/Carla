@@ -1449,15 +1449,18 @@ class CanvasBox(QGraphicsObject):
         rect = QRectF(0, 0, self.p_width, self.p_height)
 
         # Draw rectangle
+        scale = canvas.scene.getScaleFactor() if hasattr(canvas.scene, "getScaleFactor") else 1.0
         if getattr(self, "m_search_highlight", 0) == 2:
-            pen = QPen(QColor(255, 170, 0), 3.0)
+            pen = QPen(QColor(255, 170, 0), max(3.0, 3.0 / scale))
         elif getattr(self, "m_search_highlight", 0) == 1:
-            pen = QPen(QColor(240, 110, 0), 1.8)
+            pen = QPen(QColor(240, 110, 0), max(2.0, 2.0 / scale))
+        elif self.isSelected():
+            pen = QPen(canvas.theme.box_pen_sel)
+            pen.setWidthF(max(2.5, 2.5 / scale))
         else:
-            pen = QPen(
-                canvas.theme.box_pen_sel if self.isSelected() else canvas.theme.box_pen
-            )
-        pen.setWidthF(pen.widthF() + 0.00001)
+            pen = QPen(canvas.theme.box_pen)
+            pen.setWidthF(pen.widthF() + 0.00001)
+
         painter.setPen(pen)
         lineHinting = pen.widthF() / 2
 
