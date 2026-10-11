@@ -18,6 +18,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - `Ctrl + Click` anywhere on a node body or port toggles selection without moving nodes or triggering cable patches.
 
 ### Fixed
+- **Autosave Path Normalization & Recursion Prevention**:
+  - Normalized project filenames to prevent `.autosaves/` recursion when recovering and re-saving sessions.
+  - Separated logical project filepath from autosave recovery source during load.
 - **Patchbay Interactions & Drag Propagation**:
   - Fixed `DraggableGraphicsView` mouse event interception that swallowed scene port patches and node clicks.
   - Implemented instant $\ge 4\text{px}$ right-drag directional marquee selection (left-to-right touches, right-to-left encloses) disambiguated from a stationary 150ms hold context menu.

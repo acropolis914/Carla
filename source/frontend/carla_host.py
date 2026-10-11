@@ -1096,11 +1096,16 @@ class HostWindow(QMainWindow):
     # --------------------------------------------------------------------------------------------------------
     # Files
 
-    def loadProjectNow(self):
+    def loadProjectNow(self, source_override=None):
         if not self.fProjectFilename:
             return qCritical("ERROR: loading project without filename set")
         if self.host.nsmOK and not os.path.exists(self.fProjectFilename):
             return
+
+        # Ensure canonical project filename to prevent nested .autosaves/
+        if hasattr(self, "fSessionManager") and self.fSessionManager is not None:
+            self.fProjectFilename = self.fSessionManager.get_canonical_project_filepath(self.fProjectFilename)
+            self.setProperWindowTitle()
 
         if not (self.host.isControl or self.host.is_engine_running()):
             self.slot_engineStart()
@@ -1108,10 +1113,12 @@ class HostWindow(QMainWindow):
         self.projectLoadingStarted()
         self.fIsProjectLoading = True
 
+        load_source = source_override or self.fProjectFilename
+
         # Check if project contains plugins prone to in-process JUCE UI thread collisions
         force_bridged = False
         try:
-            tree = ET.parse(self.fProjectFilename) if self.fProjectFilename.endswith(".carxp") else None
+            tree = ET.parse(load_source) if load_source.endswith(".carxp") else None
             if tree is not None:
                 root = tree.getroot()
                 eng_settings = root.find("EngineSettings")
@@ -1143,11 +1150,11 @@ class HostWindow(QMainWindow):
         except Exception as e:
             print("Bridge pre-check warning:", e)
 
-        actual_load_filename = self.fProjectFilename
+        actual_load_filename = load_source
         tmp_cleanup_file = None
         try:
-            actual_load_filename = storage_manager.prepare_for_backend_load(self.fProjectFilename, force_bridged=force_bridged)
-            if actual_load_filename != self.fProjectFilename:
+            actual_load_filename = storage_manager.prepare_for_backend_load(load_source, force_bridged=force_bridged)
+            if actual_load_filename != load_source:
                 tmp_cleanup_file = actual_load_filename
         except Exception as e:
             print("Failed to prepare project for loading:", e)
@@ -1185,8 +1192,9 @@ class HostWindow(QMainWindow):
             if widget is not None and hasattr(widget, "refreshState"):
                 widget.refreshState()
 
-    def loadProjectLater(self, filename):
+    def loadProjectLater(self, filename, source_override=None):
         self.fProjectFilename = QFileInfo(filename).absoluteFilePath()
+        self.fProjectSourceOverride = source_override
         self.setProperWindowTitle()
         QTimer.singleShot(1, self.slot_loadProjectNow)
 
@@ -1410,6 +1418,7 @@ class HostWindow(QMainWindow):
                 break
 
         if recent_file:
+            recovery_source = None
             if hasattr(self, "fSessionManager") and self.fSessionManager is not None:
                 newer_autosave = self.fSessionManager.check_newer_autosave(recent_file)
                 if newer_autosave:
@@ -1424,10 +1433,10 @@ class HostWindow(QMainWindow):
                         QMessageBox.Yes,
                     )
                     if rec_ask == QMessageBox.Yes:
-                        recent_file = newer_autosave
+                        recovery_source = newer_autosave
 
             if getattr(gCarla, "autoload_lastsave", False):
-                self.loadProjectLater(recent_file)
+                self.loadProjectLater(recent_file, source_override=recovery_source)
                 return
 
             name = os.path.basename(recent_file)
@@ -1441,7 +1450,7 @@ class HostWindow(QMainWindow):
                 QMessageBox.Yes,
             )
             if ask == QMessageBox.Yes:
-                self.loadProjectLater(recent_file)
+                self.loadProjectLater(recent_file, source_override=recovery_source)
                 return
 
         # Not loading recent: start engine and auto-arrange canvas
@@ -1490,6 +1499,7 @@ class HostWindow(QMainWindow):
             return
 
         # Check for newer autosave recovery
+        load_source = filename
         if hasattr(self, "fSessionManager") and self.fSessionManager is not None:
             newer_autosave = self.fSessionManager.check_newer_autosave(filename)
             if newer_autosave:
@@ -1504,7 +1514,7 @@ class HostWindow(QMainWindow):
                     QMessageBox.Yes,
                 )
                 if rec_ask == QMessageBox.Yes:
-                    filename = newer_autosave
+                    load_source = newer_autosave
 
         newFile = True
 
@@ -1524,11 +1534,11 @@ class HostWindow(QMainWindow):
             self.pluginRemoveAll()
             self.fProjectFilename = filename
             self.setProperWindowTitle()
-            self.loadProjectNow()
+            self.loadProjectNow(source_override=load_source)
         else:
             filenameOld = self.fProjectFilename
             self.fProjectFilename = filename
-            self.loadProjectNow()
+            self.loadProjectNow(source_override=load_source)
             self.fProjectFilename = filenameOld
 
     @pyqtSlot()
@@ -1566,7 +1576,9 @@ class HostWindow(QMainWindow):
 
     @pyqtSlot()
     def slot_loadProjectNow(self):
-        self.loadProjectNow()
+        source_override = getattr(self, "fProjectSourceOverride", None)
+        self.fProjectSourceOverride = None
+        self.loadProjectNow(source_override=source_override)
         if self.fProjectFilename and os.path.exists(self.fProjectFilename):
             self.ui.act_file_save.setEnabled(True)
 

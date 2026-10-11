@@ -51,11 +51,30 @@ class ProjectSessionManager:
         self._timer.stop()
         self._pos_debounce_timer.stop()
 
+    @staticmethod
+    def get_canonical_project_filepath(project_filepath):
+        if not project_filepath:
+            return ""
+        abs_path = os.path.abspath(project_filepath)
+        if ".autosaves" in abs_path:
+            parts = abs_path.split(os.sep)
+            idx = parts.index(".autosaves")
+            dir_path = os.sep.join(parts[:idx])
+            filename = os.path.basename(abs_path)
+            base, ext = os.path.splitext(filename)
+            import re
+            base = re.sub(r"_auto_\d{8}_\d{6}", "", base)
+            while base.endswith("_auto"):
+                base = base[:-5]
+            return os.path.join(dir_path, base + ext)
+        return abs_path
+
     def get_autosave_dir(self, project_filepath):
         if not project_filepath:
             return None
-        project_dir = os.path.dirname(os.path.abspath(project_filepath))
-        base_name = os.path.splitext(os.path.basename(project_filepath))[0]
+        canonical = self.get_canonical_project_filepath(project_filepath)
+        project_dir = os.path.dirname(canonical)
+        base_name = os.path.splitext(os.path.basename(canonical))[0]
         autosave_dir = os.path.join(project_dir, ".autosaves", base_name)
         return autosave_dir
 
@@ -109,10 +128,10 @@ class ProjectSessionManager:
             return None
 
         try:
-            os.makedirs(autosave_dir, exist_ok=True)
+            canonical_path = self.get_canonical_project_filepath(project_filepath)
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            ext = os.path.splitext(project_filepath)[1] or ".carxp"
-            base_name = os.path.splitext(os.path.basename(project_filepath))[0]
+            ext = os.path.splitext(canonical_path)[1] or ".carxp"
+            base_name = os.path.splitext(os.path.basename(canonical_path))[0]
             autosave_file = os.path.join(autosave_dir, f"{base_name}_auto_{timestamp}{ext}")
 
             # 1. Ask Carla backend engine to save state (via temporary XML if destination is .carjp)
