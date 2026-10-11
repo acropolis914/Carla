@@ -1372,8 +1372,9 @@ class CanvasBox(QGraphicsObject):
 
         if event.button() == Qt.RightButton:
             event.accept()
-            canvas.scene.clearSelection()
-            self.setSelected(True)
+            if not self.isSelected():
+                canvas.scene.clearSelection()
+                self.setSelected(True)
             self.m_mouse_down = False
             return
 
