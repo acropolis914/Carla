@@ -1472,9 +1472,7 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
             self.showReplaceDialog()
 
         elif actSel == actRemove:
-            if not self.host.remove_plugin(self.fPluginId):
-                CustomMessageBox(self, QMessageBox.Warning, self.tr("Error"), self.tr("Operation failed"),
-                                       self.host.get_last_error(), QMessageBox.Ok, QMessageBox.Ok)
+            self.slot_removePlugin()
 
         elif actSel == actExportLV2:
             filepath = QInputDialog.getItem(self, self.tr("Export LV2 Plugin"),
@@ -1603,6 +1601,17 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
 
     @pyqtSlot()
     def slot_removePlugin(self):
+        name = self.fPluginInfo.get("name", self.tr("this plugin"))
+        ask = QMessageBox.question(
+            self,
+            self.tr("Remove Plugin"),
+            self.tr(f"Are you sure you want to remove '{name}'?"),
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+        if ask != QMessageBox.Yes:
+            return
+
         if not self.host.remove_plugin(self.fPluginId):
             CustomMessageBox(self, QMessageBox.Warning, self.tr("Error"), self.tr("Operation failed"),
                                     self.host.get_last_error(), QMessageBox.Ok, QMessageBox.Ok)
