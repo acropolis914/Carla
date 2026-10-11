@@ -7,13 +7,11 @@
 
 import os
 import sys
-
 from math import fmod
 
 # ------------------------------------------------------------------------------------------------------------
 # Imports (Signal)
-
-from signal import signal, SIGINT, SIGTERM
+from signal import SIGINT, SIGTERM, signal
 
 try:
     from signal import SIGUSR1

@@ -5,52 +5,58 @@
 # ------------------------------------------------------------------------------------------------------------
 # Imports (Global)
 
+# ------------------------------------------------------------------------------------------------------------
+# Imports (ctypes)
+from ctypes import (
+    CFUNCTYPE,
+    POINTER,
+    Structure,
+    c_bool,
+    c_char_p,
+    c_double,
+    c_int,
+    c_uint,
+    c_uint32,
+    c_void_p,
+    cdll,
+)
 from os import environ
 from sys import argv
 
 # ------------------------------------------------------------------------------------------------------------
-# Imports (ctypes)
-
-from ctypes import (
-    c_bool, c_char_p, c_double, c_int, c_uint, c_uint32, c_void_p,
-    cdll, Structure,
-    CFUNCTYPE, POINTER
-)
-
-# ------------------------------------------------------------------------------------------------------------
 # Imports (Custom)
-
 from carla_backend import (
     CARLA_OS_WIN,
-    PLUGIN_NONE,
-    PLUGIN_INTERNAL,
-    PLUGIN_LADSPA,
-    PLUGIN_DSSI,
-    PLUGIN_LV2,
-    PLUGIN_VST2,
-    PLUGIN_VST3,
     PLUGIN_AU,
-    PLUGIN_DLS,
-    PLUGIN_GIG,
-    PLUGIN_SF2,
-    PLUGIN_SFZ,
-    PLUGIN_JACK,
-    PLUGIN_JSFX,
-    PLUGIN_CLAP,
-    PLUGIN_CATEGORY_NONE,
-    PLUGIN_CATEGORY_SYNTH,
     PLUGIN_CATEGORY_DELAY,
-    PLUGIN_CATEGORY_EQ,
-    PLUGIN_CATEGORY_FILTER,
     PLUGIN_CATEGORY_DISTORTION,
     PLUGIN_CATEGORY_DYNAMICS,
+    PLUGIN_CATEGORY_EQ,
+    PLUGIN_CATEGORY_FILTER,
     PLUGIN_CATEGORY_MODULATOR,
-    PLUGIN_CATEGORY_UTILITY,
+    PLUGIN_CATEGORY_NONE,
     PLUGIN_CATEGORY_OTHER,
-    c_enum, c_uintptr,
-    charPtrToString,
+    PLUGIN_CATEGORY_SYNTH,
+    PLUGIN_CATEGORY_UTILITY,
+    PLUGIN_CLAP,
+    PLUGIN_DLS,
+    PLUGIN_DSSI,
+    PLUGIN_GIG,
+    PLUGIN_INTERNAL,
+    PLUGIN_JACK,
+    PLUGIN_JSFX,
+    PLUGIN_LADSPA,
+    PLUGIN_LV2,
+    PLUGIN_NONE,
+    PLUGIN_SF2,
+    PLUGIN_SFZ,
+    PLUGIN_VST2,
+    PLUGIN_VST3,
+    c_enum,
+    c_uintptr,
     charPtrPtrToStringList,
-    structToDict
+    charPtrToString,
+    structToDict,
 )
 
 # ------------------------------------------------------------------------------------------------------------
@@ -127,7 +133,7 @@ def getPluginTypeFromString(stype):
     if stype == "clap":
         return PLUGIN_CLAP
 
-    print("getPluginTypeFromString(\"%s\") - invalid string type" % stype)
+    print(f"getPluginTypeFromString(\"{stype}\") - invalid string type")
     return PLUGIN_NONE
 
 def getPluginCategoryAsString(category):

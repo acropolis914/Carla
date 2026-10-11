@@ -1,60 +1,246 @@
 #!/usr/bin/env python3
-# SPDX-FileCopyrightText: 2011-2024 Filipe Coelho <falktx@falktx.com>
+# SPDX-FileCopyrightText: 2011-2025 Filipe Coelho <falktx@falktx.com>
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from qt_config import qt as qt_config
 
+
+# ------------------------------------------------------------------------------------------------------------
+# Qt 5
+# ------------------------------------------------------------------------------------------------------------
+
 if qt_config == 5:
-    from PyQt5.QtCore import Qt
+    # QtCore
+    from PyQt5.QtCore import (
+        Qt,
+        QBuffer,
+        QEvent,
+        QEventLoop,
+        QFileInfo,
+        QIODevice,
+        QLineF,
+        QMimeData,
+        QModelIndex,
+        QObject,
+        QPoint,
+        QPointF,
+        QRect,
+        QRectF,
+        QSize,
+        QTimer,
+        qCritical,
+    )
 
-    Qt.CheckState = int
-    Qt.MiddleButton = Qt.MidButton
+    # QtGui
+    from PyQt5.QtGui import (
+        QAction,
+        QBrush,
+        QColor,
+        QCursor,
+        QFont,
+        QFontDatabase,
+        QImage,
+        QImageWriter,
+        QMouseEvent,
+        QPainter,
+        QPainterPath,
+        QPainterPathStroker,
+        QPalette,
+        QPen,
+    )
 
-elif qt_config == 6:
-    from PyQt6.QtCore import Qt, QEvent, QEventLoop
-    from PyQt6.QtGui import QFont, QPainter, QPalette
-    from PyQt6.QtWidgets import (
+    # QtWidgets
+    from PyQt5.QtWidgets import (
         QAbstractItemView,
         QAbstractSpinBox,
         QApplication,
         QColorDialog,
+        QComboBox,
         QDialog,
         QDialogButtonBox,
+        QDoubleSpinBox,
         QFileDialog,
+        QFileSystemModel,
         QFrame,
         QGraphicsItem,
         QGraphicsScene,
         QGraphicsView,
         QHeaderView,
+        QHBoxLayout,
+        QInputDialog,
+        QLabel,
+        QLayout,
         QLineEdit,
         QListWidgetItem,
+        QMainWindow,
         QMenu,
         QMessageBox,
+        QPushButton,
+        QScrollArea,
+        QSlider,
+        QStackedWidget,
         QSizePolicy,
         QStyle,
         QSystemTrayIcon,
+        QVBoxLayout,
+        QWidget,
     )
+
+    # QtOpenGL
+    try:
+        from PyQt5.QtOpenGL import QGLWidget
+    except ImportError:
+        QGLWidget = None
+
+
+# ------------------------------------------------------------------------------------------------------------
+# Qt 6
+# ------------------------------------------------------------------------------------------------------------
+
+elif qt_config == 6:
+    # QtCore
+    from PyQt6.QtCore import (
+        QBuffer,
+        QEvent,
+        QEventLoop,
+        QFileInfo,
+        QIODevice,
+        QLineF,
+        QMimeData,
+        QModelIndex,
+        QObject,
+        QPoint,
+        QPointF,
+        QRect,
+        QRectF,
+        QSize,
+        Qt,
+        QTimer,
+        qCritical,
+    )
+
+    # QtGui
+    from PyQt6.QtGui import (
+        QAction,
+        QBrush,
+        QColor,
+        QCursor,
+        QFileSystemModel,
+        QFont,
+        QFontDatabase,
+        QImage,
+        QImageWriter,
+        QMouseEvent,
+        QPainter,
+        QPainterPath,
+        QPainterPathStroker,
+        QPalette,
+        QPen,
+    )
+
+    # QtWidgets
+    from PyQt6.QtWidgets import (
+        QAbstractItemView,
+        QAbstractSpinBox,
+        QApplication,
+        QColorDialog,
+        QComboBox,
+        QDialog,
+        QDialogButtonBox,
+        QDoubleSpinBox,
+        QFileDialog,
+        QFrame,
+        QGraphicsItem,
+        QGraphicsScene,
+        QGraphicsView,
+        QHBoxLayout,
+        QHeaderView,
+        QInputDialog,
+        QLabel,
+        QLayout,
+        QLineEdit,
+        QListWidgetItem,
+        QMainWindow,
+        QMenu,
+        QMessageBox,
+        QPushButton,
+        QScrollArea,
+        QSizePolicy,
+        QSlider,
+        QStackedWidget,
+        QStyle,
+        QSystemTrayIcon,
+        QVBoxLayout,
+        QWidget,
+    )
+
+    # Qt6 moved QOpenGLWidget into QtOpenGLWidgets.
+    #
+    # Carla's code historically calls this QGLWidget, so expose the
+    # Qt6 equivalent under the old name.
+    try:
+        from PyQt6.QtOpenGLWidgets import QOpenGLWidget
+
+        QGLWidget = QOpenGLWidget
+    except ImportError:
+        QGLWidget = None
+
+    # --------------------------------------------------------------------------------------------------------
+    # Qt compatibility aliases
+    # --------------------------------------------------------------------------------------------------------
+
+    # --------------------------------------------------------------------------------------------------------
+    # Qt.AlignmentFlag
+    # --------------------------------------------------------------------------------------------------------
 
     Qt.AlignCenter = Qt.AlignmentFlag.AlignCenter
     Qt.AlignLeft = Qt.AlignmentFlag.AlignLeft
+    Qt.AlignRight = Qt.AlignmentFlag.AlignRight
+    Qt.AlignHCenter = Qt.AlignmentFlag.AlignHCenter
+    Qt.AlignVCenter = Qt.AlignmentFlag.AlignVCenter
+    Qt.AlignTop = Qt.AlignmentFlag.AlignTop
+    Qt.AlignBottom = Qt.AlignmentFlag.AlignBottom
+
+    # --------------------------------------------------------------------------------------------------------
+    # Qt.ApplicationAttribute
+    # --------------------------------------------------------------------------------------------------------
 
     Qt.AA_DontShowIconsInMenus = Qt.ApplicationAttribute.AA_DontShowIconsInMenus
 
+    # --------------------------------------------------------------------------------------------------------
+    # Qt.ArrowType
+    # --------------------------------------------------------------------------------------------------------
+
     Qt.DownArrow = Qt.ArrowType.DownArrow
+    Qt.LeftArrow = Qt.ArrowType.LeftArrow
     Qt.RightArrow = Qt.ArrowType.RightArrow
+    Qt.UpArrow = Qt.ArrowType.UpArrow
+
+    # --------------------------------------------------------------------------------------------------------
+    # Qt.AspectRatioMode
+    # --------------------------------------------------------------------------------------------------------
 
     Qt.IgnoreAspectRatio = Qt.AspectRatioMode.IgnoreAspectRatio
+
     Qt.KeepAspectRatio = Qt.AspectRatioMode.KeepAspectRatio
+
+    # --------------------------------------------------------------------------------------------------------
+    # Qt.BrushStyle
+    # --------------------------------------------------------------------------------------------------------
 
     Qt.NoBrush = Qt.BrushStyle.NoBrush
 
-    Qt.ToolButtonTextBesideIcon = Qt.ToolButtonStyle.ToolButtonTextBesideIcon
-
-    Qt.Checked = Qt.CheckState.Checked
-    Qt.Unchecked = Qt.CheckState.Unchecked
+    # --------------------------------------------------------------------------------------------------------
+    # Qt.ContextMenuPolicy
+    # --------------------------------------------------------------------------------------------------------
 
     Qt.CustomContextMenu = Qt.ContextMenuPolicy.CustomContextMenu
+
     Qt.NoContextMenu = Qt.ContextMenuPolicy.NoContextMenu
+
+    # --------------------------------------------------------------------------------------------------------
+    # Qt.CursorShape
+    # --------------------------------------------------------------------------------------------------------
 
     Qt.ArrowCursor = Qt.CursorShape.ArrowCursor
     Qt.ClosedHandCursor = Qt.CursorShape.ClosedHandCursor
@@ -63,70 +249,119 @@ elif qt_config == 6:
     Qt.PointingHandCursor = Qt.CursorShape.PointingHandCursor
     Qt.SizeAllCursor = Qt.CursorShape.SizeAllCursor
     Qt.SizeHorCursor = Qt.CursorShape.SizeHorCursor
+    Qt.SizeVerCursor = Qt.CursorShape.SizeVerCursor
+
+    # --------------------------------------------------------------------------------------------------------
+    # Qt.GlobalColor
+    # --------------------------------------------------------------------------------------------------------
 
     Qt.black = Qt.GlobalColor.black
     Qt.blue = Qt.GlobalColor.blue
     Qt.cyan = Qt.GlobalColor.cyan
     Qt.darkGray = Qt.GlobalColor.darkGray
+    Qt.gray = Qt.GlobalColor.gray
+    Qt.green = Qt.GlobalColor.green
     Qt.red = Qt.GlobalColor.red
     Qt.transparent = Qt.GlobalColor.transparent
     Qt.white = Qt.GlobalColor.white
     Qt.yellow = Qt.GlobalColor.yellow
 
-    Qt.Key_0 = Qt.Key.Key_0
-    Qt.Key_1 = Qt.Key.Key_1
-    Qt.Key_2 = Qt.Key.Key_2
-    Qt.Key_3 = Qt.Key.Key_3
-    Qt.Key_5 = Qt.Key.Key_5
-    Qt.Key_6 = Qt.Key.Key_6
-    Qt.Key_7 = Qt.Key.Key_7
-    Qt.Key_9 = Qt.Key.Key_9
-    Qt.Key_A = Qt.Key.Key_A
-    Qt.Key_Agrave = Qt.Key.Key_Agrave
-    Qt.Key_B = Qt.Key.Key_B
-    Qt.Key_C = Qt.Key.Key_C
-    Qt.Key_Ccedilla = Qt.Key.Key_Ccedilla
-    Qt.Key_Comma = Qt.Key.Key_Comma
-    Qt.Key_D = Qt.Key.Key_D
-    Qt.Key_Delete = Qt.Key.Key_Delete
-    Qt.Key_Up = Qt.Key.Key_Up
-    Qt.Key_Down = Qt.Key.Key_Down
-    Qt.Key_Left = Qt.Key.Key_Left
-    Qt.Key_Right = Qt.Key.Key_Right
-    Qt.Key_E = Qt.Key.Key_E
-    Qt.Key_Eacute = Qt.Key.Key_Eacute
-    Qt.Key_Egrave = Qt.Key.Key_Egrave
-    Qt.Key_End = Qt.Key.Key_End
-    Qt.Key_Enter = Qt.Key.Key_Enter
-    Qt.Key_Escape = Qt.Key.Key_Escape
-    Qt.Key_F = Qt.Key.Key_F
-    Qt.Key_G = Qt.Key.Key_G
-    Qt.Key_H = Qt.Key.Key_H
-    Qt.Key_Home = Qt.Key.Key_Home
-    Qt.Key_I = Qt.Key.Key_I
-    Qt.Key_J = Qt.Key.Key_J
-    Qt.Key_M = Qt.Key.Key_M
-    Qt.Key_Minus = Qt.Key.Key_Minus
-    Qt.Key_N = Qt.Key.Key_N
-    Qt.Key_O = Qt.Key.Key_O
-    Qt.Key_P = Qt.Key.Key_P
-    Qt.Key_PageDown = Qt.Key.Key_PageDown
-    Qt.Key_PageUp = Qt.Key.Key_PageUp
-    Qt.Key_ParenLeft = Qt.Key.Key_ParenLeft
-    Qt.Key_Plus = Qt.Key.Key_Plus
-    Qt.Key_Q = Qt.Key.Key_Q
-    Qt.Key_QuoteDbl = Qt.Key.Key_QuoteDbl
-    Qt.Key_R = Qt.Key.Key_R
-    Qt.Key_Return = Qt.Key.Key_Return
-    Qt.Key_S = Qt.Key.Key_S
-    Qt.Key_Space = Qt.Key.Key_Space
-    Qt.Key_T = Qt.Key.Key_T
-    Qt.Key_U = Qt.Key.Key_U
-    Qt.Key_V = Qt.Key.Key_V
-    Qt.Key_W = Qt.Key.Key_W
-    Qt.Key_X = Qt.Key.Key_X
-    Qt.Key_Y = Qt.Key.Key_Y
-    Qt.Key_Z = Qt.Key.Key_Z
+    # --------------------------------------------------------------------------------------------------------
+    # Qt.ItemDataRole
+    # --------------------------------------------------------------------------------------------------------
+
+    Qt.UserRole = Qt.ItemDataRole.UserRole
+
+    # --------------------------------------------------------------------------------------------------------
+    # Qt.ItemFlag
+    # --------------------------------------------------------------------------------------------------------
+
+    Qt.ItemIsDragEnabled = Qt.ItemFlag.ItemIsDragEnabled
+    Qt.ItemIsDropEnabled = Qt.ItemFlag.ItemIsDropEnabled
+    Qt.ItemIsEnabled = Qt.ItemFlag.ItemIsEnabled
+    Qt.ItemIsSelectable = Qt.ItemFlag.ItemIsSelectable
+    Qt.ItemIsEditable = Qt.ItemFlag.ItemIsEditable
+    Qt.ItemIsUserCheckable = Qt.ItemFlag.ItemIsUserCheckable
+
+    # --------------------------------------------------------------------------------------------------------
+    # Qt.ItemSelectionMode
+    # --------------------------------------------------------------------------------------------------------
+
+    Qt.ContainsItemShape = Qt.ItemSelectionMode.ContainsItemShape
+
+    Qt.IntersectsItemShape = Qt.ItemSelectionMode.IntersectsItemShape
+
+    Qt.ContainsItemBoundingRect = Qt.ItemSelectionMode.ContainsItemBoundingRect
+
+    # --------------------------------------------------------------------------------------------------------
+    # Qt.Key
+    # --------------------------------------------------------------------------------------------------------
+
+    for _key_name in (
+        "Key_0",
+        "Key_1",
+        "Key_2",
+        "Key_3",
+        "Key_4",
+        "Key_5",
+        "Key_6",
+        "Key_7",
+        "Key_8",
+        "Key_9",
+        "Key_A",
+        "Key_B",
+        "Key_C",
+        "Key_D",
+        "Key_E",
+        "Key_F",
+        "Key_G",
+        "Key_H",
+        "Key_I",
+        "Key_J",
+        "Key_K",
+        "Key_L",
+        "Key_M",
+        "Key_N",
+        "Key_O",
+        "Key_P",
+        "Key_Q",
+        "Key_R",
+        "Key_S",
+        "Key_T",
+        "Key_U",
+        "Key_V",
+        "Key_W",
+        "Key_X",
+        "Key_Y",
+        "Key_Z",
+        "Key_Agrave",
+        "Key_Ccedilla",
+        "Key_Comma",
+        "Key_Delete",
+        "Key_Down",
+        "Key_End",
+        "Key_Enter",
+        "Key_Escape",
+        "Key_Eacute",
+        "Key_Egrave",
+        "Key_Home",
+        "Key_Left",
+        "Key_Minus",
+        "Key_PageDown",
+        "Key_PageUp",
+        "Key_ParenLeft",
+        "Key_Plus",
+        "Key_QuoteDbl",
+        "Key_Return",
+        "Key_Right",
+        "Key_Space",
+        "Key_Up",
+    ):
+        setattr(Qt, _key_name, getattr(Qt.Key, _key_name))
+
+    # --------------------------------------------------------------------------------------------------------
+    # Qt.KeyboardModifier
+    # --------------------------------------------------------------------------------------------------------
 
     Qt.AltModifier = Qt.KeyboardModifier.AltModifier
     Qt.ControlModifier = Qt.KeyboardModifier.ControlModifier
@@ -134,154 +369,435 @@ elif qt_config == 6:
     Qt.NoModifier = Qt.KeyboardModifier.NoModifier
     Qt.ShiftModifier = Qt.KeyboardModifier.ShiftModifier
 
-    Qt.UserRole = Qt.ItemDataRole.UserRole
-
-    Qt.ItemIsDragEnabled = Qt.ItemFlag.ItemIsDragEnabled
-    Qt.ItemIsEnabled = Qt.ItemFlag.ItemIsEnabled
-    Qt.ItemIsSelectable = Qt.ItemFlag.ItemIsSelectable
-
-    Qt.ContainsItemShape = Qt.ItemSelectionMode.ContainsItemShape
+    # --------------------------------------------------------------------------------------------------------
+    # Qt.MouseButton
+    # --------------------------------------------------------------------------------------------------------
 
     Qt.LeftButton = Qt.MouseButton.LeftButton
     Qt.MiddleButton = Qt.MouseButton.MiddleButton
     Qt.RightButton = Qt.MouseButton.RightButton
 
-    Qt.MouseEventSynthesizedByApplication = Qt.MouseEventSource.MouseEventSynthesizedByApplication
+    # --------------------------------------------------------------------------------------------------------
+    # Qt.MouseEventSource
+    # --------------------------------------------------------------------------------------------------------
+
+    Qt.MouseEventSynthesizedByApplication = (
+        Qt.MouseEventSource.MouseEventSynthesizedByApplication
+    )
+
+    # --------------------------------------------------------------------------------------------------------
+    # Qt.Orientation
+    # --------------------------------------------------------------------------------------------------------
 
     Qt.Horizontal = Qt.Orientation.Horizontal
+    Qt.Vertical = Qt.Orientation.Vertical
+
+    # --------------------------------------------------------------------------------------------------------
+    # Qt.PenCapStyle
+    # --------------------------------------------------------------------------------------------------------
 
     Qt.FlatCap = Qt.PenCapStyle.FlatCap
     Qt.RoundCap = Qt.PenCapStyle.RoundCap
+    Qt.SquareCap = Qt.PenCapStyle.SquareCap
+
+    # --------------------------------------------------------------------------------------------------------
+    # Qt.PenJoinStyle
+    # --------------------------------------------------------------------------------------------------------
 
     Qt.MiterJoin = Qt.PenJoinStyle.MiterJoin
     Qt.RoundJoin = Qt.PenJoinStyle.RoundJoin
+    Qt.BevelJoin = Qt.PenJoinStyle.BevelJoin
+
+    # --------------------------------------------------------------------------------------------------------
+    # Qt.PenStyle
+    # --------------------------------------------------------------------------------------------------------
 
     Qt.DashLine = Qt.PenStyle.DashLine
+    Qt.DotLine = Qt.PenStyle.DotLine
     Qt.NoPen = Qt.PenStyle.NoPen
     Qt.SolidLine = Qt.PenStyle.SolidLine
 
+    # --------------------------------------------------------------------------------------------------------
+    # Qt.ScrollBarPolicy
+    # --------------------------------------------------------------------------------------------------------
+
     Qt.ScrollBarAlwaysOn = Qt.ScrollBarPolicy.ScrollBarAlwaysOn
+
     Qt.ScrollBarAlwaysOff = Qt.ScrollBarPolicy.ScrollBarAlwaysOff
 
+    Qt.ScrollBarAsNeeded = Qt.ScrollBarPolicy.ScrollBarAsNeeded
+
+    # --------------------------------------------------------------------------------------------------------
+    # Qt.SortOrder
+    # --------------------------------------------------------------------------------------------------------
+
     Qt.AscendingOrder = Qt.SortOrder.AscendingOrder
+    Qt.DescendingOrder = Qt.SortOrder.DescendingOrder
+
+    # --------------------------------------------------------------------------------------------------------
+    # Qt.TextFormat
+    # --------------------------------------------------------------------------------------------------------
+
+    Qt.RichText = Qt.TextFormat.RichText
+    Qt.PlainText = Qt.TextFormat.PlainText
+    Qt.AutoText = Qt.TextFormat.AutoText
+
+    # --------------------------------------------------------------------------------------------------------
+    # Qt.TextInteractionFlag
+    # --------------------------------------------------------------------------------------------------------
 
     Qt.TextSelectableByMouse = Qt.TextInteractionFlag.TextSelectableByMouse
 
+    Qt.TextSelectableByKeyboard = Qt.TextInteractionFlag.TextSelectableByKeyboard
+
+    # --------------------------------------------------------------------------------------------------------
+    # Qt.ToolButtonStyle
+    # --------------------------------------------------------------------------------------------------------
+
     Qt.ToolButtonIconOnly = Qt.ToolButtonStyle.ToolButtonIconOnly
+
     Qt.ToolButtonTextBesideIcon = Qt.ToolButtonStyle.ToolButtonTextBesideIcon
+
+    Qt.ToolButtonTextOnly = Qt.ToolButtonStyle.ToolButtonTextOnly
+
+    # --------------------------------------------------------------------------------------------------------
+    # Qt.TransformationMode
+    # --------------------------------------------------------------------------------------------------------
 
     Qt.SmoothTransformation = Qt.TransformationMode.SmoothTransformation
 
+    Qt.FastTransformation = Qt.TransformationMode.FastTransformation
+
+    # --------------------------------------------------------------------------------------------------------
+    # Qt.WidgetAttribute
+    # --------------------------------------------------------------------------------------------------------
+
     Qt.WA_LayoutUsesWidgetRect = Qt.WidgetAttribute.WA_LayoutUsesWidgetRect
+
     Qt.WA_OpaquePaintEvent = Qt.WidgetAttribute.WA_OpaquePaintEvent
+
+    # --------------------------------------------------------------------------------------------------------
+    # Qt.WindowModality
+    # --------------------------------------------------------------------------------------------------------
 
     Qt.WindowModal = Qt.WindowModality.WindowModal
 
+    # --------------------------------------------------------------------------------------------------------
+    # Qt.WindowState
+    # --------------------------------------------------------------------------------------------------------
+
     Qt.WindowActive = Qt.WindowState.WindowActive
     Qt.WindowMinimized = Qt.WindowState.WindowMinimized
+    Qt.WindowMaximized = Qt.WindowState.WindowMaximized
+    Qt.WindowFullScreen = Qt.WindowState.WindowFullScreen
+
+    # --------------------------------------------------------------------------------------------------------
+    # Qt.WindowType
+    # --------------------------------------------------------------------------------------------------------
 
     Qt.MSWindowsFixedSizeDialogHint = Qt.WindowType.MSWindowsFixedSizeDialogHint
+
     Qt.WindowContextHelpButtonHint = Qt.WindowType.WindowContextHelpButtonHint
+
+    # --------------------------------------------------------------------------------------------------------
+    # QAbstractItemView
+    # --------------------------------------------------------------------------------------------------------
 
     QAbstractItemView.DropOnly = QAbstractItemView.DragDropMode.DropOnly
 
     QAbstractItemView.SingleSelection = QAbstractItemView.SelectionMode.SingleSelection
 
+    QAbstractItemView.MultiSelection = QAbstractItemView.SelectionMode.MultiSelection
+
+    QAbstractItemView.ExtendedSelection = (
+        QAbstractItemView.SelectionMode.ExtendedSelection
+    )
+
+    QAbstractItemView.NoSelection = QAbstractItemView.SelectionMode.NoSelection
+
+    # --------------------------------------------------------------------------------------------------------
+    # QAbstractSpinBox
+    # --------------------------------------------------------------------------------------------------------
+
     QAbstractSpinBox.NoButtons = QAbstractSpinBox.ButtonSymbols.NoButtons
+
     QAbstractSpinBox.UpDownArrows = QAbstractSpinBox.ButtonSymbols.UpDownArrows
 
+    QAbstractSpinBox.PlusMinus = QAbstractSpinBox.ButtonSymbols.PlusMinus
+
     QAbstractSpinBox.StepNone = QAbstractSpinBox.StepEnabledFlag.StepNone
+
     QAbstractSpinBox.StepDownEnabled = QAbstractSpinBox.StepEnabledFlag.StepDownEnabled
+
     QAbstractSpinBox.StepUpEnabled = QAbstractSpinBox.StepEnabledFlag.StepUpEnabled
+
+    QAbstractSpinBox.StepUpEnabled = QAbstractSpinBox.StepEnabledFlag.StepUpEnabled
+
+    # --------------------------------------------------------------------------------------------------------
+    # QApplication
+    # --------------------------------------------------------------------------------------------------------
 
     QApplication.exec_ = lambda a: a.exec()
 
-    QColorDialog.DontUseNativeDialog = QColorDialog.ColorDialogOption.DontUseNativeDialog
+    # --------------------------------------------------------------------------------------------------------
+    # QColorDialog
+    # --------------------------------------------------------------------------------------------------------
+
+    QColorDialog.DontUseNativeDialog = (
+        QColorDialog.ColorDialogOption.DontUseNativeDialog
+    )
+
+    # --------------------------------------------------------------------------------------------------------
+    # QDialog
+    # --------------------------------------------------------------------------------------------------------
 
     QDialog.exec_ = lambda d: d.exec()
 
-    QDialogButtonBox.Ok = QDialogButtonBox.StandardButton.Ok
-    QDialogButtonBox.Reset = QDialogButtonBox.StandardButton.Reset
+    # --------------------------------------------------------------------------------------------------------
+    # QDialogButtonBox
+    # --------------------------------------------------------------------------------------------------------
+
+    for _button_name in (
+        "Ok",
+        "Cancel",
+        "Close",
+        "Save",
+        "Discard",
+        "Reset",
+        "Yes",
+        "No",
+    ):
+        setattr(
+            QDialogButtonBox,
+            _button_name,
+            getattr(QDialogButtonBox.StandardButton, _button_name),
+        )
+
+    # --------------------------------------------------------------------------------------------------------
+    # QEvent
+    # --------------------------------------------------------------------------------------------------------
 
     QEvent.EnabledChange = QEvent.Type.EnabledChange
     QEvent.MouseButtonPress = QEvent.Type.MouseButtonPress
+    QEvent.MouseButtonRelease = QEvent.Type.MouseButtonRelease
+    QEvent.MouseMove = QEvent.Type.MouseMove
+    QEvent.MouseButtonDblClick = QEvent.Type.MouseButtonDblClick
     QEvent.PaletteChange = QEvent.Type.PaletteChange
     QEvent.StyleChange = QEvent.Type.StyleChange
     QEvent.User = QEvent.Type.User
     QEvent.WindowStateChange = QEvent.Type.WindowStateChange
+    QEvent.Resize = QEvent.Type.Resize
+    QEvent.Move = QEvent.Type.Move
+    QEvent.Show = QEvent.Type.Show
+    QEvent.Hide = QEvent.Type.Hide
+    QEvent.Close = QEvent.Type.Close
+    QEvent.KeyPress = QEvent.Type.KeyPress
+    QEvent.KeyRelease = QEvent.Type.KeyRelease
 
-    QSystemTrayIcon.Trigger = QSystemTrayIcon.ActivationReason.Trigger
-    QSystemTrayIcon.DoubleClick = QSystemTrayIcon.ActivationReason.DoubleClick
-    QSystemTrayIcon.MiddleClick = QSystemTrayIcon.ActivationReason.MiddleClick
-    QSystemTrayIcon.Context = QSystemTrayIcon.ActivationReason.Context
+    # --------------------------------------------------------------------------------------------------------
+    # QEventLoop
+    # --------------------------------------------------------------------------------------------------------
 
-    QEventLoop.ExcludeUserInputEvents = QEventLoop.ProcessEventsFlag.ExcludeUserInputEvents
+    QEventLoop.ExcludeUserInputEvents = (
+        QEventLoop.ProcessEventsFlag.ExcludeUserInputEvents
+    )
+
+    QEventLoop.AllEvents = QEventLoop.ProcessEventsFlag.AllEvents
+
+    # --------------------------------------------------------------------------------------------------------
+    # QFileDialog
+    # --------------------------------------------------------------------------------------------------------
 
     QFileDialog.AcceptSave = QFileDialog.AcceptMode.AcceptSave
 
+    QFileDialog.AcceptOpen = QFileDialog.AcceptMode.AcceptOpen
+
     QFileDialog.AnyFile = QFileDialog.FileMode.AnyFile
 
-    QFileDialog.DontUseCustomDirectoryIcons = QFileDialog.Option.DontUseCustomDirectoryIcons
+    QFileDialog.ExistingFile = QFileDialog.FileMode.ExistingFile
+
+    QFileDialog.ExistingFiles = QFileDialog.FileMode.ExistingFiles
+
+    QFileDialog.Directory = QFileDialog.FileMode.Directory
+
+    QFileDialog.DontUseCustomDirectoryIcons = (
+        QFileDialog.Option.DontUseCustomDirectoryIcons
+    )
+
     QFileDialog.ShowDirsOnly = QFileDialog.Option.ShowDirsOnly
 
+    # --------------------------------------------------------------------------------------------------------
+    # QFont
+    # --------------------------------------------------------------------------------------------------------
+
     QFont.AllUppercase = QFont.Capitalization.AllUppercase
+
+    QFont.SmallCaps = QFont.Capitalization.SmallCaps
+
+    QFont.MixedCase = QFont.Capitalization.MixedCase
 
     QFont.Bold = QFont.Weight.Bold
     QFont.Normal = QFont.Weight.Normal
 
-    QFrame.HLine = QFrame.Shape.HLine
-    QFrame.StyledPanel = QFrame.Shape.StyledPanel
+    # --------------------------------------------------------------------------------------------------------
+    # QFrame
+    # --------------------------------------------------------------------------------------------------------
 
+    QFrame.NoFrame = QFrame.Shape.NoFrame
+    QFrame.Box = QFrame.Shape.Box
+    QFrame.Panel = QFrame.Shape.Panel
+    QFrame.StyledPanel = QFrame.Shape.StyledPanel
+    QFrame.HLine = QFrame.Shape.HLine
+    QFrame.VLine = QFrame.Shape.VLine
+
+    QFrame.Plain = QFrame.Shadow.Plain
     QFrame.Raised = QFrame.Shadow.Raised
     QFrame.Sunken = QFrame.Shadow.Sunken
 
-    QGraphicsItem.ItemSelectedHasChanged = QGraphicsItem.GraphicsItemChange.ItemSelectedHasChanged
+    # --------------------------------------------------------------------------------------------------------
+    # QGraphicsItem
+    # --------------------------------------------------------------------------------------------------------
+
+    QGraphicsItem.ItemSelectedHasChanged = (
+        QGraphicsItem.GraphicsItemChange.ItemSelectedHasChanged
+    )
+
+    QGraphicsItem.ItemPositionChange = (
+        QGraphicsItem.GraphicsItemChange.ItemPositionChange
+    )
+
+    QGraphicsItem.ItemPositionHasChanged = (
+        QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged
+    )
 
     QGraphicsItem.ItemIsFocusable = QGraphicsItem.GraphicsItemFlag.ItemIsFocusable
+
     QGraphicsItem.ItemIsMovable = QGraphicsItem.GraphicsItemFlag.ItemIsMovable
+
     QGraphicsItem.ItemIsSelectable = QGraphicsItem.GraphicsItemFlag.ItemIsSelectable
-    QGraphicsItem.ItemSendsGeometryChanges = QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges
+
+    QGraphicsItem.ItemSendsGeometryChanges = (
+        QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges
+    )
+
+    # --------------------------------------------------------------------------------------------------------
+    # QGraphicsScene
+    # --------------------------------------------------------------------------------------------------------
 
     QGraphicsScene.NoIndex = QGraphicsScene.ItemIndexMethod.NoIndex
 
+    # --------------------------------------------------------------------------------------------------------
+    # QGraphicsView
+    # --------------------------------------------------------------------------------------------------------
+
     QGraphicsView.NoDrag = QGraphicsView.DragMode.NoDrag
+
     QGraphicsView.ScrollHandDrag = QGraphicsView.DragMode.ScrollHandDrag
 
-    QGraphicsView.FullViewportUpdate = QGraphicsView.ViewportUpdateMode.FullViewportUpdate
-    QGraphicsView.MinimalViewportUpdate = QGraphicsView.ViewportUpdateMode.MinimalViewportUpdate
+    QGraphicsView.RubberBandDrag = QGraphicsView.DragMode.RubberBandDrag
+
+    QGraphicsView.FullViewportUpdate = (
+        QGraphicsView.ViewportUpdateMode.FullViewportUpdate
+    )
+
+    QGraphicsView.MinimalViewportUpdate = (
+        QGraphicsView.ViewportUpdateMode.MinimalViewportUpdate
+    )
+
+    QGraphicsView.SmartViewportUpdate = (
+        QGraphicsView.ViewportUpdateMode.SmartViewportUpdate
+    )
+
+    # --------------------------------------------------------------------------------------------------------
+    # QHeaderView
+    # --------------------------------------------------------------------------------------------------------
 
     QHeaderView.Fixed = QHeaderView.ResizeMode.Fixed
+    QHeaderView.Stretch = QHeaderView.ResizeMode.Stretch
     QHeaderView.ResizeToContents = QHeaderView.ResizeMode.ResizeToContents
 
+    # --------------------------------------------------------------------------------------------------------
+    # QLineEdit
+    # --------------------------------------------------------------------------------------------------------
+
     QLineEdit.Normal = QLineEdit.EchoMode.Normal
+    QLineEdit.NoEcho = QLineEdit.EchoMode.NoEcho
+    QLineEdit.Password = QLineEdit.EchoMode.Password
+    QLineEdit.PasswordEchoOnEdit = QLineEdit.EchoMode.PasswordEchoOnEdit
+
+    # --------------------------------------------------------------------------------------------------------
+    # QListWidgetItem
+    # --------------------------------------------------------------------------------------------------------
 
     QListWidgetItem.UserType = QListWidgetItem.ItemType.UserType
 
-    QMenu.exec_ = lambda m, p: m.exec(p)
+    # --------------------------------------------------------------------------------------------------------
+    # QMenu
+    # --------------------------------------------------------------------------------------------------------
+
+    QMenu.exec_ = lambda m, *args: m.exec(*args)
+
+    # --------------------------------------------------------------------------------------------------------
+    # QMessageBox
+    # --------------------------------------------------------------------------------------------------------
 
     QMessageBox.exec_ = lambda mb: mb.exec()
 
-    QMessageBox.Cancel = QMessageBox.StandardButton.Cancel
-    QMessageBox.Discard = QMessageBox.StandardButton.Discard
-    QMessageBox.No = QMessageBox.StandardButton.No
-    QMessageBox.Ok = QMessageBox.StandardButton.Ok
-    QMessageBox.Save = QMessageBox.StandardButton.Save
-    QMessageBox.Yes = QMessageBox.StandardButton.Yes
+    for _button_name in (
+        "Ok",
+        "Open",
+        "Save",
+        "Cancel",
+        "Close",
+        "Yes",
+        "No",
+        "Abort",
+        "Retry",
+        "Ignore",
+        "Discard",
+        "Apply",
+        "Reset",
+    ):
+        if hasattr(QMessageBox.StandardButton, _button_name):
+            setattr(
+                QMessageBox,
+                _button_name,
+                getattr(QMessageBox.StandardButton, _button_name),
+            )
 
     QMessageBox.Critical = QMessageBox.Icon.Critical
     QMessageBox.Information = QMessageBox.Icon.Information
+    QMessageBox.Question = QMessageBox.Icon.Question
     QMessageBox.Warning = QMessageBox.Icon.Warning
+    QMessageBox.NoIcon = QMessageBox.Icon.NoIcon
 
-    QPainter.CompositionMode_Difference = QPainter.CompositionMode.CompositionMode_Difference
-    QPainter.CompositionMode_Multiply = QPainter.CompositionMode.CompositionMode_Multiply
+    # --------------------------------------------------------------------------------------------------------
+    # QPainter
+    # --------------------------------------------------------------------------------------------------------
+
+    QPainter.CompositionMode_Difference = (
+        QPainter.CompositionMode.CompositionMode_Difference
+    )
+
+    QPainter.CompositionMode_Multiply = (
+        QPainter.CompositionMode.CompositionMode_Multiply
+    )
+
     QPainter.CompositionMode_Plus = QPainter.CompositionMode.CompositionMode_Plus
-    QPainter.CompositionMode_SourceOver = QPainter.CompositionMode.CompositionMode_SourceOver
 
-    QPainter.HighQualityAntialiasing = None
+    QPainter.CompositionMode_SourceOver = (
+        QPainter.CompositionMode.CompositionMode_SourceOver
+    )
 
     QPainter.Antialiasing = QPainter.RenderHint.Antialiasing
+
     QPainter.SmoothPixmapTransform = QPainter.RenderHint.SmoothPixmapTransform
+
     QPainter.TextAntialiasing = QPainter.RenderHint.TextAntialiasing
+
+    # --------------------------------------------------------------------------------------------------------
+    # QPalette
+    # --------------------------------------------------------------------------------------------------------
 
     QPalette.Active = QPalette.ColorGroup.Active
     QPalette.Disabled = QPalette.ColorGroup.Disabled
@@ -307,10 +823,62 @@ elif qt_config == 6:
     QPalette.Window = QPalette.ColorRole.Window
     QPalette.WindowText = QPalette.ColorRole.WindowText
 
-    # TODO remove this QPalette.Background is deprecated already in Qt5
     QPalette.Background = QPalette.Window
 
-    QSizePolicy.Expanding = QSizePolicy.Policy.Expanding
+    # --------------------------------------------------------------------------------------------------------
+    # QSizePolicy
+    # --------------------------------------------------------------------------------------------------------
+
+    QSizePolicy.Fixed = QSizePolicy.Policy.Fixed
+    QSizePolicy.Minimum = QSizePolicy.Policy.Minimum
+    QSizePolicy.Maximum = QSizePolicy.Policy.Maximum
     QSizePolicy.Preferred = QSizePolicy.Policy.Preferred
+    QSizePolicy.Expanding = QSizePolicy.Policy.Expanding
+    QSizePolicy.MinimumExpanding = QSizePolicy.Policy.MinimumExpanding
+    QSizePolicy.Ignored = QSizePolicy.Policy.Ignored
+
+    # --------------------------------------------------------------------------------------------------------
+    # QStyle
+    # --------------------------------------------------------------------------------------------------------
 
     QStyle.State_Selected = QStyle.StateFlag.State_Selected
+
+    QStyle.State_Enabled = QStyle.StateFlag.State_Enabled
+
+    QStyle.State_MouseOver = QStyle.StateFlag.State_MouseOver
+
+    QStyle.State_Active = QStyle.StateFlag.State_Active
+
+    # --------------------------------------------------------------------------------------------------------
+    # QEvent
+    # --------------------------------------------------------------------------------------------------------
+
+    QEvent.FocusIn = QEvent.Type.FocusIn
+    QEvent.FocusOut = QEvent.Type.FocusOut
+    # --------------------------------------------------------------------------------------------------------
+    # Qt.MouseButton
+    # --------------------------------------------------------------------------------------------------------
+
+    Qt.NoButton = Qt.MouseButton.NoButton
+    Qt.LeftButton = Qt.MouseButton.LeftButton
+    Qt.MiddleButton = Qt.MouseButton.MiddleButton
+    Qt.RightButton = Qt.MouseButton.RightButton
+
+# ------------------------------------------------------------------------------------------------------------
+# Version information
+# ------------------------------------------------------------------------------------------------------------
+
+if qt_config == 5:
+    try:
+        from PyQt5.Qt import PYQT_VERSION
+    except ImportError:
+        PYQT_VERSION = 0x50600
+
+    try:
+        from PyQt5.Qt import QT_VERSION
+    except ImportError:
+        from PyQt5.QtCore import QT_VERSION
+
+elif qt_config == 6:
+    from PyQt6.QtCore import PYQT_VERSION
+    from PyQt6.QtCore import QT_VERSION

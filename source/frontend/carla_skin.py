@@ -5,35 +5,207 @@
 # ------------------------------------------------------------------------------------------------------------
 # Imports (Global)
 
-from qt_compat import qt_config
-
-if qt_config == 5:
-    from PyQt5.QtCore import Qt, QRectF, QLineF, QTimer
-    from PyQt5.QtGui import QColor, QFont, QFontDatabase, QPainter, QPainterPath, QPen
-    from PyQt5.QtWidgets import QColorDialog, QFrame, QLineEdit, QPushButton, QSlider, QDoubleSpinBox, QVBoxLayout, QHBoxLayout, QScrollArea, QAbstractSpinBox, QLabel, QWidget, QMenu, QMessageBox, QInputDialog
-elif qt_config == 6:
-    from PyQt6.QtCore import Qt, QRectF, QLineF, QTimer
-    from PyQt6.QtGui import QColor, QFont, QFontDatabase, QPainter, QPainterPath, QPen
-    from PyQt6.QtWidgets import QColorDialog, QFrame, QLineEdit, QPushButton, QSlider, QDoubleSpinBox, QVBoxLayout, QHBoxLayout, QScrollArea, QAbstractSpinBox, QLabel, QWidget, QMenu, QMessageBox, QInputDialog
-
 # ------------------------------------------------------------------------------------------------------------
 # Imports (Custom)
-
 import ui_carla_plugin_calf
 import ui_carla_plugin_classic
 import ui_carla_plugin_compact
 import ui_carla_plugin_default
 import ui_carla_plugin_presets
-
-from widgets.scalablebutton import ScalableButton
 from carla_backend import *
 from carla_shared import *
 from carla_widgets import *
-from utils import QSafeSettings
 from patchcanvas.theme import Theme
+from qt_compat import (
+    QAbstractSpinBox,
+    QColor,
+    QColorDialog,
+    QComboBox,
+    QDoubleSpinBox,
+    QEvent,
+    QFont,
+    QFontDatabase,
+    QFrame,
+    QHBoxLayout,
+    QInputDialog,
+    QLabel,
+    QLayout,
+    QLineEdit,
+    QLineF,
+    QMenu,
+    QMessageBox,
+    QPainter,
+    QPainterPath,
+    QPen,
+    QPoint,
+    QPushButton,
+    QRect,
+    QRectF,
+    QScrollArea,
+    QSize,
+    QSizePolicy,
+    QSlider,
+    Qt,
+    QTimer,
+    QVBoxLayout,
+    QWidget,
+)
+from utils import QSafeSettings
 from widgets.digitalpeakmeter import DigitalPeakMeter
 from widgets.paramspinbox import CustomInputDialog
 from widgets.scalabledial import ScalableDial
+
+# ------------------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------------------------------------
+# Catppuccin Palette Definitions
+
+CATPPUCCIN_MOCHA = {
+    'base': '#1e1e2e',
+    'mantle': '#181825',
+    'crust': '#11111b',
+    'surface0': '#313244',
+    'surface1': '#45475a',
+    'surface2': '#585b70',
+    'overlay0': '#6c7086',
+    'overlay1': '#7f849c',
+    'overlay2': '#9399b2',
+    'subtext0': '#a6adc8',
+    'subtext1': '#bac2de',
+    'text': '#cdd6f4',
+    'lavender': '#b4befe',
+    'blue': '#89b4fa',
+    'sapphire': '#74c7ec',
+    'sky': '#89dceb',
+    'teal': '#94e2d5',
+    'green': '#a6e3a1',
+    'yellow': '#f9e2af',
+    'peach': '#fab387',
+    'maroon': '#eba0ac',
+    'red': '#f38ba8',
+    'mauve': '#cba6f7',
+    'pink': '#f5c2e7',
+    'flamingo': '#f2cdcd',
+    'rosewater': '#f5e0dc',
+}
+
+CATPPUCCIN_LATTE = {
+    'base': '#eff1f5',
+    'mantle': '#e6e9ef',
+    'crust': '#dce0e8',
+    'surface0': '#ccd0da',
+    'surface1': '#bcc0cc',
+    'surface2': '#acb0be',
+    'overlay0': '#9ca0b0',
+    'overlay1': '#8c8fa1',
+    'overlay2': '#7c7f93',
+    'subtext0': '#6c6f85',
+    'subtext1': '#5c5f77',
+    'text': '#4c4f69',
+    'lavender': '#7287fd',
+    'blue': '#1e66f5',
+    'sapphire': '#209fb5',
+    'sky': '#04a5e5',
+    'teal': '#179299',
+    'green': '#40a02b',
+    'yellow': '#df8e1d',
+    'peach': '#fe640b',
+    'maroon': '#e64553',
+    'red': '#d20f39',
+    'mauve': '#8839ef',
+    'pink': '#ea76cb',
+    'flamingo': '#dd7878',
+    'rosewater': '#dc8a78',
+}
+
+# FlowLayout — wraps child widgets to new rows when width is exhausted
+
+class FlowLayout(QLayout):
+    """A QLayout that wraps child items like CSS flex-wrap: wrap."""
+
+    def __init__(self, parent=None, hSpacing=4, vSpacing=4):
+        super().__init__(parent)
+        self._hSpacing = hSpacing
+        self._vSpacing = vSpacing
+        self._items = []
+
+    def addItem(self, item):
+        self._items.append(item)
+
+    def horizontalSpacing(self):
+        return self._hSpacing
+
+    def verticalSpacing(self):
+        return self._vSpacing
+
+    def count(self):
+        return len(self._items)
+
+    def itemAt(self, index):
+        if 0 <= index < len(self._items):
+            return self._items[index]
+        return None
+
+    def takeAt(self, index):
+        if 0 <= index < len(self._items):
+            return self._items.pop(index)
+        return None
+
+    def expandingDirections(self):
+        try:
+            return Qt.Orientations()
+        except Exception:
+            try:
+                return Qt.Orientation(0)
+            except Exception:
+                return 0
+
+    def hasHeightForWidth(self):
+        return True
+
+    def heightForWidth(self, width):
+        return self._doLayout(QRect(0, 0, width, 0), testOnly=True)
+
+    def setGeometry(self, rect):
+        super().setGeometry(rect)
+        self._doLayout(rect, testOnly=False)
+
+    def sizeHint(self):
+        return self.minimumSize()
+
+    def minimumSize(self):
+        size = QSize()
+        for item in self._items:
+            size = size.expandedTo(item.minimumSize())
+        m = self.contentsMargins()
+        size += QSize(m.left() + m.right(), m.top() + m.bottom())
+        return size
+
+    def _doLayout(self, rect, testOnly):
+        m = self.contentsMargins()
+        effectiveRect = rect.adjusted(m.left(), m.top(), -m.right(), -m.bottom())
+        x = effectiveRect.x()
+        y = effectiveRect.y()
+        lineHeight = 0
+
+        for item in self._items:
+            w = item.widget()
+            spaceX = self._hSpacing
+            spaceY = self._vSpacing
+            nextX = x + item.sizeHint().width() + spaceX
+
+            if effectiveRect.width() > 0 and (nextX - spaceX > effectiveRect.right()) and lineHeight > 0:
+                x = effectiveRect.x()
+                y = y + lineHeight + spaceY
+                nextX = x + item.sizeHint().width() + spaceX
+                lineHeight = 0
+
+            if not testOnly:
+                item.setGeometry(QRect(QPoint(x, y), item.sizeHint()))
+
+            x = nextX
+            lineHeight = max(lineHeight, item.sizeHint().height())
+
+        return y + lineHeight - rect.y() + m.top() + m.bottom()
 
 # ------------------------------------------------------------------------------------------------------------
 # Plugin Skin Rules (WORK IN PROGRESS)
@@ -69,7 +241,6 @@ def getParameterShortName(paramName):
     paramName = paramName.split("/",1)[0].split(" (",1)[0].split(" [",1)[0].strip()
     paramLow  = paramName.lower()
 
-    # Cut useless prefix
     if paramLow.startswith("compressor "):
         paramName = paramName.replace("ompressor ", ".", 1)
         paramLow  = paramName.lower()
@@ -77,15 +248,10 @@ def getParameterShortName(paramName):
         paramName = paramName.split(" ",1)[1]
         paramLow  = paramName.lower()
 
-    # Cut useless suffix
-    if paramLow.endswith(" level"):
-        paramName = paramName.rsplit(" ",1)[0]
-        paramLow  = paramName.lower()
-    elif paramLow.endswith(" time"):
+    if paramLow.endswith((" level", " time")):
         paramName = paramName.rsplit(" ",1)[0]
         paramLow  = paramName.lower()
 
-    # Cut generic names
     if "attack" in paramLow:
         paramName = paramName.replace("ttack", "tk")
     elif "bandwidth" in paramLow:
@@ -109,14 +275,11 @@ def getParameterShortName(paramName):
     elif "threshold" in paramLow:
         paramName = paramName.replace("hreshold", "hres")
 
-    # remove space if last char from 1st word is lowercase and the first char from the 2nd is uppercase,
-    # or if 2nd is a number
     if " " in paramName:
         name1, name2 = paramName.split(" ", 1)
         if (name1[-1].islower() and name2[0].isupper()) or name2.isdigit():
             paramName = paramName.replace(" ", "", 1)
 
-    # Keep names readable without dropping vowels
     if len(paramName) > 10:
         paramName = paramName[:10]
 
@@ -152,68 +315,23 @@ def getColorFromCategory(category):
     return (r, g, b)
 
 # ------------------------------------------------------------------------------------------------------------
-#
 
 def setScalableDialStyle(widget, parameterId, parameterCount, whiteLabels, skinStyle):
-    if skinStyle.startswith("calf"):
-        widget.setCustomPaintMode(ScalableDial.CUSTOM_PAINT_MODE_NO_GRADIENT)
-        widget.setImage(7)
+    is_dark = "light" not in skinStyle
 
-    elif skinStyle.startswith("openav"):
-        widget.setCustomPaintMode(ScalableDial.CUSTOM_PAINT_MODE_NO_GRADIENT)
-        if parameterId == PARAMETER_DRYWET:
-            widget.setImage(13)
-        elif parameterId == PARAMETER_VOLUME:
-            widget.setImage(12)
-        else:
-            widget.setImage(11)
-
-    elif skinStyle.startswith("minimal"):
-        # Monochromatic flat knob arc
-        is_dark = (skinStyle == "minimal-dark")
-
-        if is_dark:
-            color = QColor("#888888")
-        else:
-            color = QColor("#666666")
-
-        widget.setCustomPaintColor(color)
-        widget.setCustomPaintMode(ScalableDial.CUSTOM_PAINT_MODE_FLAT)
-
-        # Dial labels
-        if skinStyle == "minimal-dark":
-            colorEnabled  = QColor("#DDDDDD")
-            colorDisabled = QColor("#777777")
-        else:
-            colorEnabled  = QColor("#333333")
-            colorDisabled = QColor("#888888")
-
-        widget.setLabelColor(colorEnabled, colorDisabled)
-        widget.setImage(3)
-
+    if is_dark:
+        color = QColor("#00bcd4")
+        colorEnabled  = QColor("#FFFFFF")
+        colorDisabled = QColor("#787c88")
     else:
-        if parameterId == PARAMETER_DRYWET:
-            widget.setCustomPaintMode(ScalableDial.CUSTOM_PAINT_MODE_CARLA_WET)
+        color = QColor("#00838f")
+        colorEnabled  = QColor("#14151b")
+        colorDisabled = QColor("#858896")
 
-        elif parameterId == PARAMETER_VOLUME:
-            widget.setCustomPaintMode(ScalableDial.CUSTOM_PAINT_MODE_CARLA_VOL)
-
-        else:
-            _r = 255 - int((float(parameterId)/float(parameterCount))*200.0)
-            _g =  55 + int((float(parameterId)/float(parameterCount))*200.0)
-            _b = 0 #(r-40)*4
-            widget.setCustomPaintColor(QColor(_r, _g, _b))
-            widget.setCustomPaintMode(ScalableDial.CUSTOM_PAINT_MODE_COLOR)
-
-        if whiteLabels:
-            colorEnabled  = QColor("#BBB")
-            colorDisabled = QColor("#555")
-        else:
-            colorEnabled  = QColor("#111")
-            colorDisabled = QColor("#AAA")
-
-        widget.setLabelColor(colorEnabled, colorDisabled)
-        widget.setImage(3)
+    widget.setCustomPaintColor(color)
+    widget.setCustomPaintMode(ScalableDial.CUSTOM_PAINT_MODE_FLAT)
+    widget.setLabelColor(colorEnabled, colorDisabled)
+    widget.setImage(3)
 
 # ------------------------------------------------------------------------------------------------------------
 # Abstract plugin slot
@@ -223,9 +341,6 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
         QFrame.__init__(self, parent)
         self.host = host
         self.fParent = parent
-
-        # -------------------------------------------------------------
-        # Get plugin info
 
         self.fPluginId   = pluginId
         self.fPluginInfo = host.get_plugin_info(self.fPluginId)
@@ -239,9 +354,6 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
         else:
             self.fDarkStyle = QColor(skinColor[0], skinColor[1], skinColor[2]).blackF() > 0.4
 
-        # -------------------------------------------------------------
-        # Internal stuff
-
         self.fIsActive   = False
         self.fIsSelected = False
 
@@ -249,31 +361,21 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
         self.fLastBlueLedState  = False
 
         self.fParameterIconTimer = ICON_STATE_NULL
-        self.fParameterList      = [] # index, widget
+        self.fParameterList      = []
 
         audioCountInfo = host.get_audio_port_count_info(self.fPluginId)
 
         self.fPeaksInputCount  = audioCountInfo['ins']
         self.fPeaksOutputCount = audioCountInfo['outs']
 
-        if self.fPeaksInputCount > 2:
-            self.fPeaksInputCount = 2
+        self.fPeaksInputCount = min(self.fPeaksInputCount, 2)
 
-        if self.fPeaksOutputCount > 2:
-            self.fPeaksOutputCount = 2
+        self.fPeaksOutputCount = min(self.fPeaksOutputCount, 2)
 
         self.fAdjustViewableKnobCountScheduled = False
-
-        # used during testing
         self.fIdleTimerId = 0
 
-        # -------------------------------------------------------------
-        # Set-up GUI
-
         self.fEditDialog = PluginEdit(self, host, self.fPluginId)
-
-        # -------------------------------------------------------------
-        # Set-up common widgets (as none)
 
         self.b_enable = None
         self.b_gui    = None
@@ -283,6 +385,7 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
         self.cb_presets = None
 
         self.label_name    = None
+        self.line_rename   = None
         self.label_presets = None
         self.label_type    = None
 
@@ -298,9 +401,6 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
         self.w_knobs_right = None
         self.spacer_knobs  = None
 
-        # -------------------------------------------------------------
-        # Set-up connections
-
         self.customContextMenuRequested.connect(self.slot_showCustomMenu)
         host.PluginRenamedCallback.connect(self.slot_handlePluginRenamedCallback)
         host.PluginUnavailableCallback.connect(self.slot_handlePluginUnavailableCallback)
@@ -314,13 +414,10 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
         host.OptionChangedCallback.connect(self.slot_handleOptionChangedCallback)
         host.UiStateChangedCallback.connect(self.slot_handleUiStateChangedCallback)
 
-        # Prepare resources
         self.sel_pen = QPen(Qt.cyan, 1, Qt.SolidLine, Qt.FlatCap, Qt.MiterJoin)
         self.sel_pen.setDashPattern([2.0, 4.0])
         self.sel_side_pen = QPen(Qt.cyan, 2, Qt.SolidLine, Qt.FlatCap)
         self.shadow_pen = QPen(Qt.black, 1)
-
-    # -----------------------------------------------------------------
 
     @pyqtSlot(int, str)
     def slot_handlePluginRenamedCallback(self, pluginId, newName):
@@ -377,10 +474,7 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
         if self.fEditDialog is not None and self.fPluginId == pluginId:
             self.customUiStateChanged(state)
 
-    # ------------------------------------------------------------------
-
     def refreshState(self):
-        """Called when project loading completes or state updates to synchronize GUI state with engine values."""
         self.fIsActive = bool(self.host.get_internal_parameter_value(self.fPluginId, PARAMETER_ACTIVE) >= 0.5)
 
         if self.b_enable is not None:
@@ -403,14 +497,13 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
     def ready(self):
         self.fIsActive = bool(self.host.get_internal_parameter_value(self.fPluginId, PARAMETER_ACTIVE) >= 0.5)
 
-        isCalfSkin  = self.fSkinStyle.startswith("calf") and not isinstance(self, PluginSlot_Compact)
+        isCalfSkin = self.fSkinStyle.startswith("calf") and not isinstance(self, PluginSlot_Compact)
 
         if self.fSkinStyle in ("minimal-light", "sliders-light"):
             imageSuffix = "black"
             whiteLabels = False
         elif self.fSkinStyle in ("minimal-dark", "sliders-dark") or self.fSkinStyle.startswith("calf") or self.fSkinStyle.startswith("openav") or self.fSkinStyle in (
             "3bandeq", "3bandsplitter", "pingpongpan", "nekobi", "calf_black", "zynfx"):
-
             imageSuffix = "white"
             whiteLabels = True
         else:
@@ -439,22 +532,22 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
                                       ":/bitmaps/button_calf2_down.png",
                                       ":/bitmaps/button_calf2_hover.png")
             elif self.fPluginInfo['iconName'] == "distrho" or self.fSkinStyle in ("3bandeq", "3bandsplitter", "pingpongpan", "nekobi"):
-                self.b_gui.setPixmaps(":/bitmaps/button_distrho-{}.png".format(imageSuffix),
-                                      ":/bitmaps/button_distrho_down-{}.png".format(imageSuffix),
-                                      ":/bitmaps/button_distrho_hover-{}.png".format(imageSuffix))
+                self.b_gui.setPixmaps(f":/bitmaps/button_distrho-{imageSuffix}.png",
+                                      f":/bitmaps/button_distrho_down-{imageSuffix}.png",
+                                      f":/bitmaps/button_distrho_hover-{imageSuffix}.png")
             elif self.fPluginInfo['iconName'] == "file":
-                self.b_gui.setPixmaps(":/bitmaps/button_file-{}.png".format(imageSuffix),
-                                      ":/bitmaps/button_file_down-{}.png".format(imageSuffix),
-                                      ":/bitmaps/button_file_hover-{}.png".format(imageSuffix))
+                self.b_gui.setPixmaps(f":/bitmaps/button_file-{imageSuffix}.png",
+                                      f":/bitmaps/button_file_down-{imageSuffix}.png",
+                                      f":/bitmaps/button_file_hover-{imageSuffix}.png")
             else:
-                if imageSuffix == "black": # TODO
-                    self.b_gui.setPixmaps(":/bitmaps/button_gui-{}.png".format(imageSuffix),
-                                          ":/bitmaps/button_gui_down-{}.png".format(imageSuffix),
-                                          ":/bitmaps/button_gui_hover-{}.png".format(imageSuffix))
+                if imageSuffix == "black":
+                    self.b_gui.setPixmaps(f":/bitmaps/button_gui-{imageSuffix}.png",
+                                          f":/bitmaps/button_gui_down-{imageSuffix}.png",
+                                          f":/bitmaps/button_gui_hover-{imageSuffix}.png")
                 else:
-                    self.b_gui.setSvgs(":/scalable/button_gui-{}.svg".format(imageSuffix),
-                                       ":/scalable/button_gui_down-{}.svg".format(imageSuffix),
-                                       ":/scalable/button_gui_hover-{}.svg".format(imageSuffix))
+                    self.b_gui.setSvgs(f":/scalable/button_gui-{imageSuffix}.svg",
+                                       f":/scalable/button_gui_down-{imageSuffix}.svg",
+                                       f":/scalable/button_gui_hover-{imageSuffix}.svg")
 
         if self.b_edit is not None:
             self.b_edit.clicked.connect(self.slot_showEditDialog)
@@ -464,12 +557,10 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
                                        ":/bitmaps/button_calf2_down.png",
                                        ":/bitmaps/button_calf2_hover.png")
             else:
-                self.b_edit.setSvgs(":/scalable/button_edit-{}.svg".format(imageSuffix),
-                                    ":/scalable/button_edit_down-{}.svg".format(imageSuffix),
-                                    ":/scalable/button_edit_hover-{}.svg".format(imageSuffix))
-
+                self.b_edit.setSvgs(f":/scalable/button_edit-{imageSuffix}.svg",
+                                    f":/scalable/button_edit_down-{imageSuffix}.svg",
+                                    f":/scalable/button_edit_hover-{imageSuffix}.svg")
         else:
-            # Edit button *must* be available
             self.b_edit = QPushButton(self)
             self.b_edit.setCheckable(True)
             self.b_edit.hide()
@@ -486,18 +577,17 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
             if self.fSkinStyle.startswith("calf"):
                 nameFont.setBold(True)
                 nameFont.setPixelSize(12)
-
             elif self.fSkinStyle.startswith("openav"):
                 QFontDatabase.addApplicationFont(":/fonts/uranium.ttf")
                 nameFont.setFamily("Uranium")
                 nameFont.setPixelSize(15)
                 nameFont.setCapitalization(QFont.AllUppercase)
-
             else:
                 nameFont.setBold(True)
                 nameFont.setPixelSize(11)
 
             self.label_name.setFont(nameFont)
+            self.setupInlineRename()
 
         if self.label_presets is not None:
             presetFont = self.label_presets.font()
@@ -554,8 +644,6 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
             if self.fPeaksOutputCount == 0 and not isinstance(self, PluginSlot_Classic):
                 self.peak_out.hide()
 
-        # -------------------------------------------------------------
-
         if self.fSkinStyle == "openav":
             styleSheet = """
                 QFrame#PluginWidget {
@@ -589,25 +677,25 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
             colorDisabled = "#777777"
 
             if self.fSkinStyle in ("3bandeq", "calf_black", "calf_blue", "nekobi", "zynfx"):
-                styleSheet2  = "background-color: %s;" % box_bg_2
-                styleSheet2 += "background-image: url(:/bitmaps/background_%s.png);" % self.fSkinStyle
+                styleSheet2  = f"background-color: {box_bg_2};"
+                styleSheet2 += f"background-image: url(:/bitmaps/background_{self.fSkinStyle}.png);"
             else:
-                styleSheet2  = "background-color: %s;" % box_bg_2
-                styleSheet2 += "border: 1px solid %s;" % box_bg_1
+                styleSheet2  = f"background-color: {box_bg_2};"
+                styleSheet2 += f"border: 1px solid {box_bg_1};"
                 styleSheet2 += "border-radius: 4px;"
 
-            styleSheet = """
-                QFrame#PluginWidget {
-                    %s
+            styleSheet = f"""
+                QFrame#PluginWidget {{
+                    {styleSheet2}
                     background-repeat: repeat-xy;
-                }
+                }}
                 QLabel#label_name,
                 QLabel#label_audio_in,
                 QLabel#label_audio_out,
                 QLabel#label_midi,
-                QLabel#label_presets       { color: %s; }
-                QLabel#label_name:disabled { color: %s; }
-            """ % (styleSheet2, colorEnabled, colorDisabled)
+                QLabel#label_presets       {{ color: {colorEnabled}; }}
+                QLabel#label_name:disabled {{ color: {colorDisabled}; }}
+            """
 
         styleSheet += """
             QComboBox#cb_presets,
@@ -617,16 +705,43 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
         """
         self.setStyleSheet(styleSheet)
 
-        # -------------------------------------------------------------
-        # Set-up parameters
-
         if self.w_knobs_left is not None:
             parameterCount = self.host.get_parameter_count(self.fPluginId)
 
             index = 0
-            layout = self.w_knobs_left.layout()
+            oldLayout = self.w_knobs_left.layout()
+            if oldLayout is not None:
+                while oldLayout.count():
+                    oldLayout.takeAt(0)
+                QWidget().setLayout(oldLayout)
+
+            flowLayout = FlowLayout(self.w_knobs_left, hSpacing=4, vSpacing=2)
+            flowLayout.setContentsMargins(4, 2, 4, 2)
+            layout = flowLayout
+            self.w_knobs_left.setMinimumWidth(120)
+            self.w_knobs_left.setMaximumWidth(16777215)
+
+            exp_policy = getattr(QSizePolicy, "Expanding", None) or getattr(getattr(QSizePolicy, "Policy", None), "Expanding", None)
+            pref_policy = getattr(QSizePolicy, "Preferred", None) or getattr(getattr(QSizePolicy, "Policy", None), "Preferred", None)
+            if exp_policy and pref_policy:
+                self.w_knobs_left.setSizePolicy(exp_policy, pref_policy)
+
+            has_right_knobs = bool(self.w_knobs_right is not None and (
+                (self.fPluginInfo['hints'] & PLUGIN_CAN_DRYWET) or (self.fPluginInfo['hints'] & PLUGIN_CAN_VOLUME)
+            ))
+
+            if self.spacer_knobs is not None:
+                if has_right_knobs:
+                    self.spacer_knobs.changeSize(6, 1, pref_policy, pref_policy)
+                else:
+                    self.spacer_knobs.changeSize(0, 0, pref_policy, pref_policy)
+
+            if hasattr(self.ui, 'layout_bottom') and self.ui.layout_bottom is not None:
+                self.ui.layout_bottom.setStretch(0, 1)
+                if self.ui.layout_bottom.count() > 2:
+                    self.ui.layout_bottom.setStretch(2, 0)
+
             for i in range(parameterCount):
-                # 50 should be enough for everybody, right?
                 if index >= 50:
                     break
 
@@ -642,7 +757,6 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
                 if (paramData['hints'] & PARAMETER_IS_ENABLED) == 0:
                     continue
                 if (paramData['hints'] & PARAMETER_USES_SCALEPOINTS) != 0 and not isInteger:
-                    # NOTE: we assume integer scalepoints are continuous
                     continue
                 if isInteger and paramRanges['max']-paramRanges['min'] <= 3:
                     continue
@@ -698,15 +812,11 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
                 paramWidget.setValue(self.host.get_current_parameter_value(self.fPluginId, paramIndex))
             paramWidget.blockSignals(False)
 
-        # -------------------------------------------------------------
-
         self.setWindowTitle(self.fPluginInfo['name'])
 
         if not self.fAdjustViewableKnobCountScheduled:
             self.fAdjustViewableKnobCountScheduled = True
             QTimer.singleShot(5, self.adjustViewableKnobCount)
-
-    # -----------------------------------------------------------------
 
     def getFixedHeight(self):
         return 32
@@ -716,8 +826,6 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
 
     def getPluginId(self):
         return self.fPluginId
-
-    # -----------------------------------------------------------------
 
     def setPluginId(self, idx):
         self.fPluginId = idx
@@ -730,14 +838,15 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
         if self.label_name is not None:
             self.label_name.setText(name)
 
+        if getattr(self, 'line_rename', None) is not None and not self.line_rename.isVisible():
+            self.line_rename.setText(name)
+
     def setSelected(self, yesNo):
         if self.fIsSelected == yesNo:
             return
 
         self.fIsSelected = yesNo
         self.update()
-
-    # -----------------------------------------------------------------
 
     def setActive(self, active, sendCallback=False, sendHost=True):
         self.fIsActive = active
@@ -761,7 +870,6 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
         if self.label_name is not None:
             self.label_name.setEnabled(self.fIsActive)
 
-    # called from rack, checks if param is possible first
     def setInternalParameter(self, parameterId, value):
         if parameterId <= PARAMETER_MAX or parameterId >= PARAMETER_NULL:
             return
@@ -794,8 +902,6 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
 
         self.fEditDialog.setParameterValue(parameterId, value)
 
-    # -----------------------------------------------------------------
-
     def setParameterValue(self, parameterId, value, sendCallback):
         if parameterId == PARAMETER_ACTIVE:
             return self.setActive(bool(value), True, False)
@@ -818,8 +924,6 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
     def setParameterMidiChannel(self, parameterId, channel):
         self.fEditDialog.setParameterMidiChannel(parameterId, channel)
 
-    # -----------------------------------------------------------------
-
     def setProgram(self, index, sendCallback):
         self.fEditDialog.setProgram(index)
 
@@ -838,12 +942,8 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
 
         self.updateParameterValues()
 
-    # -----------------------------------------------------------------
-
     def setOption(self, option, yesNo):
         self.fEditDialog.setOption(option, yesNo)
-
-    # -----------------------------------------------------------------
 
     def showCustomUI(self):
         self.host.show_custom_ui(self.fPluginId, True)
@@ -878,6 +978,121 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
                                    self.host.get_last_error(), QMessageBox.Ok, QMessageBox.Ok)
             return
 
+    def setupInlineRename(self):
+        if self.label_name is None:
+            return
+        if getattr(self, 'line_rename', None) is not None:
+            return
+
+        self.label_name.setToolTip(self.tr("Double-click to rename"))
+
+        parent_widget = self.label_name.parentWidget()
+        if parent_widget is None:
+            parent_widget = self
+
+        self.line_rename = QLineEdit(parent_widget)
+        self.line_rename.setObjectName("inline_plugin_rename")
+        self.line_rename.setFont(self.label_name.font())
+        self.line_rename.setMaximumHeight(22)
+        self.line_rename.setMinimumWidth(80)
+        self.line_rename.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+        self.line_rename.setStyleSheet(
+            "QLineEdit#inline_plugin_rename {"
+            " background-color: #313244;"
+            " color: #cdd6f4;"
+            " border: 1px solid #89b4fa;"
+            " border-radius: 3px;"
+            " padding: 1px 4px;"
+            " selection-background-color: #585b70;"
+            " selection-color: #ffffff;"
+            "}"
+            "QLineEdit#inline_plugin_rename:focus {"
+            " border: 1px solid #b4befe;"
+            "}"
+        )
+        self.line_rename.hide()
+
+        inserted = False
+        for attr in ("layout_top", "horizontalLayout", "horizontalLayout_2", "verticalLayout"):
+            l = getattr(getattr(self, "ui", None), attr, None)
+            if l is not None and l.indexOf(self.label_name) != -1:
+                idx = l.indexOf(self.label_name)
+                l.insertWidget(idx + 1, self.line_rename)
+                inserted = True
+                break
+
+        if not inserted:
+            try:
+                for layout in parent_widget.findChildren(QLayout):
+                    idx = layout.indexOf(self.label_name)
+                    if idx != -1:
+                        layout.insertWidget(idx + 1, self.line_rename)
+                        inserted = True
+                        break
+            except Exception:
+                pass
+
+        if not inserted and parent_widget.layout() is not None:
+            parent_widget.layout().addWidget(self.line_rename)
+
+        self.label_name.installEventFilter(self)
+        self.line_rename.installEventFilter(self)
+        self.line_rename.returnPressed.connect(self.slot_finishInlineRename)
+
+    def eventFilter(self, watched, event):
+        if self.label_name is not None and watched is self.label_name:
+            if event.type() == QEvent.MouseButtonDblClick and event.button() == Qt.LeftButton:
+                self.startInlineRename()
+                return True
+        elif getattr(self, 'line_rename', None) is not None and watched is self.line_rename:
+            if event.type() == QEvent.KeyPress:
+                if event.key() == Qt.Key_Escape:
+                    self.cancelInlineRename()
+                    return True
+                elif event.key() in (Qt.Key_Return, Qt.Key_Enter):
+                    self.slot_finishInlineRename()
+                    return True
+            elif event.type() == QEvent.FocusOut:
+                self.slot_finishInlineRename()
+                return False
+        return QFrame.eventFilter(self, watched, event)
+
+    def startInlineRename(self):
+        if getattr(self, 'line_rename', None) is None or self.label_name is None:
+            return
+        current_name = self.fPluginInfo.get('name', '')
+        self.line_rename.setText(current_name)
+        self.label_name.hide()
+        self.line_rename.show()
+        self.line_rename.setFocus()
+        self.line_rename.selectAll()
+
+    def slot_finishInlineRename(self):
+        if getattr(self, 'line_rename', None) is None or self.label_name is None:
+            return
+        if not self.line_rename.isVisible():
+            return
+
+        new_name = self.line_rename.text().strip()
+        old_name = self.fPluginInfo.get('name', '')
+        self.line_rename.hide()
+        self.label_name.show()
+
+        if new_name and new_name != old_name:
+            if not self.host.rename_plugin(self.fPluginId, new_name):
+                CustomMessageBox(self, QMessageBox.Warning, self.tr("Error"), self.tr("Operation failed"),
+                                 self.host.get_last_error(), QMessageBox.Ok, QMessageBox.Ok)
+            else:
+                self.setName(new_name)
+
+    def cancelInlineRename(self):
+        if getattr(self, 'line_rename', None) is None or self.label_name is None:
+            return
+        if not self.line_rename.isVisible():
+            return
+        self.line_rename.hide()
+        self.label_name.show()
+
     def showReplaceDialog(self):
         data = gCarla.gui.showAddPluginDialog()
 
@@ -896,8 +1111,6 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
 
         if not ok:
             CustomMessageBox(self, QMessageBox.Critical, self.tr("Error"), self.tr("Failed to load plugin"), self.host.get_last_error(), QMessageBox.Ok, QMessageBox.Ok)
-
-    # -----------------------------------------------------------------
 
     def activeChanged(self, onOff):
         self.fIsActive = onOff
@@ -943,9 +1156,6 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
     def optionChanged(self, option, yesNo):
         pass
 
-    # -----------------------------------------------------------------
-    # PluginEdit callbacks
-
     def editDialogVisibilityChanged(self, pluginId, visible):
         if self.b_edit is None:
             return
@@ -983,8 +1193,6 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
         self.cb_presets.blockSignals(True)
         self.cb_presets.setCurrentIndex(index)
         self.cb_presets.blockSignals(False)
-
-        # FIXME
         self.updateParameterValues()
 
     def editDialogMidiProgramChanged(self, pluginId, index):
@@ -994,8 +1202,6 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
         self.cb_presets.blockSignals(True)
         self.cb_presets.setCurrentIndex(index)
         self.cb_presets.blockSignals(False)
-
-        # FIXME
         self.updateParameterValues()
 
     def editDialogNotePressed(self, pluginId, note):
@@ -1007,10 +1213,7 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
     def editDialogMidiActivityChanged(self, pluginId, onOff):
         self.midiActivityChanged(onOff)
 
-    # -----------------------------------------------------------------
-
     def idleFast(self):
-        # Input peaks
         if self.fPeaksInputCount > 0:
             if self.fPeaksInputCount > 1:
                 peak1 = self.host.get_input_peak_value(self.fPluginId, True)
@@ -1020,7 +1223,6 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
                 if self.peak_in is not None:
                     self.peak_in.displayMeter(1, peak1)
                     self.peak_in.displayMeter(2, peak2)
-
             else:
                 peak = self.host.get_input_peak_value(self.fPluginId, True)
                 ledState = bool(peak != 0.0)
@@ -1032,7 +1234,6 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
                 self.fLastGreenLedState = ledState
                 self.led_audio_in.setChecked(ledState)
 
-        # Output peaks
         if self.fPeaksOutputCount > 0:
             if self.fPeaksOutputCount > 1:
                 peak1 = self.host.get_output_peak_value(self.fPluginId, True)
@@ -1042,7 +1243,6 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
                 if self.peak_out is not None:
                     self.peak_out.displayMeter(1, peak1)
                     self.peak_out.displayMeter(2, peak2)
-
             else:
                 peak = self.host.get_output_peak_value(self.fPluginId, True)
                 ledState = bool(peak != 0.0)
@@ -1067,8 +1267,6 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
             self.fParameterIconTimer = ICON_STATE_NULL
 
         self.fEditDialog.idleSlow()
-
-    # -----------------------------------------------------------------
 
     def drawOutline(self, painter):
         painter.save()
@@ -1101,8 +1299,6 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
                 paramWidget.setValue(self.host.get_current_parameter_value(self.fPluginId, paramIndex))
             paramWidget.blockSignals(False)
 
-    # -----------------------------------------------------------------
-
     @pyqtSlot(bool)
     def slot_enableClicked(self, yesNo):
         self.setActive(yesNo, False, True)
@@ -1111,65 +1307,39 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
     def slot_showCustomMenu(self):
         menu = QMenu(self)
 
-        # -------------------------------------------------------------
-        # Expand/Minimize and Tweaks
-
         actCompact = menu.addAction(self.tr("Expand") if isinstance(self, PluginSlot_Compact) else self.tr("Minimize"))
-        actColor   = menu.addAction(self.tr("Change Color..."))
-        
-        menuSkin = menu.addMenu(self.tr("Skin"))
-        skinList = [
-            "default",
-            "classic",
-            "compact",
-            "calf",
-            "minimal-dark",
-            "minimal-light",
-            "sliders-dark",
-            "sliders-light",
-            "openav",
-            "zynfx",
-            "presets",
-            "mpresets",
-        ]
-        skinActions = {}
-        for s in skinList:
-            act = menuSkin.addAction(s)
-            act.setCheckable(True)
-            if s == self.fSkinStyle:
-                act.setChecked(True)
-                font = act.font()
-                font.setBold(True)
-                act.setFont(font)
-            skinActions[act] = s
-            
-        actNextSkin = menu.addAction(self.tr(f"Next Skin ({self.fSkinStyle})"))
-        menu.addSeparator()
 
-        # -------------------------------------------------------------
-        # Find in patchbay, if possible
+        menuAppearance = menu.addMenu(self.tr("Appearance"))
+        actSliderMode = menuAppearance.addAction(self.tr("Slider Mode"))
+        actSliderMode.setCheckable(True)
+        is_sliders = isinstance(self, PluginSlot_Sliders) or self.fSkinStyle.startswith("sliders")
+        actSliderMode.setChecked(is_sliders)
+
+        actDarkMode = menuAppearance.addAction(self.tr("Dark Mode"))
+        actDarkMode.setCheckable(True)
+        is_dark = getattr(self, "is_dark", True)
+        actDarkMode.setChecked(is_dark)
+
+        menuAppearance.addSeparator()
+        actColor = menuAppearance.addAction(self.tr("Change Color..."))
+        actResetColor = menuAppearance.addAction(self.tr("Reset Color"))
+
+        menu.addSeparator()
 
         if self.host.processMode in (ENGINE_PROCESS_MODE_MULTIPLE_CLIENTS,
                                      ENGINE_PROCESS_MODE_PATCHBAY):
             actFindInPatchbay = menu.addAction(self.tr("Find plugin in patchbay"))
             menu.addSeparator()
-
         else:
             actFindInPatchbay = None
-
-        # -------------------------------------------------------------
-        # Move up and down
 
         actMoveUp   = menu.addAction(self.tr("Move Up"))
         actMoveDown = menu.addAction(self.tr("Move Down"))
 
         if self.fPluginId == 0:
             actMoveUp.setEnabled(False)
-        if self.fPluginId >= self.fParent.getPluginCount():
+        if self.fPluginId >= self.fParent.getPluginCount() - 1:
             actMoveDown.setEnabled(False)
-
-        # -------------------------------------------------------------
-        # Bypass and Enable/Disable
 
         actBypass = menu.addAction(self.tr("Bypass"))
         actEnable = menu.addAction(self.tr("Disable") if self.fIsActive else self.tr("Enable"))
@@ -1181,15 +1351,9 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
         else:
             actBypass.setVisible(False)
 
-        # -------------------------------------------------------------
-        # Reset and Randomize parameters
-
         actReset  = menu.addAction(self.tr("Reset parameters"))
         actRandom = menu.addAction(self.tr("Randomize parameters"))
         menu.addSeparator()
-
-        # -------------------------------------------------------------
-        # Edit and Show Custom UI
 
         actEdit = menu.addAction(self.tr("Edit"))
         actGui  = menu.addAction(self.tr("Show Custom UI"))
@@ -1208,9 +1372,6 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
         else:
             actGui.setVisible(False)
 
-        # -------------------------------------------------------------
-        # Other stuff
-
         actClone   = menu.addAction(self.tr("Clone"))
         actRename  = menu.addAction(self.tr("Rename..."))
         actReplace = menu.addAction(self.tr("Replace..."))
@@ -1222,27 +1383,37 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
         if self.host.exportLV2:
             menu.addSeparator()
             actExportLV2 = menu.addAction(self.tr("Export LV2..."))
-
         else:
             actExportLV2 = None
-
-        # -------------------------------------------------------------
-        # exec
 
         actSel = menu.exec_(QCursor.pos())
 
         if not actSel:
             return
 
-        # -------------------------------------------------------------
-        # Expand/Minimize
-
         elif actSel == actCompact:
-            # FIXME
-            gCarla.gui.compactPlugin(self.fPluginId)
+            if hasattr(self, 'toggleCompacted'):
+                self.toggleCompacted()
+            else:
+                gCarla.gui.compactPlugin(self.fPluginId)
 
-        # -------------------------------------------------------------
-        # Tweaks
+        elif actSel == actSliderMode:
+            new_sliders = actSliderMode.isChecked()
+            if hasattr(self, 'setSliderMode'):
+                self.setSliderMode(new_sliders)
+            else:
+                is_dark = getattr(self, "is_dark", True)
+                new_skin = ("sliders-dark" if is_dark else "sliders-light") if new_sliders else ("minimal-dark" if is_dark else "minimal-light")
+                gCarla.gui.changePluginSkin(self.fPluginId, new_skin)
+
+        elif actSel == actDarkMode:
+            new_dark = actDarkMode.isChecked()
+            is_sliders = isinstance(self, PluginSlot_Sliders) or self.fSkinStyle.startswith("sliders")
+            if is_sliders:
+                new_skin = "sliders-dark" if new_dark else "sliders-light"
+            else:
+                new_skin = "minimal-dark" if new_dark else "minimal-light"
+            gCarla.gui.changePluginSkin(self.fPluginId, new_skin)
 
         elif actSel == actColor:
             initial = QColor(self.fSkinColor[0], self.fSkinColor[1], self.fSkinColor[2])
@@ -1255,52 +1426,19 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
             colorStr = "%i;%i;%i" % color
             gCarla.gui.changePluginColor(self.fPluginId, color, colorStr)
 
-        elif actSel == actNextSkin:
-            skinList = [
-                "minimal-dark",
-                "minimal-light",
-                "sliders-dark",
-                "sliders-light",
-                "default",
-                "3bandeq",
-                "rncbc",
-                "calf_black",
-                "calf_blue",
-                "classic",
-                "openav-old",
-                "openav",
-                "zynfx",
-                "presets",
-                "mpresets",
-            ]
-            try:
-                index = skinList.index(self.fSkinStyle)
-                next_index = (index + 1) % len(skinList)
-            except ValueError:
-                next_index = 0
-
-            gCarla.gui.changePluginSkin(self.fPluginId, skinList[next_index])
-
-        elif actSel in skinActions:
-            gCarla.gui.changePluginSkin(self.fPluginId, skinActions[actSel])
-
-        # -------------------------------------------------------------
-        # Find in patchbay
+        elif actSel == actResetColor:
+            gCarla.gui.changePluginColor(self.fPluginId, (255, 255, 255), "255;255;255")
 
         elif actSel == actFindInPatchbay:
             gCarla.gui.findPluginInPatchbay(self.fPluginId)
 
-        # -------------------------------------------------------------
-        # Move up and down
+        elif actMoveUp:
+            if actSel == actMoveUp:
+                gCarla.gui.switchPlugins(self.fPluginId, self.fPluginId-1)
 
-        elif actSel == actMoveUp:
-            gCarla.gui.switchPlugins(self.fPluginId, self.fPluginId-1)
-
-        elif actSel == actMoveDown:
-            gCarla.gui.switchPlugins(self.fPluginId, self.fPluginId+1)
-
-        # -------------------------------------------------------------
-        # Bypass and Enable/Disable
+        elif actMoveDown:
+            if actSel == actMoveDown:
+                gCarla.gui.switchPlugins(self.fPluginId, self.fPluginId+1)
 
         elif actSel == actBypass:
             value = 0.0 if actBypass.isChecked() else 1.0
@@ -1310,17 +1448,11 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
         elif actSel == actEnable:
             self.setActive(not self.fIsActive, True, True)
 
-        # -------------------------------------------------------------
-        # Reset and Randomize parameters
-
         elif actSel == actReset:
             self.host.reset_parameters(self.fPluginId)
 
         elif actSel == actRandom:
             self.host.randomize_parameters(self.fPluginId)
-
-        # -------------------------------------------------------------
-        # Edit and Show Custom UI
 
         elif actSel == actEdit:
             self.b_edit.click()
@@ -1328,36 +1460,21 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
         elif actSel == actGui:
             self.b_gui.click()
 
-        # -------------------------------------------------------------
-        # Clone
-
         elif actSel == actClone:
             if not self.host.clone_plugin(self.fPluginId):
                 CustomMessageBox(self, QMessageBox.Warning, self.tr("Error"), self.tr("Operation failed"),
                                        self.host.get_last_error(), QMessageBox.Ok, QMessageBox.Ok)
 
-        # -------------------------------------------------------------
-        # Rename
-
         elif actSel == actRename:
             self.showRenameDialog()
 
-        # -------------------------------------------------------------
-        # Replace
-
         elif actSel == actReplace:
             self.showReplaceDialog()
-
-        # -------------------------------------------------------------
-        # Remove
 
         elif actSel == actRemove:
             if not self.host.remove_plugin(self.fPluginId):
                 CustomMessageBox(self, QMessageBox.Warning, self.tr("Error"), self.tr("Operation failed"),
                                        self.host.get_last_error(), QMessageBox.Ok, QMessageBox.Ok)
-
-        # -------------------------------------------------------------
-        # Export LV2
 
         elif actSel == actExportLV2:
             filepath = QInputDialog.getItem(self, self.tr("Export LV2 Plugin"),
@@ -1382,9 +1499,7 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
                                               self.host.get_last_error(), QMessageBox.Ok, QMessageBox.Ok)
 
             QMessageBox.information(self, self.tr("Plugin exported"),
-                                          self.tr("Plugin exported successfully, saved in folder:\n%s" % filepath))
-
-        # -------------------------------------------------------------
+                                          self.tr(f"Plugin exported successfully, saved in folder:\n{filepath}"))
 
     @pyqtSlot()
     def slot_knobCustomMenu(self):
@@ -1409,12 +1524,10 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
             default = self.host.get_default_parameter_value(self.fPluginId, index)
 
         if index < PARAMETER_NULL:
-            # show in integer percentage
             textReset = self.tr("Reset (%i%%)"          % round(default*100.0))
             textMinim = self.tr("Set to Minimum (%i%%)" % round(minimum*100.0))
             textMaxim = self.tr("Set to Maximum (%i%%)" % round(maximum*100.0))
         else:
-            # show in full float value
             textReset = self.tr("Reset (%f)"          % default)
             textMinim = self.tr("Set to Minimum (%f)" % minimum)
             textMaxim = self.tr("Set to Maximum (%f)" % maximum)
@@ -1480,8 +1593,6 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
 
         sender.setValue(value, True)
 
-    # -----------------------------------------------------------------
-
     @pyqtSlot(bool)
     def slot_showCustomUi(self, show):
         self.host.show_custom_ui(self.fPluginId, show)
@@ -1495,8 +1606,6 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
         if not self.host.remove_plugin(self.fPluginId):
             CustomMessageBox(self, QMessageBox.Warning, self.tr("Error"), self.tr("Operation failed"),
                                     self.host.get_last_error(), QMessageBox.Ok, QMessageBox.Ok)
-
-    # -----------------------------------------------------------------
 
     @pyqtSlot(bool)
     def slot_parameterDragStateChanged(self, touch):
@@ -1528,48 +1637,45 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
         self.host.set_midi_program(self.fPluginId, index)
         self.setMidiProgram(index, False)
 
-    # -----------------------------------------------------------------
+    def updateRackItemSize(self):
+        h = self.getFixedHeight()
+        self.setFixedHeight(h)
+        if hasattr(gCarla, "gui") and gCarla.gui is not None:
+            pitem = gCarla.gui.getPluginItem(self.fPluginId)
+            if pitem is not None:
+                pitem.setSizeHint(QSize(0, h))
+            if hasattr(gCarla.gui, "ui") and hasattr(gCarla.gui.ui, "listWidget") and gCarla.gui.ui.listWidget is not None:
+                gCarla.gui.ui.listWidget.scheduleDelayedItemsLayout()
 
     def adjustViewableKnobCount(self):
-        if self.w_knobs_left is None or self.spacer_knobs is None:
+        if self.w_knobs_left is None:
             return
 
-        maxWidth = self.w_knobs_left.width() + self.spacer_knobs.geometry().width() + 2
-        if maxWidth <= 10:
+        layout = self.w_knobs_left.layout()
+        if layout is None:
+            return
+
+        if getattr(self, 'is_compacted', False) or getattr(self, 'is_slider_mode', False) or not self.w_knobs_left.isVisible():
+            self.fAdjustViewableKnobCountScheduled = False
+            return
+
+        if self.w_knobs_left.width() <= 10:
             self.fAdjustViewableKnobCountScheduled = True
             QTimer.singleShot(50, self.adjustViewableKnobCount)
             return
 
-        curWidth = 2
+        for _, widget in self.fParameterList:
+            widget.show()
 
-        plen = len(self.fParameterList)
-        for i in range(plen):
-            index, widget = self.fParameterList[i]
-            if index < 0:
-                break
+        self.w_knobs_left.updateGeometry()
+        if self.w_knobs_left.parentWidget():
+            self.w_knobs_left.parentWidget().updateGeometry()
 
-            curWidth += widget.width() + 4
-
-            if curWidth + widget.width() * 2 + 8 < maxWidth:
-                #if not widget.isVisible():
-                widget.show()
-                continue
-
-            for i2 in range(i, plen):
-                index2, widget2 = self.fParameterList[i2]
-                if index2 < 0:
-                    break
-                #if widget2.isVisible():
-                widget2.hide()
-
-            break
-
+        self.updateRackItemSize()
         self.fAdjustViewableKnobCountScheduled = False
 
     def testTimer(self):
         self.fIdleTimerId = self.startTimer(25)
-
-    # -----------------------------------------------------------------
 
     def showEvent(self, event):
         QFrame.showEvent(self, event)
@@ -1579,15 +1685,12 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
 
     def mouseDoubleClickEvent(self, event):
         QFrame.mouseDoubleClickEvent(self, event)
-
-        # FIXME
         gCarla.gui.compactPlugin(self.fPluginId)
 
     def closeEvent(self, event):
         if self.fIdleTimerId != 0:
             self.killTimer(self.fIdleTimerId)
             self.fIdleTimerId = 0
-
             self.host.engine_close()
 
         QFrame.closeEvent(self, event)
@@ -1596,6 +1699,7 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
         if not self.fAdjustViewableKnobCountScheduled:
             self.fAdjustViewableKnobCountScheduled = True
             QTimer.singleShot(100, self.adjustViewableKnobCount)
+        self.updateRackItemSize()
         QFrame.resizeEvent(self, event)
 
     def timerEvent(self, event):
@@ -1609,7 +1713,6 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
     def paintEvent(self, event):
         painter = QPainter(self)
 
-        # Colorization
         if self.fSkinColor != (0,0,0):
             painter.setCompositionMode(QPainter.CompositionMode_Multiply)
             r,g,b = self.fSkinColor
@@ -1632,18 +1735,12 @@ class PluginSlot_Calf(AbstractPluginSlot):
         audioCount = self.host.get_audio_port_count_info(self.fPluginId)
         midiCount  = self.host.get_midi_port_count_info(self.fPluginId)
 
-        # -------------------------------------------------------------
-        # Internal stuff
-
         self.fButtonFont = self.ui.b_gui.font()
         self.fButtonFont.setBold(False)
         self.fButtonFont.setPixelSize(10)
 
         self.fButtonColorOn  = QColor( 18,  41,  87)
         self.fButtonColorOff = QColor(150, 150, 150)
-
-        # -------------------------------------------------------------
-        # Set-up GUI
 
         self.ui.label_active.setFont(self.fButtonFont)
 
@@ -1673,8 +1770,6 @@ class PluginSlot_Calf(AbstractPluginSlot):
             self.ui.b_remove.setEnabled(False)
             self.ui.b_remove.setVisible(False)
 
-        # -------------------------------------------------------------
-
         self.b_enable = self.ui.b_enable
         self.b_gui    = self.ui.b_gui
         self.b_edit   = self.ui.b_edit
@@ -1690,15 +1785,10 @@ class PluginSlot_Calf(AbstractPluginSlot):
         self.spacer_knobs = self.ui.layout_bottom.itemAt(1).spacerItem()
 
         self.ready()
-
         self.ui.led_midi.setColor(self.ui.led_midi.CALF)
-
-    # -----------------------------------------------------------------
 
     def getFixedHeight(self):
         return 94 if max(self.peak_in.channelCount(), self.peak_out.channelCount()) < 2 else 106
-
-    # -----------------------------------------------------------------
 
     def editDialogPluginHintsChanged(self, pluginId, hints):
         if hints & PLUGIN_HAS_CUSTOM_UI:
@@ -1707,8 +1797,6 @@ class PluginSlot_Calf(AbstractPluginSlot):
             self.ui.b_gui.setTopText(self.tr("GUI"), self.fButtonColorOff, self.fButtonFont)
 
         AbstractPluginSlot.editDialogPluginHintsChanged(self, pluginId, hints)
-
-    # -----------------------------------------------------------------
 
     def paintEvent(self, event):
         isBlack = bool(self.fSkinStyle == "calf_black")
@@ -1732,14 +1820,9 @@ class PluginSlot_Classic(AbstractPluginSlot):
         self.ui = ui_carla_plugin_classic.Ui_PluginWidget()
         self.ui.setupUi(self)
 
-        # -------------------------------------------------------------
-        # Internal stuff
-
         self.fColorTop    = QColor(60, 60, 60)
         self.fColorBottom = QColor(47, 47, 47)
         self.fColorSeprtr = QColor(70, 70, 70)
-
-        # -------------------------------------------------------------
 
         self.b_enable = self.ui.b_enable
         self.b_gui    = self.ui.b_gui
@@ -1756,12 +1839,8 @@ class PluginSlot_Classic(AbstractPluginSlot):
 
         self.ready()
 
-    # -----------------------------------------------------------------
-
     def getFixedHeight(self):
         return 36
-
-    # -----------------------------------------------------------------
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -1779,7 +1858,6 @@ class PluginSlot_Classic(AbstractPluginSlot):
         painter.setBrush(self.fColorBottom)
         painter.setRenderHint(QPainter.Antialiasing, True)
 
-        # name -> leds arc
         path = QPainterPath()
         path.moveTo(areaX-20, height-4)
         path.cubicTo(areaX, height-5, areaX-20, 4.75, areaX, 4.75)
@@ -1789,23 +1867,19 @@ class PluginSlot_Classic(AbstractPluginSlot):
         painter.setPen(self.fColorSeprtr)
         painter.setRenderHint(QPainter.Antialiasing, False)
 
-        # separator lines
         painter.drawLine(0, height-5, areaX-20, height-5)
         painter.drawLine(areaX, 4, width, 4)
 
         painter.setPen(self.fColorBottom)
         painter.setBrush(self.fColorBottom)
 
-        # top, bottom and left lines
         painter.drawLine(0, 0, width, 0)
         painter.drawRect(0, height-4, areaX, 4)
         painter.drawRoundedRect(areaX-20, height-5, areaX, 5, 22, 22)
         painter.drawLine(0, 0, 0, height)
 
-        # fill the rest
         painter.drawRect(areaX-1, 5, width, height)
 
-        # bottom 1px line
         painter.setPen(self.fColorSeprtr)
         painter.drawLine(0, height-1, width, height-1)
 
@@ -1819,6 +1893,35 @@ class PluginSlot_Compact(AbstractPluginSlot):
         AbstractPluginSlot.__init__(self, parent, host, pluginId, skinColor, skinStyle)
         self.ui = ui_carla_plugin_compact.Ui_PluginWidget()
         self.ui.setupUi(self)
+
+        self.is_dark = skinStyle in ("minimal-dark", "sliders-dark") or "light" not in skinStyle
+        p = CATPPUCCIN_MOCHA if self.is_dark else CATPPUCCIN_LATTE
+
+        if skinColor != (0, 0, 0) and skinColor != (255, 255, 255):
+            bg_r, bg_g, bg_b = skinColor
+            if self.is_dark:
+                bg_r = int(0.80 * 24 + 0.20 * bg_r)
+                bg_g = int(0.80 * 24 + 0.20 * bg_g)
+                bg_b = int(0.80 * 37 + 0.20 * bg_b)
+            else:
+                bg_r = int(0.85 * 230 + 0.15 * bg_r)
+                bg_g = int(0.85 * 233 + 0.15 * bg_g)
+                bg_b = int(0.85 * 239 + 0.15 * bg_b)
+        else:
+            if self.is_dark:
+                bg_r, bg_g, bg_b = 24, 24, 37
+            else:
+                bg_r, bg_g, bg_b = 230, 233, 239
+
+        self.minimal_bg_color = QColor(bg_r, bg_g, bg_b)
+        self.border_color = QColor(p['surface0'])
+        self.selection_color = QColor(p['lavender'])
+
+        text_color = p['text']
+        text_disabled = p['overlay0']
+        badge_bg = "rgba(203, 166, 247, 0.12)" if self.is_dark else "rgba(136, 57, 239, 0.10)"
+        badge_text = p['mauve']
+        bypass_active = p['peach']
 
         self.b_enable = self.ui.b_enable
         self.b_gui    = self.ui.b_gui
@@ -1834,37 +1937,195 @@ class PluginSlot_Compact(AbstractPluginSlot):
         self.peak_in  = self.ui.peak_in
         self.peak_out = self.ui.peak_out
 
-        
-        # --- User requested expand button ---
-        self.b_expand = QPushButton(" ▼ ", parent=self)
-        self.b_expand.setMinimumSize(24, 24)
-        self.b_expand.setMaximumSize(24, 24)
+        self.ui.w_buttons.setMinimumSize(0, 24)
+        self.ui.w_buttons.setMaximumSize(16777215, 24)
+        self.ui.horizontalLayout.setSpacing(4)
+
+        self.b_bypass = QPushButton("BYP", parent=self.ui.w_buttons)
+        self.b_bypass.setObjectName("btn_bypass")
+        self.b_bypass.setMinimumSize(32, 22)
+        self.b_bypass.setMaximumSize(38, 22)
+        self.b_bypass.setFlat(True)
+        self.b_bypass.setCheckable(True)
+
+        if bool(self.getHints() & PLUGIN_CAN_DRYWET):
+            is_bypassed = bool(self.host.get_internal_parameter_value(self.fPluginId, PARAMETER_DRYWET) == 0.0)
+            self._update_bypass_state(is_bypassed)
+            def _on_bypass_clicked(checked):
+                bypassed = self.b_bypass.isChecked()
+                val = 0.0 if bypassed else 1.0
+                self.host.set_drywet(self.fPluginId, val)
+                self.setParameterValue(PARAMETER_DRYWET, val, True)
+                self._update_bypass_state(bypassed)
+            self.b_bypass.clicked.connect(_on_bypass_clicked)
+        else:
+            self.b_bypass.hide()
+
+        self.ui.horizontalLayout.insertWidget(1, self.b_bypass)
+
+        plugin_type_str = getPluginTypeAsString(self.fPluginInfo['type'])
+        self.label_badge = QLabel(f" {plugin_type_str} ", parent=self)
+        self.label_badge.setObjectName("label_badge")
+        idx = self.ui.horizontalLayout_2.indexOf(self.label_name)
+        if idx >= 0:
+            self.ui.horizontalLayout_2.insertWidget(idx + 1, self.label_badge)
+
+        self.b_expand = QPushButton("▼", parent=self)
+        self.b_expand.setFlat(True)
+        self.b_expand.setObjectName("btn_expand")
+        self.b_expand.setMinimumSize(22, 20)
+        self.b_expand.setMaximumSize(24, 20)
         self.b_expand.setToolTip("Expand")
-        self.b_expand.setStyleSheet("QPushButton { border-radius: 3px; font-weight: bold; background: #333; color: #fff; border: 1px solid #111; } QPushButton:hover { background: #444; }")
         self.b_expand.clicked.connect(lambda _=None: gCarla.gui.compactPlugin(self.fPluginId))
         self.ui.horizontalLayout_2.addWidget(self.b_expand)
-        
+
         if not bool(self.getHints() & PLUGIN_HAS_CUSTOM_UI):
             self.b_gui.hide()
-        
+
+        styleSheet = f"""
+            QFrame#PluginWidget {{
+                background: transparent;
+            }}
+            QPushButton {{
+                background: transparent;
+                border: none;
+                color: {p['subtext0']};
+                font-size: 10px;
+                font-weight: 700;
+                padding: 2px 4px;
+                border-radius: 4px;
+            }}
+            QPushButton:hover {{
+                background: transparent;
+                border: none;
+                color: {p['text']};
+            }}
+            QPushButton:pressed {{
+                color: {p['blue']};
+            }}
+            QPushButton#btn_bypass {{
+                background: transparent;
+                border: none;
+                font-size: 10px;
+                font-weight: 700;
+                color: {p['overlay1']};
+                padding: 2px 4px;
+            }}
+            QPushButton#btn_bypass:hover {{
+                color: {p['text']};
+                background: transparent;
+                border: none;
+            }}
+            QPushButton#btn_bypass:checked {{
+                background: transparent;
+                border: none;
+                color: {bypass_active};
+                font-weight: 800;
+            }}
+            QPushButton#btn_bypass:checked:hover {{
+                color: {p['yellow']};
+                background: transparent;
+                border: none;
+            }}
+            QPushButton#btn_expand, QPushButton#btn_minimize {{
+                background: transparent;
+                border: none;
+                color: {p['overlay1']};
+                font-size: 11px;
+                font-weight: bold;
+                min-width: 20px;
+                max-width: 24px;
+                min-height: 20px;
+                max-height: 22px;
+                padding: 0px;
+            }}
+            QPushButton#btn_expand:hover, QPushButton#btn_minimize:hover {{
+                background: transparent;
+                border: none;
+                color: {p['text']};
+            }}
+            QPushButton#btn_expand:pressed, QPushButton#btn_minimize:pressed {{
+                color: {p['blue']};
+            }}
+            QLabel#label_name {{
+                font-size: 11px;
+                font-weight: bold;
+                color: {text_color};
+            }}
+            QLabel#label_name:disabled {{
+                color: {text_disabled};
+            }}
+            QLabel#label_badge {{
+                background-color: {badge_bg};
+                border: none;
+                border-radius: 4px;
+                padding: 2px 6px;
+                font-size: 9px;
+                font-weight: bold;
+                color: {badge_text};
+            }}
+        """
+        self.setStyleSheet(styleSheet)
         self.ready()
+        self.updateRackItemSize()
 
-    # -----------------------------------------------------------------
+    def _update_bypass_state(self, is_bypassed):
+        if not hasattr(self, 'b_bypass') or self.b_bypass is None:
+            return
+        self.b_bypass.blockSignals(True)
+        self.b_bypass.setChecked(is_bypassed)
+        self.b_bypass.setText("BYP")
+        if is_bypassed:
+            self.b_bypass.setToolTip("Bypassed (Dry/Wet = 0%) — Click to activate")
+        else:
+            self.b_bypass.setToolTip("Active (Dry/Wet = 100%) — Click to bypass")
+        self.b_bypass.blockSignals(False)
 
-def getFixedHeight(self):
-    if self.fSkinStyle == "calf_blue":
-        return 36
-    return 30
+    def toggleCompacted(self):
+        if hasattr(gCarla, 'gui') and gCarla.gui is not None:
+            gCarla.gui.compactPlugin(self.fPluginId)
 
-# ------------------------------------------------------------------------------------------------------------
+    def getFixedHeight(self):
+        return 34
+
+    def setParameterValue(self, parameterId, value, sendCallback):
+        AbstractPluginSlot.setParameterValue(self, parameterId, value, sendCallback)
+        if parameterId == PARAMETER_DRYWET and hasattr(self, "_update_bypass_state"):
+            self._update_bypass_state(value == 0.0)
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        w = float(self.width())
+        h = float(self.getFixedHeight())
+        rect = QRectF(1.0, 1.0, w - 2.0, h - 2.0)
+
+        painter.setBrush(self.minimal_bg_color)
+        painter.setPen(QPen(self.border_color, 1.0))
+        painter.drawRoundedRect(rect, 6.0, 6.0)
+
+        stripePath = QPainterPath()
+        stripePath.addRoundedRect(QRectF(3.0, 4.0, 3.5, h - 8.0), 1.75, 1.75)
+        categoryColor = QColor(self.fSkinColor[0], self.fSkinColor[1], self.fSkinColor[2])
+        if categoryColor.red() == 0 and categoryColor.green() == 0 and categoryColor.blue() == 0:
+            catRgb = getColorFromCategory(self.fPluginInfo['category'])
+            categoryColor = QColor(*catRgb)
+        painter.fillPath(stripePath, categoryColor)
+
+        if self.fIsSelected:
+            selPen = QPen(self.selection_color, 1.8)
+            painter.setPen(selPen)
+            painter.setBrush(Qt.NoBrush)
+            painter.drawRoundedRect(rect, 6.0, 6.0)
+
+        QFrame.paintEvent(self, event)
 
 class PluginSlot_Default(AbstractPluginSlot):
     def __init__(self, parent, host, pluginId, skinColor, skinStyle):
         AbstractPluginSlot.__init__(self, parent, host, pluginId, skinColor, skinStyle)
         self.ui = ui_carla_plugin_default.Ui_PluginWidget()
         self.ui.setupUi(self)
-
-        # -------------------------------------------------------------
 
         self.b_enable = self.ui.b_enable
         self.b_gui    = self.ui.b_gui
@@ -1886,532 +2147,15 @@ class PluginSlot_Default(AbstractPluginSlot):
 
         self.ready()
 
-    # -----------------------------------------------------------------
-
     def getFixedHeight(self):
         return 80
 
-    # -----------------------------------------------------------------
-
     def paintEvent(self, event):
         AbstractPluginSlot.paintEvent(self, event)
-
-class PluginSlot_Minimal(PluginSlot_Default):
-    def __init__(self, parent, host, pluginId, skinColor, skinStyle):
-        PluginSlot_Default.__init__(self, parent, host, pluginId, skinColor, skinStyle)
-
-        self.is_dark = skinStyle in ("minimal-dark", "sliders-dark")
-
-        if skinColor != (0, 0, 0) and skinColor != (255, 255, 255):
-            bg_r, bg_g, bg_b = skinColor
-            if self.is_dark:
-                # Dim the category/custom color for dark mode
-                bg_r = int(bg_r * 0.3)
-                bg_g = int(bg_g * 0.3)
-                bg_b = int(bg_b * 0.3)
-            else:
-                # Lighten it for light mode (pastel)
-                bg_r = int(bg_r + (255 - bg_r) * 0.7)
-                bg_g = int(bg_g + (255 - bg_g) * 0.7)
-                bg_b = int(bg_b + (255 - bg_b) * 0.7)
-        else:
-            if self.is_dark:
-                bg_r, bg_g, bg_b = 30, 30, 30
-            else:
-                bg_r, bg_g, bg_b = 250, 250, 250
-
-        self.minimal_bg_color = QColor(bg_r, bg_g, bg_b)
-
-        # Dynamic contrast: compute luminance
-        luminance = (0.299 * bg_r + 0.587 * bg_g + 0.114 * bg_b)
-
-        if luminance > 130:
-            text_color = "#111111"
-            text_disabled = "#777777"
-            combo_bg = "#FFFFFF"
-            combo_border = "#CCCCCC"
-            self.border_color = QColor(max(0, bg_r - 30), max(0, bg_g - 30), max(0, bg_b - 30))
-        else:
-            text_color = "#EEEEEE"
-            text_disabled = "#888888"
-            combo_bg = "#2A2A2A"
-            combo_border = "#444444"
-            self.border_color = QColor(min(255, bg_r + 30), min(255, bg_g + 30), min(255, bg_b + 30))
-        if skinColor != (0, 0, 0) and skinColor != (255, 255, 255):
-            sr, sg, sb = skinColor
-            if self.is_dark:
-                # Ensure high contrast active track against dark backgrounds
-                sr = min(255, int(sr * 0.7 + 60))
-                sg = min(255, int(sg * 0.7 + 60))
-                sb = min(255, int(sb * 0.7 + 60))
-            else:
-                sr = max(0, int(sr * 0.7))
-                sg = max(0, int(sg * 0.7))
-                sb = max(0, int(sb * 0.7))
-            accent_color = f"rgb({sr},{sg},{sb})"
-        else:
-            accent_color = "#52BAFF" if self.is_dark else "#0066CC"
-
-        # --- User requested additions ---
-        if not bool(self.getHints() & PLUGIN_HAS_CUSTOM_UI):
-            self.b_gui.hide()
-            
-        # Expand buttons container to fit 4 buttons (24 * 4 = 96)
-        self.ui.w_buttons.setMinimumSize(96, 24)
-        self.ui.w_buttons.setMaximumSize(96, 24)
-        
-        # Bypass Button
-        self.b_bypass = QPushButton(" ↯ ", parent=self.ui.w_buttons)
-        self.b_bypass.setMinimumSize(24, 24)
-        self.b_bypass.setMaximumSize(24, 24)
-        self.b_bypass.setCheckable(True)
-        self.b_bypass.setToolTip("Bypass")
-        
-        if bool(self.getHints() & PLUGIN_CAN_DRYWET):
-            self.b_bypass.setChecked(self.host.get_internal_parameter_value(self.fPluginId, PARAMETER_DRYWET) == 0.0)
-            def _on_bypass_clicked(checked):
-                val = 0.0 if self.b_bypass.isChecked() else 1.0
-                self.host.set_drywet(self.fPluginId, val)
-                self.setParameterValue(PARAMETER_DRYWET, val, True)
-            self.b_bypass.clicked.connect(_on_bypass_clicked)
-        else:
-            self.b_bypass.hide()
-            
-        self.ui.horizontalLayout.insertWidget(1, self.b_bypass)
-        
-        # Minimize/Expand button
-        self.b_minimize = QPushButton(" ▲ ", parent=self)
-        self.b_minimize.setMinimumSize(24, 24)
-        self.b_minimize.setMaximumSize(24, 24)
-        self.b_minimize.setToolTip("Minimize")
-        self.b_minimize.clicked.connect(lambda _=None: gCarla.gui.compactPlugin(self.fPluginId))
-        self.ui.layout_top.addWidget(self.b_minimize)
-        
-
-
-        # Explicit minimal stylesheet for high readability
-        styleSheet = f"""
-            QPushButton {{ border-radius: 3px; font-weight: bold; background: #333; color: #fff; }}
-            QPushButton:checked {{ background: #b33; color: #fff; }}
-            QFrame#PluginWidget {{
-                background: transparent;
-            }}
-            QLabel,
-            QLabel#label_name,
-            QLabel#label_audio_in,
-            QLabel#label_audio_out,
-            QLabel#label_midi,
-            QLabel#label_presets {{
-                color: {text_color};
-                font-weight: 600;
-            }}
-            QLabel#label_name {{
-                font-weight: bold;
-                font-size: 11px;
-            }}
-            QLabel:disabled,
-            QLabel#label_name:disabled {{
-                color: {text_disabled};
-            }}
-            QComboBox {{
-                background: {combo_bg};
-                border: 1px solid {combo_border};
-                color: {text_color};
-                border-radius: 2px;
-                padding: 1px 2px;
-                font-size: 10px;
-            }}
-            QDoubleSpinBox {{
-                background: rgba(128, 128, 128, 0.10);
-                border: none;
-                color: {text_color};
-                border-radius: 3px;
-                padding: 1px 0px;
-                font-size: 10px;
-            }}
-            QComboBox#cb_presets,
-            QLabel#label_audio_in,
-            QLabel#label_audio_out,
-            QLabel#label_midi {{
-                font-size: 10px;
-            }}
-            QSlider::groove:horizontal {{
-                background: {combo_border};
-                height: 4px;
-                border-radius: 2px;
-            }}
-            QSlider::sub-page:horizontal {{
-                background: {"#E0E0E0" if self.is_dark else "#757575"};
-                height: 4px;
-                border-radius: 2px;
-            }}
-            QSlider::handle:horizontal {{
-                background: {"#FFFFFF" if self.is_dark else "#1A1A1A"};
-                border: 1px solid {"#D0D0D0" if self.is_dark else "#444444"};
-                width: 10px;
-                height: 10px;
-                margin: -3px 0;
-                border-radius: 5px;
-            }}
-        """
-        self.setStyleSheet(styleSheet)
-
-        # Update dial label colors to match the computed text contrast
-        colorEnabled = QColor(text_color)
-        colorDisabled = QColor(text_disabled)
-        for _, paramWidget in self.fParameterList:
-            if hasattr(paramWidget, "setLabelColor"):
-                paramWidget.setLabelColor(colorEnabled, colorDisabled)
-
-    def getFixedHeight(self):
-        return 100
-
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
-
-        rect = QRectF(1.0, 1.0, self.width()-2.0, self.getFixedHeight()-2.0)
-
-        painter.setBrush(self.minimal_bg_color)
-        painter.setPen(QPen(self.border_color, 1.0))
-        painter.drawRoundedRect(rect, 4, 4)
-
-        # Draw outline manually to avoid AbstractPluginSlot's multiply blend
-        self.drawOutline(painter)
-        QFrame.paintEvent(self, event)
-
-# ------------------------------------------------------------------------------------------------------------
-
-class PluginSlot_Presets(AbstractPluginSlot):
-    def __init__(self, parent, host, pluginId, skinColor, skinStyle):
-        AbstractPluginSlot.__init__(self, parent, host, pluginId, skinColor, skinStyle)
-        self.ui = ui_carla_plugin_presets.Ui_PluginWidget()
-        self.ui.setupUi(self)
-
-        usingMidiPrograms = bool(skinStyle != "presets")
-
-        # -------------------------------------------------------------
-        # Set-up programs
-
-        if usingMidiPrograms:
-            programCount = self.host.get_midi_program_count(self.fPluginId)
-        else:
-            programCount = self.host.get_program_count(self.fPluginId)
-
-        if programCount > 0:
-            self.ui.cb_presets.setEnabled(True)
-            self.ui.label_presets.setEnabled(True)
-
-            for i in range(programCount):
-                if usingMidiPrograms:
-                    progName = self.host.get_midi_program_data(self.fPluginId, i)['name']
-                else:
-                    progName = self.host.get_program_name(self.fPluginId, i)
-
-                self.ui.cb_presets.addItem(progName)
-
-            if usingMidiPrograms:
-                curProg = self.host.get_current_midi_program_index(self.fPluginId)
-            else:
-                curProg = self.host.get_current_program_index(self.fPluginId)
-
-            self.ui.cb_presets.setCurrentIndex(curProg)
-
-        else:
-            self.ui.cb_presets.setEnabled(False)
-            self.ui.cb_presets.setVisible(False)
-            self.ui.label_presets.setEnabled(False)
-            self.ui.label_presets.setVisible(False)
-
-        # -------------------------------------------------------------
-
-        self.b_enable = self.ui.b_enable
-        self.b_gui    = self.ui.b_gui
-        self.b_edit   = self.ui.b_edit
-
-        self.cb_presets = self.ui.cb_presets
-
-        self.label_name    = self.ui.label_name
-        self.label_presets = self.ui.label_presets
-
-        self.led_control   = self.ui.led_control
-        self.led_midi      = self.ui.led_midi
-        self.led_audio_in  = self.ui.led_audio_in
-        self.led_audio_out = self.ui.led_audio_out
-
-        self.peak_in  = self.ui.peak_in
-        self.peak_out = self.ui.peak_out
-
-        if skinStyle == "zynfx":
-            self.setupZynFxParams()
-        else:
-            self.w_knobs_left  = self.ui.w_knobs_left
-            self.w_knobs_right = self.ui.w_knobs_right
-            self.spacer_knobs  = self.ui.layout_bottom.itemAt(1).spacerItem()
-
-            if self.w_knobs_left.layout() is not None:
-                self.w_knobs_left.layout().setSpacing(8)
-                self.w_knobs_left.layout().setContentsMargins(6, 2, 6, 2)
-            if self.w_knobs_right.layout() is not None:
-                self.w_knobs_right.layout().setSpacing(8)
-                self.w_knobs_right.layout().setContentsMargins(6, 2, 6, 2)
-
-        self.ready()
-
-        if usingMidiPrograms:
-            self.ui.cb_presets.currentIndexChanged.connect(self.slot_midiProgramChanged)
-        else:
-            self.ui.cb_presets.currentIndexChanged.connect(self.slot_programChanged)
-
-        # -------------------------------------------------------------
-
-    def setupZynFxParams(self):
-        parameterCount = min(self.host.get_parameter_count(self.fPluginId), 8)
-
-        for i in range(parameterCount):
-            paramInfo   = self.host.get_parameter_info(self.fPluginId, i)
-            paramData   = self.host.get_parameter_data(self.fPluginId, i)
-            paramRanges = self.host.get_parameter_ranges(self.fPluginId, i)
-
-            if paramData['type'] != PARAMETER_INPUT:
-                continue
-            if paramData['hints'] & PARAMETER_IS_BOOLEAN:
-                continue
-            if (paramData['hints'] & PARAMETER_IS_ENABLED) == 0:
-                continue
-
-            paramName = paramInfo['name']
-
-            if paramName.startswith("unused"):
-                continue
-
-            # real zyn fx plugins
-            if self.fPluginInfo['label'] == "zynalienwah":
-                if   i == 0: paramName = "Freq"
-                elif i == 1: paramName = "Rnd"
-                elif i == 2: paramName = "L type" # combobox
-                elif i == 3: paramName = "St.df"
-                elif i == 5: paramName = "Fb"
-                elif i == 7: paramName = "L/R"
-
-            elif self.fPluginInfo['label'] == "zynchorus":
-                if   i == 0: paramName = "Freq"
-                elif i == 1: paramName = "Rnd"
-                elif i == 2: paramName = "L type" # combobox
-                elif i == 3: paramName = "St.df"
-                elif i == 6: paramName = "Fb"
-                elif i == 7: paramName = "L/R"
-                elif i == 8: paramName = "Flngr" # button
-                elif i == 9: paramName = "Subst" # button
-
-            elif self.fPluginInfo['label'] == "zyndistortion":
-                if   i == 0: paramName = "LRc."
-                elif i == 4: paramName = "Neg." # button
-                elif i == 5: paramName = "LPF"
-                elif i == 6: paramName = "HPF"
-                elif i == 7: paramName = "St." # button
-                elif i == 8: paramName = "PF"  # button
-
-            elif self.fPluginInfo['label'] == "zyndynamicfilter":
-                if   i == 0: paramName = "Freq"
-                elif i == 1: paramName = "Rnd"
-                elif i == 2: paramName = "L type" # combobox
-                elif i == 3: paramName = "St.df"
-                elif i == 4: paramName = "LfoD"
-                elif i == 5: paramName = "A.S."
-                elif i == 6: paramName = "A.Inv." # button
-                elif i == 7: paramName = "A.M."
-
-            elif self.fPluginInfo['label'] == "zynecho":
-                if   i == 1: paramName = "LRdl."
-                elif i == 2: paramName = "LRc."
-                elif i == 3: paramName = "Fb."
-                elif i == 4: paramName = "Damp"
-
-            elif self.fPluginInfo['label'] == "zynphaser":
-                if   i ==  0: paramName = "Freq"
-                elif i ==  1: paramName = "Rnd"
-                elif i ==  2: paramName = "L type" # combobox
-                elif i ==  3: paramName = "St.df"
-                elif i ==  5: paramName = "Fb"
-                elif i ==  7: paramName = "L/R"
-                elif i ==  8: paramName = "Subst" # button
-                elif i ==  9: paramName = "Phase"
-                elif i == 11: paramName = "Dist"
-
-            elif self.fPluginInfo['label'] == "zynreverb":
-                if   i ==  2: paramName = "I.delfb"
-                elif i ==  5: paramName = "LPF"
-                elif i ==  6: paramName = "HPF"
-                elif i ==  9: paramName = "R.S."
-                elif i == 10: paramName = "I.del"
-
-            else:
-                paramName = getParameterShortName(paramName)
-
-            widget = ScalableDial(self, i)
-
-            widget.setLabel(paramName, paramInfo['name'])
-            widget.setMinimum(paramRanges['min'])
-            widget.setMaximum(paramRanges['max'])
-            widget.setImage(3)
-            widget.setCustomPaintColor(QColor(83, 173, 10))
-            widget.setCustomPaintMode(ScalableDial.CUSTOM_PAINT_MODE_COLOR)
-            widget.forceWhiteLabelGradientText()
-            widget.hide()
-
-            if (paramData['hints'] & PARAMETER_IS_ENABLED) == 0:
-                widget.setEnabled(False)
-
-            self.fParameterList.append([i, widget])
-            self.ui.w_knobs_left.layout().addWidget(widget)
-
-        if self.fPluginInfo['hints'] & PLUGIN_CAN_DRYWET:
-            widget = ScalableDial(self, PARAMETER_DRYWET)
-            widget.setLabel("Wet")
-            widget.setMinimum(0.0)
-            widget.setMaximum(1.0)
-            widget.setImage(3)
-            widget.setCustomPaintMode(ScalableDial.CUSTOM_PAINT_MODE_CARLA_WET)
-            widget.forceWhiteLabelGradientText()
-
-            self.fParameterList.append([PARAMETER_DRYWET, widget])
-            self.ui.w_knobs_right.layout().addWidget(widget)
-
-        if self.fPluginInfo['hints'] & PLUGIN_CAN_VOLUME:
-            widget = ScalableDial(self, PARAMETER_VOLUME)
-            widget.setLabel("Volume")
-            widget.setMinimum(0.0)
-            widget.setMaximum(1.27)
-            widget.setImage(3)
-            widget.setCustomPaintMode(ScalableDial.CUSTOM_PAINT_MODE_CARLA_VOL)
-            widget.forceWhiteLabelGradientText()
-
-            self.fParameterList.append([PARAMETER_VOLUME, widget])
-            self.ui.w_knobs_right.layout().addWidget(widget)
-
-    # -----------------------------------------------------------------
-
-    def getFixedHeight(self):
-        return 80
-
-    # -----------------------------------------------------------------
-
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        painter.setBrush(Qt.transparent)
-
-        painter.setPen(QPen(QColor(50, 50, 50), 1))
-        painter.drawRect(0, 1, self.width()-1, self.height()-3)
-
-        painter.setPen(QPen(QColor(64, 64, 64), 1))
-        painter.drawLine(0, 0, self.width(), 0)
-
-        AbstractPluginSlot.paintEvent(self, event)
-
-# ------------------------------------------------------------------------------------------------------------
-
-def getColorAndSkinStyle(host, pluginId):
-    pluginInfo  = host.get_plugin_info(pluginId)
-    pluginName  = host.get_real_plugin_name(pluginId)
-    pluginLabel = pluginInfo['label'].lower()
-    pluginMaker = pluginInfo['maker']
-    uniqueId    = pluginInfo['uniqueId']
-
-    if pluginInfo['type'] in (PLUGIN_VST2, PLUGIN_VST3, PLUGIN_AU):
-        progCount = host.get_program_count(pluginId)
-    else:
-        progCount = host.get_midi_program_count(pluginId)
-
-    colorCategory = getColorFromCategory(pluginInfo['category'])
-    colorNone     = (0,0,0)
-
-    savedSkin = host.get_custom_data_value(pluginId, CUSTOM_DATA_TYPE_PROPERTY, "CarlaSkin")
-    savedColor = host.get_custom_data_value(pluginId, CUSTOM_DATA_TYPE_PROPERTY, "CarlaColor")
-    if savedSkin:
-        parsedColor = None
-        if savedColor:
-            try:
-                parsedColor = tuple(int(i) for i in savedColor.split(";", 3))
-            except Exception:
-                pass
-        return (parsedColor if parsedColor is not None else colorCategory, savedSkin)
-
-    # Samplers
-    if pluginInfo['type'] == PLUGIN_SF2:
-        return (colorCategory, "sf2")
-    if pluginInfo['type'] == PLUGIN_SFZ:
-        return (colorCategory, "sfz")
-
-    # Calf
-    if pluginName.split(" ", 1)[0].lower() == "calf":
-        return (colorNone, "calf_black" if "mono" in pluginLabel else "calf_blue")
-
-    # OpenAV
-    if pluginMaker == "OpenAV Productions":
-        return (colorNone, "openav-old")
-    if pluginMaker == "OpenAV":
-        return (colorNone, "openav")
-
-    # ZynFX
-    if pluginInfo['type'] == PLUGIN_INTERNAL:
-        if pluginLabel.startswith("zyn") and pluginInfo['category'] != PLUGIN_CATEGORY_SYNTH:
-            return (colorNone, "zynfx")
-
-    if pluginInfo['type'] == PLUGIN_LADSPA:
-        if pluginLabel.startswith("zyn") and pluginMaker.startswith("Josep Andreu"):
-            return (colorNone, "zynfx")
-
-    if pluginInfo['type'] == PLUGIN_LV2:
-        if pluginLabel.startswith("http://kxstudio.sf.net/carla/plugins/zyn") and pluginName != "ZynAddSubFX":
-            return (colorNone, "zynfx")
-
-    # Presets
-    if progCount > 1 and (pluginInfo['hints'] & PLUGIN_USES_MULTI_PROGS) == 0:
-        if pluginInfo['type'] in (PLUGIN_VST2, PLUGIN_VST3, PLUGIN_AU):
-            return (colorCategory, "presets")
-        return (colorCategory, "mpresets")
-
-    # DISTRHO Plugins (needs to be last)
-    if pluginMaker.startswith("falkTX, ") or pluginMaker == "DISTRHO" or pluginLabel.startswith("http://distrho.sf.net/plugins/"):
-        skinStyle = pluginLabel.replace("http://distrho.sf.net/plugins/","")
-        if skinStyle in ("3bandeq", "nekobi"):
-            return (colorNone, skinStyle)
-
-    return (colorCategory, "minimal-dark")
-
-def createPluginSlot(parent, host, pluginId, options):
-    skinColor, skinStyle = getColorAndSkinStyle(host, pluginId)
-
-    if options['color'] is not None:
-        skinColor = options['color']
-
-    if options['skin']:
-        skinStyle = options['skin']
-
-    if "compact" in skinStyle or options.get('compact', False):
-        return PluginSlot_Compact(parent, host, pluginId, skinColor, skinStyle)
-
-    if skinStyle == "classic":
-        return PluginSlot_Classic(parent, host, pluginId)
-
-    if skinStyle.startswith("sliders"):
-        return PluginSlot_Sliders(parent, host, pluginId, skinColor, skinStyle)
-
-    if skinStyle.startswith("minimal"):
-        return PluginSlot_Minimal(parent, host, pluginId, skinColor, skinStyle)
-
-    if skinStyle.startswith("calf"):
-        return PluginSlot_Calf(parent, host, pluginId, skinColor, skinStyle)
-
-    if skinStyle in ("mpresets", "presets", "zynfx"):
-        return PluginSlot_Presets(parent, host, pluginId, skinColor, skinStyle)
-
-    return PluginSlot_Default(parent, host, pluginId, skinColor, skinStyle)
 
 class SliderParamWidget(QWidget):
     realValueChanged = pyqtSignal(float)
-    dragStateChanged = pyqtSignal(bool) # dummy
+    dragStateChanged = pyqtSignal(bool)
 
     def __init__(self, parent, index, name, min_val, max_val, is_integer, full_name=""):
         QWidget.__init__(self, parent)
@@ -2423,14 +2167,16 @@ class SliderParamWidget(QWidget):
         self.fIsInteger = is_integer
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(2, 0, 2, 0)
-        layout.setSpacing(4)
+        layout.setContentsMargins(6, 2, 6, 2)
+        layout.setSpacing(8)
+        self.setFixedHeight(22)
 
         self.label = QLabel(name)
-        self.label.setMinimumWidth(65)
-        self.label.setMaximumWidth(95)
+        self.label.setMinimumWidth(85)
+        self.label.setMaximumWidth(120)
         f = self.label.font()
-        f.setPointSize(8)
+        f.setPointSize(9)
+        f.setBold(True)
         self.label.setFont(f)
         layout.addWidget(self.label)
 
@@ -2446,8 +2192,8 @@ class SliderParamWidget(QWidget):
         self.spinbox.setDecimals(0 if is_integer else 2)
         self.spinbox.setButtonSymbols(QAbstractSpinBox.NoButtons)
         self.spinbox.setAlignment(Qt.AlignCenter)
-        self.spinbox.setFixedWidth(42)
-        self.spinbox.setMaximumHeight(18)
+        self.spinbox.setFixedWidth(52)
+        self.spinbox.setMaximumHeight(20)
         self.spinbox.setFont(f)
         layout.addWidget(self.spinbox)
 
@@ -2458,7 +2204,7 @@ class SliderParamWidget(QWidget):
         self._updateTooltip()
 
     def _updateTooltip(self):
-        val_str = "{:.2f}".format(self.fRealValue)
+        val_str = f"{self.fRealValue:.2f}"
         if val_str.endswith(".00"):
             val_str = val_str[:-3]
         elif val_str[-1] == '0':
@@ -2517,32 +2263,348 @@ class SliderParamWidget(QWidget):
             gCarla.gui.fHasUnsavedChanges = True
         self.realValueChanged.emit(self.fRealValue)
 
+# ------------------------------------------------------------------------------------------------------------
 
-
-
-    def setParameterValue(self, parameterId, value, sendCallback):
-        PluginSlot_Default.setParameterValue(self, parameterId, value, sendCallback)
-        if parameterId == PARAMETER_DRYWET and hasattr(self, "b_bypass"):
-            self.b_bypass.blockSignals(True)
-            self.b_bypass.setChecked(value == 0.0)
-            self.b_bypass.blockSignals(False)
-
-class PluginSlot_Sliders(PluginSlot_Minimal):
+class PluginSlot_Minimal(PluginSlot_Default):
     def __init__(self, parent, host, pluginId, skinColor, skinStyle):
-        PluginSlot_Minimal.__init__(self, parent, host, pluginId, skinColor, skinStyle)
+        PluginSlot_Default.__init__(self, parent, host, pluginId, skinColor, skinStyle)
 
-        # Hide the default bottom layout containing the dials
-        self.ui.w_knobs_left.setVisible(False)
-        self.ui.w_knobs_right.setVisible(False)
-        self.ui.layout_bottom.removeItem(self.ui.layout_bottom.itemAt(1))
+        self.is_dark = skinStyle in ("minimal-dark", "sliders-dark") or "light" not in skinStyle
+        self.is_slider_mode = isinstance(self, PluginSlot_Sliders) or skinStyle.startswith("sliders")
+        self.is_compacted = False
+        self.scroll_area = None
+        self.sliders_container = None
+        self.fSliderParameterList = []
 
-        # We need a new widget to hold all sliders
+        p = CATPPUCCIN_MOCHA if self.is_dark else CATPPUCCIN_LATTE
+        has_custom_color = (skinColor != (0, 0, 0) and skinColor != (255, 255, 255))
+
+        if has_custom_color:
+            bg_r, bg_g, bg_b = skinColor
+            if self.is_dark:
+                bg_r = int(0.80 * 24 + 0.20 * bg_r)
+                bg_g = int(0.80 * 24 + 0.20 * bg_g)
+                bg_b = int(0.80 * 37 + 0.20 * bg_b)
+            else:
+                bg_r = int(0.85 * 230 + 0.15 * bg_r)
+                bg_g = int(0.85 * 233 + 0.15 * bg_g)
+                bg_b = int(0.85 * 239 + 0.15 * bg_b)
+            accent_color = f"rgb({skinColor[0]}, {skinColor[1]}, {skinColor[2]})"
+            arcColor = QColor(skinColor[0], skinColor[1], skinColor[2])
+        else:
+            if self.is_dark:
+                bg_r, bg_g, bg_b = 24, 24, 37
+            else:
+                bg_r, bg_g, bg_b = 230, 233, 239
+            accent_color = p['blue']
+            arcColor = QColor(p['blue'])
+
+        self.minimal_bg_color = QColor(bg_r, bg_g, bg_b)
+        self.border_color = QColor(p['surface0'])
+        self.selection_color = QColor(p['lavender'])
+
+        text_color = p['text']
+        text_disabled = p['overlay0']
+        badge_bg = "rgba(203, 166, 247, 0.12)" if self.is_dark else "rgba(136, 57, 239, 0.10)"
+        badge_text = p['mauve']
+        bypass_active = p['peach']
+        slider_groove = p['surface0']
+        slider_track = accent_color
+        slider_handle = p['text']
+        slider_handle_border = p['blue'] if not has_custom_color else accent_color
+
+        if not bool(self.getHints() & PLUGIN_HAS_CUSTOM_UI):
+            self.b_gui.hide()
+
+        self.ui.w_buttons.setMinimumSize(0, 24)
+        self.ui.w_buttons.setMaximumSize(16777215, 24)
+        self.ui.horizontalLayout.setSpacing(4)
+
+        self.b_bypass = QPushButton("BYP", parent=self.ui.w_buttons)
+        self.b_bypass.setObjectName("btn_bypass")
+        self.b_bypass.setMinimumSize(32, 22)
+        self.b_bypass.setMaximumSize(38, 22)
+        self.b_bypass.setFlat(True)
+        self.b_bypass.setCheckable(True)
+
+        if bool(self.getHints() & PLUGIN_CAN_DRYWET):
+            is_bypassed = bool(self.host.get_internal_parameter_value(self.fPluginId, PARAMETER_DRYWET) == 0.0)
+            self._update_bypass_state(is_bypassed)
+            def _on_bypass_clicked(checked):
+                bypassed = self.b_bypass.isChecked()
+                val = 0.0 if bypassed else 1.0
+                self.host.set_drywet(self.fPluginId, val)
+                self.setParameterValue(PARAMETER_DRYWET, val, True)
+                self._update_bypass_state(bypassed)
+            self.b_bypass.clicked.connect(_on_bypass_clicked)
+        else:
+            self.b_bypass.hide()
+
+        self.ui.horizontalLayout.insertWidget(1, self.b_bypass)
+
+        plugin_type_str = getPluginTypeAsString(self.fPluginInfo['type'])
+        self.label_badge = QLabel(f" {plugin_type_str} ", parent=self)
+        self.label_badge.setObjectName("label_badge")
+        idx = self.ui.layout_top.indexOf(self.label_name)
+        if idx >= 0:
+            self.ui.layout_top.insertWidget(idx + 1, self.label_badge)
+
+        progCount = self.host.get_program_count(self.fPluginId)
+        usingMidiPrograms = False
+        if progCount == 0:
+            progCount = self.host.get_midi_program_count(self.fPluginId)
+            usingMidiPrograms = True
+        if progCount > 0:
+            self.cb_presets = QComboBox(parent=self)
+            self.cb_presets.setObjectName("cb_presets")
+            self.cb_presets.setMaximumWidth(140)
+            self.cb_presets.setMaximumHeight(22)
+            curProg = self.host.get_current_midi_program_index(self.fPluginId) if usingMidiPrograms else self.host.get_current_program_index(self.fPluginId)
+
+            # Lazy load: only fetch the current active preset name on startup
+            curName = ""
+            if 0 <= curProg < progCount:
+                curName = self.host.get_midi_program_data(self.fPluginId, curProg)['name'] if usingMidiPrograms else self.host.get_program_name(self.fPluginId, curProg)
+            self.cb_presets.addItem(curName or "Default")
+
+            self._presetsLoaded = False
+            self._usingMidiPrograms = usingMidiPrograms
+            self._progCount = progCount
+
+            def _populate_all_presets():
+                if getattr(self, '_presetsLoaded', False):
+                    return
+                self._presetsLoaded = True
+                self.cb_presets.blockSignals(True)
+                self.cb_presets.clear()
+                for i in range(self._progCount):
+                    pname = self.host.get_midi_program_data(self.fPluginId, i)['name'] if self._usingMidiPrograms else self.host.get_program_name(self.fPluginId, i)
+                    self.cb_presets.addItem(pname)
+                curP = self.host.get_current_midi_program_index(self.fPluginId) if self._usingMidiPrograms else self.host.get_current_program_index(self.fPluginId)
+                self.cb_presets.setCurrentIndex(curP)
+                self.cb_presets.blockSignals(False)
+
+            self._populate_all_presets = _populate_all_presets
+            QTimer.singleShot(250, _populate_all_presets)
+
+            if usingMidiPrograms:
+                self.cb_presets.currentIndexChanged.connect(self.slot_midiProgramChanged)
+            else:
+                self.cb_presets.currentIndexChanged.connect(self.slot_programChanged)
+            idx2 = self.ui.layout_top.indexOf(self.label_badge)
+            if idx2 >= 0:
+                self.ui.layout_top.insertWidget(idx2 + 1, self.cb_presets)
+
+        self.b_slider_mode = QPushButton("SLIDERS" if not self.is_slider_mode else "KNOBS", parent=self)
+        self.b_slider_mode.setObjectName("btn_slider_mode")
+        self.b_slider_mode.setMinimumSize(60, 22)
+        self.b_slider_mode.setMaximumSize(74, 22)
+        self.b_slider_mode.setFlat(True)
+        self.b_slider_mode.setToolTip("Switch to Sliders view" if not self.is_slider_mode else "Switch to Knobs view")
+        self.b_slider_mode.clicked.connect(self.slot_toggleSliderMode)
+        self.ui.layout_top.addWidget(self.b_slider_mode)
+
+        self.b_minimize = QPushButton("▲", parent=self)
+        self.b_minimize.setFlat(True)
+        self.b_minimize.setObjectName("btn_minimize")
+        self.b_minimize.setMinimumSize(22, 22)
+        self.b_minimize.setMaximumSize(24, 22)
+        self.b_minimize.setToolTip("Minimize")
+        self.b_minimize.clicked.connect(self.toggleCompacted)
+        self.ui.layout_top.addWidget(self.b_minimize)
+
+        styleSheet = f"""
+            QFrame#PluginWidget {{
+                background: transparent;
+            }}
+            QPushButton {{
+                background: transparent;
+                border: none;
+                color: {p['subtext0']};
+                font-weight: 700;
+                font-size: 10px;
+                padding: 2px 4px;
+                border-radius: 4px;
+            }}
+            QPushButton:hover {{
+                background: transparent;
+                border: none;
+                color: {p['text']};
+            }}
+            QPushButton:pressed {{
+                color: {p['blue']};
+            }}
+            QPushButton#btn_bypass {{
+                background: transparent;
+                border: none;
+                font-size: 10px;
+                font-weight: 700;
+                color: {p['overlay1']};
+                padding: 2px 4px;
+            }}
+            QPushButton#btn_bypass:hover {{
+                color: {p['text']};
+                background: transparent;
+                border: none;
+            }}
+            QPushButton#btn_bypass:checked {{
+                background: transparent;
+                border: none;
+                color: {bypass_active};
+                font-weight: 800;
+            }}
+            QPushButton#btn_bypass:checked:hover {{
+                color: {p['yellow']};
+                background: transparent;
+                border: none;
+            }}
+            QPushButton#btn_slider_mode {{
+                background: transparent;
+                border: none;
+                color: {p['blue']};
+                font-weight: 700;
+                font-size: 10px;
+                padding: 2px 4px;
+            }}
+            QPushButton#btn_slider_mode:hover {{
+                color: {p['lavender']};
+                background: transparent;
+                border: none;
+            }}
+            QPushButton#btn_slider_mode:pressed {{
+                color: {p['sapphire']};
+            }}
+            QPushButton#btn_minimize, QPushButton#btn_expand {{
+                background: transparent;
+                border: none;
+                color: {p['overlay1']};
+                font-size: 11px;
+                font-weight: bold;
+                min-width: 20px;
+                max-width: 24px;
+                min-height: 20px;
+                max-height: 22px;
+                padding: 0px;
+            }}
+            QPushButton#btn_minimize:hover, QPushButton#btn_expand:hover {{
+                background: transparent;
+                border: none;
+                color: {p['text']};
+            }}
+            QPushButton#btn_minimize:pressed, QPushButton#btn_expand:pressed {{
+                color: {p['blue']};
+            }}
+            QLabel,
+            QLabel#label_name,
+            QLabel#label_audio_in,
+            QLabel#label_audio_out,
+            QLabel#label_midi,
+            QLabel#label_presets {{
+                color: {text_color};
+                font-weight: 600;
+            }}
+            QLabel#label_name {{
+                font-weight: bold;
+                font-size: 12px;
+            }}
+            QLabel:disabled,
+            QLabel#label_name:disabled {{
+                color: {text_disabled};
+            }}
+            QLabel#label_badge {{
+                background-color: {badge_bg};
+                border: none;
+                border-radius: 4px;
+                padding: 2px 6px;
+                font-size: 9px;
+                font-weight: bold;
+                color: {badge_text};
+            }}
+            QComboBox {{
+                background: {p['surface0']};
+                border: 1px solid {p['surface1']};
+                color: {p['text']};
+                border-radius: 4px;
+                padding: 2px 6px;
+                font-size: 10px;
+                font-weight: 600;
+            }}
+            QComboBox:hover {{
+                border-color: {p['blue']};
+            }}
+            QDoubleSpinBox {{
+                background: {p['surface0']};
+                border: 1px solid {p['surface1']};
+                color: {p['text']};
+                border-radius: 4px;
+                padding: 1px 2px;
+                font-size: 10px;
+                font-weight: 600;
+            }}
+            QDoubleSpinBox:hover, QDoubleSpinBox:focus {{
+                border-color: {p['blue']};
+            }}
+            QSlider::groove:horizontal {{
+                background: {slider_groove};
+                height: 4px;
+                border-radius: 2px;
+            }}
+            QSlider::sub-page:horizontal {{
+                background: {slider_track};
+                height: 4px;
+                border-radius: 2px;
+            }}
+            QSlider::handle:horizontal {{
+                background: {slider_handle};
+                border: 1px solid {slider_handle_border};
+                width: 12px;
+                height: 12px;
+                margin: -4px 0;
+                border-radius: 6px;
+            }}
+            QSlider::handle:horizontal:hover {{
+                background: {p['rosewater'] if self.is_dark else '#ffffff'};
+                border: 2px solid {p['lavender']};
+            }}
+        """
+        self.setStyleSheet(styleSheet)
+
+        colorEnabled = QColor(text_color)
+        colorDisabled = QColor(text_disabled)
+        for _, paramWidget in self.fParameterList:
+            if hasattr(paramWidget, "setLabelColor"):
+                paramWidget.setLabelColor(colorEnabled, colorDisabled)
+            if hasattr(paramWidget, "setCustomPaintColor"):
+                paramWidget.setCustomPaintColor(arcColor)
+                paramWidget.setCustomPaintMode(ScalableDial.CUSTOM_PAINT_MODE_FLAT)
+
+        if self.is_slider_mode:
+            self.setSliderMode(True)
+        else:
+            self.setSliderMode(False)
+
+    def _update_bypass_state(self, is_bypassed):
+        if not hasattr(self, 'b_bypass') or self.b_bypass is None:
+            return
+        self.b_bypass.blockSignals(True)
+        self.b_bypass.setChecked(is_bypassed)
+        self.b_bypass.setText("BYP")
+        if is_bypassed:
+            self.b_bypass.setToolTip("Bypassed (Dry/Wet = 0%) — Click to activate")
+        else:
+            self.b_bypass.setToolTip("Active (Dry/Wet = 100%) — Click to bypass")
+        self.b_bypass.blockSignals(False)
+
+    def _ensure_sliders_created(self):
+        if hasattr(self, 'scroll_area') and self.scroll_area is not None:
+            return
+
         self.sliders_container = QWidget()
+        self.sliders_container.setUpdatesEnabled(False)
         self.sliders_layout = QVBoxLayout(self.sliders_container)
-        self.sliders_layout.setContentsMargins(2, 2, 2, 2)
-        self.sliders_layout.setSpacing(2)
+        self.sliders_layout.setContentsMargins(6, 4, 6, 4)
+        self.sliders_layout.setSpacing(3)
 
-        # Add a scroll area to handle many parameters gracefully
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setWidget(self.sliders_container)
@@ -2550,8 +2612,7 @@ class PluginSlot_Sliders(PluginSlot_Minimal):
 
         self.ui.verticalLayout.addWidget(self.scroll_area, 1)
 
-        # Build the sliders
-        self.fParameterList = []
+        self.fSliderParameterList = []
         parameterCount = self.host.get_parameter_count(self.fPluginId)
 
         for i in range(parameterCount):
@@ -2568,41 +2629,470 @@ class PluginSlot_Sliders(PluginSlot_Minimal):
             paramName = getParameterShortName(paramInfo['name'])
 
             widget = SliderParamWidget(self.sliders_container, i, paramName, paramRanges['min'], paramRanges['max'], isInteger, paramInfo['name'])
-            self.fParameterList.append([i, widget])
+            self.fSliderParameterList.append([i, widget])
             self.sliders_layout.addWidget(widget)
 
             widget.realValueChanged.connect(self.slot_parameterValueChanged)
 
         if self.fPluginInfo['hints'] & PLUGIN_CAN_DRYWET:
             widget = SliderParamWidget(self.sliders_container, PARAMETER_DRYWET, "Dry/Wet", 0.0, 1.0, False)
-            self.fParameterList.append([PARAMETER_DRYWET, widget])
+            self.fSliderParameterList.append([PARAMETER_DRYWET, widget])
             self.sliders_layout.addWidget(widget)
             widget.realValueChanged.connect(self.slot_parameterValueChanged)
 
         if self.fPluginInfo['hints'] & PLUGIN_CAN_VOLUME:
             widget = SliderParamWidget(self.sliders_container, PARAMETER_VOLUME, "Volume", 0.0, 1.27, False)
-            self.fParameterList.append([PARAMETER_VOLUME, widget])
+            self.fSliderParameterList.append([PARAMETER_VOLUME, widget])
             self.sliders_layout.addWidget(widget)
             widget.realValueChanged.connect(self.slot_parameterValueChanged)
 
-        # Add stretching so sliders pack at the top
         self.sliders_layout.addStretch()
+        self.sliders_container.setUpdatesEnabled(True)
+        self.syncSliderValues()
 
-        for _, widget in self.fParameterList:
-            widget.show()
+    def setSliderMode(self, slider_mode):
+        self.is_slider_mode = bool(slider_mode)
+        newSkin = ("sliders-dark" if self.is_dark else "sliders-light") if self.is_slider_mode else ("minimal-dark" if self.is_dark else "minimal-light")
+        self.fSkinStyle = newSkin
+        self.host.set_custom_data(self.fPluginId, CUSTOM_DATA_TYPE_PROPERTY, "CarlaSkin", newSkin)
+        if hasattr(gCarla, "gui") and gCarla.gui is not None:
+            gCarla.gui.fHasUnsavedChanges = True
+            pitem = gCarla.gui.getPluginItem(self.fPluginId)
+            if pitem is not None and hasattr(pitem, "fOptions"):
+                pitem.fOptions['skin'] = newSkin
 
-        self.setFixedHeight(self.getFixedHeight())
-        self.updateParameterValues()
+        pref_policy = getattr(QSizePolicy, "Preferred", None) or getattr(getattr(QSizePolicy, "Policy", None), "Preferred", None)
 
-    def adjustViewableKnobCount(self):
-        # In slider mode, all parameters are inside a vertical scroll area; never hide them
-        pass
+        if self.is_slider_mode:
+            self._ensure_sliders_created()
+            if self.w_knobs_left is not None:
+                self.w_knobs_left.setVisible(False)
+            if self.w_knobs_right is not None:
+                self.w_knobs_right.setVisible(False)
+            if self.spacer_knobs is not None and pref_policy is not None:
+                self.spacer_knobs.changeSize(0, 0, pref_policy, pref_policy)
+            if self.scroll_area is not None:
+                self.scroll_area.setVisible(True)
+                self.syncSliderValues()
+            self.b_slider_mode.setText("KNOBS")
+            self.b_slider_mode.setToolTip("Switch to Knobs view")
+        else:
+            if self.scroll_area is not None:
+                self.scroll_area.setVisible(False)
+            if self.w_knobs_left is not None:
+                self.w_knobs_left.setVisible(True)
+            if self.w_knobs_right is not None:
+                self.w_knobs_right.setVisible(True)
+            has_right_knobs = bool(self.w_knobs_right is not None and (
+                (self.fPluginInfo['hints'] & PLUGIN_CAN_DRYWET) or (self.fPluginInfo['hints'] & PLUGIN_CAN_VOLUME)
+            ))
+            if self.spacer_knobs is not None and pref_policy is not None:
+                self.spacer_knobs.changeSize(6 if has_right_knobs else 0, 1 if has_right_knobs else 0, pref_policy, pref_policy)
+            self.b_slider_mode.setText("SLIDERS")
+            self.b_slider_mode.setToolTip("Switch to Sliders view")
+
+        self.updateRackItemSize()
+
+    def slot_toggleSliderMode(self):
+        self.setSliderMode(not self.is_slider_mode)
+
+    def syncSliderValues(self):
+        if not hasattr(self, 'fSliderParameterList') or not self.fSliderParameterList:
+            return
+        for paramIndex, paramWidget in self.fSliderParameterList:
+            paramWidget.blockSignals(True)
+            if paramIndex < 0:
+                val = self.host.get_internal_parameter_value(self.fPluginId, paramIndex)
+            else:
+                val = self.host.get_current_parameter_value(self.fPluginId, paramIndex)
+            paramWidget.setValue(val)
+            paramWidget.blockSignals(False)
+
+    def slot_parameterValueChanged(self, value):
+        sender = self.sender()
+        if sender is not None and isinstance(sender, SliderParamWidget):
+            pIndex = sender.getIndex()
+            for kIndex, kWdg in self.fParameterList:
+                if kIndex == pIndex:
+                    kWdg.blockSignals(True)
+                    kWdg.setValue(value)
+                    kWdg.blockSignals(False)
+                    break
+        PluginSlot_Default.slot_parameterValueChanged(self, value)
+
+    def setCompacted(self, compacted):
+        self.is_compacted = bool(compacted)
+        self.host.set_custom_data(self.fPluginId, CUSTOM_DATA_TYPE_PROPERTY, "CarlaSkinIsCompacted", "true" if self.is_compacted else "false")
+        if hasattr(gCarla, "gui") and gCarla.gui is not None:
+            gCarla.gui.fHasUnsavedChanges = True
+            pitem = gCarla.gui.getPluginItem(self.fPluginId)
+            if pitem is not None and hasattr(pitem, "fOptions"):
+                pitem.fOptions['compact'] = self.is_compacted
+
+        if self.is_compacted:
+            if hasattr(self.ui, 'line') and self.ui.line is not None:
+                self.ui.line.setVisible(False)
+            if self.w_knobs_left is not None:
+                self.w_knobs_left.setVisible(False)
+            if self.w_knobs_right is not None:
+                self.w_knobs_right.setVisible(False)
+            if hasattr(self, 'scroll_area') and self.scroll_area is not None:
+                self.scroll_area.setVisible(False)
+            if hasattr(self, 'b_slider_mode') and self.b_slider_mode is not None:
+                self.b_slider_mode.setVisible(False)
+            self.b_minimize.setText("▼")
+            self.b_minimize.setToolTip("Expand")
+        else:
+            if hasattr(self.ui, 'line') and self.ui.line is not None:
+                self.ui.line.setVisible(True)
+            if hasattr(self, 'b_slider_mode') and self.b_slider_mode is not None:
+                self.b_slider_mode.setVisible(True)
+            if self.is_slider_mode:
+                if self.w_knobs_left is not None:
+                    self.w_knobs_left.setVisible(False)
+                if self.w_knobs_right is not None:
+                    self.w_knobs_right.setVisible(False)
+                if hasattr(self, 'scroll_area') and self.scroll_area is not None:
+                    self.scroll_area.setVisible(True)
+            else:
+                if hasattr(self, 'scroll_area') and self.scroll_area is not None:
+                    self.scroll_area.setVisible(False)
+                if self.w_knobs_left is not None:
+                    self.w_knobs_left.setVisible(True)
+                if self.w_knobs_right is not None:
+                    self.w_knobs_right.setVisible(True)
+            self.b_minimize.setText("▲")
+            self.b_minimize.setToolTip("Minimize")
+
+        self.updateRackItemSize()
+
+    def toggleCompacted(self):
+        self.setCompacted(not self.is_compacted)
 
     def getFixedHeight(self):
-        # Compact slider rack height
-        count = len(self.fParameterList)
-        req_height = 42 + (count * 20)
-        return max(110, min(req_height, 350))
+        if getattr(self, 'is_compacted', False):
+            return 34
+
+        if getattr(self, 'is_slider_mode', False):
+            count = len(getattr(self, 'fSliderParameterList', []))
+            if count == 0 and hasattr(self, 'fParameterList'):
+                count = len(self.fParameterList)
+            req_height = 44 + (count * 22)
+            return max(110, min(req_height, 360))
+
+        if hasattr(self, 'w_knobs_left') and self.w_knobs_left is not None and self.w_knobs_left.layout() is not None:
+            w = self.w_knobs_left.width()
+            if w > 50:
+                knobs_h = self.w_knobs_left.layout().heightForWidth(w)
+                if knobs_h > 40:
+                    return max(80, min(36 + knobs_h, 360))
+        return 100
+
+    def setParameterValue(self, parameterId, value, sendCallback):
+        PluginSlot_Default.setParameterValue(self, parameterId, value, sendCallback)
+        if parameterId == PARAMETER_DRYWET and hasattr(self, "_update_bypass_state"):
+            self._update_bypass_state(value == 0.0)
+        if hasattr(self, 'fSliderParameterList'):
+            for pIndex, widget in self.fSliderParameterList:
+                if pIndex == parameterId:
+                    widget.blockSignals(True)
+                    widget.setValue(value)
+                    widget.blockSignals(False)
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        w = float(self.width())
+        h = float(self.getFixedHeight())
+        rect = QRectF(1.0, 1.0, w - 2.0, h - 2.0)
+
+        painter.setBrush(self.minimal_bg_color)
+        painter.setPen(QPen(self.border_color, 1.0))
+        painter.drawRoundedRect(rect, 6.0, 6.0)
+
+        stripePath = QPainterPath()
+        stripePath.addRoundedRect(QRectF(3.0, 4.0, 4.0, h - 8.0), 2.0, 2.0)
+        categoryColor = QColor(self.fSkinColor[0], self.fSkinColor[1], self.fSkinColor[2])
+        if categoryColor.red() == 0 and categoryColor.green() == 0 and categoryColor.blue() == 0:
+            catRgb = getColorFromCategory(self.fPluginInfo['category'])
+            categoryColor = QColor(*catRgb)
+        painter.fillPath(stripePath, categoryColor)
+
+        if self.fIsSelected:
+            selPen = QPen(self.selection_color, 1.8)
+            painter.setPen(selPen)
+            painter.setBrush(Qt.NoBrush)
+            painter.drawRoundedRect(rect, 6.0, 6.0)
+
+        QFrame.paintEvent(self, event)
+
+class PluginSlot_Presets(AbstractPluginSlot):
+    def __init__(self, parent, host, pluginId, skinColor, skinStyle):
+        AbstractPluginSlot.__init__(self, parent, host, pluginId, skinColor, skinStyle)
+        self.ui = ui_carla_plugin_presets.Ui_PluginWidget()
+        self.ui.setupUi(self)
+
+        usingMidiPrograms = bool(skinStyle != "presets")
+
+        if usingMidiPrograms:
+            programCount = self.host.get_midi_program_count(self.fPluginId)
+        else:
+            programCount = self.host.get_program_count(self.fPluginId)
+
+        if programCount > 0:
+            self.ui.cb_presets.setEnabled(True)
+            self.ui.label_presets.setEnabled(True)
+
+            for i in range(programCount):
+                if usingMidiPrograms:
+                    progName = self.host.get_midi_program_data(self.fPluginId, i)['name']
+                else:
+                    progName = self.host.get_program_name(self.fPluginId, i)
+
+                self.ui.cb_presets.addItem(progName)
+
+            if usingMidiPrograms:
+                curProg = self.host.get_current_midi_program_index(self.fPluginId)
+            else:
+                curProg = self.host.get_current_program_index(self.fPluginId)
+
+            self.ui.cb_presets.setCurrentIndex(curProg)
+
+        else:
+            self.ui.cb_presets.setEnabled(False)
+            self.ui.cb_presets.setVisible(False)
+            self.ui.label_presets.setEnabled(False)
+            self.ui.label_presets.setVisible(False)
+
+        self.b_enable = self.ui.b_enable
+        self.b_gui    = self.ui.b_gui
+        self.b_edit   = self.ui.b_edit
+
+        self.cb_presets = self.ui.cb_presets
+
+        self.label_name    = self.ui.label_name
+        self.label_presets = self.ui.label_presets
+
+        self.led_control   = self.ui.led_control
+        self.led_midi      = self.ui.led_midi
+        self.led_audio_in  = self.ui.led_audio_in
+        self.led_audio_out = self.ui.led_audio_out
+
+        self.peak_in  = self.ui.peak_in
+        self.peak_out = self.ui.peak_out
+
+        if skinStyle == "zynfx":
+            self.setupZynFxParams()
+        else:
+            self.w_knobs_left  = self.ui.w_knobs_left
+            self.w_knobs_right = self.ui.w_knobs_right
+            self.spacer_knobs  = self.ui.layout_bottom.itemAt(1).spacerItem()
+
+            if self.w_knobs_left.layout() is not None:
+                self.w_knobs_left.layout().setSpacing(8)
+                self.w_knobs_left.layout().setContentsMargins(6, 2, 6, 2)
+            if self.w_knobs_right.layout() is not None:
+                self.w_knobs_right.layout().setSpacing(8)
+                self.w_knobs_right.layout().setContentsMargins(6, 2, 6, 2)
+
+        self.ready()
+
+        if usingMidiPrograms:
+            self.ui.cb_presets.currentIndexChanged.connect(self.slot_midiProgramChanged)
+        else:
+            self.ui.cb_presets.currentIndexChanged.connect(self.slot_programChanged)
+
+    def setupZynFxParams(self):
+        parameterCount = min(self.host.get_parameter_count(self.fPluginId), 8)
+
+        for i in range(parameterCount):
+            paramInfo   = self.host.get_parameter_info(self.fPluginId, i)
+            paramData   = self.host.get_parameter_data(self.fPluginId, i)
+            paramRanges = self.host.get_parameter_ranges(self.fPluginId, i)
+
+            if paramData['type'] != PARAMETER_INPUT:
+                continue
+            if paramData['hints'] & PARAMETER_IS_BOOLEAN:
+                continue
+            if (paramData['hints'] & PARAMETER_IS_ENABLED) == 0:
+                continue
+
+            paramName = paramInfo['name']
+
+            if paramName.startswith("unused"):
+                continue
+
+            if self.fPluginInfo['label'] == "zynalienwah":
+                if   i == 0: paramName = "Freq"
+                elif i == 1: paramName = "Rnd"
+                elif i == 2: paramName = "L type"
+                elif i == 3: paramName = "St.df"
+                elif i == 5: paramName = "Fb"
+                elif i == 7: paramName = "L/R"
+
+            elif self.fPluginInfo['label'] == "zynchorus":
+                if   i == 0: paramName = "Freq"
+                elif i == 1: paramName = "Rnd"
+                elif i == 2: paramName = "L type"
+                elif i == 3: paramName = "St.df"
+                elif i == 6: paramName = "Fb"
+                elif i == 7: paramName = "L/R"
+                elif i == 8: paramName = "Flngr"
+                elif i == 9: paramName = "Subst"
+
+            elif self.fPluginInfo['label'] == "zyndistortion":
+                if   i == 0: paramName = "LRc."
+                elif i == 4: paramName = "Neg."
+                elif i == 5: paramName = "LPF"
+                elif i == 6: paramName = "HPF"
+                elif i == 7: paramName = "St."
+                elif i == 8: paramName = "PF"
+
+            elif self.fPluginInfo['label'] == "zyndynamicfilter":
+                if   i == 0: paramName = "Freq"
+                elif i == 1: paramName = "Rnd"
+                elif i == 2: paramName = "L type"
+                elif i == 3: paramName = "St.df"
+                elif i == 4: paramName = "LfoD"
+                elif i == 5: paramName = "A.S."
+                elif i == 6: paramName = "A.Inv."
+                elif i == 7: paramName = "A.M."
+
+            elif self.fPluginInfo['label'] == "zynecho":
+                if   i == 1: paramName = "LRdl."
+                elif i == 2: paramName = "LRc."
+                elif i == 3: paramName = "Fb."
+                elif i == 4: paramName = "Damp"
+
+            elif self.fPluginInfo['label'] == "zynphaser":
+                if   i ==  0: paramName = "Freq"
+                elif i ==  1: paramName = "Rnd"
+                elif i ==  2: paramName = "L type"
+                elif i ==  3: paramName = "St.df"
+                elif i ==  5: paramName = "Fb"
+                elif i ==  7: paramName = "L/R"
+                elif i ==  8: paramName = "Subst"
+                elif i ==  9: paramName = "Phase"
+                elif i == 11: paramName = "Dist"
+
+            elif self.fPluginInfo['label'] == "zynreverb":
+                if   i ==  2: paramName = "I.delfb"
+                elif i ==  5: paramName = "LPF"
+                elif i ==  6: paramName = "HPF"
+                elif i ==  9: paramName = "R.S."
+                elif i == 10: paramName = "I.del"
+
+            else:
+                paramName = getParameterShortName(paramName)
+
+            widget = ScalableDial(self, i)
+            widget.setLabel(paramName, paramInfo['name'])
+            widget.setMinimum(paramRanges['min'])
+            widget.setMaximum(paramRanges['max'])
+            widget.setImage(3)
+            widget.setCustomPaintColor(QColor(83, 173, 10))
+            widget.setCustomPaintMode(ScalableDial.CUSTOM_PAINT_MODE_COLOR)
+            widget.forceWhiteLabelGradientText()
+            widget.hide()
+
+            if (paramData['hints'] & PARAMETER_IS_ENABLED) == 0:
+                widget.setEnabled(False)
+
+            self.fParameterList.append([i, widget])
+            self.ui.w_knobs_left.layout().addWidget(widget)
+
+        if self.fPluginInfo['hints'] & PLUGIN_CAN_DRYWET:
+            widget = ScalableDial(self, PARAMETER_DRYWET)
+            widget.setLabel("Wet")
+            widget.setMinimum(0.0)
+            widget.setMaximum(1.0)
+            widget.setImage(3)
+            widget.setCustomPaintMode(ScalableDial.CUSTOM_PAINT_MODE_CARLA_WET)
+            widget.forceWhiteLabelGradientText()
+
+            self.fParameterList.append([PARAMETER_DRYWET, widget])
+            self.ui.w_knobs_right.layout().addWidget(widget)
+
+        if self.fPluginInfo['hints'] & PLUGIN_CAN_VOLUME:
+            widget = ScalableDial(self, PARAMETER_VOLUME)
+            widget.setLabel("Volume")
+            widget.setMinimum(0.0)
+            widget.setMaximum(1.27)
+            widget.setImage(3)
+            widget.setCustomPaintMode(ScalableDial.CUSTOM_PAINT_MODE_CARLA_VOL)
+            widget.forceWhiteLabelGradientText()
+
+            self.fParameterList.append([PARAMETER_VOLUME, widget])
+            self.ui.w_knobs_right.layout().addWidget(widget)
+
+    def getFixedHeight(self):
+        return 80
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setBrush(Qt.transparent)
+
+        painter.setPen(QPen(QColor(50, 50, 50), 1))
+        painter.drawRect(0, 1, self.width()-1, self.height()-3)
+
+        painter.setPen(QPen(QColor(64, 64, 64), 1))
+        painter.drawLine(0, 0, self.width(), 0)
+
+        AbstractPluginSlot.paintEvent(self, event)
+
+# ------------------------------------------------------------------------------------------------------------
+
+def getColorAndSkinStyle(host, pluginId):
+    pluginInfo  = host.get_plugin_info(pluginId)
+    colorCategory = getColorFromCategory(pluginInfo['category'])
+
+    savedSkin  = host.get_custom_data_value(pluginId, CUSTOM_DATA_TYPE_PROPERTY, "CarlaSkin")
+    savedColor = host.get_custom_data_value(pluginId, CUSTOM_DATA_TYPE_PROPERTY, "CarlaColor")
+
+    color = colorCategory
+    if savedColor:
+        try:
+            color = tuple(int(i) for i in savedColor.split(";", 3))
+        except Exception:
+            pass
+
+    if savedSkin:
+        if savedSkin in ("sliders-dark", "sliders-light", "minimal-dark", "minimal-light"):
+            return (color, savedSkin)
+        if "slider" in savedSkin:
+            return (color, "sliders-light" if "light" in savedSkin else "sliders-dark")
+        if "light" in savedSkin:
+            return (color, "minimal-light")
+
+    return (color, "minimal-dark")
+
+def createPluginSlot(parent, host, pluginId, options):
+    skinColor, skinStyle = getColorAndSkinStyle(host, pluginId)
+
+    if options['color'] is not None:
+        skinColor = options['color']
+
+    if options['skin']:
+        skinStyle = options['skin']
+
+    is_compact = bool("compact" in skinStyle or options.get('compact', False))
+
+    if skinStyle.startswith("sliders"):
+        slot = PluginSlot_Sliders(parent, host, pluginId, skinColor, skinStyle)
+        if is_compact:
+            slot.setCompacted(True)
+        return slot
+
+    slot = PluginSlot_Minimal(parent, host, pluginId, skinColor, skinStyle)
+    if is_compact:
+        slot.setCompacted(True)
+    return slot
+
+class PluginSlot_Sliders(PluginSlot_Minimal):
+    def __init__(self, parent, host, pluginId, skinColor, skinStyle):
+        PluginSlot_Minimal.__init__(self, parent, host, pluginId, skinColor, skinStyle)
+        self.setSliderMode(True)
 
 # ------------------------------------------------------------------------------------------------------------
 # Main Testing
@@ -2610,7 +3100,7 @@ class PluginSlot_Sliders(PluginSlot_Minimal):
 if __name__ == '__main__':
     from carla_app import CarlaApplication
     from carla_host import initHost, loadHostSettings
-    import resources_rc
+
 
     app = CarlaApplication("Carla-Skins")
     host = initHost("Skins", None, False, False, False)

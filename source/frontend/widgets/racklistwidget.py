@@ -64,12 +64,12 @@ class RackListItem(QListWidgetItem):
             color = None
 
         if useClassicSkin and not skin:
-            skin = "classic"
+            skin = "minimal-dark"
 
         self.fOptions = {
             'color'  : color,
             'skin'   : skin,
-            'compact': compact and skin != "classic",
+            'compact': compact,
         }
 
         self.setFlags(Qt.ItemIsSelectable|Qt.ItemIsEnabled)
@@ -377,11 +377,11 @@ class RackListWidget(QListWidget):
 
         if event.key() == Qt.Key_Delete:
             msg = QMessageBox(self)
-            msg.setIcon(QMessageBox.Question)
+            msg.setIcon(QMessageBox.question)
             msg.setWindowTitle("Remove Plugin")
             msg.setText("Are you sure you want to remove the selected plugin?")
-            msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-            if msg.exec_() == QMessageBox.Yes:
+            msg.setStandardButtons(QMessageBox.yes | QMessageBox.no)
+            if msg.exec_() == QMessageBox.yes:
                 gCarla.gui.removePlugin(pluginId)
             event.accept()
             return

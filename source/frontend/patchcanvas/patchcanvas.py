@@ -158,14 +158,30 @@ class CanvasObject(QObject):
     def boxPositionChanged(self, groupId, split, x, y):
         x2 = y2 = 0
 
-        if split:
-            for group in canvas.group_list:
-                if group.group_id == groupId:
-                    if group.split:
-                        pos = group.widgets[1].pos()
-                        x2 = pos.x()
-                        y2 = pos.y()
-                    break
+        target_group = None
+        for group in canvas.group_list:
+            if group.group_id == groupId:
+                target_group = group
+                if split and group.split:
+                    pos = group.widgets[1].pos()
+                    x2 = pos.x()
+                    y2 = pos.y()
+                break
+
+        if target_group is not None and canvas.settings:
+            try:
+                if split:
+                    canvas.settings.setValue(
+                        "CanvasPositions/%s_OUTPUT" % target_group.group_name,
+                        QPointF(x, y),
+                    )
+                else:
+                    canvas.settings.setValue(
+                        "CanvasPositions/%s" % target_group.group_name,
+                        QPointF(x, y),
+                    )
+            except Exception:
+                pass
 
         valueStr = "%i:%i:%i:%i" % (x, y, x2, y2)
         CanvasCallback(ACTION_GROUP_POSITION, groupId, 0, valueStr)
@@ -174,12 +190,23 @@ class CanvasObject(QObject):
     def sboxPositionChanged(self, groupId, split, x2, y2):
         x = y = 0
 
+        target_group = None
         for group in canvas.group_list:
             if group.group_id == groupId:
+                target_group = group
                 pos = group.widgets[0].pos()
                 x = pos.x()
                 y = pos.y()
                 break
+
+        if target_group is not None and canvas.settings:
+            try:
+                canvas.settings.setValue(
+                    "CanvasPositions/%s_INPUT" % target_group.group_name,
+                    QPointF(x2, y2),
+                )
+            except Exception:
+                pass
 
         valueStr = "%i:%i:%i:%i" % (x, y, x2, y2)
         CanvasCallback(ACTION_GROUP_POSITION, groupId, 0, valueStr)
@@ -401,7 +428,11 @@ def addGroup(
         elif old_matching_group is not None:
             group_box.setPos(old_matching_group[1])
         else:
-            group_box.setPos(CanvasGetNewGroupPos(False))
+            stored_pos = getStoredCanvasPosition(group_name + "_OUTPUT", None)
+            if stored_pos is not None:
+                group_box.setPos(stored_pos)
+            else:
+                group_box.setPos(CanvasGetNewGroupPos(False))
 
         group_sbox = CanvasBox(group_id, group_name, icon, pw_node_name=pw_node_name)
         group_sbox.positionChanged.connect(canvas.qobject.sboxPositionChanged)
@@ -419,9 +450,13 @@ def addGroup(
         elif old_matching_group is not None and old_matching_group[0]:
             group_sbox.setPos(old_matching_group[2])
         else:
-            group_sbox.setPos(
-                group_box.x() + group_box.boundingRect().width() + 300, group_box.y()
-            )
+            stored_spos = getStoredCanvasPosition(group_name + "_INPUT", None)
+            if stored_spos is not None:
+                group_sbox.setPos(stored_spos)
+            else:
+                group_sbox.setPos(
+                    group_box.x() + group_box.boundingRect().width() + 300, group_box.y()
+                )
 
         canvas.last_z_value += 1
         group_sbox.setZValue(canvas.last_z_value)
@@ -442,9 +477,13 @@ def addGroup(
         elif old_matching_group is not None:
             group_box.setPos(old_matching_group[1])
         else:
-            # Special ladish fake-split groups
-            horizontal = bool(icon == ICON_HARDWARE or icon == ICON_LADISH_ROOM)
-            group_box.setPos(CanvasGetNewGroupPos(horizontal))
+            stored_pos = getStoredCanvasPosition(group_name, None)
+            if stored_pos is not None:
+                group_box.setPos(stored_pos)
+            else:
+                # Special ladish fake-split groups
+                horizontal = bool(icon == ICON_HARDWARE or icon == ICON_LADISH_ROOM)
+                group_box.setPos(CanvasGetNewGroupPos(horizontal))
 
     canvas.last_z_value += 1
     group_box.setZValue(canvas.last_z_value)
@@ -1767,8 +1806,259 @@ def autoArrange():
     log_carla("PatchCanvas::autoArrange() finished")
 
 
+def syncNodePositions(nodes_to_sync):
+    if not nodes_to_sync:
+        return
+    synced_groups = set()
+    for node in nodes_to_sync:
+        node.blockSignals(True)
+        node.checkItemPos()
+        node.blockSignals(False)
+        node.repaintLines(True)
+
+    for group in canvas.group_list:
+        widgets = [w for w in group.widgets if w is not None]
+        if any(w in nodes_to_sync for w in widgets):
+            synced_groups.add(group)
+
+    for group in synced_groups:
+        pos1 = group.widgets[0].pos()
+        pos2 = (
+            group.widgets[1].pos()
+            if group.split and group.widgets[1]
+            else QPointF(0, 0)
+        )
+        if canvas.settings:
+            try:
+                if group.split:
+                    canvas.settings.setValue(
+                        "CanvasPositions/%s_OUTPUT" % group.group_name, pos1
+                    )
+                    if group.widgets[1]:
+                        canvas.settings.setValue(
+                            "CanvasPositions/%s_INPUT" % group.group_name, pos2
+                        )
+                else:
+                    canvas.settings.setValue(
+                        "CanvasPositions/%s" % group.group_name, pos1
+                    )
+            except Exception:
+                pass
+        valueStr = "%i:%i:%i:%i" % (pos1.x(), pos1.y(), pos2.x(), pos2.y())
+        CanvasCallback(ACTION_GROUP_POSITION, group.group_id, 0, valueStr)
+
+    if canvas.scene:
+        canvas.scene.update()
+
+
 def arrange():
     autoArrange()
+
+
+def getSelectedNodes():
+    selected = []
+    if canvas.scene:
+        for item in canvas.scene.selectedItems():
+            if isinstance(item, CanvasBox):
+                selected.append(item)
+    return selected
+
+
+def alignSelected(mode="horizontal"):
+    """
+    mode: 'horizontal' (align Y centers), 'vertical' (align X centers),
+          'distribute_h' (spread horizontally), 'distribute_v' (spread vertically)
+    """
+    nodes = getSelectedNodes()
+    if len(nodes) < 2:
+        return
+
+    node_gap = 40
+
+    if mode == "horizontal":
+        target_y = sum(n.y() for n in nodes) / float(len(nodes))
+        for n in nodes:
+            n.setPos(n.x(), target_y)
+
+    elif mode == "vertical":
+        target_x = sum(n.x() for n in nodes) / float(len(nodes))
+        for n in nodes:
+            n.setPos(target_x, n.y())
+
+    elif mode == "distribute_h":
+        nodes.sort(key=lambda n: n.x())
+        curr_x = nodes[0].x()
+        for n in nodes:
+            n.setPos(curr_x, n.y())
+            curr_x += n.boundingRect().width() + node_gap
+
+    elif mode == "distribute_v":
+        nodes.sort(key=lambda n: n.y())
+        curr_y = nodes[0].y()
+        for n in nodes:
+            n.setPos(n.x(), curr_y)
+            curr_y += n.boundingRect().height() + node_gap
+
+    syncNodePositions(nodes)
+
+
+def arrangeConnected(target_box=None, direction="both"):
+    """
+    Arranges nodes connected to target_box:
+      direction: 'before' (upstream sources only),
+                 'after' (downstream targets only),
+                 'both' (entire connected subgraph)
+    """
+    port_nodes = {}
+    node_to_group = {}
+    nodes = []
+
+    for group in canvas.group_list:
+        for widget in group.widgets:
+            if widget is None or not widget.m_port_list_ids:
+                continue
+            nodes.append(widget)
+            node_to_group[widget] = group
+            for port in canvas.port_list:
+                if port.widget and port.widget.parentItem() == widget:
+                    port_nodes[(port.group_id, port.port_id)] = widget
+
+    if not nodes:
+        return
+
+    if target_box is None:
+        selected = getSelectedNodes()
+        if selected:
+            target_box = selected[0]
+        else:
+            return
+
+    node_set = set(nodes)
+    edges = {node: set() for node in nodes}
+    incoming = {node: set() for node in nodes}
+
+    for connection in canvas.connection_list:
+        source = port_nodes.get((connection.group_out_id, connection.port_out_id))
+        target = port_nodes.get((connection.group_in_id, connection.port_in_id))
+        if source in node_set and target in node_set and source != target:
+            edges[source].add(target)
+            incoming[target].add(source)
+
+    # Collect subgraph depending on direction
+    subgraph = set()
+    subgraph.add(target_box)
+
+    if direction in ("before", "both"):
+        queue = [target_box]
+        visited_up = {target_box}
+        while queue:
+            curr = queue.pop(0)
+            for p in incoming[curr]:
+                if p not in visited_up:
+                    visited_up.add(p)
+                    subgraph.add(p)
+                    queue.append(p)
+
+    if direction in ("after", "both"):
+        queue = [target_box]
+        visited_down = {target_box}
+        while queue:
+            curr = queue.pop(0)
+            for child in edges[curr]:
+                if child not in visited_down:
+                    visited_down.add(child)
+                    subgraph.add(child)
+                    queue.append(child)
+
+    subgraph_nodes = list(subgraph)
+    if len(subgraph_nodes) <= 1:
+        return
+
+    # Calculate relative horizontal layers anchored around target_box (target_box = 0)
+    subgraph_set = set(subgraph_nodes)
+    relative_layer = {target_box: 0}
+
+    # Trace upstream (negative relative layer)
+    up_queue = [target_box]
+    while up_queue:
+        curr = up_queue.pop(0)
+        curr_lvl = relative_layer[curr]
+        for p in incoming[curr]:
+            if p in subgraph_set:
+                p_lvl = curr_lvl - 1
+                if p not in relative_layer or p_lvl < relative_layer[p]:
+                    relative_layer[p] = p_lvl
+                    up_queue.append(p)
+
+    # Trace downstream (positive relative layer)
+    down_queue = [target_box]
+    while down_queue:
+        curr = down_queue.pop(0)
+        curr_lvl = relative_layer[curr]
+        for child in edges[curr]:
+            if child in subgraph_set:
+                child_lvl = curr_lvl + 1
+                if child not in relative_layer or child_lvl > relative_layer[child]:
+                    relative_layer[child] = child_lvl
+                    down_queue.append(child)
+
+    for n in subgraph_nodes:
+        if n not in relative_layer:
+            relative_layer[n] = 0
+
+    columns = {}
+    for n in subgraph_nodes:
+        columns.setdefault(relative_layer[n], []).append(n)
+
+    sorted_layers = sorted(columns.keys())
+
+    # Keep target_box at its current position as the anchor
+    anchor_x = target_box.x()
+    anchor_y = target_box.y()
+    node_gap = 64
+    vertical_gap = 40
+
+    # Calculate column widths
+    col_widths = {
+        layer: max(n.boundingRect().width() for n in columns[layer])
+        for layer in sorted_layers
+    }
+
+    # Determine X coordinates for each column relative to target_box's layer (0)
+    col_x = {0: anchor_x}
+    # Columns to the right (> 0)
+    curr_x = anchor_x + col_widths[0] + node_gap
+    for layer in [l for l in sorted_layers if l > 0]:
+        col_x[layer] = curr_x
+        curr_x += col_widths[layer] + node_gap
+
+    # Columns to the left (< 0)
+    curr_x = anchor_x
+    for layer in reversed([l for l in sorted_layers if l < 0]):
+        curr_x -= col_widths[layer] + node_gap
+        col_x[layer] = curr_x
+
+    # Position each column vertically centered around anchor_y
+    for layer in sorted_layers:
+        col = columns[layer]
+        col.sort(key=lambda n: node_to_group[n].group_name)
+        total_col_height = (
+            sum(n.boundingRect().height() for n in col)
+            + (len(col) - 1) * vertical_gap
+        )
+        if layer == 0 and len(col) == 1 and col[0] == target_box:
+            # Keep anchor exactly where it is
+            start_y = anchor_y
+        else:
+            anchor_h = target_box.boundingRect().height()
+            start_y = anchor_y + (anchor_h / 2.0) - (total_col_height / 2.0)
+
+        cy = start_y
+        for n in col:
+            n.setPos(col_x[layer], cy)
+            cy += n.boundingRect().height() + vertical_gap
+
+    syncNodePositions(subgraph_nodes)
 
 
 # ------------------------------------------------------------------------------------------------------------

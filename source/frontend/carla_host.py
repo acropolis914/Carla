@@ -4,108 +4,68 @@
 
 # ------------------------------------------------------------------------------------------------------------
 # Imports (Global)
+# ------------------------------------------------------------------------------------------------------------
 
 import json
 import xml.etree.ElementTree as ET
 
 # ------------------------------------------------------------------------------------------------------------
 # Imports (ctypes)
-
+# ------------------------------------------------------------------------------------------------------------
 from ctypes import byref, pointer
 
 # ------------------------------------------------------------------------------------------------------------
-# Imports (PyQt)
-
-from qt_compat import qt_config
-
-if qt_config == 5:
-    # This fails in some configurations, assume >= 5.6.0 in that case
-    try:
-        from PyQt5.Qt import PYQT_VERSION
-    except ImportError:
-        PYQT_VERSION = 0x50600
-
-    from PyQt5.QtCore import (
-        QT_VERSION,
-        qCritical,
-        QBuffer,
-        QEvent,
-        QEventLoop,
-        QFileInfo,
-        QIODevice,
-        QMimeData,
-        QModelIndex,
-        QPointF,
-        QTimer,
-    )
-    from PyQt5.QtGui import (
-        QBrush,
-        QImage,
-        QImageWriter,
-        QPainter,
-        QPalette,
-    )
-    from PyQt5.QtWidgets import (
-        QAction,
-        QApplication,
-        QInputDialog,
-        QFileSystemModel,
-        QListWidgetItem,
-        QGraphicsView,
-        QMainWindow,
-        QMenu,
-        QSystemTrayIcon,
-    )
-
-elif qt_config == 6:
-    from PyQt6.QtCore import (
-        PYQT_VERSION,
-        QT_VERSION,
-        qCritical,
-        QBuffer,
-        QEvent,
-        QEventLoop,
-        QFileInfo,
-        QIODevice,
-        QMimeData,
-        QModelIndex,
-        QPointF,
-        QTimer,
-    )
-    from PyQt6.QtGui import (
-        QAction,
-        QBrush,
-        QFileSystemModel,
-        QImage,
-        QImageWriter,
-        QPainter,
-        QPalette,
-    )
-    from PyQt6.QtWidgets import (
-        QApplication,
-        QInputDialog,
-        QListWidgetItem,
-        QGraphicsView,
-        QMainWindow,
-        QMenu,
-        QSystemTrayIcon,
-    )
-
-# ------------------------------------------------------------------------------------------------------------
 # Imports (Custom)
-
+# ------------------------------------------------------------------------------------------------------------
 import ui_carla_host
-
 from carla_app import *
 from carla_backend import *
 from carla_backend_qt import CarlaHostQtDLL, CarlaHostQtNull
 from carla_frontend import CarlaFrontendLib
-from carla_shared import *
 from carla_settings import *
+from carla_shared import *
 from carla_utils import *
 from carla_widgets import *
-
 from patchcanvas import patchcanvas
+from carla_canvas import (
+    CanvasViewportFilter,
+    PatchbayHelpOverlay,
+    autoConnectStereoPair,
+    canvasCallback,
+    findStereoPartner,
+    findStereoPartnerConnection,
+    log_carla,
+)
+
+# ------------------------------------------------------------------------------------------------------------
+# Imports (PyQt)
+# ------------------------------------------------------------------------------------------------------------
+from qt_compat import (
+    PYQT_VERSION,
+    QT_VERSION,
+    QAction,
+    QApplication,
+    QBrush,
+    QBuffer,
+    QCursor,
+    QEvent,
+    QFileInfo,
+    QFileSystemModel,
+    QGraphicsView,
+    QImage,
+    QImageWriter,
+    QIODevice,
+    QMainWindow,
+    QMenu,
+    QMimeData,
+    QModelIndex,
+    QMouseEvent,
+    QPainter,
+    QPalette,
+    QPointF,
+    QTimer,
+    qCritical,
+)
 from widgets.digitalpeakmeter import DigitalPeakMeter
 from widgets.pixmapkeyboard import PixmapKeyboardHArea
 
@@ -113,12 +73,11 @@ from widgets.pixmapkeyboard import PixmapKeyboardHArea
 # Try Import OpenGL
 
 try:
-    if qt_config == 5:
-        from PyQt5.QtOpenGL import QGLWidget
-    elif qt_config == 6:
-        from PyQt6.QtOpenGL import QGLWidget
-    hasGL = True
-except:
+    from qt_compat import QGLWidget
+
+    hasGL = QGLWidget is not None
+except ImportError:
+    QGLWidget = None
     hasGL = False
 
 # ------------------------------------------------------------------------------------------------------------
@@ -127,10 +86,10 @@ except:
 
 def sys_excepthook(typ, value, tback):
     import traceback
+
     err_str = "".join(traceback.format_exception(typ, value, tback))
     log_carla(f"CRITICAL TRACEBACK:\n{err_str}")
     return sys.__excepthook__(typ, value, tback)
-
 
 
 # ------------------------------------------------------------------------------------------------------------
@@ -197,12 +156,16 @@ class HostWindow(QMainWindow):
         self.ui.setupUi(self)
         gCarla.gui = self
 
+        # Remove rack padding left and right
+        self.ui.pad_left.hide()
+        self.ui.pad_right.hide()
+
         if False:
             # kdevelop likes this :)
             host = CarlaHostNull()
             self.host = host
 
-        self._true = c_char_p("true".encode("utf-8"))
+        self._true = c_char_p(b"true")
 
         self.fParentOrSelf = parent or self
 
@@ -218,6 +181,7 @@ class HostWindow(QMainWindow):
 
         self.fPluginCount = 0
         self.fPluginList = []
+        self.fConnections = {}
 
         self.fPluginListDialog = None
         self.fFavoritePlugins = []
@@ -228,7 +192,6 @@ class HostWindow(QMainWindow):
         self.fIsProjectLoading = False
         self.fCurrentlyRemovingAllPlugins = False
         self.fHasLoadedLv2Plugins = False
-        self.fHasUnsavedChanges = False
 
         self.fLastTransportBPM = 0.0
         self.fLastTransportFrame = 0
@@ -407,10 +370,8 @@ class HostWindow(QMainWindow):
             fontMetrics, self.ui.label_transport_bbt.text()
         )
 
-        if minLabelWidth < labelTimeWidth:
-            minLabelWidth = labelTimeWidth
-        if minLabelWidth < labelBBTWidth:
-            minLabelWidth = labelBBTWidth
+        minLabelWidth = max(minLabelWidth, labelTimeWidth)
+        minLabelWidth = max(minLabelWidth, labelBBTWidth)
 
         self.ui.label_transport_frame.setMinimumWidth(minLabelWidth + 3)
         self.ui.label_transport_time.setMinimumWidth(minLabelWidth + 3)
@@ -440,6 +401,23 @@ class HostWindow(QMainWindow):
         # Set up GUI (rack)
 
         self.ui.listWidget.setHostAndParent(self.host, self)
+        self.ui.listWidget.setStyleSheet("""
+            QListWidget {
+                background-color: #11111b;
+                border: none;
+                outline: none;
+                padding: 6px;
+            }
+            QListWidget::item {
+                background: transparent;
+                border: none;
+                margin-bottom: 5px;
+            }
+            QListWidget::item:selected {
+                background: transparent;
+                border: none;
+            }
+        """)
 
         sb = self.ui.listWidget.verticalScrollBar()
         self.ui.rackScrollBar.setMinimum(sb.minimum())
@@ -490,9 +468,11 @@ class HostWindow(QMainWindow):
             pass
 
         _orig_append = self.ui.text_logs.appendPlainText
+
         def _log_append(text):
             _orig_append(text)
             log_carla(f"[APP_LOG] {text}")
+
         self.ui.text_logs.appendPlainText = _log_append
 
         self.ui.text_logs.textChanged.connect(self.slot_logButtonsState)
@@ -787,10 +767,6 @@ class HostWindow(QMainWindow):
             if projectFile:
                 self.loadProjectLater(projectFile)
 
-        self.fTrayIcon = None
-        self.setupTray()
-        self.inject_plugin_sidebar()
-
         # For NSM we wait for the open message
         if NSM_URL and host.nsmOK:
             host.nsm_ready(NSM_CALLBACK_INIT)
@@ -801,46 +777,6 @@ class HostWindow(QMainWindow):
                 QTimer.singleShot(0, self.checkRecentOnStartup)
             else:
                 QTimer.singleShot(0, self.slot_engineStart)
-
-    def setupTray(self):
-        if not QSystemTrayIcon.isSystemTrayAvailable():
-            return
-
-        self.fTrayIcon = QSystemTrayIcon(getIcon("carla", 16, "png"), self)
-        self.fTrayIcon.setToolTip("Carla")
-
-        menu = QMenu(self)
-        self.fTrayActionToggle = menu.addAction(self.tr("Show / Hide"))
-        self.fTrayActionToggle.triggered.connect(self.slot_trayToggle)
-        menu.addSeparator()
-        actionQuit = menu.addAction(self.tr("Quit"))
-        actionQuit.triggered.connect(self.close)
-
-        self.fTrayIcon.setContextMenu(menu)
-        self.fTrayIcon.activated.connect(self.slot_trayActivated)
-        self.fTrayIcon.show()
-
-    def slot_trayActivated(self, reason):
-        # Trigger on left click (Trigger) or double click (DoubleClick)
-        trigger = getattr(QSystemTrayIcon, "Trigger", None)
-        double_click = getattr(QSystemTrayIcon, "DoubleClick", None)
-        if trigger is not None and reason in (trigger, double_click):
-            self.slot_trayOpen()
-        elif hasattr(reason, "value") and reason.value in (3, 2):
-            self.slot_trayOpen()
-        elif getattr(reason, "name", "") in ("Trigger", "DoubleClick"):
-            self.slot_trayOpen()
-
-    def slot_trayOpen(self):
-        self.showNormal()
-        self.activateWindow()
-        self.raise_()
-
-    def slot_trayToggle(self):
-        if self.isVisible() and not self.isMinimized():
-            self.hide()
-        else:
-            self.slot_trayOpen()
 
     # --------------------------------------------------------------------------------------------------------
     # Manage visibility state, needed for NSM
@@ -853,11 +789,6 @@ class HostWindow(QMainWindow):
         self.hide()
 
     def showIfNeeded(self):
-        if getattr(gCarla, "hidden", False):
-            # Started with --hidden: do not show window, stay in tray
-            QApplication.instance().setQuitOnLastWindowClosed(False)
-            return
-
         if self.host.nsmOK:
             self.ui.act_file_quit.setText(self.tr("Hide"))
             QApplication.instance().setQuitOnLastWindowClosed(False)
@@ -868,22 +799,21 @@ class HostWindow(QMainWindow):
     # Setup
 
     def compactPlugin(self, pluginId):
-        if pluginId > self.fPluginCount:
-            return
-
-        pitem = self.fPluginList[pluginId]
-
+        pitem = self.getPluginItem(pluginId)
         if pitem is None:
             return
 
-        pitem.recreateWidget(True)
-
-    def changePluginColor(self, pluginId, color, colorStr):
-        if pluginId > self.fPluginCount:
+        widget = pitem.getWidget() if hasattr(pitem, "getWidget") else None
+        if widget is not None and hasattr(widget, "toggleCompacted"):
+            widget.toggleCompacted()
             return
 
-        pitem = self.fPluginList[pluginId]
+        pitem.recreateWidget(True)
+        if self.ui.listWidget is not None:
+            self.ui.listWidget.doItemsLayout()
 
+    def changePluginColor(self, pluginId, color, colorStr):
+        pitem = self.getPluginItem(pluginId)
         if pitem is None:
             return
 
@@ -892,13 +822,11 @@ class HostWindow(QMainWindow):
         )
         self.fHasUnsavedChanges = True
         pitem.recreateWidget(newColor=color)
+        if self.ui.listWidget is not None:
+            self.ui.listWidget.doItemsLayout()
 
     def changePluginSkin(self, pluginId, skin):
-        if pluginId > self.fPluginCount:
-            return
-
-        pitem = self.fPluginList[pluginId]
-
+        pitem = self.getPluginItem(pluginId)
         if pitem is None:
             return
 
@@ -906,11 +834,15 @@ class HostWindow(QMainWindow):
             pluginId, CUSTOM_DATA_TYPE_PROPERTY, "CarlaSkin", skin
         )
         self.fHasUnsavedChanges = True
-        existingColor = self.host.get_custom_data_value(pluginId, CUSTOM_DATA_TYPE_PROPERTY, "CarlaColor")
+        existingColor = self.host.get_custom_data_value(
+            pluginId, CUSTOM_DATA_TYPE_PROPERTY, "CarlaColor"
+        )
         if existingColor:
             try:
                 col = tuple(int(i) for i in existingColor.split(";", 3))
                 pitem.recreateWidget(newSkin=skin, newColor=col)
+                if self.ui.listWidget is not None:
+                    self.ui.listWidget.doItemsLayout()
                 return
             except Exception:
                 pass
@@ -922,6 +854,9 @@ class HostWindow(QMainWindow):
             pitem.recreateWidget(newSkin=skin, newColor=(255, 255, 255))
         else:
             pitem.recreateWidget(newSkin=skin)
+
+        if self.ui.listWidget is not None:
+            self.ui.listWidget.doItemsLayout()
 
     def findPluginInPatchbay(self, pluginId):
         if pluginId > self.fPluginCount:
@@ -942,41 +877,180 @@ class HostWindow(QMainWindow):
             return
         if pluginIdA < 0 or pluginIdB < 0:
             return
-        if pluginIdA >= self.fPluginCount or pluginIdB >= self.fPluginCount:
+        if pluginIdA >= len(self.fPluginList) or pluginIdB >= len(self.fPluginList):
             return
-
-        self.host.switch_plugins(pluginIdA, pluginIdB)
 
         itemA = self.fPluginList[pluginIdA]
         itemB = self.fPluginList[pluginIdB]
+        if itemA is None or itemB is None:
+            return
 
-        # Swap in the backend tracking list
-        self.fPluginList[pluginIdA] = itemB
-        self.fPluginList[pluginIdB] = itemA
+        # 1. Fetch visual options and custom data before swap
+        compactA = itemA.isCompacted()
+        guiShownA = itemA.isGuiShown()
+        colorA = itemA.fOptions.get("color") if hasattr(itemA, "fOptions") else None
+        skinA = itemA.fOptions.get("skin") if hasattr(itemA, "fOptions") else None
+        colorStrA = self.host.get_custom_data_value(
+            pluginIdA, CUSTOM_DATA_TYPE_PROPERTY, "CarlaColor"
+        )
+        skinStrA = self.host.get_custom_data_value(
+            pluginIdA, CUSTOM_DATA_TYPE_PROPERTY, "CarlaSkin"
+        )
+        compactStrA = self.host.get_custom_data_value(
+            pluginIdA, CUSTOM_DATA_TYPE_PROPERTY, "CarlaSkinIsCompacted"
+        )
 
-        itemA.setPluginId(pluginIdB)
-        itemB.setPluginId(pluginIdA)
+        compactB = itemB.isCompacted()
+        guiShownB = itemB.isGuiShown()
+        colorB = itemB.fOptions.get("color") if hasattr(itemB, "fOptions") else None
+        skinB = itemB.fOptions.get("skin") if hasattr(itemB, "fOptions") else None
+        colorStrB = self.host.get_custom_data_value(
+            pluginIdB, CUSTOM_DATA_TYPE_PROPERTY, "CarlaColor"
+        )
+        skinStrB = self.host.get_custom_data_value(
+            pluginIdB, CUSTOM_DATA_TYPE_PROPERTY, "CarlaSkin"
+        )
+        compactStrB = self.host.get_custom_data_value(
+            pluginIdB, CUSTOM_DATA_TYPE_PROPERTY, "CarlaSkinIsCompacted"
+        )
 
-        # Visually swap the rows natively using Qt's internal model to preserve widgets and selection automatically
-        row1, row2 = min(pluginIdA, pluginIdB), max(pluginIdA, pluginIdB)
-        model = self.ui.listWidget.model()
-        from PyQt6.QtCore import QModelIndex
-        
-        if row2 == row1 + 1:
-            model.moveRow(QModelIndex(), row2, QModelIndex(), row1)
+        # Determine which rack item was selected/active before swap
+        was_selected_b = itemB.isSelected() or (
+            self.ui.listWidget is not None
+            and self.ui.listWidget.currentRow() == pluginIdB
+        )
+        target_row = pluginIdA if was_selected_b else pluginIdB
+        other_row = pluginIdB if was_selected_b else pluginIdA
+
+        # 2. Perform engine switch
+        self.host.switch_plugins(pluginIdA, pluginIdB)
+        self.fHasUnsavedChanges = True
+
+        # 3. Swap custom data on the host so it persists and matches the moved plugins
+        if colorStrB:
+            self.host.set_custom_data(
+                pluginIdA, CUSTOM_DATA_TYPE_PROPERTY, "CarlaColor", colorStrB
+            )
+        elif colorB:
+            self.host.set_custom_data(
+                pluginIdA,
+                CUSTOM_DATA_TYPE_PROPERTY,
+                "CarlaColor",
+                "%i;%i;%i" % colorB[:3],
+            )
         else:
-            model.moveRow(QModelIndex(), row2, QModelIndex(), row1)
-            model.moveRow(QModelIndex(), row1 + 1, QModelIndex(), row2 + 1)
+            self.host.set_custom_data(
+                pluginIdA, CUSTOM_DATA_TYPE_PROPERTY, "CarlaColor", ""
+            )
 
+        if colorStrA:
+            self.host.set_custom_data(
+                pluginIdB, CUSTOM_DATA_TYPE_PROPERTY, "CarlaColor", colorStrA
+            )
+        elif colorA:
+            self.host.set_custom_data(
+                pluginIdB,
+                CUSTOM_DATA_TYPE_PROPERTY,
+                "CarlaColor",
+                "%i;%i;%i" % colorA[:3],
+            )
+        else:
+            self.host.set_custom_data(
+                pluginIdB, CUSTOM_DATA_TYPE_PROPERTY, "CarlaColor", ""
+            )
+
+        if skinStrB:
+            self.host.set_custom_data(
+                pluginIdA, CUSTOM_DATA_TYPE_PROPERTY, "CarlaSkin", skinStrB
+            )
+        elif skinB:
+            self.host.set_custom_data(
+                pluginIdA, CUSTOM_DATA_TYPE_PROPERTY, "CarlaSkin", skinB
+            )
+
+        if skinStrA:
+            self.host.set_custom_data(
+                pluginIdB, CUSTOM_DATA_TYPE_PROPERTY, "CarlaSkin", skinStrA
+            )
+        elif skinA:
+            self.host.set_custom_data(
+                pluginIdB, CUSTOM_DATA_TYPE_PROPERTY, "CarlaSkin", skinA
+            )
+
+        if compactStrB:
+            self.host.set_custom_data(
+                pluginIdA,
+                CUSTOM_DATA_TYPE_PROPERTY,
+                "CarlaSkinIsCompacted",
+                compactStrB,
+            )
+        if compactStrA:
+            self.host.set_custom_data(
+                pluginIdB,
+                CUSTOM_DATA_TYPE_PROPERTY,
+                "CarlaSkinIsCompacted",
+                compactStrA,
+            )
+
+        # 4. Swap fOptions on the CarlaRackItem objects
+        if hasattr(itemA, "fOptions") and hasattr(itemB, "fOptions"):
+            itemA.fOptions["color"] = colorB
+            itemA.fOptions["skin"] = skinB
+            itemA.fOptions["compact"] = compactB
+
+            itemB.fOptions["color"] = colorA
+            itemB.fOptions["skin"] = skinA
+            itemB.fOptions["compact"] = compactA
+
+        # 5. Recreate widgets with the swapped states
+        itemA.setPluginId(pluginIdA)
+        itemA.recreateWidget2(compactB, guiShownB)
+
+        itemB.setPluginId(pluginIdB)
+        itemB.recreateWidget2(compactA, guiShownA)
+
+        # 6. Restore keyboard focus and selection to the moved rack item
+        if self.ui.listWidget is not None:
+            self.ui.listWidget.setFocus()
+            self.ui.listWidget.setCurrentRow(target_row)
+            target_item = self.fPluginList[target_row]
+            if target_item is not None:
+                self.ui.listWidget.setCurrentItem(target_item)
+                target_item.setSelected(True)
+                target_widget = (
+                    target_item.getWidget()
+                    if hasattr(target_item, "getWidget")
+                    else None
+                )
+                if target_widget is not None:
+                    if hasattr(target_widget, "setSelected"):
+                        target_widget.setSelected(True)
+                    target_widget.setFocus()
+
+            other_item = self.fPluginList[other_row]
+            if other_item is not None:
+                other_item.setSelected(False)
+                other_widget = (
+                    other_item.getWidget() if hasattr(other_item, "getWidget") else None
+                )
+                if other_widget is not None and hasattr(other_widget, "setSelected"):
+                    other_widget.setSelected(False)
+
+            self.ui.listWidget.doItemsLayout()
+
+        # 7. Only refresh canvas if the patchbay canvas tab is actually active
         if self.fWithCanvas:
-            # Debounce the heavy canvas rebuild so spamming Ctrl+Up/Down is perfectly smooth
-            if not hasattr(self, 'fCanvasRefreshTimer'):
-                from qt_compat import QTimer
-                self.fCanvasRefreshTimer = QTimer(self)
-                self.fCanvasRefreshTimer.setSingleShot(True)
-                self.fCanvasRefreshTimer.setInterval(150)
-                self.fCanvasRefreshTimer.timeout.connect(self.slot_canvasRefresh)
-            self.fCanvasRefreshTimer.start()
+            if self.ui.tabWidget.currentIndex() == 1:
+                if (
+                    not hasattr(self, "_canvasRefreshTimer")
+                    or self._canvasRefreshTimer is None
+                ):
+                    self._canvasRefreshTimer = QTimer(self)
+                    self._canvasRefreshTimer.setSingleShot(True)
+                    self._canvasRefreshTimer.timeout.connect(self.slot_canvasRefresh)
+                self._canvasRefreshTimer.start(300)
+            else:
+                self.fNeedCanvasRefresh = True
 
     def setLoadRDFsNeeded(self):
         self.fLadspaRdfNeedsUpdate = True
@@ -1090,21 +1164,29 @@ class HostWindow(QMainWindow):
                         p_elem.set("pos2y", str(int(round(pos_data.get("pos2y", 0)))))
                         p_elem.set("split", "1" if pos_data.get("split") else "0")
 
-                    tree.write(self.fProjectFilename, encoding="UTF-8", xml_declaration=True)
+                    tree.write(
+                        self.fProjectFilename, encoding="UTF-8", xml_declaration=True
+                    )
             except Exception as e:
                 print("Failed to inject CanvasPositions into project file:", e)
 
         self.addRecentProject(self.fProjectFilename)
-        self.fHasUnsavedChanges = False
 
     def projectLoadingStarted(self):
         self.ui.rack.setEnabled(False)
         self.ui.graphicsView.setEnabled(False)
+        if self.ui.listWidget is not None:
+            self.ui.listWidget.setUpdatesEnabled(False)
+            self.ui.listWidget.blockSignals(True)
 
     def projectLoadingFinished(self, refreshCanvas):
+        if self.ui.listWidget is not None:
+            self.ui.listWidget.setUpdatesEnabled(True)
+            self.ui.listWidget.blockSignals(False)
+            self.ui.listWidget.doItemsLayout()
+
         self.ui.rack.setEnabled(True)
         self.ui.graphicsView.setEnabled(True)
-        self.fHasUnsavedChanges = False
 
         if (
             self.fCustomStopAction == self.CUSTOM_ACTION_APP_CLOSE
@@ -1116,10 +1198,14 @@ class HostWindow(QMainWindow):
         positions_loaded = False
         if self.fProjectFilename and os.path.exists(self.fProjectFilename):
             self.addRecentProject(self.fProjectFilename)
-            positions_loaded = self.loadCanvasGroupPositionsFromProject(self.fProjectFilename)
+            positions_loaded = self.loadCanvasGroupPositionsFromProject(
+                self.fProjectFilename
+            )
 
-        if not positions_loaded and refreshCanvas and not self.loadExternalCanvasGroupPositionsIfNeeded(
-            self.fProjectFilename
+        if (
+            not positions_loaded
+            and refreshCanvas
+            and not self.loadExternalCanvasGroupPositionsIfNeeded(self.fProjectFilename)
         ):
             QTimer.singleShot(1, self.slot_canvasRefresh)
 
@@ -1138,14 +1224,16 @@ class HostWindow(QMainWindow):
 
             if canvas_elem is not None:
                 for p_elem in canvas_elem.findall("Position"):
-                    data_list.append({
-                        "name": p_elem.get("name", ""),
-                        "pos1x": float(p_elem.get("pos1x", 0)),
-                        "pos1y": float(p_elem.get("pos1y", 0)),
-                        "pos2x": float(p_elem.get("pos2x", 0)),
-                        "pos2y": float(p_elem.get("pos2y", 0)),
-                        "split": p_elem.get("split") in ("1", "true", "True"),
-                    })
+                    data_list.append(
+                        {
+                            "name": p_elem.get("name", ""),
+                            "pos1x": float(p_elem.get("pos1x", 0)),
+                            "pos1y": float(p_elem.get("pos1y", 0)),
+                            "pos2x": float(p_elem.get("pos2x", 0)),
+                            "pos2y": float(p_elem.get("pos2y", 0)),
+                            "split": p_elem.get("split") in ("1", "true", "True"),
+                        }
+                    )
 
             # Also check Patchbay/Positions and ExternalPatchbay/Positions from Carla native XML if present
             if not data_list:
@@ -1162,14 +1250,16 @@ class HostWindow(QMainWindow):
                                     y1 = float(p_elem.get("y1", 0))
                                     x2 = float(p_elem.get("x2", 0))
                                     y2 = float(p_elem.get("y2", 0))
-                                    data_list.append({
-                                        "name": name,
-                                        "pos1x": x1,
-                                        "pos1y": y1,
-                                        "pos2x": x2,
-                                        "pos2y": y2,
-                                        "split": (x2 != 0 or y2 != 0),
-                                    })
+                                    data_list.append(
+                                        {
+                                            "name": name,
+                                            "pos1x": x1,
+                                            "pos1y": y1,
+                                            "pos2x": x2,
+                                            "pos2y": y2,
+                                            "split": (x2 != 0 or y2 != 0),
+                                        }
+                                    )
 
             if not data_list:
                 return False
@@ -1226,7 +1316,9 @@ class HostWindow(QMainWindow):
             act = QAction(os.path.basename(path), self)
             act.setToolTip(path)
             act.setStatusTip(path)
-            act.triggered.connect(lambda checked=False, p=path: self.loadRecentProject(p))
+            act.triggered.connect(
+                lambda checked=False, p=path: self.loadRecentProject(p)
+            )
             self.ui.menu_File.insertAction(self.ui.act_file_save, act)
             self.fRecentProjectActions.append(act)
 
@@ -1250,7 +1342,9 @@ class HostWindow(QMainWindow):
             ask = QMessageBox.question(
                 self,
                 self.tr("Question"),
-                self.tr("There are some plugins loaded, do you want to remove them now?"),
+                self.tr(
+                    "There are some plugins loaded, do you want to remove them now?"
+                ),
                 QMessageBox.Yes | QMessageBox.No,
                 QMessageBox.No,
             )
@@ -1281,7 +1375,9 @@ class HostWindow(QMainWindow):
             ask = QMessageBox.question(
                 self,
                 self.tr("Load Recent Project"),
-                self.tr("No project is loaded. Would you like to load recent project '%s'?" % name),
+                self.tr(
+                    f"No project is loaded. Would you like to load recent project '{name}'?"
+                ),
                 QMessageBox.Yes | QMessageBox.No,
                 QMessageBox.Yes,
             )
@@ -1364,8 +1460,7 @@ class HostWindow(QMainWindow):
     def slot_fileSave(self, *args, **kwargs):
         saveAs = kwargs.get("saveAs", False)
         if self.fProjectFilename and not saveAs:
-            self.saveProjectNow()
-            return True
+            return self.saveProjectNow()
 
         fileFilter = self.tr("Carla Project File (*.carxp)")
         filename, ok = QFileDialog.getSaveFileName(
@@ -1377,7 +1472,7 @@ class HostWindow(QMainWindow):
 
         # FIXME use ok value, test if it works as expected
         if not filename:
-            return False
+            return
 
         if not filename.lower().endswith(".carxp"):
             filename += ".carxp"
@@ -1388,7 +1483,6 @@ class HostWindow(QMainWindow):
 
         self.saveProjectNow()
         self.ui.act_file_save.setEnabled(True)
-        return True
 
     @pyqtSlot()
     def slot_fileSaveAs(self, *args, **kwargs):
@@ -1434,15 +1528,14 @@ class HostWindow(QMainWindow):
                 self,
                 self.tr("Error"),
                 self.tr(
-                    "Could not connect to Audio backend '%s', possible reasons:\n%s"
-                    % (audioDriver, audioError)
+                    f"Could not connect to Audio backend '{audioDriver}', possible reasons:\n{audioError}"
                 ),
             )
         else:
             QMessageBox.critical(
                 self,
                 self.tr("Error"),
-                self.tr("Could not connect to Audio backend '%s'" % audioDriver),
+                self.tr(f"Could not connect to Audio backend '{audioDriver}'"),
             )
 
     @pyqtSlot()
@@ -1737,7 +1830,8 @@ class HostWindow(QMainWindow):
     # --------------------------------------------------------------------------------------------------------
     # Plugins (menu actions)
 
-    def initPluginListDialog(self):
+    def showAddPluginDialog(self):
+        # TODO self.fHasLoadedLv2Plugins
         if self.fPluginListDialog is None:
             hostSettings = {
                 "showPluginBridges": self.fSavedSettings[
@@ -1785,115 +1879,6 @@ class HostWindow(QMainWindow):
                 d, PLUGIN_CLAP, self.fSavedSettings[CARLA_KEY_PATHS_CLAP]
             )
 
-
-    def inject_plugin_sidebar(self):
-        try:
-            from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QListWidget, QPushButton, QListWidgetItem, QTextEdit, QLabel
-            from PyQt5 import QtCore
-        except ImportError:
-            from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QListWidget, QPushButton, QListWidgetItem, QTextEdit, QLabel
-            from PyQt6 import QtCore
-            
-        self.initPluginListDialog()
-        
-        self.sidebar_widget = QWidget()
-        layout = QVBoxLayout(self.sidebar_widget)
-        
-        top_layout = QHBoxLayout()
-        self.search_bar = QLineEdit()
-        self.search_bar.setPlaceholderText("Search name, maker, category...")
-        
-        btn_refresh = QPushButton("↻")
-        btn_full = QPushButton("⛶")
-        
-        btn_refresh.setFixedSize(28, 28)
-        btn_full.setFixedSize(28, 28)
-        
-        top_layout.addWidget(self.search_bar)
-        top_layout.addWidget(btn_refresh)
-        top_layout.addWidget(btn_full)
-        
-        self.sidebar_list = QListWidget()
-        self.info_box = QTextEdit()
-        self.info_box.setReadOnly(True)
-        self.info_box.setMaximumHeight(120)
-        
-        layout.addLayout(top_layout)
-        layout.addWidget(self.sidebar_list)
-        layout.addWidget(self.info_box)
-        
-        self.ui.tabUtils.addTab(self.sidebar_widget, "Plugins")
-        
-        btn_full.clicked.connect(self.showAddPluginDialog)
-        
-        def refreshList():
-            csv = gCarla.felib.getCachedPluginsCsv(self.fPluginListDialog)
-            print(f'CSV length: {len(csv)}, first line: {csv.split(chr(10))[0]}')
-            self.sidebar_list.clear()
-            self.plugin_data = []
-            for line in csv.strip().split('\n'):
-                if not line: continue
-                try:
-                    parts = line.split('|')
-                    if len(parts) >= 9:
-                        build, ptype, hints, category, filename, name, label, maker, uniqueId = parts[:9]
-                        item = QListWidgetItem(name)
-                        data_tuple = (int(build), int(ptype), int(hints), category, filename, name, label, maker, int(uniqueId))
-                        # Fallback to integer 256 since PyQt6 uses ItemDataRole.UserRole
-                        item.setData(256, data_tuple)
-                        
-                        # Store metadata for searching
-                        item.setData(257, f"{name} {maker} {category} {filename}".lower())
-                        self.sidebar_list.addItem(item)
-                except Exception as e:
-                    print("Error parsing plugin line:", line, e)
-                    
-        btn_refresh.clicked.connect(refreshList)
-        
-        def on_search(text):
-            text = text.lower()
-            for i in range(self.sidebar_list.count()):
-                item = self.sidebar_list.item(i)
-                meta = item.data(257) or ""
-                item.setHidden(text not in meta)
-                
-        self.search_bar.textChanged.connect(on_search)
-        
-        def on_selection_changed():
-            items = self.sidebar_list.selectedItems()
-            if not items:
-                self.info_box.setText("")
-                return
-            item = items[0]
-            data = item.data(256)
-            if data:
-                build, ptype, hints, category, filename, name, label, maker, uniqueId = data
-                info_text = f"<b>{name}</b><br/>"
-                info_text += f"<b>Maker:</b> {maker or 'Unknown'}<br/>"
-                info_text += f"<b>Category:</b> {category}<br/>"
-                info_text += f"<b>File:</b> {filename.split('/')[-1]}<br/>"
-                self.info_box.setHtml(info_text)
-                
-        self.sidebar_list.itemSelectionChanged.connect(on_selection_changed)
-        
-        def on_double_click(item):
-            data = item.data(256)
-            if data:
-                build, ptype, hints, category, filename, name, label, maker, uniqueId = data
-                # Name is sometimes passed as None in backend calls depending on the type
-                try:
-                    self.host.add_plugin(build, ptype, filename, None, label, uniqueId, None, 0x10000)
-                except Exception as e:
-                    print("Error adding plugin:", e)
-                    self.info_box.setHtml(f"<b style='color:red;'>Error adding plugin:</b> {e}")
-            
-        self.sidebar_list.itemDoubleClicked.connect(on_double_click)
-        
-        # Initial populate
-        refreshList()
-
-    def showAddPluginDialog(self):
-        self.initPluginListDialog()
         ret = gCarla.felib.execPluginListDialog(self.fPluginListDialog)
 
         # TODO
@@ -1968,12 +1953,12 @@ class HostWindow(QMainWindow):
 
             CustomMessageBox(
                 self,
-                QMessageBox.Critical,
+                QMessageBox.Icon.Critical,
                 self.tr("Error"),
                 self.tr("Failed to load plugin"),
                 self.host.get_last_error(),
-                QMessageBox.Ok,
-                QMessageBox.Ok,
+                QMessageBox.StandardButton.Ok,
+                QMessageBox.StandardButton.Ok,
             )
 
     @pyqtSlot()
@@ -2212,18 +2197,23 @@ class HostWindow(QMainWindow):
 
     @pyqtSlot(int, int, str)
     def slot_handlePluginAddedCallback(self, pluginId, pluginType, pluginName):
-        log_carla(f"carla_host: slot_handlePluginAddedCallback id={pluginId}, type={pluginType}, name='{pluginName}'")
-        if pluginId != self.fPluginCount:
-            print("ERROR: pluginAdded mismatch Id:", pluginId, self.fPluginCount)
-            pitem = self.getPluginItem(pluginId)
+        log_carla(
+            f"carla_host: slot_handlePluginAddedCallback id={pluginId}, type={pluginType}, name='{pluginName}'"
+        )
+
+        while len(self.fPluginList) <= pluginId:
+            self.fPluginList.append(None)
+
+        pitem = self.fPluginList[pluginId]
+        if pitem is not None:
             pitem.recreateWidget()
             return
 
         pitem = self.ui.listWidget.createItem(
             pluginId, self.fSavedSettings[CARLA_KEY_MAIN_CLASSIC_SKIN]
         )
-        self.fPluginList.append(pitem)
-        self.fPluginCount += 1
+        self.fPluginList[pluginId] = pitem
+        self.fPluginCount = len([p for p in self.fPluginList if p is not None])
 
         self.ui.act_plugin_remove_all.setEnabled(self.fPluginCount > 0)
 
@@ -2238,19 +2228,22 @@ class HostWindow(QMainWindow):
         if pluginId in self.fSelectedPlugins:
             self.clearSideStuff()
 
-        if self.fPluginCount == 0:
-            return
-
         pitem = self.getPluginItem(pluginId)
 
-        self.fPluginCount -= 1
         if pluginId < len(self.fPluginList):
-            self.fPluginList.pop(pluginId)
-        self.ui.listWidget.takeItem(pluginId)
+            self.fPluginList[pluginId] = None
 
         if pitem is not None:
+            row = self.ui.listWidget.row(pitem)
+            if row >= 0:
+                self.ui.listWidget.takeItem(row)
             pitem.close()
             del pitem
+
+        while self.fPluginList and self.fPluginList[-1] is None:
+            self.fPluginList.pop()
+
+        self.fPluginCount = len([p for p in self.fPluginList if p is not None])
 
         if self.fPluginCount == 0:
             self.ui.act_plugin_remove_all.setEnabled(False)
@@ -2258,11 +2251,6 @@ class HostWindow(QMainWindow):
                 self.fCurrentlyRemovingAllPlugins = False
                 self.projectLoadingFinished(False)
             return
-
-        # push all plugins 1 slot back
-        for i in range(pluginId, self.fPluginCount):
-            pitem = self.fPluginList[i]
-            pitem.setPluginId(i)
 
         self.ui.act_plugin_remove_all.setEnabled(True)
 
@@ -2339,6 +2327,10 @@ class HostWindow(QMainWindow):
         patchcanvas.setCanvasSize(0, 0, self.fCanvasWidth, self.fCanvasHeight)
         patchcanvas.setInitialPos(self.fCanvasWidth / 2, self.fCanvasHeight / 2)
         self.ui.graphicsView.setSceneRect(0, 0, self.fCanvasWidth, self.fCanvasHeight)
+
+        # Setup canvas viewport auto-scrolling, quick disconnect filter & help overlay
+        self.canvasFilter = CanvasViewportFilter(self, self.ui.graphicsView)
+        self.patchbayHelpOverlay = self.canvasFilter.helpOverlay
 
         self.ui.miniCanvasPreview.setViewTheme(
             patchcanvas.canvas.theme.canvas_bg,
@@ -2458,9 +2450,7 @@ class HostWindow(QMainWindow):
 
     def _canvasImageRender(self, zoom=1.0):
         img_format = (
-            QImage.Format.Format_RGB32
-            if qt_config == 6
-            else QImage.Format_RGB32
+            QImage.Format.Format_RGB32 if qt_config == 6 else QImage.Format_RGB32
         )
         image = QImage(
             self.scene.width() * zoom, self.scene.height() * zoom, img_format
@@ -2573,7 +2563,9 @@ class HostWindow(QMainWindow):
     def slot_handlePatchbayClientAddedCallback(
         self, clientId, clientIcon, pluginId, clientName
     ):
-        log_carla(f"carla_host: slot_handlePatchbayClientAddedCallback clientId={clientId}, clientIcon={clientIcon}, pluginId={pluginId}, clientName='{clientName}'")
+        log_carla(
+            f"carla_host: slot_handlePatchbayClientAddedCallback clientId={clientId}, clientIcon={clientIcon}, pluginId={pluginId}, clientName='{clientName}'"
+        )
         pcSplit = patchcanvas.SPLIT_UNDEF
         pcIcon = patchcanvas.ICON_APPLICATION
 
@@ -2594,19 +2586,24 @@ class HostWindow(QMainWindow):
 
         if pluginId < 0:
             return
-        if pluginId >= self.fPluginCount and pluginId != MAIN_CARLA_PLUGIN_ID:
-            print("Error mapping plugin to canvas client:", clientName)
-            return
 
         if pluginId == MAIN_CARLA_PLUGIN_ID:
             hasCustomUI = False
             hasInlineDisplay = False
+            patchcanvas.setGroupAsPlugin(
+                clientId, pluginId, hasCustomUI, hasInlineDisplay
+            )
         else:
-            hints = self.host.get_plugin_info(pluginId)["hints"]
-            hasCustomUI = bool(hints & PLUGIN_HAS_CUSTOM_UI)
-            hasInlineDisplay = bool(hints & PLUGIN_HAS_INLINE_DISPLAY)
-
-        patchcanvas.setGroupAsPlugin(clientId, pluginId, hasCustomUI, hasInlineDisplay)
+            try:
+                hints = self.host.get_plugin_info(pluginId)["hints"]
+                hasCustomUI = bool(hints & PLUGIN_HAS_CUSTOM_UI)
+                hasInlineDisplay = bool(hints & PLUGIN_HAS_INLINE_DISPLAY)
+                patchcanvas.setGroupAsPlugin(
+                    clientId, pluginId, hasCustomUI, hasInlineDisplay
+                )
+            except Exception as e:
+                print("Error mapping plugin to canvas client:", clientName, e)
+                return
 
     @pyqtSlot(int)
     def slot_handlePatchbayClientRemovedCallback(self, clientId):
@@ -2640,23 +2637,23 @@ class HostWindow(QMainWindow):
 
         if pluginId < 0:
             return
-        if pluginId >= self.fPluginCount and pluginId != MAIN_CARLA_PLUGIN_ID:
-            print(
-                "sorry, can't map this plugin to canvas client",
-                pluginId,
-                self.fPluginCount,
-            )
-            return
 
         if pluginId == MAIN_CARLA_PLUGIN_ID:
             hasCustomUI = False
             hasInlineDisplay = False
+            patchcanvas.setGroupAsPlugin(
+                clientId, pluginId, hasCustomUI, hasInlineDisplay
+            )
         else:
-            hints = self.host.get_plugin_info(pluginId)["hints"]
-            hasCustomUI = bool(hints & PLUGIN_HAS_CUSTOM_UI)
-            hasInlineDisplay = bool(hints & PLUGIN_HAS_INLINE_DISPLAY)
-
-        patchcanvas.setGroupAsPlugin(clientId, pluginId, hasCustomUI, hasInlineDisplay)
+            try:
+                hints = self.host.get_plugin_info(pluginId)["hints"]
+                hasCustomUI = bool(hints & PLUGIN_HAS_CUSTOM_UI)
+                hasInlineDisplay = bool(hints & PLUGIN_HAS_INLINE_DISPLAY)
+                patchcanvas.setGroupAsPlugin(
+                    clientId, pluginId, hasCustomUI, hasInlineDisplay
+                )
+            except Exception:
+                return
 
     @pyqtSlot(int, int, int, int, int)
     def slot_handlePatchbayClientPositionChangedCallback(
@@ -2673,7 +2670,9 @@ class HostWindow(QMainWindow):
     def slot_handlePatchbayPortAddedCallback(
         self, clientId, portId, portFlags, portGroupId, portName
     ):
-        log_carla(f"carla_host: slot_handlePatchbayPortAddedCallback clientId={clientId}, portId={portId}, name='{portName}'")
+        log_carla(
+            f"carla_host: slot_handlePatchbayPortAddedCallback clientId={clientId}, portId={portId}, name='{portName}'"
+        )
         if portFlags & PATCHBAY_PORT_IS_INPUT:
             portMode = patchcanvas.PORT_MODE_INPUT
         else:
@@ -2730,6 +2729,7 @@ class HostWindow(QMainWindow):
     def slot_handlePatchbayConnectionAddedCallback(
         self, connectionId, groupOutId, portOutId, groupInId, portInId
     ):
+        self.fConnections[connectionId] = (groupOutId, portOutId, groupInId, portInId)
         patchcanvas.connectPorts(
             connectionId, groupOutId, portOutId, groupInId, portInId
         )
@@ -2739,6 +2739,7 @@ class HostWindow(QMainWindow):
     def slot_handlePatchbayConnectionRemovedCallback(
         self, connectionId, portOutId, portInId
     ):
+        self.fConnections.pop(connectionId, None)
         patchcanvas.disconnectPorts(connectionId)
         self.updateMiniCanvasLater()
 
@@ -2835,7 +2836,9 @@ class HostWindow(QMainWindow):
 
             rawRecents = settings.value(CARLA_KEY_MAIN_RECENT_PROJECTS, [], list)
             if isinstance(rawRecents, list):
-                self.fRecentProjects = [p for p in rawRecents if isinstance(p, str) and os.path.exists(p)]
+                self.fRecentProjects = [
+                    p for p in rawRecents if isinstance(p, str) and os.path.exists(p)
+                ]
             self.updateRecentProjectsMenu()
 
             QTimer.singleShot(100, self.slot_restoreCanvasScrollbarValues)
@@ -3142,7 +3145,7 @@ class HostWindow(QMainWindow):
         if self.ui.listWidget is not None:
             for i in range(self.ui.listWidget.count()):
                 item = self.ui.listWidget.item(i)
-                if item and hasattr(item, 'recreateWidget'):
+                if item and hasattr(item, "recreateWidget"):
                     item.recreateWidget(firstInit=True)
             self.ui.listWidget.update()
 
@@ -3354,8 +3357,7 @@ class HostWindow(QMainWindow):
 
         newFrame = self.host.get_current_transport_frame() - 100000
 
-        if newFrame < 0:
-            newFrame = 0
+        newFrame = max(newFrame, 0)
 
         self.host.transport_relocate(newFrame)
 
@@ -3487,14 +3489,14 @@ class HostWindow(QMainWindow):
         if check:
             isCompacted = bool(check == "true")
             if wasCompacted != isCompacted:
-                pitem.fOptions['compact'] = isCompacted
+                pitem.fOptions["compact"] = isCompacted
                 needsRecreate = True
 
         newSkin = self.host.get_custom_data_value(
             pluginId, CUSTOM_DATA_TYPE_PROPERTY, "CarlaSkin"
         )
-        if newSkin and newSkin != pitem.fOptions.get('skin'):
-            pitem.fOptions['skin'] = newSkin
+        if newSkin and newSkin != pitem.fOptions.get("skin"):
+            pitem.fOptions["skin"] = newSkin
             needsRecreate = True
 
         newColor = self.host.get_custom_data_value(
@@ -3502,15 +3504,19 @@ class HostWindow(QMainWindow):
         )
         if newColor:
             try:
-                parsed_color = tuple(int(i) for i in newColor.split(";",3))
-                if parsed_color != pitem.fOptions.get('color'):
-                    pitem.fOptions['color'] = parsed_color
+                parsed_color = tuple(int(i) for i in newColor.split(";", 3))
+                if parsed_color != pitem.fOptions.get("color"):
+                    pitem.fOptions["color"] = parsed_color
                     needsRecreate = True
             except Exception:
                 pass
 
         if needsRecreate:
-            wasGuiShown = pitem.fWidget.b_gui.isChecked() if pitem.fWidget and pitem.fWidget.b_gui else False
+            wasGuiShown = (
+                pitem.fWidget.b_gui.isChecked()
+                if pitem.fWidget and pitem.fWidget.b_gui
+                else False
+            )
             pitem.recreateWidget2(isCompacted, wasGuiShown)
 
         widget = pitem.getWidget()
@@ -3661,6 +3667,10 @@ class HostWindow(QMainWindow):
     def slot_tabChanged(self, index):
         if index != 1:
             return
+
+        if getattr(self, "fNeedCanvasRefresh", False):
+            self.fNeedCanvasRefresh = False
+            self.slot_canvasRefresh()
 
         self.ui.graphicsView.setFocus()
 
@@ -3832,19 +3842,13 @@ class HostWindow(QMainWindow):
     # --------------------------------------------------------------------------------------------------------
 
     def getPluginCount(self):
-        return self.fPluginCount
+        return len([p for p in self.fPluginList if p is not None])
 
     def getPluginItem(self, pluginId):
-        if pluginId >= self.fPluginCount:
+        if pluginId < 0 or pluginId >= len(self.fPluginList):
             return None
 
-        pitem = self.fPluginList[pluginId]
-        if pitem is None:
-            return None
-        # if False:
-        # return CarlaRackItem(self, 0, False)
-
-        return pitem
+        return self.fPluginList[pluginId]
 
     def getPluginEditDialog(self, pluginId):
         if pluginId >= self.fPluginCount:
@@ -3917,6 +3921,8 @@ class HostWindow(QMainWindow):
 
         if self.fWithCanvas:
             self.slot_miniCanvasCheckSize()
+            if hasattr(self, "patchbayHelpOverlay") and self.patchbayHelpOverlay:
+                self.patchbayHelpOverlay.reposition()
 
     # --------------------------------------------------------------------------------------------------------
     # timer event
@@ -3945,10 +3951,10 @@ class HostWindow(QMainWindow):
         for pitem in self.fPluginList:
             if pitem is None:
                 break
-                
+
             widget = pitem.getWidget()
             if widget is not None:
-                if hasattr(widget, 'idleFast'):
+                if hasattr(widget, "idleFast"):
                     widget.idleFast()
 
         for pluginId in self.fSelectedPlugins:
@@ -3990,7 +3996,7 @@ class HostWindow(QMainWindow):
 
             widget = pitem.getWidget()
             if widget is not None:
-                if hasattr(widget, 'idleSlow'):
+                if hasattr(widget, "idleSlow"):
                     widget.idleSlow()
 
     def timerEvent(self, event):
@@ -4006,14 +4012,13 @@ class HostWindow(QMainWindow):
     # color/style change event
 
     def changeEvent(self, event):
-        if event.type() == QEvent.WindowStateChange:
-            if self.isMinimized() and self.fTrayIcon is not None and self.fTrayIcon.isVisible():
-                QTimer.singleShot(0, self.hide)
-        elif event.type() in (QEvent.PaletteChange, QEvent.StyleChange):
+        if event.type() in (QEvent.PaletteChange, QEvent.StyleChange):
             self.updateStyle()
         QMainWindow.changeEvent(self, event)
 
     def updateStyle(self):
+        self.ui.pad_left.hide()
+        self.ui.pad_right.hide()
         if not QSafeSettings("falkTX", "Carla2").value(
             CARLA_KEY_MAIN_USE_PRO_THEME, CARLA_DEFAULT_MAIN_USE_PRO_THEME, bool
         ):
@@ -4095,27 +4100,6 @@ class HostWindow(QMainWindow):
             return False
         if self.fWindowCloseHideGui:
             return False
-
-        # If there are unsaved changes or active plugins in an unsaved session, ask to save changes
-        if self.fHasUnsavedChanges or (self.fPluginCount > 0 and not self.fProjectFilename):
-            ret = QMessageBox.question(
-                self,
-                self.tr("Unsaved Changes"),
-                self.tr("Save changes before closing?"),
-                QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
-                QMessageBox.Save,
-            )
-
-            if ret == QMessageBox.Save:
-                saved = self.slot_fileSave()
-                if not saved:
-                    return True
-                return False
-            elif ret == QMessageBox.Cancel:
-                return True
-            else:
-                return False
-
         if self.fSavedSettings[CARLA_KEY_MAIN_CONFIRM_EXIT]:
             return (
                 QMessageBox.question(
@@ -4177,142 +4161,6 @@ class HostWindow(QMainWindow):
 
 
 # ------------------------------------------------------------------------------------------------
-# Canvas callback
-
-
-def canvasCallback(action, value1, value2, valueStr):
-    host = gCarla.gui.host
-
-    if gCarla.gui.fCustomStopAction == HostWindow.CUSTOM_ACTION_APP_CLOSE:
-        return
-
-    if action == patchcanvas.ACTION_GROUP_INFO:
-        pass
-
-    elif action == patchcanvas.ACTION_GROUP_RENAME:
-        pass
-
-    elif action == patchcanvas.ACTION_GROUP_SPLIT:
-        groupId = value1
-        patchcanvas.splitGroup(groupId)
-        gCarla.gui.updateMiniCanvasLater()
-
-    elif action == patchcanvas.ACTION_GROUP_JOIN:
-        groupId = value1
-        patchcanvas.joinGroup(groupId)
-        gCarla.gui.updateMiniCanvasLater()
-
-    elif action == patchcanvas.ACTION_GROUP_POSITION:
-        if gCarla.gui.fIsProjectLoading:
-            return
-        if not host.is_engine_running():
-            return
-        groupId = value1
-        x1, y1, x2, y2 = tuple(int(i) for i in valueStr.split(":"))
-        host.patchbay_set_group_pos(
-            gCarla.gui.fExternalPatchbay, groupId, x1, y1, x2, y2
-        )
-        gCarla.gui.updateMiniCanvasLater()
-
-    elif action == patchcanvas.ACTION_PORT_INFO:
-        pass
-
-    elif action == patchcanvas.ACTION_PORT_RENAME:
-        pass
-
-    elif action == patchcanvas.ACTION_PORTS_CONNECT:
-        gOut, pOut, gIn, pIn = tuple(int(i) for i in valueStr.split(":"))
-        log_carla(f"carla_host: ACTION_PORTS_CONNECT {gOut}:{pOut} -> {gIn}:{pIn} (external={gCarla.gui.fExternalPatchbay})")
-
-        if not host.patchbay_connect(
-            gCarla.gui.fExternalPatchbay, gOut, pOut, gIn, pIn
-        ):
-            err = host.get_last_error()
-            log_carla(f"carla_host: Connection failed: {err}")
-            print("Connection failed:", err)
-        else:
-            log_carla("carla_host: Connection request succeeded")
-
-    elif action == patchcanvas.ACTION_PORTS_DISCONNECT:
-        connectionId = value1
-        log_carla(f"carla_host: ACTION_PORTS_DISCONNECT connectionId={connectionId} (external={gCarla.gui.fExternalPatchbay})")
-
-        if not host.patchbay_disconnect(gCarla.gui.fExternalPatchbay, connectionId):
-            err = host.get_last_error()
-            log_carla(f"carla_host: Disconnect failed: {err}")
-            print("Disconnect failed:", err)
-        else:
-            log_carla("carla_host: Disconnect request succeeded")
-
-    elif action == patchcanvas.ACTION_PLUGIN_CLONE:
-        pluginId = value1
-
-        if not host.clone_plugin(pluginId):
-            CustomMessageBox(
-                gCarla.gui,
-                QMessageBox.Warning,
-                gCarla.gui.tr("Error"),
-                gCarla.gui.tr("Operation failed"),
-                host.get_last_error(),
-                QMessageBox.Ok,
-                QMessageBox.Ok,
-            )
-
-    elif action == patchcanvas.ACTION_PLUGIN_EDIT:
-        pluginId = value1
-        pwidget = gCarla.gui.getPluginSlotWidget(pluginId)
-
-        if pwidget is not None:
-            pwidget.showEditDialog()
-
-    elif action == patchcanvas.ACTION_PLUGIN_RENAME:
-        pluginId = value1
-        pwidget = gCarla.gui.getPluginSlotWidget(pluginId)
-
-        if pwidget is not None:
-            pwidget.showRenameDialog()
-
-    elif action == patchcanvas.ACTION_PLUGIN_REPLACE:
-        pluginId = value1
-        pwidget = gCarla.gui.getPluginSlotWidget(pluginId)
-
-        if pwidget is not None:
-            pwidget.showReplaceDialog()
-
-    elif action == patchcanvas.ACTION_PLUGIN_REMOVE:
-        pluginId = value1
-
-        if not host.remove_plugin(pluginId):
-            CustomMessageBox(
-                gCarla.gui,
-                QMessageBox.Warning,
-                gCarla.gui.tr("Error"),
-                gCarla.gui.tr("Operation failed"),
-                host.get_last_error(),
-                QMessageBox.Ok,
-                QMessageBox.Ok,
-            )
-
-    elif action == patchcanvas.ACTION_PLUGIN_SHOW_UI:
-        pluginId = value1
-        pwidget = gCarla.gui.getPluginSlotWidget(pluginId)
-
-        if pwidget is not None:
-            pwidget.showCustomUI()
-
-    elif action == patchcanvas.ACTION_BG_RIGHT_CLICK:
-        gCarla.gui.slot_showPluginActionsMenu()
-
-    elif action == patchcanvas.ACTION_INLINE_DISPLAY:
-        if gCarla.gui.fIsProjectLoading:
-            return
-        if not host.is_engine_running():
-            return
-        pluginId = value1
-        width, height = [int(v) for v in valueStr.split(":")]
-        return host.render_inline_display(pluginId, width, height)
-
-
 # ------------------------------------------------------------------------------------------------------------
 # Engine callback
 
@@ -4336,7 +4184,9 @@ def engineCallback(host, action, pluginId, value1, value2, value3, valuef, value
     if action == ENGINE_CALLBACK_DEBUG:
         host.DebugCallback.emit(pluginId, value1, value2, value3, valuef, valueStr)
     elif action == ENGINE_CALLBACK_PLUGIN_ADDED:
-        log_carla(f"engineCallback: PLUGIN_ADDED id={pluginId}, type={value1}, name='{valueStr}'")
+        log_carla(
+            f"engineCallback: PLUGIN_ADDED id={pluginId}, type={value1}, name='{valueStr}'"
+        )
         host.PluginAddedCallback.emit(pluginId, value1, valueStr)
     elif action == ENGINE_CALLBACK_PLUGIN_REMOVED:
         log_carla(f"engineCallback: PLUGIN_REMOVED id={pluginId}")
@@ -4344,6 +4194,9 @@ def engineCallback(host, action, pluginId, value1, value2, value3, valuef, value
     elif action == ENGINE_CALLBACK_PLUGIN_RENAMED:
         log_carla(f"engineCallback: PLUGIN_RENAMED id={pluginId}, name='{valueStr}'")
         host.PluginRenamedCallback.emit(pluginId, valueStr)
+        if gCarla.gui is not None:
+            gCarla.gui.fHasUnsavedChanges = True
+            gCarla.gui.setProperWindowTitle()
     elif action == ENGINE_CALLBACK_PLUGIN_UNAVAILABLE:
         host.PluginUnavailableCallback.emit(pluginId, valueStr)
     elif action == ENGINE_CALLBACK_PARAMETER_VALUE_CHANGED:
@@ -4382,13 +4235,17 @@ def engineCallback(host, action, pluginId, value1, value2, value3, valuef, value
     elif action == ENGINE_CALLBACK_RELOAD_ALL:
         host.ReloadAllCallback.emit(pluginId)
     elif action == ENGINE_CALLBACK_PATCHBAY_CLIENT_ADDED:
-        log_carla(f"engineCallback: PATCHBAY_CLIENT_ADDED clientId={pluginId}, icon={value1}, pluginId={value2}, name='{valueStr}'")
+        log_carla(
+            f"engineCallback: PATCHBAY_CLIENT_ADDED clientId={pluginId}, icon={value1}, pluginId={value2}, name='{valueStr}'"
+        )
         host.PatchbayClientAddedCallback.emit(pluginId, value1, value2, valueStr)
     elif action == ENGINE_CALLBACK_PATCHBAY_CLIENT_REMOVED:
         log_carla(f"engineCallback: PATCHBAY_CLIENT_REMOVED clientId={pluginId}")
         host.PatchbayClientRemovedCallback.emit(pluginId)
     elif action == ENGINE_CALLBACK_PATCHBAY_CLIENT_RENAMED:
-        log_carla(f"engineCallback: PATCHBAY_CLIENT_RENAMED clientId={pluginId}, name='{valueStr}'")
+        log_carla(
+            f"engineCallback: PATCHBAY_CLIENT_RENAMED clientId={pluginId}, name='{valueStr}'"
+        )
         host.PatchbayClientRenamedCallback.emit(pluginId, valueStr)
     elif action == ENGINE_CALLBACK_PATCHBAY_CLIENT_DATA_CHANGED:
         host.PatchbayClientDataChangedCallback.emit(pluginId, value1, value2)
@@ -4397,10 +4254,14 @@ def engineCallback(host, action, pluginId, value1, value2, value3, valuef, value
             pluginId, value1, value2, value3, int(round(valuef))
         )
     elif action == ENGINE_CALLBACK_PATCHBAY_PORT_ADDED:
-        log_carla(f"engineCallback: PATCHBAY_PORT_ADDED clientId={pluginId}, portId={value1}, flags={value2}, name='{valueStr}'")
+        log_carla(
+            f"engineCallback: PATCHBAY_PORT_ADDED clientId={pluginId}, portId={value1}, flags={value2}, name='{valueStr}'"
+        )
         host.PatchbayPortAddedCallback.emit(pluginId, value1, value2, value3, valueStr)
     elif action == ENGINE_CALLBACK_PATCHBAY_PORT_REMOVED:
-        log_carla(f"engineCallback: PATCHBAY_PORT_REMOVED clientId={pluginId}, portId={value1}")
+        log_carla(
+            f"engineCallback: PATCHBAY_PORT_REMOVED clientId={pluginId}, portId={value1}"
+        )
         host.PatchbayPortRemovedCallback.emit(pluginId, value1)
     elif action == ENGINE_CALLBACK_PATCHBAY_PORT_CHANGED:
         host.PatchbayPortChangedCallback.emit(
@@ -4413,11 +4274,15 @@ def engineCallback(host, action, pluginId, value1, value2, value3, valuef, value
     elif action == ENGINE_CALLBACK_PATCHBAY_PORT_GROUP_CHANGED:
         host.PatchbayPortGroupChangedCallback.emit(pluginId, value1, value2, valueStr)
     elif action == ENGINE_CALLBACK_PATCHBAY_CONNECTION_ADDED:
-        log_carla(f"engineCallback: PATCHBAY_CONNECTION_ADDED clientId={pluginId}, conn='{valueStr}'")
+        log_carla(
+            f"engineCallback: PATCHBAY_CONNECTION_ADDED clientId={pluginId}, conn='{valueStr}'"
+        )
         gOut, pOut, gIn, pIn = [int(i) for i in valueStr.split(":")]  # FIXME
         host.PatchbayConnectionAddedCallback.emit(pluginId, gOut, pOut, gIn, pIn)
     elif action == ENGINE_CALLBACK_PATCHBAY_CONNECTION_REMOVED:
-        log_carla(f"engineCallback: PATCHBAY_CONNECTION_REMOVED clientId={pluginId}, connId={value1}")
+        log_carla(
+            f"engineCallback: PATCHBAY_CONNECTION_REMOVED clientId={pluginId}, connId={value1}"
+        )
         host.PatchbayConnectionRemovedCallback.emit(pluginId, value1, value2)
     elif action == ENGINE_CALLBACK_ENGINE_STARTED:
         host.EngineStartedCallback.emit(
@@ -4515,24 +4380,24 @@ def initHost(initName, libPrefix, isControl, isPlugin, failError, HostClass=None
     # --------------------------------------------------------------------------------------------------------
     # Set Carla library name
 
-    libname = "libcarla_%s2.%s" % (
+    libname = "libcarla_{}2.{}".format(
         "control" if isControl else "standalone",
         DLL_EXTENSION,
     )
     libname = os.path.join(pathBinaries, libname)
-    felibname = os.path.join(pathBinaries, "libcarla_frontend.%s" % (DLL_EXTENSION))
-    utilsname = os.path.join(pathBinaries, "libcarla_utils.%s" % (DLL_EXTENSION))
+    felibname = os.path.join(pathBinaries, f"libcarla_frontend.{DLL_EXTENSION}")
+    utilsname = os.path.join(pathBinaries, f"libcarla_utils.{DLL_EXTENSION}")
 
     # --------------------------------------------------------------------------------------------------------
     # Print info
 
     if not (gCarla.nogui and isinstance(gCarla.nogui, int)):
-        print("Carla %s started, status:" % CARLA_VERSION_STRING)
-        print("  Python version: %s" % sys.version.split(" ", 1)[0])
-        print("  Qt version:     %s" % QT_VERSION_STR)
-        print("  PyQt version:   %s" % PYQT_VERSION_STR)
-        print("  Binary dir:     %s" % pathBinaries)
-        print("  Resources dir:  %s" % pathResources)
+        print(f"Carla {CARLA_VERSION_STRING} started, status:")
+        print("  Python version: {}".format(sys.version.split(" ", 1)[0]))
+        print(f"  Qt version:     {QT_VERSION_STR}")
+        print(f"  PyQt version:   {PYQT_VERSION_STR}")
+        print(f"  Binary dir:     {pathBinaries}")
+        print(f"  Resources dir:  {pathResources}")
 
     # --------------------------------------------------------------------------------------------------------
     # Init host
@@ -5062,14 +4927,13 @@ def runHostWithoutUI(host):
     audioDriver = setEngineSettings(host, None, oscPort)
     if not host.engine_init(audioDriver, CARLA_CLIENT_NAME or "Carla"):
         print(
-            "Engine failed to initialize, possible reasons:\n%s" % host.get_last_error()
+            f"Engine failed to initialize, possible reasons:\n{host.get_last_error()}"
         )
         sys.exit(1)
 
     if projectFile and not host.load_project(projectFile):
         print(
-            "Failed to load selected project file, possible reasons:\n%s"
-            % host.get_last_error()
+            f"Failed to load selected project file, possible reasons:\n{host.get_last_error()}"
         )
         host.engine_close()
         sys.exit(1)
@@ -5091,4 +4955,3 @@ def runHostWithoutUI(host):
 
 
 # ------------------------------------------------------------------------------------------------------------
-

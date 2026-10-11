@@ -1193,7 +1193,26 @@ class CanvasBox(QGraphicsObject):
 
         menu.addSeparator()
         act_x_properties = menu.addAction("Properties")
-        act_x_arrange = menu.addAction("Auto-arrange")
+
+        arrangeMenu = QMenu("Arrange & Align", menu)
+        act_arr_connected_both = arrangeMenu.addAction("Arrange Connected (Both)")
+        act_arr_connected_before = arrangeMenu.addAction("Arrange Connected (Before)")
+        act_arr_connected_after = arrangeMenu.addAction("Arrange Connected (After)")
+        arrangeMenu.addSeparator()
+        act_align_h = arrangeMenu.addAction("Align Horizontally")
+        act_align_v = arrangeMenu.addAction("Align Vertically")
+        act_dist_h = arrangeMenu.addAction("Distribute Horizontally")
+        act_dist_v = arrangeMenu.addAction("Distribute Vertically")
+        arrangeMenu.addSeparator()
+        act_x_arrange = arrangeMenu.addAction("Auto-arrange All")
+        menu.addMenu(arrangeMenu)
+
+        num_selected = len(canvas.scene.selectedItems()) if canvas.scene else 0
+        if num_selected < 2:
+            act_align_h.setEnabled(False)
+            act_align_v.setEnabled(False)
+            act_dist_h.setEnabled(False)
+            act_dist_v.setEnabled(False)
 
         if not features.group_info:
             act_x_info.setVisible(False)
@@ -1244,6 +1263,34 @@ class CanvasBox(QGraphicsObject):
 
         elif act_selected == act_x_properties:
             self.showPropertiesDialog()
+
+        elif act_selected == act_arr_connected_both:
+            from .patchcanvas import arrangeConnected
+            arrangeConnected(self, "both")
+
+        elif act_selected == act_arr_connected_before:
+            from .patchcanvas import arrangeConnected
+            arrangeConnected(self, "before")
+
+        elif act_selected == act_arr_connected_after:
+            from .patchcanvas import arrangeConnected
+            arrangeConnected(self, "after")
+
+        elif act_selected == act_align_h:
+            from .patchcanvas import alignSelected
+            alignSelected("horizontal")
+
+        elif act_selected == act_align_v:
+            from .patchcanvas import alignSelected
+            alignSelected("vertical")
+
+        elif act_selected == act_dist_h:
+            from .patchcanvas import alignSelected
+            alignSelected("distribute_h")
+
+        elif act_selected == act_dist_v:
+            from .patchcanvas import alignSelected
+            alignSelected("distribute_v")
 
         elif act_selected == act_x_arrange:
             from .patchcanvas import arrange
