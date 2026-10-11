@@ -2079,6 +2079,63 @@ def arrangeConnected(target_box=None, direction="both"):
     syncNodePositions(subgraph_nodes)
 
 
+def moveAsideNonConnectedNodes(anchor_node=None):
+    """
+    Moves all nodes that have zero connections (or are disconnected from the active graph)
+    aside into a clean vertical column below/beside the connected subgraph.
+    """
+    all_nodes = []
+    node_to_group = {}
+    port_nodes = {}
+
+    for group in canvas.group_list:
+        for widget in group.widgets:
+            if widget is None or not widget.m_port_list_ids:
+                continue
+            all_nodes.append(widget)
+            node_to_group[widget] = group
+            for port in canvas.port_list:
+                if port.widget and port.widget.parentItem() == widget:
+                    port_nodes[(port.group_id, port.port_id)] = widget
+
+    if len(all_nodes) <= 1:
+        return
+
+    # Find connected nodes
+    connected_nodes = set()
+    for connection in canvas.connection_list:
+        p1 = (connection.group_id_1, connection.port_id_1)
+        p2 = (connection.group_id_2, connection.port_id_2)
+        n1 = port_nodes.get(p1)
+        n2 = port_nodes.get(p2)
+        if n1 and n2 and n1 != n2:
+            connected_nodes.add(n1)
+            connected_nodes.add(n2)
+
+    non_connected = [n for n in all_nodes if n not in connected_nodes]
+    if not non_connected:
+        return
+
+    # Determine bounding area of connected nodes
+    if connected_nodes:
+        max_x = max(n.x() + n.boundingRect().width() for n in connected_nodes)
+        min_y = min(n.y() for n in connected_nodes)
+        target_x = max_x + 120
+        target_y = min_y
+    else:
+        target_x = 100
+        target_y = 100
+
+    non_connected.sort(key=lambda n: node_to_group[n].group_name.lower())
+    cy = target_y
+    vertical_gap = 30
+    for n in non_connected:
+        n.setPos(target_x, cy)
+        cy += n.boundingRect().height() + vertical_gap
+
+    syncNodePositions(non_connected)
+
+
 # ------------------------------------------------------------------------------------------------------------
 
 

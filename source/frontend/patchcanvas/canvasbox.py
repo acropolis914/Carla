@@ -1204,6 +1204,7 @@ class CanvasBox(QGraphicsObject):
         act_dist_h = arrangeMenu.addAction("Distribute Horizontally")
         act_dist_v = arrangeMenu.addAction("Distribute Vertically")
         arrangeMenu.addSeparator()
+        act_move_aside = arrangeMenu.addAction("Move Aside Non-Connected Nodes")
         act_x_arrange = arrangeMenu.addAction("Auto-arrange All")
         menu.addMenu(arrangeMenu)
 
@@ -1291,6 +1292,10 @@ class CanvasBox(QGraphicsObject):
         elif act_selected == act_dist_v:
             from .patchcanvas import alignSelected
             alignSelected("distribute_v")
+
+        elif act_selected == act_move_aside:
+            from .patchcanvas import moveAsideNonConnectedNodes
+            moveAsideNonConnectedNodes(self)
 
         elif act_selected == act_x_arrange:
             from .patchcanvas import arrange
