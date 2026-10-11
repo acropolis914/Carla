@@ -112,11 +112,13 @@ class CanvasPreviewFrame(QFrame):
     # -----------------------------------------------------------------------------------------------------------------
 
     def setViewPosX(self, xp: float):
-        self.fViewRect[self._kRectX] = xp * (self.fInternalWidth - self.fViewRect[self._kRectWidth]/self.fScale)
+        max_dist = max(0.0, self.fInternalWidth - self.fViewRect[self._kRectWidth]/self.fScale)
+        self.fViewRect[self._kRectX] = max(0.0, min(max_dist, xp * max_dist))
         self.update()
 
     def setViewPosY(self, yp: float):
-        self.fViewRect[self._kRectY] = yp * (self.fInternalHeight - self.fViewRect[self._kRectHeight]/self.fScale)
+        max_dist = max(0.0, self.fInternalHeight - self.fViewRect[self._kRectHeight]/self.fScale)
+        self.fViewRect[self._kRectY] = max(0.0, min(max_dist, yp * max_dist))
         self.update()
 
     def setViewScale(self, scale: float):

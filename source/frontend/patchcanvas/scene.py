@@ -10,11 +10,11 @@ from math import floor
 from qt_compat import qt_config
 
 if qt_config == 5:
-    from PyQt5.QtCore import QT_VERSION, pyqtSignal, pyqtSlot, qFatal, Qt, QPointF, QRectF
+    from PyQt5.QtCore import QT_VERSION, pyqtSignal, pyqtSlot, qFatal, Qt, QPointF, QRectF, QTimer
     from PyQt5.QtGui import QCursor, QPixmap, QPolygonF
     from PyQt5.QtWidgets import QGraphicsRectItem, QGraphicsScene
 elif qt_config == 6:
-    from PyQt6.QtCore import QT_VERSION, pyqtSignal, pyqtSlot, qFatal, Qt, QPointF, QRectF
+    from PyQt6.QtCore import QT_VERSION, pyqtSignal, pyqtSlot, qFatal, Qt, QPointF, QRectF, QTimer
     from PyQt6.QtGui import QCursor, QPixmap, QPolygonF
     from PyQt6.QtWidgets import QGraphicsRectItem, QGraphicsScene
 
@@ -66,6 +66,11 @@ class PatchScene(QGraphicsScene):
         self.m_rubberband = RubberbandRect(self)
         self.m_rubberband_selection = False
         self.m_rubberband_orig_point = QPointF(0, 0)
+        self.m_right_drag_active = False
+        self.m_right_press_pos = None
+        self.m_right_click_timer = QTimer(self)
+        self.m_right_click_timer.setSingleShot(True)
+        self.m_right_click_timer.timeout.connect(self._slot_rightClickHoldTimeout)
 
         self.m_view = view
         if not self.m_view:
@@ -312,12 +317,34 @@ class PatchScene(QGraphicsScene):
         self.stopConnectionCut()
         QGraphicsScene.keyReleaseEvent(self, event)
 
+    def _slot_rightClickHoldTimeout(self):
+        # Stationary right-click hold elapsed: trigger background context menu immediately if not already dragging
+        if getattr(self, "m_mouse_down_init", False) and not self.m_right_drag_active:
+            self.m_mouse_down_init = False
+            self.m_mouse_rubberband = False
+            self.m_right_press_pos = None
+            canvas.callback(ACTION_BG_RIGHT_CLICK, 0, 0, "")
+
     def mousePressEvent(self, event):
         ctrlDown = bool(event.modifiers() & Qt.ControlModifier)
 
-        self.m_mouse_down_init = (event.button() == Qt.RightButton)
-        self.m_mouse_rubberband = False
-        self.m_rubberband_last_pos = event.scenePos()
+        if event.button() == Qt.RightButton:
+            items = self.items(event.scenePos())
+            on_item = any(item and item.type() in (CanvasBoxType, CanvasIconType, CanvasPortType) for item in items)
+            if not on_item:
+                self.m_mouse_down_init = True
+                self.m_mouse_rubberband = False
+                self.m_right_drag_active = False
+                self.m_right_press_pos = event.scenePos()
+                self.m_rubberband_last_pos = event.scenePos()
+                self.m_right_click_timer.start(150)
+            else:
+                self.m_mouse_down_init = False
+                self.m_right_press_pos = None
+        else:
+            self.m_mouse_down_init = False
+            self.m_right_click_timer.stop()
+            self.m_right_press_pos = None
 
         if event.button() == Qt.MiddleButton and ctrlDown:
             self.startConnectionCut()
@@ -329,15 +356,14 @@ class PatchScene(QGraphicsScene):
         QGraphicsScene.mousePressEvent(self, event)
 
     def mouseMoveEvent(self, event):
-        if self.m_mouse_down_init:
-            self.m_mouse_down_init = False
-            items = self.items(event.scenePos())
-            for item in items:
-                if item and item.type() in (CanvasBoxType, CanvasIconType, CanvasPortType):
-                    self.m_mouse_rubberband = False
-                    break
-            else:
+        if self.m_mouse_down_init and self.m_right_press_pos is not None:
+            delta = event.scenePos() - self.m_right_press_pos
+            dist = (delta.x()**2 + delta.y()**2) ** 0.5
+            if dist >= 4.0:
+                self.m_right_click_timer.stop()
                 self.m_mouse_rubberband = True
+                self.m_right_drag_active = True
+                self.m_mouse_down_init = False
 
         if self.m_mouse_rubberband:
             event.accept()
@@ -348,7 +374,7 @@ class PatchScene(QGraphicsScene):
             if not self.m_rubberband_selection:
                 self.m_rubberband.show()
                 self.m_rubberband_selection = True
-                self.m_rubberband_orig_point = pos
+                self.m_rubberband_orig_point = self.m_right_press_pos if self.m_right_press_pos is not None else pos
             rubberband_orig_point = self.m_rubberband_orig_point
 
             x = min(pos_x, rubberband_orig_point.x())
@@ -371,7 +397,10 @@ class PatchScene(QGraphicsScene):
         QGraphicsScene.mouseMoveEvent(self, event)
 
     def mouseReleaseEvent(self, event):
+        self.m_right_click_timer.stop()
+        was_short_click = (event.button() == Qt.RightButton and self.m_mouse_down_init and not self.m_right_drag_active)
         self.m_mouse_down_init = False
+        self.m_right_press_pos = None
 
         if not self.handleMouseRelease():
             items_list = self.selectedItems()
@@ -383,6 +412,11 @@ class PatchScene(QGraphicsScene):
 
             if needs_update:
                 canvas.scene.update()
+
+            if was_short_click and len(self.selectedItems()) == 0:
+                event.accept()
+                canvas.callback(ACTION_BG_RIGHT_CLICK, 0, 0, "")
+                return
 
         QGraphicsScene.mouseReleaseEvent(self, event)
 
@@ -410,6 +444,12 @@ class PatchScene(QGraphicsScene):
         QGraphicsScene.wheelEvent(self, event)
 
     def contextMenuEvent(self, event):
+        self.m_right_click_timer.stop()
+        if getattr(self, "m_right_drag_active", False):
+            self.m_right_drag_active = False
+            event.accept()
+            return
+
         if self.handleMouseRelease():
             self.m_mouse_down_init = False
             QGraphicsScene.contextMenuEvent(self, event)

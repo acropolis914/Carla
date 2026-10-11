@@ -1372,8 +1372,7 @@ class CanvasBox(QGraphicsObject):
 
         canvas.last_z_value += 1
         self.setZValue(canvas.last_z_value)
-        self.resetLinesZValue()
-        self.m_cursor_moving = False
+        ctrlDown = bool(event.modifiers() & Qt.ControlModifier)
 
         if event.button() == Qt.RightButton:
             event.accept()
@@ -1384,10 +1383,15 @@ class CanvasBox(QGraphicsObject):
             return
 
         elif event.button() == Qt.LeftButton:
+            if ctrlDown:
+                event.accept()
+                self.setSelected(not self.isSelected())
+                self.m_mouse_down = False
+                return
+
             if self.sceneBoundingRect().contains(event.scenePos()):
                 self.m_mouse_down = True
             else:
-                # FIXME: Check if still valid: Fix a weird Qt behaviour with right-click mouseMove
                 self.m_mouse_down = False
                 event.ignore()
                 return

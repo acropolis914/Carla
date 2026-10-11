@@ -22,12 +22,15 @@ from qt_compat import (
     QApplication,
     QCursor,
     QEvent,
+    QFont,
+    QFontDatabase,
     QFrame,
     QHBoxLayout,
     QLabel,
     QMouseEvent,
     QObject,
     QPainterPathStroker,
+    QPoint,
     QPointF,
     QPushButton,
     QRect,
@@ -239,17 +242,18 @@ class PatchbayHelpOverlay(QFrame):
         self._lblContent = QLabel(self)
         self._lblContent.setText("""
             <table style="color: #cdd6f4; font-size: 10px; line-height: 145%;">
+              <tr><td style="color: #f9e2af; font-weight: bold; padding-right: 6px;">V:</td><td>Marquee Select Mode</td></tr>
+              <tr><td style="color: #94e2d5; font-weight: bold; padding-right: 6px;">H / Space:</td><td>Hand / Pan Mode</td></tr>
+              <tr><td style="color: #cba6f7; font-weight: bold; padding-right: 6px;">Q / Esc:</td><td>Pointer (Default)</td></tr>
               <tr><td style="color: #89b4fa; font-weight: bold; padding-right: 6px;">Drag Port:</td><td>Connect wire</td></tr>
               <tr><td style="color: #fab387; font-weight: bold; padding-right: 6px;">Alt + Drag:</td><td>Auto-wire stereo pair</td></tr>
               <tr><td style="color: #a6e3a1; font-weight: bold; padding-right: 6px;">Drag past edge:</td><td>Auto-scroll canvas</td></tr>
               <tr><td style="color: #f38ba8; font-weight: bold; padding-right: 6px;">Alt / Mid-Click:</td><td>Disconnect cable/port</td></tr>
               <tr><td style="color: #eba0ac; font-weight: bold; padding-right: 6px;">Shift + Click:</td><td>Alt disconnect</td></tr>
-              <tr><td style="color: #cba6f7; font-weight: bold; padding-right: 6px;">Dbl-Click Node:</td><td>Open Custom UI</td></tr>
-              <tr><td style="color: #b4befe; font-weight: bold; padding-right: 6px;">Scroll:</td><td>Vertical scroll</td></tr>
-              <tr><td style="color: #89dceb; font-weight: bold; padding-right: 6px;">Alt/Shift+Scroll:</td><td>Horizontal scroll</td></tr>
-              <tr><td style="color: #f9e2af; font-weight: bold; padding-right: 6px;">Ctrl + Scroll:</td><td>Zoom in / out</td></tr>
-              <tr><td style="color: #94e2d5; font-weight: bold; padding-right: 6px;">Right/Mid Drag:</td><td>Pan canvas view</td></tr>
-              <tr><td style="color: #f5c2e7; font-weight: bold; padding-right: 6px;">Right-Click:</td><td>Context menu</td></tr>
+              <tr><td style="color: #cba6f7; font-weight: bold; padding-right: 6px;">Ctrl + Click:</td><td>Multi-select node</td></tr>
+              <tr><td style="color: #b4befe; font-weight: bold; padding-right: 6px;">Dbl-Click Node:</td><td>Open Custom UI</td></tr>
+              <tr><td style="color: #89dceb; font-weight: bold; padding-right: 6px;">Ctrl + Scroll:</td><td>Zoom in / out</td></tr>
+              <tr><td style="color: #f5c2e7; font-weight: bold; padding-right: 6px;">Right-Click:</td><td>Context menu / arrange</td></tr>
             </table>
         """)
         self._layout.addWidget(self._lblContent)
@@ -278,8 +282,35 @@ class PatchbayHelpOverlay(QFrame):
             }
         """)
 
-        # Set default state to collapsed
-        self.setExpanded(False)
+        # Set default state to expanded (open by default)
+        self.setExpanded(True)
+        self._dragPos = None
+        self._userMoved = False
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self._dragPos = event.globalPos() - self.frameGeometry().topLeft()
+            event.accept()
+            return
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if self._dragPos is not None and event.buttons() & Qt.LeftButton:
+            vp = self.parentWidget()
+            if vp:
+                new_pos = event.globalPos() - self._dragPos
+                # Constrain within viewport bounds
+                x = max(0, min(new_pos.x(), vp.width() - self.width()))
+                y = max(0, min(new_pos.y(), vp.height() - self.height()))
+                self.move(x, y)
+                self._userMoved = True
+                event.accept()
+                return
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        self._dragPos = None
+        super().mouseReleaseEvent(event)
 
     def setExpanded(self, expanded):
         self._expanded = bool(expanded)
@@ -306,12 +337,15 @@ class PatchbayHelpOverlay(QFrame):
                     border: none;
                 }
             """)
-        self.reposition()
+        if not getattr(self, "_userMoved", False):
+            self.reposition()
 
     def toggleExpanded(self):
         self.setExpanded(not self._expanded)
 
     def reposition(self):
+        if getattr(self, "_userMoved", False):
+            return
         vp = self.parentWidget()
         if vp is None:
             return
@@ -323,6 +357,166 @@ class PatchbayHelpOverlay(QFrame):
         new_x = max(10, W - w - margin)
         new_y = max(10, H - h - margin)
         self.move(new_x, new_y)
+        self.raise_()
+
+
+# ------------------------------------------------------------------------------------------------------------
+# Floating Photoshop-style Modal Toolbar
+# ------------------------------------------------------------------------------------------------------------
+
+_CACHED_NERD_FONT_FAMILY = None
+
+def getBestNerdFont():
+    global _CACHED_NERD_FONT_FAMILY
+    if _CACHED_NERD_FONT_FAMILY is not None:
+        return _CACHED_NERD_FONT_FAMILY
+
+    try:
+        families = QFontDatabase.families()
+    except (TypeError, AttributeError):
+        try:
+            families = QFontDatabase().families()
+        except Exception:
+            families = []
+    nerd_candidates = [
+        "JetBrainsMono Nerd Font",
+        "JetBrainsMonoNF",
+        "CommitMono Nerd Font Mono",
+        "Liga SFMono Nerd Font",
+        "FiraCode Nerd Font",
+        "Hack Nerd Font",
+        "MesloLGS NF",
+    ]
+    for cand in nerd_candidates:
+        if cand in families:
+            _CACHED_NERD_FONT_FAMILY = cand
+            return cand
+
+    for fam in families:
+        if "nerd" in fam.lower():
+            _CACHED_NERD_FONT_FAMILY = fam
+            return fam
+
+    _CACHED_NERD_FONT_FAMILY = ""
+    return _CACHED_NERD_FONT_FAMILY
+
+
+class CanvasToolBarOverlay(QFrame):
+    """Floating Photoshop/Blender style modal tool selection pill."""
+
+    def __init__(self, graphicsView, parent=None):
+        super().__init__(parent or graphicsView.viewport())
+        self.setObjectName("canvas_toolbar_overlay")
+        self.graphicsView = graphicsView
+        self._dragPos = None
+        self._userMoved = False
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(4, 3, 4, 3)
+        layout.setSpacing(2)
+
+        font_family = getBestNerdFont()
+        font = QFont(font_family, 13) if font_family else QFont()
+        if not font_family:
+            font.setPointSize(12)
+
+        # Icons: Nerd Font glyphs or clean unicode symbols
+        self.icon_pointer = "\U000f01be" if font_family else "↖"   # nf-md-cursor_default / arrow
+        self.icon_select  = "\U000f0485" if font_family else "⛶"   # nf-md-select_drag / marquee
+        self.icon_hand    = "\U000f0361" if font_family else "✋"   # nf-md-hand_back_right / hand
+
+        self.btnPointer = QPushButton(self.icon_pointer, self)
+        self.btnPointer.setToolTip("Pointer / Default (Q / Esc)")
+        self.btnPointer.setFont(font)
+
+        self.btnSelect = QPushButton(self.icon_select, self)
+        self.btnSelect.setToolTip("Marquee Selection (V)")
+        self.btnSelect.setFont(font)
+
+        self.btnHand = QPushButton(self.icon_hand, self)
+        self.btnHand.setToolTip("Hand / Pan Canvas (H / Space)")
+        self.btnHand.setFont(font)
+
+        for btn in (self.btnPointer, self.btnSelect, self.btnHand):
+            btn.setFixedSize(30, 28)
+            btn.setCheckable(True)
+            layout.addWidget(btn)
+
+        self.btnPointer.clicked.connect(lambda: self._setMode(0))
+        self.btnSelect.clicked.connect(lambda: self._setMode(1))
+        self.btnHand.clicked.connect(lambda: self._setMode(2))
+
+        self.setStyleSheet("""
+            QFrame#canvas_toolbar_overlay {
+                background-color: rgba(24, 24, 37, 0.92);
+                border: 1px solid #45475a;
+                border-radius: 8px;
+            }
+            QPushButton {
+                background: transparent;
+                border: none;
+                border-radius: 5px;
+                color: #a6adc8;
+                font-weight: bold;
+                padding: 0px;
+            }
+            QPushButton:hover {
+                background-color: rgba(69, 71, 90, 0.7);
+                color: #cdd6f4;
+            }
+            QPushButton:checked {
+                background-color: #89b4fa;
+                color: #11111b;
+            }
+        """)
+
+        self.updateActiveButton(0)
+        self.setFixedSize(102, 36)
+
+    def _setMode(self, mode):
+        if hasattr(self.graphicsView, "setToolMode"):
+            self.graphicsView.setToolMode(mode)
+        self.updateActiveButton(mode)
+
+    def updateActiveButton(self, mode):
+        self.btnPointer.setChecked(mode == 0)
+        self.btnSelect.setChecked(mode == 1)
+        self.btnHand.setChecked(mode == 2)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self._dragPos = event.globalPos() - self.frameGeometry().topLeft()
+            event.accept()
+            return
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if self._dragPos is not None and event.buttons() & Qt.LeftButton:
+            vp = self.parentWidget()
+            if vp:
+                new_pos = event.globalPos() - self._dragPos
+                x = max(0, min(new_pos.x(), vp.width() - self.width()))
+                y = max(0, min(new_pos.y(), vp.height() - self.height()))
+                self.move(x, y)
+                self._userMoved = True
+                event.accept()
+                return
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        self._dragPos = None
+        super().mouseReleaseEvent(event)
+
+    def reposition(self):
+        if getattr(self, "_userMoved", False):
+            return
+        vp = self.parentWidget()
+        if vp is None:
+            return
+        # Position top-center
+        x = max(10, (vp.width() - self.width()) // 2)
+        y = 12
+        self.move(x, y)
         self.raise_()
 
 
@@ -346,10 +540,18 @@ class CanvasViewportFilter(QObject):
         self._scrollTimer.setInterval(20)  # 50 Hz smooth scrolling
         self._scrollTimer.timeout.connect(self._slot_autoScroll)
 
-        # Create help overlay inside the viewport
+        # Create floating mode toolbar & help overlay inside the viewport
+        self.toolBar = CanvasToolBarOverlay(self.graphicsView, self.graphicsView.viewport())
+        self.toolBar.show()
+        QTimer.singleShot(100, self.toolBar.reposition)
+
         self.helpOverlay = PatchbayHelpOverlay(self.graphicsView.viewport())
         self.helpOverlay.show()
         QTimer.singleShot(100, self.helpOverlay.reposition)
+
+        # Hook up tool mode change listener to toolBar
+        if hasattr(self.graphicsView, "toolModeChanged"):
+            self.graphicsView.toolModeChanged.connect(self.toolBar.updateActiveButton)
 
         # Install self on viewport
         self.graphicsView.viewport().installEventFilter(self)
@@ -977,6 +1179,8 @@ class CanvasViewportFilter(QObject):
                     self._scrollTimer.stop()
 
         elif is_resize:
+            if hasattr(self, "toolBar") and self.toolBar:
+                self.toolBar.reposition()
             if hasattr(self, "helpOverlay") and self.helpOverlay:
                 self.helpOverlay.reposition()
 

@@ -2069,9 +2069,48 @@ class HostWindow(QMainWindow):
         menu.addAction(self.ui.act_plugins_compact)
         menu.addAction(self.ui.act_plugins_expand)
         menu.addSeparator()
-        menu.addAction(self.ui.act_canvas_arrange)
+
+        arrangeMenu = QMenu("Arrange & Align", menu)
+        act_auto_arrange = arrangeMenu.addAction("Auto-arrange All")
+        act_auto_arrange.triggered.connect(self.slot_canvasArrange)
+        arrangeMenu.addSeparator()
+
+        act_align_h = arrangeMenu.addAction("Align Horizontally")
+        act_align_h.triggered.connect(lambda: self._alignSelectedCanvasNodes("align_h"))
+
+        act_align_v = arrangeMenu.addAction("Align Vertically")
+        act_align_v.triggered.connect(lambda: self._alignSelectedCanvasNodes("align_v"))
+
+        act_dist_h = arrangeMenu.addAction("Distribute Horizontally")
+        act_dist_h.triggered.connect(lambda: self._alignSelectedCanvasNodes("distribute_h"))
+
+        act_dist_v = arrangeMenu.addAction("Distribute Vertically")
+        act_dist_v.triggered.connect(lambda: self._alignSelectedCanvasNodes("distribute_v"))
+
+        arrangeMenu.addSeparator()
+        act_move_aside = arrangeMenu.addAction("Move Aside Non-Connected Nodes")
+        act_move_aside.triggered.connect(self._moveAsideNonConnectedNodes)
+
+        num_sel = len(self.scene.selectedItems()) if hasattr(self, "scene") and self.scene else 0
+        if num_sel < 2:
+            act_align_h.setEnabled(False)
+            act_align_v.setEnabled(False)
+            act_dist_h.setEnabled(False)
+            act_dist_v.setEnabled(False)
+
+        menu.addMenu(arrangeMenu)
 
         menu.exec_(QCursor.pos())
+
+    def _alignSelectedCanvasNodes(self, mode):
+        from patchcanvas.patchcanvas import alignSelected
+        alignSelected(mode)
+        self.updateMiniCanvasLater()
+
+    def _moveAsideNonConnectedNodes(self):
+        from patchcanvas.patchcanvas import moveAsideNonConnectedNodes
+        moveAsideNonConnectedNodes()
+        self.updateMiniCanvasLater()
 
     @pyqtSlot()
     def slot_pluginAdd(self):

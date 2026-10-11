@@ -215,6 +215,13 @@ class CanvasPort(QGraphicsItem):
             event.ignore()
             return
 
+        if event.modifiers() & Qt.ControlModifier:
+            parent = self.parentItem()
+            if parent:
+                event.accept()
+                parent.setSelected(not parent.isSelected())
+                return
+
         if self.m_mouse_down:
             self.handleMouseRelease()
         self.m_hover_item = None

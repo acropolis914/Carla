@@ -10,7 +10,7 @@ import os
 from qt_compat import qt_config
 
 if qt_config == 5:
-    from PyQt5.QtCore import Qt, QT_VERSION, QEvent
+    from PyQt5.QtCore import Qt, QT_VERSION, QEvent, pyqtSignal
     from PyQt5.QtGui import QCursor, QMouseEvent, QKeySequence
     from PyQt5.QtWidgets import (
         QGraphicsView,
@@ -21,7 +21,7 @@ if qt_config == 5:
         QShortcut,
     )
 elif qt_config == 6:
-    from PyQt6.QtCore import Qt, QT_VERSION, QEvent
+    from PyQt6.QtCore import Qt, QT_VERSION, QEvent, pyqtSignal
     from PyQt6.QtGui import QCursor, QMouseEvent, QKeySequence, QShortcut
     from PyQt6.QtWidgets import (
         QGraphicsView,
@@ -37,14 +37,23 @@ elif qt_config == 6:
 from carla_backend import CARLA_OS_MAC
 from carla_shared import CustomMessageBox, gCarla
 
+# Modal Tool Constants
+TOOL_POINTER = 0   # Default mode (Q / Esc)
+TOOL_SELECT  = 1   # Marquee selection mode (V)
+TOOL_HAND    = 2   # Canvas hand/drag mode (H / Space)
+
 # ---------------------------------------------------------------------------------------------------------------------
 # Widget Class
 
 class DraggableGraphicsView(QGraphicsView):
+    toolModeChanged = pyqtSignal(int)
+
     def __init__(self, parent):
         QGraphicsView.__init__(self, parent)
 
         self.fPanning = False
+        self.fToolMode = TOOL_POINTER
+        self.fSpacePanning = False
 
         exts = gCarla.utils.get_supported_file_extensions()
 
@@ -54,12 +63,61 @@ class DraggableGraphicsView(QGraphicsView):
         self.setAcceptDrops(True)
         self.initSearchWidgets()
 
+    def setToolMode(self, mode):
+        self.fToolMode = mode
+        if mode == TOOL_HAND:
+            self.setCursor(QCursor(Qt.OpenHandCursor))
+            self.setDragMode(QGraphicsView.ScrollHandDrag)
+        elif mode == TOOL_SELECT:
+            self.setCursor(QCursor(Qt.CrossCursor))
+            self.setDragMode(QGraphicsView.RubberBandDrag)
+        else:
+            self.fToolMode = TOOL_POINTER
+            self.unsetCursor()
+            self.setDragMode(QGraphicsView.NoDrag)
+        self.toolModeChanged.emit(self.fToolMode)
+
     def keyPressEvent(self, event):
+        # Ignore tool hotkeys if searching
+        if hasattr(self, "fSearchEdit") and self.fSearchEdit.isVisible():
+            QGraphicsView.keyPressEvent(self, event)
+            return
+
         if (event.modifiers() & Qt.ControlModifier) and event.key() == Qt.Key_F:
             event.accept()
             self.toggleSearch()
             return
+
+        # Modal shortcuts: V = Select, H = Hand, Q/Esc = Pointer
+        if not (event.modifiers() & (Qt.ControlModifier | Qt.AltModifier)):
+            if event.key() == Qt.Key_V:
+                event.accept()
+                self.setToolMode(TOOL_SELECT)
+                return
+            elif event.key() == Qt.Key_H:
+                event.accept()
+                self.setToolMode(TOOL_HAND)
+                return
+            elif event.key() in (Qt.Key_Q, Qt.Key_Escape):
+                event.accept()
+                self.setToolMode(TOOL_POINTER)
+                return
+            elif event.key() == Qt.Key_Space and not event.isAutoRepeat():
+                event.accept()
+                self.fSpacePanning = True
+                self.setCursor(QCursor(Qt.OpenHandCursor))
+                self.setDragMode(QGraphicsView.ScrollHandDrag)
+                return
+
         QGraphicsView.keyPressEvent(self, event)
+
+    def keyReleaseEvent(self, event):
+        if event.key() == Qt.Key_Space and not event.isAutoRepeat() and getattr(self, "fSpacePanning", False):
+            event.accept()
+            self.fSpacePanning = False
+            self.setToolMode(self.fToolMode)
+            return
+        QGraphicsView.keyReleaseEvent(self, event)
 
     # -----------------------------------------------------------------------------------------------------------------
 
@@ -123,94 +181,47 @@ class DraggableGraphicsView(QGraphicsView):
                                  self.tr("Failed to load file"),
                                  gCarla.gui.host.get_last_error(), QMessageBox.Ok, QMessageBox.Ok)
 
-    # -----------------------------------------------------------------------------------------------------------------
-
     def mousePressEvent(self, event):
-        pos_point = event.pos() if hasattr(event, "pos") else event.position().toPoint()
-        item = self.itemAt(pos_point)
-        # Ignore rubberband item if hit
-        if item and hasattr(item, "type") and item.type() == 65543: # CanvasRubberbandType
-            item = None
-
-        if not item:
-            # Clicking empty canvas background clears current selection
-            if self.scene():
-                self.scene().clearSelection()
-
-        if event.button() == Qt.LeftButton and not item:
-            self.fLeftPanning = True
+        if (event.button() == Qt.MiddleButton and not (event.modifiers() & Qt.ControlModifier)) or (
+            event.button() == Qt.LeftButton and (self.fToolMode == TOOL_HAND or getattr(self, "fSpacePanning", False))
+        ):
+            self.fPanning = True
             self.setDragMode(QGraphicsView.ScrollHandDrag)
+            self.setCursor(QCursor(Qt.ClosedHandCursor))
+            timestamp = event.timestamp()
             QGraphicsView.mousePressEvent(self, event)
+            if timestamp is not None:
+                if qt_config == 5:
+                    synth_event = QMouseEvent(QEvent.MouseButtonPress,
+                                        event.localPos(), event.windowPos(), event.screenPos(),
+                                        Qt.LeftButton, Qt.LeftButton,
+                                        Qt.NoModifier,
+                                        Qt.MouseEventSynthesizedByApplication)
+                    synth_event.setTimestamp(timestamp)
+                else:
+                    synth_event = QMouseEvent(QEvent.MouseButtonPress,
+                                        event.position(), event.scenePosition(), event.globalPosition(),
+                                        Qt.LeftButton, Qt.LeftButton,
+                                        Qt.NoModifier)
+                QGraphicsView.mousePressEvent(self, synth_event)
             return
 
-        if event.button() == Qt.RightButton and not item:
-            self.fRightSelecting = False
-            self.fRightDragOrigin = event.pos() if hasattr(event, "pos") else event.position().toPoint()
-            self.fRightSceneOrigin = self.mapToScene(self.fRightDragOrigin)
-            event.accept()
+        if event.button() == Qt.LeftButton and self.fToolMode == TOOL_SELECT:
+            self.setDragMode(QGraphicsView.RubberBandDrag)
+            QGraphicsView.mousePressEvent(self, event)
             return
 
         QGraphicsView.mousePressEvent(self, event)
 
-    def mouseMoveEvent(self, event):
-        if hasattr(self, "fRightDragOrigin") and self.fRightDragOrigin is not None:
-            curr_pos = event.pos() if hasattr(event, "pos") else event.position().toPoint()
-            delta = curr_pos - self.fRightDragOrigin
-            if not getattr(self, "fRightSelecting", False) and delta.manhattanLength() >= 6:
-                self.fRightSelecting = True
-                self.setDragMode(QGraphicsView.RubberBandDrag)
-                # Initialize scene rubberband
-                sc = self.scene()
-                if sc and hasattr(sc, "m_rubberband"):
-                    sc.m_mouse_rubberband = True
-                    sc.m_rubberband_selection = True
-                    sc.m_rubberband_orig_point = self.fRightSceneOrigin
-                    sc.m_rubberband.show()
-
-            if getattr(self, "fRightSelecting", False):
-                sc = self.scene()
-                if sc and hasattr(sc, "m_rubberband"):
-                    scene_pos = self.mapToScene(curr_pos)
-                    sc.m_rubberband_last_pos = scene_pos
-                    orig_pos = sc.m_rubberband_orig_point
-                    rx = min(scene_pos.x(), orig_pos.x())
-                    ry = min(scene_pos.y(), orig_pos.y())
-                    rw = abs(scene_pos.x() - orig_pos.x())
-                    rh = abs(scene_pos.y() - orig_pos.y())
-                    sc.m_rubberband.setRect(rx, ry, rw, rh)
-                event.accept()
-                return
-
-        QGraphicsView.mouseMoveEvent(self, event)
-
     def mouseReleaseEvent(self, event):
-        if event.button() == Qt.LeftButton and getattr(self, "fLeftPanning", False):
-            self.fLeftPanning = False
-            self.setDragMode(QGraphicsView.NoDrag)
-            self.setCursor(QCursor(Qt.ArrowCursor))
-            QGraphicsView.mouseReleaseEvent(self, event)
-            return
-
-        if event.button() == Qt.RightButton:
-            was_selecting = getattr(self, "fRightSelecting", False)
-            self.fRightSelecting = False
-            self.fRightDragOrigin = None
-            self.setDragMode(QGraphicsView.NoDrag)
-            self.setCursor(QCursor(Qt.ArrowCursor))
-
-            sc = self.scene()
-            if was_selecting and sc and hasattr(sc, "handleMouseRelease"):
-                self.fDidRightDrag = True
-                sc.handleMouseRelease()
-                event.accept()
-                return
-            elif not was_selecting:
-                # Simple right click without dragging: trigger background context menu
-                self.fDidRightDrag = False
-                event.accept()
-                from patchcanvas import canvas, ACTION_BG_RIGHT_CLICK
-                canvas.callback(ACTION_BG_RIGHT_CLICK, 0, 0, "")
-                return
+        if getattr(self, "fPanning", False) and (
+            event.button() == Qt.MiddleButton or event.button() == Qt.LeftButton
+        ):
+            self.fPanning = False
+            if getattr(self, "fSpacePanning", False):
+                self.setCursor(QCursor(Qt.OpenHandCursor))
+            else:
+                self.setToolMode(self.fToolMode)
 
         QGraphicsView.mouseReleaseEvent(self, event)
 
@@ -222,34 +233,28 @@ class DraggableGraphicsView(QGraphicsView):
         # Standard: Ctrl+Scroll -> Zoom
         if event.modifiers() & Qt.ControlModifier:
             delta = event.angleDelta().y() if hasattr(event, "angleDelta") else event.delta()
-            zoom_factor = 1.15 if delta > 0 else 1.0 / 1.15
-            self.scale(zoom_factor, zoom_factor)
+            sc = self.scene()
+            if sc and hasattr(sc, "zoom_wheel"):
+                sc.zoom_wheel(delta)
+            else:
+                zoom_factor = 1.15 if delta > 0 else 1.0 / 1.15
+                self.scale(zoom_factor, zoom_factor)
             event.accept()
             return
             
         # Standard: Shift+Scroll -> Horizontal Pan
         if event.modifiers() & Qt.ShiftModifier:
             delta = event.angleDelta().y() if hasattr(event, "angleDelta") else event.delta()
-            # If the user is actually using a trackpad that sends X delta natively:
             if hasattr(event, "angleDelta") and event.angleDelta().x() != 0:
                 delta = event.angleDelta().x()
                 
             sb = self.horizontalScrollBar()
             if sb:
-                # Invert delta so scrolling down moves right, up moves left (standard)
                 sb.setValue(sb.value() - delta)
             event.accept()
             return
 
         QGraphicsView.wheelEvent(self, event)
-
-    def contextMenuEvent(self, event):
-        # If right-button drag selection was active, consume context menu so it doesn't pop up
-        if getattr(self, "fDidRightDrag", False):
-            self.fDidRightDrag = False
-            event.accept()
-            return
-        QGraphicsView.contextMenuEvent(self, event)
 
     # -----------------------------------------------------------------------------------------------------------------
     # Canvas Node Quick Search
