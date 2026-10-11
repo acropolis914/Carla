@@ -9,10 +9,26 @@ from qt_compat import qt_config
 
 if qt_config == 5:
     from PyQt5.QtCore import pyqtSlot, QT_VERSION, Qt
-    from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QFileDialog
+    from PyQt5.QtWidgets import (
+        QDialog,
+        QDialogButtonBox,
+        QFileDialog,
+        QCheckBox,
+        QSpinBox,
+        QLabel,
+        QHBoxLayout,
+    )
 elif qt_config == 6:
     from PyQt6.QtCore import pyqtSlot, QT_VERSION, Qt
-    from PyQt6.QtWidgets import QDialog, QDialogButtonBox, QFileDialog
+    from PyQt6.QtWidgets import (
+        QDialog,
+        QDialogButtonBox,
+        QFileDialog,
+        QCheckBox,
+        QSpinBox,
+        QLabel,
+        QHBoxLayout,
+    )
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Imports (Custom)
@@ -76,6 +92,9 @@ from carla_shared import (
     CARLA_DEFAULT_JSFX_PATH,
     CARLA_DEFAULT_LADSPA_PATH,
     CARLA_DEFAULT_LV2_PATH,
+    CARLA_DEFAULT_MAIN_AUTOSAVE_ENABLED,
+    CARLA_DEFAULT_MAIN_AUTOSAVE_INTERVAL,
+    CARLA_DEFAULT_MAIN_AUTOSAVE_MAX,
     CARLA_DEFAULT_MAIN_CLASSIC_SKIN,
     CARLA_DEFAULT_MAIN_CONFIRM_EXIT,
     CARLA_DEFAULT_MAIN_PRO_THEME_COLOR,
@@ -140,6 +159,9 @@ from carla_shared import (
     CARLA_KEY_EXPERIMENTAL_PLUGIN_BRIDGES,
     CARLA_KEY_EXPERIMENTAL_PREVENT_BAD_BEHAVIOUR,
     CARLA_KEY_EXPERIMENTAL_WINE_BRIDGES,
+    CARLA_KEY_MAIN_AUTOSAVE_ENABLED,
+    CARLA_KEY_MAIN_AUTOSAVE_INTERVAL,
+    CARLA_KEY_MAIN_AUTOSAVE_MAX,
     CARLA_KEY_MAIN_CLASSIC_SKIN,
     CARLA_KEY_MAIN_CONFIRM_EXIT,
     CARLA_KEY_MAIN_EXPERIMENTAL,
@@ -653,6 +675,31 @@ class CarlaSettingsW(QDialog):
 
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
 
+        # Autosave UI controls
+        self.ch_main_autosave = QCheckBox(self.tr("Enable automatic project backup (Autosave)"), self.ui.group_main_misc)
+        self.ch_main_autosave.setObjectName("ch_main_autosave")
+        self.ui.gridLayout_4.addWidget(self.ch_main_autosave, 2, 0, 1, 3)
+
+        self.layout_autosave_params = QHBoxLayout()
+        self.lbl_autosave_interval = QLabel(self.tr("Autosave interval (mins):"), self.ui.group_main_misc)
+        self.sb_autosave_interval = QSpinBox(self.ui.group_main_misc)
+        self.sb_autosave_interval.setRange(1, 120)
+        self.layout_autosave_params.addWidget(self.lbl_autosave_interval)
+        self.layout_autosave_params.addWidget(self.sb_autosave_interval)
+
+        self.lbl_autosave_max = QLabel(self.tr("Max autosaves to keep:"), self.ui.group_main_misc)
+        self.sb_autosave_max = QSpinBox(self.ui.group_main_misc)
+        self.sb_autosave_max.setRange(1, 50)
+        self.layout_autosave_params.addWidget(self.lbl_autosave_max)
+        self.layout_autosave_params.addWidget(self.sb_autosave_max)
+        self.layout_autosave_params.addStretch()
+
+        self.ui.gridLayout_4.addLayout(self.layout_autosave_params, 3, 0, 1, 3)
+        self.ch_main_autosave.toggled.connect(self.sb_autosave_interval.setEnabled)
+        self.ch_main_autosave.toggled.connect(self.sb_autosave_max.setEnabled)
+        self.ch_main_autosave.toggled.connect(self.lbl_autosave_interval.setEnabled)
+        self.ch_main_autosave.toggled.connect(self.lbl_autosave_max.setEnabled)
+
         if CARLA_OS_MAC:
             self.setWindowModality(Qt.WindowModal)
 
@@ -800,6 +847,29 @@ class CarlaSettingsW(QDialog):
                 CARLA_KEY_MAIN_CONFIRM_EXIT, CARLA_DEFAULT_MAIN_CONFIRM_EXIT, bool
             )
         )
+
+        autosave_enabled = settings.value(
+            CARLA_KEY_MAIN_AUTOSAVE_ENABLED, CARLA_DEFAULT_MAIN_AUTOSAVE_ENABLED, bool
+        )
+        self.ch_main_autosave.setChecked(autosave_enabled)
+        self.sb_autosave_interval.setValue(
+            settings.value(
+                CARLA_KEY_MAIN_AUTOSAVE_INTERVAL,
+                CARLA_DEFAULT_MAIN_AUTOSAVE_INTERVAL,
+                int,
+            )
+        )
+        self.sb_autosave_max.setValue(
+            settings.value(
+                CARLA_KEY_MAIN_AUTOSAVE_MAX,
+                CARLA_DEFAULT_MAIN_AUTOSAVE_MAX,
+                int,
+            )
+        )
+        self.sb_autosave_interval.setEnabled(autosave_enabled)
+        self.sb_autosave_max.setEnabled(autosave_enabled)
+        self.lbl_autosave_interval.setEnabled(autosave_enabled)
+        self.lbl_autosave_max.setEnabled(autosave_enabled)
 
         self.ui.cb_main_classic_skin_default.setChecked(
             settings.value(
@@ -1246,6 +1316,15 @@ class CarlaSettingsW(QDialog):
         settings.setValue(
             CARLA_KEY_MAIN_SYSTEM_ICONS, self.ui.ch_main_system_icons.isChecked()
         )
+        settings.setValue(
+            CARLA_KEY_MAIN_AUTOSAVE_ENABLED, self.ch_main_autosave.isChecked()
+        )
+        settings.setValue(
+            CARLA_KEY_MAIN_AUTOSAVE_INTERVAL, self.sb_autosave_interval.value()
+        )
+        settings.setValue(
+            CARLA_KEY_MAIN_AUTOSAVE_MAX, self.sb_autosave_max.value()
+        )
 
         # -------------------------------------------------------------------------------------------------------------
         # Canvas
@@ -1550,6 +1629,9 @@ class CarlaSettingsW(QDialog):
                 CARLA_DEFAULT_MAIN_REFRESH_INTERVAL
             )
             self.ui.ch_main_confirm_exit.setChecked(CARLA_DEFAULT_MAIN_CONFIRM_EXIT)
+            self.ch_main_autosave.setChecked(CARLA_DEFAULT_MAIN_AUTOSAVE_ENABLED)
+            self.sb_autosave_interval.setValue(CARLA_DEFAULT_MAIN_AUTOSAVE_INTERVAL)
+            self.sb_autosave_max.setValue(CARLA_DEFAULT_MAIN_AUTOSAVE_MAX)
             self.ui.cb_main_classic_skin_default(CARLA_DEFAULT_MAIN_CLASSIC_SKIN)
             self.ui.ch_main_show_logs.setChecked(CARLA_DEFAULT_MAIN_SHOW_LOGS)
 

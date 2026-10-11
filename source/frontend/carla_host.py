@@ -8,6 +8,7 @@
 
 import json
 import xml.etree.ElementTree as ET
+from datetime import datetime
 
 # ------------------------------------------------------------------------------------------------------------
 # Imports (ctypes)
@@ -36,6 +37,8 @@ from carla_canvas import (
     findStereoPartnerConnection,
     log_carla,
 )
+from project_storage import storage_manager
+from project_session import ProjectSessionManager
 
 # ------------------------------------------------------------------------------------------------------------
 # Imports (PyQt)
@@ -767,6 +770,14 @@ class HostWindow(QMainWindow):
             if projectFile:
                 self.loadProjectLater(projectFile)
 
+        # Initialize ProjectSessionManager
+        self.fSessionManager = ProjectSessionManager(self)
+        self.fSessionManager.start(
+            interval_minutes=self.fSavedSettings.get(CARLA_KEY_MAIN_AUTOSAVE_INTERVAL, CARLA_DEFAULT_MAIN_AUTOSAVE_INTERVAL),
+            max_autosaves=self.fSavedSettings.get(CARLA_KEY_MAIN_AUTOSAVE_MAX, CARLA_DEFAULT_MAIN_AUTOSAVE_MAX),
+            enabled=self.fSavedSettings.get(CARLA_KEY_MAIN_AUTOSAVE_ENABLED, CARLA_DEFAULT_MAIN_AUTOSAVE_ENABLED),
+        )
+
         # For NSM we wait for the open message
         if NSM_URL and host.nsmOK:
             host.nsm_ready(NSM_CALLBACK_INIT)
@@ -1097,7 +1108,59 @@ class HostWindow(QMainWindow):
         self.projectLoadingStarted()
         self.fIsProjectLoading = True
 
-        if not self.host.load_project(self.fProjectFilename):
+        # Check if project contains plugins prone to in-process JUCE UI thread collisions
+        force_bridged = False
+        try:
+            tree = ET.parse(self.fProjectFilename) if self.fProjectFilename.endswith(".carxp") else None
+            if tree is not None:
+                root = tree.getroot()
+                eng_settings = root.find("EngineSettings")
+                prefer_bridges = eng_settings.findtext("PreferPluginBridges") if eng_settings is not None else "false"
+                if prefer_bridges and prefer_bridges.lower() in ("false", "0"):
+                    has_juce_vst3 = False
+                    for p in root.findall("Plugin"):
+                        info = p.find("Info")
+                        if info is not None:
+                            p_type = info.findtext("Type", "")
+                            p_name = info.findtext("Name", "")
+                            p_uri = info.findtext("URI", "")
+                            if "element" in p_name.lower() or "element" in p_uri.lower() or "juce" in p_name.lower():
+                                has_juce_vst3 = True
+                                break
+                    if has_juce_vst3:
+                        ask = QMessageBox.question(
+                            self,
+                            self.tr("Plugin Bridge Recommendation"),
+                            self.tr(
+                                "This project contains plugins that may crash if loaded in-process (e.g. KV-Element / JUCE).\n\n"
+                                "Would you like to load plugins bridged in separate processes for stability?"
+                            ),
+                            QMessageBox.Yes | QMessageBox.No,
+                            QMessageBox.Yes,
+                        )
+                        if ask == QMessageBox.Yes:
+                            force_bridged = True
+        except Exception as e:
+            print("Bridge pre-check warning:", e)
+
+        actual_load_filename = self.fProjectFilename
+        tmp_cleanup_file = None
+        try:
+            actual_load_filename = storage_manager.prepare_for_backend_load(self.fProjectFilename, force_bridged=force_bridged)
+            if actual_load_filename != self.fProjectFilename:
+                tmp_cleanup_file = actual_load_filename
+        except Exception as e:
+            print("Failed to prepare project for loading:", e)
+
+        load_ok = self.host.load_project(actual_load_filename)
+
+        if tmp_cleanup_file and os.path.exists(tmp_cleanup_file):
+            try:
+                os.remove(tmp_cleanup_file)
+            except Exception:
+                pass
+
+        if not load_ok:
             self.fIsProjectLoading = False
             self.projectLoadingFinished(True)
 
@@ -1131,7 +1194,20 @@ class HostWindow(QMainWindow):
         if not self.fProjectFilename:
             return qCritical("ERROR: saving project without filename set")
 
-        if not self.host.save_project(self.fProjectFilename):
+        is_json = self.fProjectFilename.lower().endswith((".carjp", ".json"))
+        backend_save_target = self.fProjectFilename
+        tmp_backend_file = None
+
+        if is_json:
+            backend_save_target = self.fProjectFilename + "._tmp_carla_save.carxp"
+            tmp_backend_file = backend_save_target
+
+        if not self.host.save_project(backend_save_target):
+            if tmp_backend_file and os.path.exists(tmp_backend_file):
+                try:
+                    os.remove(tmp_backend_file)
+                except Exception:
+                    pass
             CustomMessageBox(
                 self,
                 QMessageBox.Critical,
@@ -1143,32 +1219,28 @@ class HostWindow(QMainWindow):
             )
             return
 
-        if self.fWithCanvas and os.path.exists(self.fProjectFilename):
+        positions = patchcanvas.saveGroupPositions() if self.fWithCanvas else []
+
+        if is_json:
             try:
-                tree = ET.parse(self.fProjectFilename)
-                root = tree.getroot()
-                if root.tag == "CARLA-PROJECT":
-                    # Remove any existing CanvasPositions
-                    for child in list(root):
-                        if child.tag == "CanvasPositions":
-                            root.remove(child)
-
-                    canvas_pos_elem = ET.SubElement(root, "CanvasPositions")
-                    positions = patchcanvas.saveGroupPositions()
-                    for pos_data in positions:
-                        p_elem = ET.SubElement(canvas_pos_elem, "Position")
-                        p_elem.set("name", str(pos_data.get("name", "")))
-                        p_elem.set("pos1x", str(int(round(pos_data.get("pos1x", 0)))))
-                        p_elem.set("pos1y", str(int(round(pos_data.get("pos1y", 0)))))
-                        p_elem.set("pos2x", str(int(round(pos_data.get("pos2x", 0)))))
-                        p_elem.set("pos2y", str(int(round(pos_data.get("pos2y", 0)))))
-                        p_elem.set("split", "1" if pos_data.get("split") else "0")
-
-                    tree.write(
-                        self.fProjectFilename, encoding="UTF-8", xml_declaration=True
-                    )
+                storage_manager.finalize_from_backend_save(self.fProjectFilename, backend_save_target, positions)
             except Exception as e:
-                print("Failed to inject CanvasPositions into project file:", e)
+                print("Failed to finalize JSON project save:", e)
+            finally:
+                if tmp_backend_file and os.path.exists(tmp_backend_file):
+                    try:
+                        os.remove(tmp_backend_file)
+                    except Exception:
+                        pass
+        elif self.fWithCanvas and os.path.exists(self.fProjectFilename):
+            try:
+                storage_manager.save_canvas_positions(self.fProjectFilename, positions)
+            except Exception as e:
+                print("Failed to save CanvasPositions into project file:", e)
+
+        # Clean manual save succeeded: prune outstanding autosaves for this project
+        if hasattr(self, "fSessionManager") and self.fSessionManager is not None:
+            self.fSessionManager.prune_all_autosaves_on_manual_save(self.fProjectFilename)
 
         self.addRecentProject(self.fProjectFilename)
 
@@ -1214,60 +1286,14 @@ class HostWindow(QMainWindow):
             return False
 
         try:
-            tree = ET.parse(filename)
-            root = tree.getroot()
-            if root.tag != "CARLA-PROJECT":
-                return False
-
-            canvas_elem = root.find("CanvasPositions")
-            data_list = []
-
-            if canvas_elem is not None:
-                for p_elem in canvas_elem.findall("Position"):
-                    data_list.append(
-                        {
-                            "name": p_elem.get("name", ""),
-                            "pos1x": float(p_elem.get("pos1x", 0)),
-                            "pos1y": float(p_elem.get("pos1y", 0)),
-                            "pos2x": float(p_elem.get("pos2x", 0)),
-                            "pos2y": float(p_elem.get("pos2y", 0)),
-                            "split": p_elem.get("split") in ("1", "true", "True"),
-                        }
-                    )
-
-            # Also check Patchbay/Positions and ExternalPatchbay/Positions from Carla native XML if present
-            if not data_list:
-                for pb_tag in ("Patchbay", "ExternalPatchbay"):
-                    pb_elem = root.find(pb_tag)
-                    if pb_elem is not None:
-                        pos_elem = pb_elem.find("Positions")
-                        if pos_elem is not None:
-                            for p_elem in pos_elem.findall("Position"):
-                                name_elem = p_elem.find("Name")
-                                name = name_elem.text if name_elem is not None else ""
-                                if name:
-                                    x1 = float(p_elem.get("x1", 0))
-                                    y1 = float(p_elem.get("y1", 0))
-                                    x2 = float(p_elem.get("x2", 0))
-                                    y2 = float(p_elem.get("y2", 0))
-                                    data_list.append(
-                                        {
-                                            "name": name,
-                                            "pos1x": x1,
-                                            "pos1y": y1,
-                                            "pos2x": x2,
-                                            "pos2y": y2,
-                                            "split": (x2 != 0 or y2 != 0),
-                                        }
-                                    )
-
+            data_list = storage_manager.load_canvas_positions(filename)
             if not data_list:
                 return False
 
             patchcanvas.restoreGroupPositions(data_list)
             return True
         except Exception as e:
-            print("Failed to load canvas positions from carxp:", e)
+            print("Failed to load canvas positions from project:", e)
             return False
 
     def loadExternalCanvasGroupPositionsIfNeeded(self, filename):
@@ -1351,6 +1377,23 @@ class HostWindow(QMainWindow):
             if ask != QMessageBox.Yes:
                 return
 
+        # Check for newer autosave recovery
+        if hasattr(self, "fSessionManager") and self.fSessionManager is not None:
+            newer_autosave = self.fSessionManager.check_newer_autosave(filename)
+            if newer_autosave:
+                mtime_str = datetime.fromtimestamp(os.path.getmtime(newer_autosave)).strftime("%Y-%m-%d %H:%M:%S")
+                rec_ask = QMessageBox.question(
+                    self,
+                    self.tr("Autosave Recovery Detected"),
+                    self.tr(
+                        f"A newer autosave exists from {mtime_str} for this project.\n\nWould you like to recover the autosaved session instead?"
+                    ),
+                    QMessageBox.Yes | QMessageBox.No,
+                    QMessageBox.Yes,
+                )
+                if rec_ask == QMessageBox.Yes:
+                    filename = newer_autosave
+
         self.pluginRemoveAll()
         self.loadProjectLater(filename)
 
@@ -1367,6 +1410,22 @@ class HostWindow(QMainWindow):
                 break
 
         if recent_file:
+            if hasattr(self, "fSessionManager") and self.fSessionManager is not None:
+                newer_autosave = self.fSessionManager.check_newer_autosave(recent_file)
+                if newer_autosave:
+                    mtime_str = datetime.fromtimestamp(os.path.getmtime(newer_autosave)).strftime("%Y-%m-%d %H:%M:%S")
+                    rec_ask = QMessageBox.question(
+                        self,
+                        self.tr("Autosave Recovery Detected"),
+                        self.tr(
+                            f"A newer autosave exists from {mtime_str} for recent project '{os.path.basename(recent_file)}'.\n\nWould you like to recover the autosaved session instead?"
+                        ),
+                        QMessageBox.Yes | QMessageBox.No,
+                        QMessageBox.Yes,
+                    )
+                    if rec_ask == QMessageBox.Yes:
+                        recent_file = newer_autosave
+
             if getattr(gCarla, "autoload_lastsave", False):
                 self.loadProjectLater(recent_file)
                 return
@@ -1418,7 +1477,7 @@ class HostWindow(QMainWindow):
     @pyqtSlot()
     def slot_fileOpen(self):
         fileFilter = self.tr(
-            "Carla Project File (*.carxp);;Carla Preset File (*.carxs)"
+            "Carla Project Files (*.carxp *.carjp);;Carla XML Project (*.carxp);;Carla JSON Project (*.carjp);;Carla Preset File (*.carxs)"
         )
         filename, ok = QFileDialog.getOpenFileName(
             self,
@@ -1427,9 +1486,25 @@ class HostWindow(QMainWindow):
             filter=fileFilter,
         )
 
-        # FIXME use ok value, test if it works as expected
         if not filename:
             return
+
+        # Check for newer autosave recovery
+        if hasattr(self, "fSessionManager") and self.fSessionManager is not None:
+            newer_autosave = self.fSessionManager.check_newer_autosave(filename)
+            if newer_autosave:
+                mtime_str = datetime.fromtimestamp(os.path.getmtime(newer_autosave)).strftime("%Y-%m-%d %H:%M:%S")
+                rec_ask = QMessageBox.question(
+                    self,
+                    self.tr("Autosave Recovery Detected"),
+                    self.tr(
+                        f"A newer autosave exists from {mtime_str} for this project.\n\nWould you like to recover the autosaved session instead?"
+                    ),
+                    QMessageBox.Yes | QMessageBox.No,
+                    QMessageBox.Yes,
+                )
+                if rec_ask == QMessageBox.Yes:
+                    filename = newer_autosave
 
         newFile = True
 
@@ -1462,7 +1537,9 @@ class HostWindow(QMainWindow):
         if self.fProjectFilename and not saveAs:
             return self.saveProjectNow()
 
-        fileFilter = self.tr("Carla Project File (*.carxp)")
+        fileFilter = self.tr(
+            "Carla XML Project (*.carxp);;Carla JSON Project (*.carjp)"
+        )
         filename, ok = QFileDialog.getSaveFileName(
             self,
             self.tr("Save Carla Project File"),
@@ -1470,11 +1547,10 @@ class HostWindow(QMainWindow):
             filter=fileFilter,
         )
 
-        # FIXME use ok value, test if it works as expected
         if not filename:
             return
 
-        if not filename.lower().endswith(".carxp"):
+        if not (filename.lower().endswith(".carxp") or filename.lower().endswith(".carjp")):
             filename += ".carxp"
 
         if self.fProjectFilename != filename:
@@ -2875,6 +2951,19 @@ class HostWindow(QMainWindow):
             ),
             CARLA_KEY_MAIN_EXPERIMENTAL: settings.value(
                 CARLA_KEY_MAIN_EXPERIMENTAL, CARLA_DEFAULT_MAIN_EXPERIMENTAL, bool
+            ),
+            CARLA_KEY_MAIN_AUTOSAVE_ENABLED: settings.value(
+                CARLA_KEY_MAIN_AUTOSAVE_ENABLED, CARLA_DEFAULT_MAIN_AUTOSAVE_ENABLED, bool
+            ),
+            CARLA_KEY_MAIN_AUTOSAVE_INTERVAL: settings.value(
+                CARLA_KEY_MAIN_AUTOSAVE_INTERVAL,
+                CARLA_DEFAULT_MAIN_AUTOSAVE_INTERVAL,
+                int,
+            ),
+            CARLA_KEY_MAIN_AUTOSAVE_MAX: settings.value(
+                CARLA_KEY_MAIN_AUTOSAVE_MAX,
+                CARLA_DEFAULT_MAIN_AUTOSAVE_MAX,
+                int,
             ),
             CARLA_KEY_CANVAS_THEME: settings.value(
                 CARLA_KEY_CANVAS_THEME, CARLA_DEFAULT_CANVAS_THEME, str

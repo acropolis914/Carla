@@ -189,6 +189,10 @@ CARLA_KEY_MAIN_SHOW_LOGS        = "Main/ShowLogs"        # bool
 CARLA_KEY_MAIN_SYSTEM_ICONS     = "Main/SystemIcons"     # bool
 CARLA_KEY_MAIN_EXPERIMENTAL     = "Main/Experimental"    # bool
 CARLA_KEY_MAIN_RECENT_PROJECTS   = "Main/RecentProjects"  # str list / json
+CARLA_KEY_MAIN_AUTOSAVE_ENABLED  = "Main/AutosaveEnabled" # bool
+CARLA_KEY_MAIN_AUTOSAVE_INTERVAL = "Main/AutosaveInterval"# int (minutes)
+CARLA_KEY_MAIN_AUTOSAVE_MAX      = "Main/AutosaveMax"     # int
+CARLA_KEY_MAIN_PROJECT_FORMAT    = "Main/ProjectFormat"   # str (xml or json)
 
 CARLA_KEY_CANVAS_THEME             = "Canvas/Theme"           # str
 CARLA_KEY_CANVAS_SIZE              = "Canvas/Size"            # str "NxN"
@@ -274,6 +278,10 @@ CARLA_DEFAULT_MAIN_CLASSIC_SKIN     = False
 CARLA_DEFAULT_MAIN_SHOW_LOGS        = bool(not CARLA_OS_WIN)
 CARLA_DEFAULT_MAIN_SYSTEM_ICONS     = False
 CARLA_DEFAULT_MAIN_EXPERIMENTAL     = False
+CARLA_DEFAULT_MAIN_AUTOSAVE_ENABLED  = True
+CARLA_DEFAULT_MAIN_AUTOSAVE_INTERVAL = 3
+CARLA_DEFAULT_MAIN_AUTOSAVE_MAX      = 5
+CARLA_DEFAULT_MAIN_PROJECT_FORMAT    = "xml"
 
 # Canvas
 CARLA_DEFAULT_CANVAS_THEME             = "Modern Dark"

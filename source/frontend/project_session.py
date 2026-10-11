@@ -1,0 +1,199 @@
+#!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2026 Filipe Coelho <falktx@falktx.com>
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+import os
+import shutil
+import time
+from datetime import datetime
+from qt_compat import QTimer
+from project_storage import storage_manager
+
+class ProjectSessionManager:
+    """
+    Manages session lifecycle:
+      - Periodic and on-demand autosaving to a dedicated project autosave directory
+      - Max autosave rotation
+      - Automatic pruning of autosaves on clean manual save
+      - Fast on-move autosave position sync
+      - Crash / recovery detection on startup or project open
+    """
+    def __init__(self, host_window):
+        self.host_window = host_window
+        self.enabled = True
+        self.interval_minutes = 3
+        self.max_autosaves = 5
+
+        # Background timer
+        self._timer = QTimer()
+        self._timer.timeout.connect(self._on_timer_tick)
+
+        # Debounce timer for updating node positions on move
+        self._pos_debounce_timer = QTimer()
+        self._pos_debounce_timer.setSingleShot(True)
+        self._pos_debounce_timer.setInterval(400)
+        self._pos_debounce_timer.timeout.connect(self._sync_latest_autosave_positions)
+
+        self._last_autosave_file = None
+
+    def start(self, interval_minutes=None, max_autosaves=None, enabled=True):
+        self.enabled = enabled
+        if interval_minutes is not None:
+            self.interval_minutes = max(1, int(interval_minutes))
+        if max_autosaves is not None:
+            self.max_autosaves = max(1, int(max_autosaves))
+
+        self._timer.stop()
+        if self.enabled:
+            self._timer.start(self.interval_minutes * 60 * 1000)
+
+    def stop(self):
+        self._timer.stop()
+        self._pos_debounce_timer.stop()
+
+    def get_autosave_dir(self, project_filepath):
+        if not project_filepath:
+            return None
+        project_dir = os.path.dirname(os.path.abspath(project_filepath))
+        base_name = os.path.splitext(os.path.basename(project_filepath))[0]
+        autosave_dir = os.path.join(project_dir, ".autosaves", base_name)
+        return autosave_dir
+
+    def get_available_autosaves(self, project_filepath):
+        autosave_dir = self.get_autosave_dir(project_filepath)
+        if not autosave_dir or not os.path.exists(autosave_dir):
+            return []
+
+        files = []
+        for f in os.listdir(autosave_dir):
+            if f.endswith((".carxp", ".carjp", ".json")):
+                full_path = os.path.join(autosave_dir, f)
+                files.append(full_path)
+
+        files.sort(key=lambda p: os.path.getmtime(p), reverse=True)
+        return files
+
+    def check_newer_autosave(self, project_filepath):
+        """Returns the most recent autosave if it is strictly newer than the main file"""
+        if not project_filepath or not os.path.exists(project_filepath):
+            return None
+        autosaves = self.get_available_autosaves(project_filepath)
+        if not autosaves:
+            return None
+
+        latest_autosave = autosaves[0]
+        try:
+            main_mtime = os.path.getmtime(project_filepath)
+            auto_mtime = os.path.getmtime(latest_autosave)
+            if auto_mtime > main_mtime + 2.0:
+                return latest_autosave
+        except Exception:
+            pass
+        return None
+
+    def create_autosave(self, is_scheduled=True):
+        if not self.enabled:
+            return None
+        if not self.host_window.fProjectFilename:
+            return None
+        if not self.host_window.host.is_engine_running():
+            return None
+
+        # If scheduled periodic autosave, only save if changes exist
+        if is_scheduled and not getattr(self.host_window, "fHasUnsavedChanges", False):
+            return None
+
+        project_filepath = self.host_window.fProjectFilename
+        autosave_dir = self.get_autosave_dir(project_filepath)
+        if not autosave_dir:
+            return None
+
+        try:
+            os.makedirs(autosave_dir, exist_ok=True)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            ext = os.path.splitext(project_filepath)[1] or ".carxp"
+            base_name = os.path.splitext(os.path.basename(project_filepath))[0]
+            autosave_file = os.path.join(autosave_dir, f"{base_name}_auto_{timestamp}{ext}")
+
+            # 1. Ask Carla backend engine to save state (via temporary XML if destination is .carjp)
+            is_json = autosave_file.lower().endswith((".carjp", ".json"))
+            backend_target = autosave_file if not is_json else (autosave_file + "._tmp.carxp")
+
+            if not self.host_window.host.save_project(backend_target):
+                return None
+
+            # 2. Finalize full project with current canvas positions
+            from patchcanvas import patchcanvas
+            positions = patchcanvas.saveGroupPositions() if getattr(self.host_window, "fWithCanvas", False) else []
+
+            if is_json:
+                storage_manager.finalize_from_backend_save(autosave_file, backend_target, positions)
+                if os.path.exists(backend_target):
+                    try:
+                        os.remove(backend_target)
+                    except Exception:
+                        pass
+            else:
+                storage_manager.save_canvas_positions(autosave_file, positions)
+
+            self._last_autosave_file = autosave_file
+
+            # 3. Prune old autosaves to enforce max retention
+            self._prune_autosaves(autosave_dir)
+            return autosave_file
+        except Exception as e:
+            print("ProjectSessionManager::create_autosave failed:", e)
+            return None
+
+    def queue_node_position_sync(self):
+        """Called whenever a patchbay node moves to keep the latest autosave updated"""
+        if not self.enabled or not self.host_window.fProjectFilename:
+            return
+        self._pos_debounce_timer.start()
+
+    def _sync_latest_autosave_positions(self):
+        autosaves = self.get_available_autosaves(self.host_window.fProjectFilename)
+        target_file = self._last_autosave_file if (self._last_autosave_file and os.path.exists(self._last_autosave_file)) else (autosaves[0] if autosaves else None)
+
+        if target_file and os.path.exists(target_file):
+            try:
+                from patchcanvas import patchcanvas
+                positions = patchcanvas.saveGroupPositions()
+                storage_manager.save_canvas_positions(target_file, positions)
+            except Exception as e:
+                print("ProjectSessionManager::_sync_latest_autosave_positions failed:", e)
+        else:
+            # If no autosave exists yet, create one now
+            self.create_autosave(is_scheduled=False)
+
+    def prune_all_autosaves_on_manual_save(self, project_filepath):
+        """Called on clean manual Save to delete all old autosaves"""
+        autosave_dir = self.get_autosave_dir(project_filepath)
+        if not autosave_dir or not os.path.exists(autosave_dir):
+            return
+        try:
+            shutil.rmtree(autosave_dir, ignore_errors=True)
+            self._last_autosave_file = None
+        except Exception as e:
+            print("ProjectSessionManager::prune_all_autosaves failed:", e)
+
+    def _prune_autosaves(self, autosave_dir):
+        if not os.path.exists(autosave_dir):
+            return
+        autosaves = []
+        for f in os.listdir(autosave_dir):
+            if f.endswith((".carxp", ".carjp", ".json")):
+                p = os.path.join(autosave_dir, f)
+                autosaves.append(p)
+
+        if len(autosaves) > self.max_autosaves:
+            autosaves.sort(key=lambda p: os.path.getmtime(p))
+            to_remove = autosaves[: len(autosaves) - self.max_autosaves]
+            for p in to_remove:
+                try:
+                    os.remove(p)
+                except Exception:
+                    pass
+
+    def _on_timer_tick(self):
+        self.create_autosave(is_scheduled=True)
