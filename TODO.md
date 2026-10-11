@@ -12,3 +12,5 @@
 - [ ] feat: Floating sidebar quick settings overlay for patchbay with integrated search bar
 - [ ] feat: Search selection persists selected items until user interaction
 - [ ] feat: Minified rack mode exposing only essential controls
+- [ ] feat: Offer to save dirty edits on exit (Yes, No, Cancel) with visual save status indicator (dirty/saved)
+- [ ] feat: Status indicator for last autosave timestamp and countdown timer to next autosave
