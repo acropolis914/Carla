@@ -1,8 +1,8 @@
 # Carla Development Tasks
 
 ## Bugs
-- [ ] Fix: Rack item remove button invokes confirmation delete dialog
-- [ ] Fix: Node right-click preserves multi-selection so Align Horizontally / Vertically works
+- [x] Fix: Rack item remove button invokes confirmation delete dialog
+- [x] Fix: Node right-click preserves multi-selection so Align Horizontally / Vertically works
 
 ## Features
 - [ ] feat: Improved logging with Python Rich console, loglevels, log tags, and CLI flags (`--log-whitelist`, `--log-blacklist`)
