@@ -128,7 +128,10 @@ class DraggableGraphicsView(QGraphicsView):
     def mousePressEvent(self, event):
         pos_point = event.pos() if hasattr(event, "pos") else event.position().toPoint()
         item = self.itemAt(pos_point)
-        
+        # Ignore rubberband item if hit
+        if item and hasattr(item, "type") and item.type() == 65543: # CanvasRubberbandType
+            item = None
+
         if not item:
             # Clicking empty canvas background clears current selection
             if self.scene():
@@ -197,11 +200,13 @@ class DraggableGraphicsView(QGraphicsView):
 
             sc = self.scene()
             if was_selecting and sc and hasattr(sc, "handleMouseRelease"):
+                self.fDidRightDrag = True
                 sc.handleMouseRelease()
                 event.accept()
                 return
             elif not was_selecting:
                 # Simple right click without dragging: trigger background context menu
+                self.fDidRightDrag = False
                 event.accept()
                 from patchcanvas import canvas, ACTION_BG_RIGHT_CLICK
                 canvas.callback(ACTION_BG_RIGHT_CLICK, 0, 0, "")
@@ -237,6 +242,14 @@ class DraggableGraphicsView(QGraphicsView):
             return
 
         QGraphicsView.wheelEvent(self, event)
+
+    def contextMenuEvent(self, event):
+        # If right-button drag selection was active, consume context menu so it doesn't pop up
+        if getattr(self, "fDidRightDrag", False):
+            self.fDidRightDrag = False
+            event.accept()
+            return
+        QGraphicsView.contextMenuEvent(self, event)
 
     # -----------------------------------------------------------------------------------------------------------------
     # Canvas Node Quick Search
