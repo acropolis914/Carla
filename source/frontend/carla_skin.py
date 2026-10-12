@@ -2837,7 +2837,11 @@ class PluginSlot_Minimal(PluginSlot_Default):
             slice_layout.addWidget(self._meter_slice_container)
 
             # Add to layout_top right before button controls
-            self.ui.layout_top.addWidget(self._modern_slice_container)
+            btn_idx = self.ui.layout_top.indexOf(self.ui.w_buttons)
+            if btn_idx >= 0:
+                self.ui.layout_top.insertWidget(btn_idx, self._modern_slice_container)
+            else:
+                self.ui.layout_top.addWidget(self._modern_slice_container)
 
         if modernized:
             # Hide old horizontal layouts
@@ -2984,7 +2988,7 @@ class PluginSlot_Minimal(PluginSlot_Default):
             if self.scroll_area is not None:
                 self.scroll_area.setVisible(True)
                 self.syncSliderValues()
-            self.b_slider_mode.setText("KNOBS")
+            self.b_slider_mode.setText("\uf1de")
             self.b_slider_mode.setToolTip("Switch to Knobs view")
         else:
             if self.scroll_area is not None:
@@ -2998,7 +3002,7 @@ class PluginSlot_Minimal(PluginSlot_Default):
             ))
             if self.spacer_knobs is not None and pref_policy is not None:
                 self.spacer_knobs.changeSize(6 if has_right_knobs else 0, 1 if has_right_knobs else 0, pref_policy, pref_policy)
-            self.b_slider_mode.setText("SLIDERS")
+            self.b_slider_mode.setText("\uf0c9")
             self.b_slider_mode.setToolTip("Switch to Sliders view")
 
         self.updateRackItemSize()
