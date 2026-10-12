@@ -6,14 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Overview
 
-Recent developments enhance the Carla modular audio host across three primary pillars:
-1. **Patchbay Navigation & Modal Workflow**: Introduced Photoshop/Blender-style modal tools (`V`, `H`, `Space`, `Q`), directional marquee box selection, non-overlapping repelling node arrangements, and minimap zoom synchronization.
-2. **Session Lifecycle & Autosave Safety**: Implemented rotating autosaves, recursive `.autosaves/` directory prevention, automatic project dirty tracking on node moves/connections, and save-on-exit prompts (`Save`, `Discard`, `Cancel`) with live countdown timers.
-3. **Structured Rich Logging & Tag Filtering**: Added Python `rich` console formatting with categorical tag coloring (`APP`, `ENGINE`, `PATCHBAY`, `PLUGIN`, `SESSION`, `CANVAS`, `BACKEND`), low-level C++ backend `stderr` interception, CLI flags, and in-UI tag checklist filters.
+**Clara** (*Carla Improved*) is an enhanced fork of the Carla modular audio host focused on modern UX, performance, and workflow ergonomics:
+
+| Domain | Key Highlights |
+|---|---|
+| **Patchbay Workflow** | Photoshop/Blender-inspired modal navigation (`V`, `H`, `Space`, `Q`), infinite canvas, directional marquee box selection, snap-to-grid alignment with non-overlapping repel, and smooth 4x MSAA rendering. |
+| **Visuals & Cabling** | Catppuccin-themed node categories, role badges (`SOURCE`, `SINK`, `HW`), dynamic source-to-destination cable gradients, multiple cable routing styles (Bezier, Straight, Stepped), and instant color synchronization. |
+| **Unified Controls** | Compact floating icon toolbars with standardized Nerd Font glyphs, batch power/bypass toggles, quick color swatch popups, and bidirectional focus synchronization between the rack and patchbay. |
+| **Session Safety** | Automatic dirty tracking, rotating autosave engine (`.autosaves/`), countdown timers, and safe-exit verification prompts. |
+| **Diagnostics** | Rich console logging with categorical color tags, C++ backend `stderr` capture, and in-UI live filter checklists. |
 
 ---
 
 ## [Unreleased] - 2026-10-13
+
+
 
 ### 2026-10-13 01:12:00
 - **feat(patchbay)**: Sensible Nerd Font icon glyphs and quick color preset swatch popup menu
@@ -21,7 +28,11 @@ Recent developments enhance the Carla modular audio host across three primary pi
   - Added quick popup color swatch menu for node tinting with Catppuccin presets (`Default Dark`, `Crimson`, `Synth`, `Audio`, `MIDI`, `FX`, `Dynamics`, `Teal`, `Sky`, `Flamingo`), Reset, and Custom Color Picker dialog.
   - Exported `QIcon` in `qt_compat.py` across PyQt5 and PyQt6 environments.
 
-### 2026-10-13 01:02:00
+### 2026-10-13 01:18:00
+- **feat(patchbay)**: Align toolbar icons with exact user Nerd Font FontAwesome codepoints
+  - Updated all Left Palette and Top Context Toolbar buttons to the user's exact specification (`nf-fa-mouse-pointer`, `nf-fa-object-group`, `nf-fa-th`, `nf-fa-magnet`, `nf-fa-thumb-tack`, `nf-fa-check-square-o`, `nf-fa-toggle-on`, `nf-fa-cubes`, `nf-fa-pencil`, `nf-fa-trash`, `nf-fa-chain-broken`, `nf-fa-arrows-h/v`, etc.).
+
+### 2026-10-13 01:12:00
 - **feat(patchbay)**: Transform top context toolbar into compact icon-only palette with expanded actions
   - Replaced bulky text labels with sleek 26x26 square icon buttons and rich contextual tooltips.
   - Added Power (Active/Mute) and Bypass (Dry/Wet) toggles for plugins.

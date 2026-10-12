@@ -530,14 +530,14 @@ class CanvasToolBarOverlay(QFrame):
             font.setPointSize(11)
 
         # Icons: Sensible Nerd Font glyphs or clean unicode symbols
-        self.icon_pointer = "\uf245" if font_family else "↖"   # Pointer (mouse-pointer)
-        self.icon_select  = "\U000f0a59" if font_family else "⛶"   # Marquee (select-drag)
-        self.icon_hand    = "\uf256" if font_family else "✋"   # Hand / Pan (hand-paper-o)
-        self.icon_fit     = "\uf066" if font_family else "⛶"   # Zoom fit (arrows-alt)
-        self.icon_zoomin  = "\uf00e" if font_family else "+"   # Zoom in (search-plus)
-        self.icon_zoomout = "\uf010" if font_family else "-"   # Zoom out (search-minus)
-        self.icon_grid    = "\U000f02ca" if font_family else "#"   # Grid icon
-        self.icon_snap    = "\uf076" if font_family else "🧲"  # Magnet / Snap icon (magnet)
+        self.icon_pointer = "\uf245" if font_family else "↖"   # nf-fa-mouse-pointer
+        self.icon_select  = "\uf247" if font_family else "⛶"   # nf-fa-object-group
+        self.icon_hand    = "\uf256" if font_family else "✋"   # nf-fa-hand-paper-o
+        self.icon_zoomin  = "\uf00e" if font_family else "+"   # nf-fa-search-plus
+        self.icon_zoomout = "\uf010" if font_family else "-"   # nf-fa-search-minus
+        self.icon_fit     = "\uf0b2" if font_family else "⛶"   # nf-fa-arrows-alt
+        self.icon_grid    = "\uf00a" if font_family else "#"   # nf-fa-th
+        self.icon_snap    = "\uf076" if font_family else "🧲"  # nf-fa-magnet
 
         # Mode Selection Buttons (Checkable, Mutually Exclusive)
         self.btnPointer = QPushButton(self.icon_pointer, self)
@@ -821,30 +821,30 @@ class CanvasContextToolBarOverlay(QFrame):
         count = len(selected)
 
         nf = bool(self.font_family)
-        # Sensible Nerd Font glyphs with clean unicode fallbacks
-        icon_arr     = "\uf0e8" if nf else "🔀"  # sitemap / auto-arrange
-        icon_repel   = "\uf07e" if nf else "↔"   # arrows-h / repel
-        icon_aside   = "\uf1c0" if nf else "⏭"   # database/inbox / park aside
-        icon_sel     = "\U000f0484" if nf else "⛶"  # select-all
-        icon_desel   = "\uf00d" if nf else "✕"  # times / close
-        icon_inv     = "\uf0ec" if nf else "⇄"  # exchange / invert
-        icon_edit    = "\uf1de" if nf else "⚙"  # sliders / edit parameters
-        icon_ui      = "\uf108" if nf else "🖥"  # desktop / custom gui
-        icon_rack    = "\uf1b2" if nf else "📦"  # cubes / rack
-        icon_clone   = "\uf24d" if nf else "⧉"  # clone / duplicate
-        icon_ren     = "\uf044" if nf else "✎"  # pencil / rename
-        icon_del     = "\uf014" if nf else "🗑"  # trash / remove
-        icon_cut     = "\uf0c4" if nf else "✂"  # scissors / disconnect
-        icon_split   = "\uf0db" if nf else "⚯"  # columns / split-join
-        icon_color   = "\uf1fc" if nf else "🎨" # paint-brush / tint color
-        icon_prop    = "\uf05a" if nf else "ℹ"  # info-circle / properties
-        icon_power   = "\uf011" if nf else "⏻"  # power-off / active
-        icon_bypass  = "\uf074" if nf else "⮀"  # random/exchange / bypass
-        icon_ports   = "\uf070" if nf else ""  # eye-slash / hide ports
-        icon_al_h    = "\U000f0037" if nf else "═"  # align horizontal
-        icon_al_v    = "\U000f0038" if nf else "║"  # align vertical
-        icon_dist_h  = "\U000f11e3" if nf else "⬌"  # distribute horizontal
-        icon_dist_v  = "\U000f11e4" if nf else "⬍"  # distribute vertical
+        # Nerd Font glyphs (FontAwesome / Material exact match)
+        icon_arr     = "\uf0e8" if nf else "🔀"  # nf-fa-sitemap
+        icon_repel   = "\uf0b2" if nf else "↔"   # nf-fa-arrows-alt
+        icon_aside   = "\uf08d" if nf else "⏭"   # nf-fa-thumb-tack
+        icon_sel     = "\uf046" if nf else "⛶"  # nf-fa-check-square-o
+        icon_desel   = "\uf00d" if nf else "✕"  # nf-fa-times
+        icon_inv     = "\uf0ec" if nf else "⇄"  # nf-fa-exchange
+        icon_edit    = "\uf1de" if nf else "⚙"  # nf-fa-sliders
+        icon_ui      = "\uf108" if nf else "🖥"  # nf-fa-desktop
+        icon_rack    = "\uf1b3" if nf else "📦"  # nf-fa-cubes
+        icon_clone   = "\uf24d" if nf else "⧉"  # nf-fa-clone
+        icon_ren     = "\uf040" if nf else "✎"  # nf-fa-pencil
+        icon_del     = "\uf1f8" if nf else "🗑"  # nf-fa-trash
+        icon_cut     = "\uf127" if nf else "✂"  # nf-fa-chain-broken
+        icon_split   = "\uf0db" if nf else "⚯"  # nf-fa-columns
+        icon_color   = "\uf1fc" if nf else "🎨" # nf-fa-paint-brush
+        icon_prop    = "\uf05a" if nf else "ℹ"  # nf-fa-info-circle
+        icon_power   = "\uf011" if nf else "⏻"  # nf-fa-power-off
+        icon_bypass  = "\uf205" if nf else "⮀"  # nf-fa-toggle-on
+        icon_ports   = "\uf070" if nf else ""  # nf-fa-eye-slash
+        icon_al_h    = "\uf037" if nf else "═"  # nf-fa-align-center
+        icon_al_v    = "\uf037" if nf else "║"  # nf-fa-align-center
+        icon_dist_h  = "\uf07e" if nf else "⬌"  # nf-fa-arrows-h
+        icon_dist_v  = "\uf07d" if nf else "⬍"  # nf-fa-arrows-v
 
         if count == 0:
             # Global Canvas Actions
