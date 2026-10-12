@@ -1,6 +1,6 @@
 # ![Carla Logo](resources/48x48/carla.png) Clara (Carla Improved Fork)
 
-![Screenshot](./resources/screenshots/image.png)
+![Screenshot](resources/screenshots/image.png?raw=true&v=2)
 
 **Clara** (working title for *Carla Improved*) is an enhanced, modernized fork of [Carla](https://github.com/falkTX/Carla) by [falkTX](https://github.com/falkTX). It focuses on modern modular patchbay UX/UI improvements, robust session safety, fluid navigation, and deep workflow optimizations for audio producers, sound designers, and live performers.
 
