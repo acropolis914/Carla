@@ -21,6 +21,7 @@ from patchcanvas import patchcanvas
 from qt_compat import (
     QApplication,
     QColor,
+    QColorDialog,
     QCursor,
     QEvent,
     QFont,
@@ -728,9 +729,9 @@ class CanvasContextToolBarOverlay(QFrame):
         self.layout.setSpacing(3)
 
         self.font_family = getBestNerdFont()
-        self.font = QFont(self.font_family, 11) if self.font_family else QFont()
+        self.font = QFont(self.font_family, 12) if self.font_family else QFont()
         if not self.font_family:
-            self.font.setPointSize(9)
+            self.font.setPointSize(10)
 
         self.setStyleSheet("""
             QFrame#canvas_context_toolbar_overlay {
@@ -743,23 +744,25 @@ class CanvasContextToolBarOverlay(QFrame):
                 border: none;
                 border-radius: 4px;
                 color: #cdd6f4;
-                font-size: 11px;
-                font-weight: 500;
                 text-align: center;
-                padding: 4px 7px;
+                padding: 0px;
                 margin: 0px;
             }
             QPushButton:hover {
-                background-color: rgba(69, 71, 90, 0.8);
+                background-color: rgba(69, 71, 90, 0.85);
                 color: #ffffff;
             }
             QPushButton:pressed {
                 background-color: #89b4fa;
                 color: #11111b;
             }
+            QPushButton:checked {
+                background-color: rgba(137, 180, 250, 0.35);
+                color: #89b4fa;
+            }
             QLabel {
                 color: #a6adc8;
-                font-size: 10px;
+                font-size: 11px;
                 font-weight: bold;
                 padding: 0 4px;
             }
@@ -784,18 +787,24 @@ class CanvasContextToolBarOverlay(QFrame):
         self.layout.addWidget(line)
         self._items.append(line)
 
-    def addButton(self, text, tooltip, callback):
-        btn = QPushButton(text, self)
+    def addButton(self, icon, tooltip, callback, checkable=False, checked=False):
+        btn = QPushButton(icon, self)
         btn.setToolTip(tooltip)
         btn.setFont(self.font)
+        btn.setFixedSize(26, 26)
+        if checkable:
+            btn.setCheckable(True)
+            btn.setChecked(checked)
         btn.clicked.connect(callback)
         self.layout.addWidget(btn)
         self._items.append(btn)
         return btn
 
-    def addLabel(self, text):
+    def addLabel(self, text, tooltip=""):
         lbl = QLabel(text, self)
         lbl.setFont(self.font)
+        if tooltip:
+            lbl.setToolTip(tooltip)
         self.layout.addWidget(lbl)
         self._items.append(lbl)
         return lbl
@@ -807,38 +816,51 @@ class CanvasContextToolBarOverlay(QFrame):
         count = len(selected)
 
         nf = bool(self.font_family)
-        icon_arr   = "\uf0e8 " if nf else ""
-        icon_repel = "\uf065 " if nf else ""
-        icon_aside = "\uf061 " if nf else ""
-        icon_sel   = "\U000f0485 " if nf else ""
-        icon_edit  = "\U000f03eb " if nf else ""
-        icon_ui    = "\U000f0254 " if nf else ""
-        icon_rack  = "\uf1b2 " if nf else ""
-        icon_clone = "\U000f0190 " if nf else ""
-        icon_del   = "\uf1f8 " if nf else ""
-        icon_align = "\uf036 " if nf else ""
-        icon_ren   = "\U000f0641 " if nf else ""
-        icon_cut   = "\uf127 " if nf else ""
-        icon_split = "\U000f0975 " if nf else ""
+        # Nerd Font glyphs or clean unicode symbols
+        icon_arr     = "\uf0e8" if nf else "🔀"  # Splay / Auto-arrange
+        icon_repel   = "\uf065" if nf else "↔"   # Expand / Repel
+        icon_aside   = "\uf061" if nf else "⏭"   # Move aside / Park
+        icon_sel     = "\U000f0485" if nf else "⛶"  # Select all
+        icon_desel   = "\U000f0156" if nf else "✕"  # Deselect / Close circle
+        icon_inv     = "\U000f05d0" if nf else "⇄"  # Invert selection
+        icon_edit    = "\U000f03eb" if nf else "⚙"  # Parameters / Edit
+        icon_ui      = "\U000f0254" if nf else "🖥"  # Custom GUI
+        icon_rack    = "\uf1b2" if nf else "📦"  # Rack / Cubes
+        icon_clone   = "\U000f0190" if nf else "⧉"  # Clone / Duplicate
+        icon_ren     = "\U000f0641" if nf else "✎"  # Rename
+        icon_del     = "\uf1f8" if nf else "🗑"  # Remove / Trash
+        icon_cut     = "\uf127" if nf else "✂"  # Unlink / Cut wires
+        icon_split   = "\U000f0975" if nf else "⚯"  # Split / Join
+        icon_color   = "\U000f0766" if nf else "🎨" # Palette / Color
+        icon_prop    = "\U000f02fc" if nf else "ℹ"  # Info / Properties
+        icon_power   = "\U000f0425" if nf else "⏻"  # Power / Active
+        icon_bypass  = "\U000f05cc" if nf else "⮀"  # Bypass / Dry-wet
+        icon_ports   = "\U000f0699" if nf else "👁"  # Hide/Show unconnected ports
+        icon_al_h    = "\U000f0037" if nf else "═"  # Align horizontal
+        icon_al_v    = "\U000f0038" if nf else "║"  # Align vertical
+        icon_dist_h  = "\U000f0034" if nf else "⬌"  # Distribute horizontal
+        icon_dist_v  = "\U000f0035" if nf else "⬍"  # Distribute vertical
 
         if count == 0:
             # Global Canvas Actions
-            self.addLabel("CANVAS")
+            self.addLabel("CANVAS", "Patchbay Canvas Actions")
             self.addSeparator()
 
-            self.addButton(f"{icon_arr}Auto-Arrange", "Auto-arrange All Nodes in Signal Flow Order", self._slot_arrange)
-            self.addButton(f"{icon_repel}Repel Overlaps", "Push Apart Overlapping Nodes", self._slot_repel_all)
-            self.addButton(f"{icon_aside}Park Disconnected", "Move Disconnected Nodes Aside", self._slot_move_aside_all)
+            self.addButton(icon_arr, "Auto-arrange All Nodes (Signal Flow)", self._slot_arrange)
+            self.addButton(icon_repel, "Auto-Repel All Overlapping Nodes", self._slot_repel_all)
+            self.addButton(icon_aside, "Park Disconnected Nodes Aside", self._slot_move_aside_all)
             self.addSeparator()
-            self.addButton(f"{icon_sel}Select All", "Select All Nodes (Ctrl+A)", patchcanvas.selectAllNodes)
+            self.addButton(icon_sel, "Select All Nodes (Ctrl+A)", patchcanvas.selectAllNodes)
 
         elif count == 1:
             # Single Node Context Actions
             node = selected[0]
             name = getattr(node, "m_group_name", "Node")
-            short_name = (name[:16] + "…") if len(name) > 17 else name
+            short_name = (name[:14] + "…") if len(name) > 15 else name
 
-            self.addLabel(short_name.upper())
+            badge = getattr(node, "m_type_badge", "")
+            badge_txt = f"[{badge}] " if badge else ""
+            self.addLabel(f"{badge_txt}{short_name.upper()}", f"{name} ({badge or 'Node'})")
             self.addSeparator()
 
             plugin_id = getattr(node, "m_plugin_id", -1)
@@ -847,44 +869,66 @@ class CanvasContextToolBarOverlay(QFrame):
             has_ui = getattr(node, "m_plugin_ui", False)
 
             if has_plugin:
-                self.addButton(f"{icon_edit}Edit", "Edit Plugin Parameters", lambda: patchcanvas.canvas.callback(patchcanvas.ACTION_PLUGIN_EDIT, plugin_id, 0, ""))
-                if has_ui:
-                    self.addButton(f"{icon_ui}UI", "Show Custom Plugin UI", lambda: patchcanvas.canvas.callback(patchcanvas.ACTION_PLUGIN_SHOW_UI, plugin_id, 0, ""))
-                self.addButton(f"{icon_rack}Rack", "Jump to Plugin in Rack Tab", lambda: self._slot_jump_rack(plugin_id))
-                self.addButton(f"{icon_clone}Clone", "Duplicate / Clone Plugin", lambda: patchcanvas.canvas.callback(patchcanvas.ACTION_PLUGIN_CLONE, plugin_id, 0, ""))
-                self.addButton(f"{icon_ren}Rename", "Rename Plugin", lambda: patchcanvas.canvas.callback(patchcanvas.ACTION_PLUGIN_RENAME, plugin_id, 0, ""))
-                self.addButton(f"{icon_del}Remove", "Delete / Remove Plugin", lambda: patchcanvas.canvas.callback(patchcanvas.ACTION_PLUGIN_REMOVE, plugin_id, 0, ""))
+                # Power & Bypass
+                self.addButton(icon_power, "Power / Toggle Active", lambda: self._slot_toggle_power(node))
+                self.addButton(icon_bypass, "Toggle Bypass (Dry/Wet)", lambda: self._slot_toggle_bypass(node))
                 self.addSeparator()
+
+                # Parameter Edit & Custom UI
+                self.addButton(icon_edit, "Edit Parameters", lambda: patchcanvas.canvas.callback(patchcanvas.ACTION_PLUGIN_EDIT, plugin_id, 0, ""))
+                if has_ui:
+                    self.addButton(icon_ui, "Show Custom Plugin GUI", lambda: patchcanvas.canvas.callback(patchcanvas.ACTION_PLUGIN_SHOW_UI, plugin_id, 0, ""))
+                self.addButton(icon_rack, "Jump to Plugin in Rack Tab", lambda: self._slot_jump_rack(plugin_id))
+                self.addButton(icon_clone, "Duplicate / Clone Plugin", lambda: patchcanvas.canvas.callback(patchcanvas.ACTION_PLUGIN_CLONE, plugin_id, 0, ""))
+                self.addButton(icon_ren, "Rename Plugin...", lambda: patchcanvas.canvas.callback(patchcanvas.ACTION_PLUGIN_RENAME, plugin_id, 0, ""))
+                self.addButton(icon_del, "Remove Plugin", lambda: patchcanvas.canvas.callback(patchcanvas.ACTION_PLUGIN_REMOVE, plugin_id, 0, ""))
+                self.addSeparator()
+
+            # Appearance & Box Setup
+            self.addButton(icon_color, "Choose Node Tint Color...", lambda: self._slot_choose_color(node))
+            if hasattr(node, "showPropertiesDialog"):
+                self.addButton(icon_prop, "Node Properties & Badges...", node.showPropertiesDialog)
+
+            # Hide/Show unconnected ports
+            hiding_ports = getattr(node, "m_hide_unconnected_ports", False)
+            self.addButton(icon_ports, "Toggle Hide Unconnected Ports", lambda: self._slot_toggle_hide_ports(node), checkable=True, checked=hiding_ports)
 
             # Split/Join if available
             split_label = "Join" if getattr(node, "m_split", False) else "Split"
-            self.addButton(f"{icon_split}{split_label}", f"{split_label} Input/Output Box Groups", lambda: self._slot_split_join(node))
+            self.addButton(icon_split, f"{split_label} Input/Output Box Groups", lambda: self._slot_split_join(node))
 
             # Disconnect all cables from this node
-            self.addButton(f"{icon_cut}Disconnect All", "Disconnect All Cables Connected to This Node", lambda: self._slot_disconnect_node(node))
+            self.addButton(icon_cut, "Disconnect All Cables from This Node", lambda: self._slot_disconnect_node(node))
 
             self.addSeparator()
-            self.addButton(f"{icon_arr}Arrange Connected", "Align and arrange graph connected to this node", lambda: patchcanvas.arrangeConnected(node, "both"))
-            self.addButton(f"{icon_aside}Park Aside", "Move this node aside", lambda: patchcanvas.moveAsideNonConnectedNodes(node))
-            self.addButton("Deselect", "Deselect (Esc)", patchcanvas.deselectAllNodes)
+            self.addButton(icon_arr, "Auto-Arrange Subgraph Connected to This Node", lambda: patchcanvas.arrangeConnected(node, "both"))
+            self.addButton(icon_aside, "Park This Node Aside", lambda: patchcanvas.moveAsideNonConnectedNodes(node))
+            self.addButton(icon_desel, "Deselect (Esc)", patchcanvas.deselectAllNodes)
 
         else:
             # Multiple Nodes Batch Actions
-            self.addLabel(f"{count} SELECTED")
+            self.addLabel(f"{count} NODES", f"{count} Selected Nodes")
             self.addSeparator()
 
-            self.addButton(f"{icon_align}Align Horiz", "Align Selected Nodes Horizontally", lambda: patchcanvas.alignSelected("horizontal"))
-            self.addButton(f"{icon_align}Align Vert", "Align Selected Nodes Vertically", lambda: patchcanvas.alignSelected("vertical"))
-            self.addButton("Distribute H", "Distribute Horizontally with equal spacing", lambda: patchcanvas.alignSelected("distribute_h"))
-            self.addButton("Distribute V", "Distribute Vertically with equal spacing", lambda: patchcanvas.alignSelected("distribute_v"))
+            # Batch Align & Distribute
+            self.addButton(icon_al_h, "Align Selected Nodes Horizontally", lambda: patchcanvas.alignSelected("horizontal"))
+            self.addButton(icon_al_v, "Align Selected Nodes Vertically", lambda: patchcanvas.alignSelected("vertical"))
+            self.addButton(icon_dist_h, "Distribute Horizontally with Equal Spacing", lambda: patchcanvas.alignSelected("distribute_h"))
+            self.addButton(icon_dist_v, "Distribute Vertically with Equal Spacing", lambda: patchcanvas.alignSelected("distribute_v"))
+            self.addButton(icon_repel, "Auto-Repel Selected Overlaps", lambda: patchcanvas.repelNodes(selected))
             self.addSeparator()
-            self.addButton(f"{icon_repel}Repel", "Auto-Repel Selected Nodes", lambda: patchcanvas.repelNodes(selected))
-            self.addButton(f"{icon_cut}Disconnect Selected", "Disconnect all cables between or attached to selected nodes", lambda: self._slot_disconnect_selected(selected))
-            self.addSeparator()
-            self.addButton("Invert", "Invert Selection", patchcanvas.invertNodeSelection)
-            self.addButton("Deselect", "Clear Selection (Esc)", patchcanvas.deselectAllNodes)
 
-        # Calculate exact pixel width
+            # Batch Operations
+            self.addButton(icon_color, "Batch Color Selected Nodes...", lambda: self._slot_batch_color(selected))
+            self.addButton(icon_power, "Batch Toggle Power (Active)", lambda: self._slot_batch_power(selected))
+            self.addButton(icon_bypass, "Batch Toggle Bypass", lambda: self._slot_batch_bypass(selected))
+            self.addButton(icon_cut, "Disconnect All Cables on Selected Nodes", lambda: self._slot_disconnect_selected(selected))
+            self.addSeparator()
+
+            self.addButton(icon_inv, "Invert Selection", patchcanvas.invertNodeSelection)
+            self.addButton(icon_desel, "Clear Selection (Esc)", patchcanvas.deselectAllNodes)
+
+        # Calculate exact pixel width for pure icon controls
         total_w = self.layout.contentsMargins().left() + self.layout.contentsMargins().right()
         spacing = self.layout.spacing()
         for w in self._items:
@@ -892,10 +936,13 @@ class CanvasContextToolBarOverlay(QFrame):
             if isinstance(w, QFrame) and not isinstance(w, (QLabel, QPushButton)):
                 w.setFixedSize(1, 18)
                 total_w += 1 + spacing
+            elif isinstance(w, QPushButton):
+                w.setFixedSize(26, 26)
+                total_w += 26 + spacing
             else:
                 txt = getattr(w, "text", lambda: "")()
                 fm = w.fontMetrics()
-                w_item = fm.boundingRect(txt).width() + 18
+                w_item = fm.boundingRect(txt).width() + 14
                 w.setFixedSize(w_item, 24)
                 total_w += w_item + spacing
 
@@ -905,6 +952,94 @@ class CanvasContextToolBarOverlay(QFrame):
         self.setFixedSize(max(60, total_w), 32)
         if not getattr(self, "_userMoved", False):
             self.reposition()
+
+    def _slot_toggle_power(self, node):
+        try:
+            from carla_backend import PARAMETER_ACTIVE
+            from carla_shared import gCarla
+            pid = getattr(node, "m_plugin_id", -1)
+            if pid < 0:
+                return
+            pitem = gCarla.gui.getPluginItem(pid) if hasattr(gCarla.gui, "getPluginItem") else None
+            pwidget = pitem.getWidget() if (pitem and hasattr(pitem, "getWidget")) else None
+            if pwidget is not None and hasattr(pwidget, "fIsActive"):
+                cur = bool(pwidget.fIsActive)
+            elif hasattr(gCarla.gui, "host") and hasattr(gCarla.gui.host, "get_internal_parameter_value"):
+                cur = bool(gCarla.gui.host.get_internal_parameter_value(pid, PARAMETER_ACTIVE) >= 0.5)
+            else:
+                cur = True
+            new_state = not cur
+            gCarla.gui.host.set_active(pid, new_state)
+            if pwidget is not None:
+                pwidget.setActive(new_state, sendCallback=True, sendHost=False)
+            node.update()
+            scene = self.graphicsView.scene()
+            if scene:
+                scene.update()
+        except Exception as e:
+            print("Error toggling node power:", e)
+
+    def _slot_toggle_bypass(self, node):
+        try:
+            from carla_backend import PARAMETER_DRYWET
+            from carla_shared import gCarla
+            pid = getattr(node, "m_plugin_id", -1)
+            if pid < 0:
+                return
+            pitem = gCarla.gui.getPluginItem(pid) if hasattr(gCarla.gui, "getPluginItem") else None
+            pwidget = pitem.getWidget() if (pitem and hasattr(pitem, "getWidget")) else None
+            cur_val = gCarla.gui.host.get_internal_parameter_value(pid, PARAMETER_DRYWET)
+            new_val = 1.0 if cur_val == 0.0 else 0.0
+            gCarla.gui.host.set_drywet(pid, new_val)
+            if pwidget is not None:
+                pwidget.setParameterValue(PARAMETER_DRYWET, new_val, True)
+                if hasattr(pwidget, "_update_bypass_state"):
+                    pwidget._update_bypass_state(bool(new_val == 0.0))
+            node.update()
+            scene = self.graphicsView.scene()
+            if scene:
+                scene.update()
+        except Exception as e:
+            print("Error toggling node bypass:", e)
+
+    def _slot_choose_color(self, node):
+        cur_color = getattr(node, "m_custom_color", None) or QColor("#1e1e2e")
+        color = QColorDialog.getColor(cur_color, self, "Choose Node Tint Color")
+        if color.isValid():
+            hex_str = color.name()
+            if hasattr(node, "setCustomColor"):
+                node.setCustomColor(hex_str)
+            pid = getattr(node, "m_plugin_id", -1)
+            if 0 <= pid <= patchcanvas.MAX_PLUGIN_ID_ALLOWED:
+                patchcanvas.canvas.callback(patchcanvas.ACTION_PLUGIN_COLOR, pid, 0, hex_str)
+
+    def _slot_batch_color(self, nodes):
+        color = QColorDialog.getColor(QColor("#1e1e2e"), self, "Batch Color Selected Nodes")
+        if color.isValid():
+            hex_str = color.name()
+            for n in nodes:
+                if hasattr(n, "setCustomColor"):
+                    n.setCustomColor(hex_str)
+                pid = getattr(n, "m_plugin_id", -1)
+                if 0 <= pid <= patchcanvas.MAX_PLUGIN_ID_ALLOWED:
+                    patchcanvas.canvas.callback(patchcanvas.ACTION_PLUGIN_COLOR, pid, 0, hex_str)
+
+    def _slot_batch_power(self, nodes):
+        for n in nodes:
+            self._slot_toggle_power(n)
+
+    def _slot_batch_bypass(self, nodes):
+        for n in nodes:
+            self._slot_toggle_bypass(n)
+
+    def _slot_toggle_hide_ports(self, node):
+        node.m_hide_unconnected_ports = not getattr(node, "m_hide_unconnected_ports", False)
+        if hasattr(node, "updatePositions"):
+            node.updatePositions()
+        scene = self.graphicsView.scene()
+        if scene:
+            scene.update()
+        self.updateSelection()
 
     def _slot_split_join(self, node):
         group_id = getattr(node, "m_group_id", -1)

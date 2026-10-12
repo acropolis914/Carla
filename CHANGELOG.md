@@ -15,6 +15,14 @@ Recent developments enhance the Carla modular audio host across three primary pi
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 01:02:00
+- **feat(patchbay)**: Transform top context toolbar into compact icon-only palette with expanded actions
+  - Replaced bulky text labels with sleek 26x26 square icon buttons and rich contextual tooltips.
+  - Added Power (Active/Mute) and Bypass (Dry/Wet) toggles for plugins.
+  - Added color picker dialogs (`QColorDialog`) for single and batch node tinting.
+  - Added node properties dialog shortcut and toggle for hiding unconnected ports.
+  - Added batch power, batch bypass, and alignment/repulsion actions for multi-node selection.
+
 ### 2026-10-13 00:54:00
 - **fix(patchbay)**: Resolve empty top context toolbar on selection update
   - Fixed Qt layout collapsing to minimal empty margins during dynamic clear/rebuild by explicitly sizing items via font metrics and unparenting discarded widgets.
