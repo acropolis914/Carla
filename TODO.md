@@ -45,8 +45,8 @@
 ---
 
 ## ⚙️ Settings & System UI
-- [ ] `[Diff: 1]` feat: Settings dialog sidebar enhancement — use a more readable, cohesive font
-- [ ] `[Diff: 2]` feat: Settings dialog polish & cleanup — reorganize sections, improve layout, use system icons instead of custom/outdated ones, and remove obsolete options deprecated by recent updates
+- [x] `[Diff: 1]` feat: Settings dialog sidebar enhancement — use a more readable, cohesive font
+- [x] `[Diff: 2]` feat: Settings dialog polish & cleanup — reorganize sections, improve layout, use modern compact pills instead of outdated bitmap icons, and add live reactive tweakables
 - [ ] `[Diff: 1]` feat: Minimize to system tray
 
 ---

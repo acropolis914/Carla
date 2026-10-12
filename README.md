@@ -56,6 +56,16 @@
   * Real-time interception and formatting of low-level C++ backend `stderr` log streams.
   * Interactive UI log filter checklist and CLI filter flags (`--log-whitelist`, `--log-blacklist`).
 
+### ⚙️ Live Settings & UI Customization
+* **Instant Reactive Adjustments (No Restarts Required)**:
+  * Real-time sliders for rack slot vertical margin/spacing (0–16 px) and slot internal padding (2–16 px).
+  * Dynamic slot minimum width floor adjustments (180–450 px).
+  * Instant toggle for bottom status bar visibility.
+* **Modernized Settings Dialog**:
+  * Clean, borderless sidebar navigation with refined sans-serif typography and 32px compact tab pills.
+  * Removal of legacy low-resolution bitmap icons across all dialog headers and sidebar tabs.
+  * Sleek Catppuccin Mochaccino dialog aesthetics with subtle surface cards and rounded interactive controls.
+
 ---
 
 ## 🗺️ Roadmap & In Progress
@@ -65,7 +75,7 @@ Track full development details and priorities in [TODO.md](TODO.md):
 - [ ] Mini DSP load history graph with side labels and hover tooltips.
 - [ ] In-project session notes with rich Qt Markdown (`QTextDocument`) preview.
 - [ ] Infinite canvas with migration recentering for legacy projects.
-- [ ] Settings dialog redesign featuring system icon integration and cohesive typography.
+- [x] Settings dialog redesign featuring live reactive tweakables and cohesive typography.
 - [ ] Standardized `argparse` CLI integration with `rich` help output.
 
 ---
