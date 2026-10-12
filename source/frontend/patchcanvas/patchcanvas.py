@@ -1864,6 +1864,30 @@ def getSelectedNodes():
     return selected
 
 
+def selectAllNodes():
+    if not canvas.scene:
+        return
+    for group in canvas.group_list:
+        for w in group.widgets:
+            if w is not None:
+                w.setSelected(True)
+
+
+def deselectAllNodes():
+    if canvas.scene:
+        canvas.scene.clearSelection()
+
+
+def invertNodeSelection():
+    if not canvas.scene:
+        return
+    for group in canvas.group_list:
+        for w in group.widgets:
+            if w is not None:
+                w.setSelected(not w.isSelected())
+
+
+
 def alignSelected(mode="horizontal"):
     """
     mode: 'horizontal' (align Y centers), 'vertical' (align X centers),

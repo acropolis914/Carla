@@ -2215,7 +2215,31 @@ class HostWindow(QMainWindow):
 
         menu.addMenu(arrangeMenu)
 
+        selectMenu = QMenu("Select", menu)
+        act_sel_all = selectMenu.addAction("Select All\tCtrl+A")
+        act_sel_all.triggered.connect(self._selectAllCanvasNodes)
+        act_desel = selectMenu.addAction("Deselect\tCtrl+D")
+        act_desel.triggered.connect(self._deselectAllCanvasNodes)
+        act_inv = selectMenu.addAction("Invert Selection\tCtrl+Shift+I")
+        act_inv.triggered.connect(self._invertCanvasSelection)
+        menu.addMenu(selectMenu)
+
         menu.exec_(QCursor.pos())
+
+    def _selectAllCanvasNodes(self):
+        from patchcanvas.patchcanvas import selectAllNodes
+        selectAllNodes()
+        self.updateMiniCanvasLater()
+
+    def _deselectAllCanvasNodes(self):
+        from patchcanvas.patchcanvas import deselectAllNodes
+        deselectAllNodes()
+        self.updateMiniCanvasLater()
+
+    def _invertCanvasSelection(self):
+        from patchcanvas.patchcanvas import invertNodeSelection
+        invertNodeSelection()
+        self.updateMiniCanvasLater()
 
     def _alignSelectedCanvasNodes(self, mode):
         from patchcanvas.patchcanvas import alignSelected

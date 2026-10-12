@@ -15,7 +15,13 @@ Recent developments enhance the Carla modular audio host across three primary pi
 
 ## [Unreleased] - 2026-10-12
 
-### 2026-10-12 16:30:00 (`PENDING_COMMIT`)
+### 2026-10-12 16:40:00 (`PENDING_COMMIT`)
+- **feat(canvas)**: Add patchbay selection shortcuts and context menu actions
+  - Implemented `Ctrl+A` (Select All), `Ctrl+D` (Deselect All), and `Ctrl+Shift+I` (Invert Selection) in `DraggableGraphicsView`.
+  - Added dedicated "Select" submenu in the patchbay background context menu exposing all selection actions.
+  - Implemented `selectAllNodes()`, `deselectAllNodes()`, and `invertNodeSelection()` helpers in `patchcanvas.py`.
+
+### 2026-10-12 16:30:00 (`ff593af74`)
 - **fix(canvas)**: Prevent blurry text rendering on patchbay ports and box titles
   - Rounded text coordinates to integer pixel positions in `canvasport.py` and `canvasbox.py` to eliminate subpixel coordinate blur under OpenGL viewports.
   - Temporarily disabled geometric polygon antialiasing right before invoking `painter.drawText()`, allowing font rasterization to utilize sharp native hinting instead of multisample edge blurring.

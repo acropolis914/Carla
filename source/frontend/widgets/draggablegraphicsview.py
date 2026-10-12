@@ -85,10 +85,32 @@ class DraggableGraphicsView(QGraphicsView):
             QGraphicsView.keyPressEvent(self, event)
             return
 
-        if (event.modifiers() & Qt.ControlModifier) and event.key() == Qt.Key_F:
-            event.accept()
-            self.toggleSearch()
-            return
+        if (event.modifiers() & Qt.ControlModifier):
+            if (event.modifiers() & Qt.ShiftModifier) and event.key() == Qt.Key_I:
+                event.accept()
+                import patchcanvas.patchcanvas as pc
+                pc.invertNodeSelection()
+                if hasattr(gCarla.gui, "updateMiniCanvasLater"):
+                    gCarla.gui.updateMiniCanvasLater()
+                return
+            elif event.key() == Qt.Key_A:
+                event.accept()
+                import patchcanvas.patchcanvas as pc
+                pc.selectAllNodes()
+                if hasattr(gCarla.gui, "updateMiniCanvasLater"):
+                    gCarla.gui.updateMiniCanvasLater()
+                return
+            elif event.key() == Qt.Key_D:
+                event.accept()
+                import patchcanvas.patchcanvas as pc
+                pc.deselectAllNodes()
+                if hasattr(gCarla.gui, "updateMiniCanvasLater"):
+                    gCarla.gui.updateMiniCanvasLater()
+                return
+            elif event.key() == Qt.Key_F:
+                event.accept()
+                self.toggleSearch()
+                return
 
         # Modal shortcuts: V = Select, H = Hand, Q/Esc = Pointer
         if not (event.modifiers() & (Qt.ControlModifier | Qt.AltModifier)):
