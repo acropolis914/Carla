@@ -12,6 +12,8 @@ from qt_compat import (
     QDialog,
     QDialogButtonBox,
     QFileDialog,
+    QIcon,
+    QSize,
     QCheckBox,
     QComboBox,
     QSlider,

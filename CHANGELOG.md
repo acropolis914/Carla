@@ -20,6 +20,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 04:10:00
+- **fix(settings)**: Import `QSize` and `QIcon` from `qt_compat`
+  - Fixed `NameError: name 'QSize' is not defined` when initializing settings sidebar icon size.
+
 ### 2026-10-13 04:09:00
 - **fix(settings)**: Import `gCarla` and modernize settings tab layout and headers
   - Fixed `NameError: name 'gCarla' is not defined` during live updates (`_on_live_rack_spacing`, `_on_live_rack_padding`, `_on_live_rack_min_width`, `_on_live_statusbar_toggle`).
