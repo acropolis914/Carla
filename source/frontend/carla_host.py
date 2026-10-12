@@ -257,7 +257,7 @@ class HostWindow(QMainWindow):
 
         self.fCanvasWidth = 0
         self.fCanvasHeight = 0
-        self.fMiniCanvasUpdateTimeout = 0
+        self.fMiniCanvasUpdateTimeout = 150
 
         self.fWithCanvas = withCanvas
 

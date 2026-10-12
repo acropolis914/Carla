@@ -15,7 +15,7 @@ Recent developments enhance the Carla modular audio host across three primary pi
 
 ## [Unreleased] - 2026-10-12
 
-### 2026-10-12 16:47:00 (`PENDING_COMMIT`)
+### 2026-10-12 16:47:00 (`79af505ae`)
 - **fix(canvas)**: Preserve active selection on canvas right-click and add Select menu to node context menu
   - Prevented right-click mouse press and release on canvas background from deselecting highlighted items in `scene.py`.
   - Added "Select" submenu (`Select All`, `Deselect`, `Invert Selection`) to both canvas background and node item context menus in `canvasbox.py`.
@@ -35,6 +35,14 @@ Recent developments enhance the Carla modular audio host across three primary pi
 - **fix(canvas)**: Enable 4x MSAA hardware multisampling for OpenGL canvas viewport
   - Configured `QSurfaceFormat` with 4 samples on `QOpenGLWidget` when canvas antialiasing is enabled, resolving jagged lines and missing antialiasing when using OpenGL hardware acceleration.
   - Exported `QSurfaceFormat` in `qt_compat.py`.
+
+### 2026-10-12 16:53:00
+- **perf(canvas)**: Cache gradient `QPen` in `CanvasBezierLine`/`CanvasLine` — built once in `updateLineGradient()`, reused in `paint()`. Eliminates hundreds of `QPen`/`QLinearGradient`/`QColor` heap allocs per mousemove tick with many connections.
+- **perf(canvas)**: Early-return in `updateLineSelected()` when selection state is unchanged — skips full gradient recompute on every drag event when nothing visually changed.
+- **perf(canvas)**: Guard cosmetic double-draw (glow overlay) in line `paint()` behind `options.eyecandy` — saves one full path/line draw per connection per frame when eye candy is off.
+- **perf(canvas)**: Cache theme attribute lookups in `CanvasPort` — resolved once at port creation and on `updateTheme()` instead of dict-instantiation + `getattr` f-string lookups on every `paint()` frame for every visible port.
+- **perf(canvas)**: Throttle minimap update timeout from 0ms to 150ms — stops full scene re-renders for the thumbnail on every event.
+- **perf(canvas)**: Reduce `CanvasBoxShadow` blur radius from 20 → 8 — cuts per-box offscreen composite buffer cost.
 
 ### 2026-10-12 15:59:00 (`3f3c6711c`)
 - **perf(canvas)**: Remove `repaintLines()` cascade from `CanvasBoxShadow.draw()` — eliminates per-frame `updateLinePos()` call on every box shadow repaint, which was cascading into O(connections) work every render tick when dragging nodes with many connections loaded.

@@ -69,6 +69,9 @@ class CanvasLine(QGraphicsLineItem):
                  (p1 is not None and p1.isSelected()) or 
                  (p2 is not None and p2.isSelected()))
 
+        if yesno == self.m_lineSelected:
+            return  # No state change — skip expensive gradient + QPen recompute
+
         self.m_lineSelected = yesno
         self.updateLineGradient()
 
@@ -131,7 +134,15 @@ class CanvasLine(QGraphicsLineItem):
         elif port_type2 == PORT_TYPE_PARAMETER:
             port_gradient.setColorAt(pos2, get_color(canvas.theme.line_parameter_sel if self.m_lineSelected else canvas.theme.line_parameter))
 
-        self.setPen(QPen(port_gradient, 2.00001, Qt.SolidLine, Qt.RoundCap))
+        # Cache built pen so paint() never allocates per frame
+        self._cached_pen = QPen(port_gradient, 2.00001, Qt.SolidLine, Qt.RoundCap)
+        self.setPen(self._cached_pen)
+
+        # Pre-build cosmetic overlay pen — stored for reuse
+        cosm = QPen(self._cached_pen)
+        cosm.setCosmetic(True)
+        cosm.setWidthF(1.00001)
+        self._cached_cosm_pen = cosm
 
     def paint(self, painter, option, widget):
         painter.save()
@@ -141,20 +152,21 @@ class CanvasLine(QGraphicsLineItem):
         scale = canvas.scene.getScaleFactor() if hasattr(canvas.scene, "getScaleFactor") else 1.0
         min_width = max(2.0, 2.0 / scale)
         if pen.widthF() < min_width:
+            # Only alloc a new QPen when we genuinely need a wider stroke
             pen = QPen(pen)
             pen.setWidthF(min_width)
             painter.setPen(pen)
 
-        cosm_pen = QPen(pen)
-        cosm_pen.setCosmetic(True)
-        cosm_pen.setWidthF(1.00001)
-
         QGraphicsLineItem.paint(self, painter, option, widget)
 
-        painter.setPen(cosm_pen)
-        painter.setBrush(Qt.NoBrush)
-        painter.setOpacity(0.2)
-        painter.drawLine(self.line())
+        # Cosmetic glow overlay — skip entirely when eye candy is off
+        if options.eyecandy:
+            cosm_pen = getattr(self, "_cached_cosm_pen", None)
+            if cosm_pen is not None:
+                painter.setPen(cosm_pen)
+                painter.setBrush(Qt.NoBrush)
+                painter.setOpacity(0.2)
+                painter.drawLine(self.line())
 
         painter.restore()
 

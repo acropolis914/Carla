@@ -27,7 +27,7 @@ class CanvasBoxShadow(QGraphicsDropShadowEffect):
 
         self.m_fakeParent = None
 
-        self.setBlurRadius(20)
+        self.setBlurRadius(8)
         self.setColor(canvas.theme.box_shadow)
         self.setOffset(0, 0)
 

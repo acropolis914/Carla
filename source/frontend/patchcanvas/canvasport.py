@@ -96,6 +96,17 @@ class CanvasPort(QGraphicsItem):
             canvas.theme.port_font_size, canvas.theme.port_font_state
         )
 
+        # Cached theme references — resolved once, not on every paint() call
+        self._theme_prefix = None
+        self._theme_poly_color = None
+        self._theme_poly_color_sel = None
+        self._theme_poly_pen = None
+        self._theme_poly_pen_sel = None
+        self._theme_text_pen = None
+        self._theme_text_pen_sel = None
+        self._theme_conn_pen = None
+        self._rebuildThemeCache()
+
         self.m_line_mov = None
         self.m_hover_item = None
         self.m_mouse_down = False
@@ -387,11 +398,33 @@ class CanvasPort(QGraphicsItem):
         for conn_id, _, _ in conn_list:
             canvas.callback(ACTION_PORTS_DISCONNECT, conn_id, 0, "")
 
+    def _rebuildThemeCache(self):
+        """Resolve theme attributes once — called at creation and on theme change."""
+        _prefix_map = {
+            PORT_TYPE_AUDIO_JACK: "port_audio_jack",
+            PORT_TYPE_MIDI_JACK:  "port_midi_jack",
+            PORT_TYPE_MIDI_ALSA:  "port_midi_alsa",
+            PORT_TYPE_PARAMETER:  "port_parameter",
+        }
+        prefix = _prefix_map.get(self.m_port_type)
+        if not prefix:
+            return
+        theme = canvas.theme
+        self._theme_prefix        = prefix
+        self._theme_poly_color     = getattr(theme, f"{prefix}_bg")
+        self._theme_poly_color_sel = getattr(theme, f"{prefix}_bg_sel")
+        self._theme_poly_pen       = getattr(theme, f"{prefix}_pen")
+        self._theme_poly_pen_sel   = getattr(theme, f"{prefix}_pen_sel")
+        self._theme_text_pen       = getattr(theme, f"{prefix}_text")
+        self._theme_text_pen_sel   = getattr(theme, f"{prefix}_text_sel")
+        self._theme_conn_pen       = QPen(getattr(theme, f"{prefix}_pen_sel"))
+
     def updateTheme(self):
         self.m_port_height = canvas.theme.port_height
         self.m_port_font = getSystemFont(
             canvas.theme.port_font_size, canvas.theme.port_font_state
         )
+        self._rebuildThemeCache()
         self.update()
 
     def boundingRect(self):
@@ -403,41 +436,21 @@ class CanvasPort(QGraphicsItem):
             QPainter.Antialiasing, bool(options.antialiasing == ANTIALIASING_FULL or canvas.theme.port_mode == Theme.THEME_PORT_SOCKET)
         )
 
-        # --- Refactored dynamic theme mapping (removes giant block of if/elifs) ---
-        type_prefix_map = {
-            PORT_TYPE_AUDIO_JACK: "port_audio_jack",
-            PORT_TYPE_MIDI_JACK: "port_midi_jack",
-            PORT_TYPE_MIDI_ALSA: "port_midi_alsa",
-            PORT_TYPE_PARAMETER: "port_parameter",
-        }
-
-        prefix = type_prefix_map.get(self.m_port_type)
-        if not prefix:
+        # Use pre-resolved theme attrs — no dict/getattr on every frame
+        if self._theme_prefix is None:
             qCritical(
                 f"PatchCanvas::CanvasPort.paint() - invalid port type '{port_type2str(self.m_port_type)}'"
             )
             painter.restore()
             return
 
-        theme = canvas.theme
         selected = self.isSelected()
+        poly_color = self._theme_poly_color_sel if selected else self._theme_poly_color
+        poly_pen   = self._theme_poly_pen_sel   if selected else self._theme_poly_pen
+        text_pen   = self._theme_text_pen_sel   if selected else self._theme_text_pen
+        conn_pen   = self._theme_conn_pen
 
-        poly_color = (
-            getattr(theme, f"{prefix}_bg_sel")
-            if selected
-            else getattr(theme, f"{prefix}_bg")
-        )
-        poly_pen = (
-            getattr(theme, f"{prefix}_pen_sel")
-            if selected
-            else getattr(theme, f"{prefix}_pen")
-        )
-        text_pen = (
-            getattr(theme, f"{prefix}_text_sel")
-            if selected
-            else getattr(theme, f"{prefix}_text")
-        )
-        conn_pen = QPen(getattr(theme, f"{prefix}_pen_sel"))
+        theme = canvas.theme
 
         poly_pen = QPen(poly_pen)
         poly_pen.setWidthF(poly_pen.widthF() + 0.00001)
