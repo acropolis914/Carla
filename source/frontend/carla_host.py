@@ -895,10 +895,17 @@ class HostWindow(QMainWindow):
         self.host.set_custom_data(
             pluginId, CUSTOM_DATA_TYPE_PROPERTY, "CarlaColor", colorStr
         )
-        self.fHasUnsavedChanges = True
         pitem.recreateWidget(newColor=color)
         if self.ui.listWidget is not None:
             self.ui.listWidget.doItemsLayout()
+
+        # Sync color to patchbay canvas node
+        if self.fWithCanvas:
+            for item in patchcanvas.canvas.group_list:
+                if getattr(item, "m_plugin_id", -1) == pluginId:
+                    hex_col = f"#{color[0]:02x}{color[1]:02x}{color[2]:02x}" if color != (255, 255, 255) else None
+                    item.setCustomColor(hex_col, notify=False)
+                    break
 
     def changePluginSkin(self, pluginId, skin):
         pitem = self.getPluginItem(pluginId)

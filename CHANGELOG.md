@@ -36,7 +36,12 @@ Recent developments enhance the Carla modular audio host across three primary pi
   - Configured `QSurfaceFormat` with 4 samples on `QOpenGLWidget` when canvas antialiasing is enabled, resolving jagged lines and missing antialiasing when using OpenGL hardware acceleration.
   - Exported `QSurfaceFormat` in `qt_compat.py`.
 
-### 2026-10-12 17:53:00
+### 2026-10-12 17:57:00
+- **fix(rack)**: Fix bidirectional color synchronization between patchbay nodes and rack items
+  - Connected `ACTION_PLUGIN_COLOR` to `changePluginColor()` to update rack skins with the selected Catppuccin color and persist to `CarlaColor`.
+  - Added reverse synchronization from `changePluginColor()` to `CanvasBox.setCustomColor()` on patchbay nodes.
+
+### 2026-10-12 17:53:00 (`4dab86fee`)
 - **feat(rack)**: Synchronize node colors between patchbay and rack items
   - Added `ACTION_PLUGIN_COLOR` to patchcanvas callback architecture and notified when `setCustomColor()` is changed on a plugin node.
   - Linked `canvasCallback` to propagate the custom tint color to the corresponding `PluginListItem` in the rack.

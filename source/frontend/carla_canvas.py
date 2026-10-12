@@ -20,6 +20,7 @@ from patchcanvas import patchcanvas
 # ------------------------------------------------------------------------------------------------------------
 from qt_compat import (
     QApplication,
+    QColor,
     QCursor,
     QEvent,
     QFont,
@@ -1423,15 +1424,10 @@ def canvasCallback(action, value1, value2, valueStr):
     elif action == getattr(patchcanvas, "ACTION_PLUGIN_COLOR", 17):
         pluginId = value1
         colorStr = valueStr
-        pitem = gCarla.gui.getPluginItem(pluginId)
-        if pitem is not None:
-            # Sync color to rack item options and trigger redraw
-            pitem.fOptions["custom_color"] = colorStr if colorStr else None
-            pwidget = pitem.getWidget()
-            if pwidget is not None:
-                if hasattr(pwidget, "ui") and hasattr(pwidget.ui, "group_plugin"):
-                    border_style = f"border-top: 3px solid {colorStr};" if colorStr else ""
-                    pwidget.setStyleSheet(border_style)
-                pwidget.update()
-            if hasattr(gCarla.gui, "markProjectModified"):
-                gCarla.gui.markProjectModified()
+        if colorStr:
+            c = QColor(colorStr)
+            color_tuple = (c.red(), c.green(), c.blue())
+            color_data_str = f"{c.red()};{c.green()};{c.blue()}"
+            gCarla.gui.changePluginColor(pluginId, color_tuple, color_data_str)
+        else:
+            gCarla.gui.changePluginColor(pluginId, (255, 255, 255), "255;255;255")
