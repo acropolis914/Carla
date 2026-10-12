@@ -1561,7 +1561,9 @@ class CanvasBox(QGraphicsObject):
             rem = self.p_width - drawn_name_size
             textPos = QPointF(rem / 2, canvas.theme.box_text_ypos)
 
-        painter.drawText(textPos, elided_name)
+        painter.setRenderHint(QPainter.Antialiasing, False)
+        painter.drawText(QPointF(round(textPos.x()), round(textPos.y())), elided_name)
+        painter.setRenderHint(QPainter.Antialiasing, True)
 
         painter.restore()
 

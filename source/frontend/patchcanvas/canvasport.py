@@ -485,7 +485,8 @@ class CanvasPort(QGraphicsItem):
 
             painter.setPen(text_pen)
             painter.setFont(self.m_port_font)
-            painter.drawText(text_pos, self.m_port_name)
+            painter.setRenderHint(QPainter.Antialiasing, False)
+            painter.drawText(QPointF(round(text_pos.x()), round(text_pos.y())), self.m_port_name)
             painter.restore()
             return
 
@@ -564,7 +565,9 @@ class CanvasPort(QGraphicsItem):
 
         painter.setPen(text_pen)
         painter.setFont(self.m_port_font)
-        painter.drawText(text_pos, self.m_port_name)
+        painter.setRenderHint(QPainter.Antialiasing, False)
+        painter.drawText(QPointF(round(text_pos.x()), round(text_pos.y())), self.m_port_name)
+        painter.setRenderHint(QPainter.Antialiasing, True)
 
         if canvas.theme.idx == Theme.THEME_OOSTUDIO and canvas.theme.port_bg_pixmap:
             conn_pen.setCosmetic(True)

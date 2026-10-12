@@ -15,6 +15,11 @@ Recent developments enhance the Carla modular audio host across three primary pi
 
 ## [Unreleased] - 2026-10-12
 
+### 2026-10-12 16:30:00 (`PENDING_COMMIT`)
+- **fix(canvas)**: Prevent blurry text rendering on patchbay ports and box titles
+  - Rounded text coordinates to integer pixel positions in `canvasport.py` and `canvasbox.py` to eliminate subpixel coordinate blur under OpenGL viewports.
+  - Temporarily disabled geometric polygon antialiasing right before invoking `painter.drawText()`, allowing font rasterization to utilize sharp native hinting instead of multisample edge blurring.
+
 ### 2026-10-12 16:23:15 (`2357653cc`)
 - **fix(canvas)**: Enable 4x MSAA hardware multisampling for OpenGL canvas viewport
   - Configured `QSurfaceFormat` with 4 samples on `QOpenGLWidget` when canvas antialiasing is enabled, resolving jagged lines and missing antialiasing when using OpenGL hardware acceleration.
