@@ -20,6 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 03:10:00
+- **fix(project)**: Ensure audio engine backend initialization before startup autoload
+  - Fixed startup project autoloading for `.carjp` and recent files by initializing backend engine state before dispatching project load requests.
+  - Added structured `SESSION` logger diagnostics for project file conversion and backend loading.
+
 ### 2026-10-13 02:49:00
 - **feat(rack)**: Modernized rack item slice with 2x2 mini LED circle grid and vertical peak meters
   - Implemented compact vertical slice housing audio/MIDI activity LEDs arranged in a 2x2 grid (8px rounded circles).
