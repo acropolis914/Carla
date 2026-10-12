@@ -1307,6 +1307,8 @@ def canvasCallback(action, value1, value2, valueStr):
         host.patchbay_set_group_pos(
             gCarla.gui.fExternalPatchbay, groupId, x1, y1, x2, y2
         )
+        if hasattr(gCarla.gui, "markProjectModified"):
+            gCarla.gui.markProjectModified()
         if hasattr(gCarla.gui, "fSessionManager") and gCarla.gui.fSessionManager:
             gCarla.gui.fSessionManager.queue_node_position_sync()
         gCarla.gui.updateMiniCanvasLater()
@@ -1331,6 +1333,8 @@ def canvasCallback(action, value1, value2, valueStr):
             print("Connection failed:", err)
         else:
             log_carla("carla_canvas: Connection request succeeded")
+            if hasattr(gCarla.gui, "markProjectModified"):
+                gCarla.gui.markProjectModified()
             if QApplication.keyboardModifiers() & Qt.AltModifier:
                 autoConnectStereoPair(gOut, pOut, gIn, pIn)
 
@@ -1351,6 +1355,8 @@ def canvasCallback(action, value1, value2, valueStr):
             print("Disconnect failed:", err)
         else:
             log_carla("carla_canvas: Disconnect request succeeded")
+            if hasattr(gCarla.gui, "markProjectModified"):
+                gCarla.gui.markProjectModified()
             if partner_conn_id is not None:
                 log_carla(
                     f"carla_canvas: Stereo auto-disconnect (Alt): connectionId={partner_conn_id}"

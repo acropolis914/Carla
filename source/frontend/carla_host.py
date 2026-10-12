@@ -1124,6 +1124,11 @@ class HostWindow(QMainWindow):
         self.setWindowTitle(title)
         self.updateSessionStatusIndicators()
 
+    def markProjectModified(self):
+        if not getattr(self, "fHasUnsavedChanges", False):
+            self.fHasUnsavedChanges = True
+            self.setProperWindowTitle()
+
     def updateSessionStatusIndicators(self):
         if not hasattr(self, "label_save_status") or not hasattr(self, "label_autosave_status"):
             return
@@ -4455,15 +4460,18 @@ def engineCallback(host, action, pluginId, value1, value2, value3, valuef, value
             f"engineCallback: PLUGIN_ADDED id={pluginId}, type={value1}, name='{valueStr}'"
         )
         host.PluginAddedCallback.emit(pluginId, value1, valueStr)
+        if gCarla.gui is not None and not getattr(gCarla.gui, "fIsProjectLoading", False):
+            gCarla.gui.markProjectModified()
     elif action == ENGINE_CALLBACK_PLUGIN_REMOVED:
         log_carla(f"engineCallback: PLUGIN_REMOVED id={pluginId}")
         host.PluginRemovedCallback.emit(pluginId)
+        if gCarla.gui is not None and not getattr(gCarla.gui, "fIsProjectLoading", False):
+            gCarla.gui.markProjectModified()
     elif action == ENGINE_CALLBACK_PLUGIN_RENAMED:
         log_carla(f"engineCallback: PLUGIN_RENAMED id={pluginId}, name='{valueStr}'")
         host.PluginRenamedCallback.emit(pluginId, valueStr)
-        if gCarla.gui is not None:
-            gCarla.gui.fHasUnsavedChanges = True
-            gCarla.gui.setProperWindowTitle()
+        if gCarla.gui is not None and not getattr(gCarla.gui, "fIsProjectLoading", False):
+            gCarla.gui.markProjectModified()
     elif action == ENGINE_CALLBACK_PLUGIN_UNAVAILABLE:
         host.PluginUnavailableCallback.emit(pluginId, valueStr)
     elif action == ENGINE_CALLBACK_PARAMETER_VALUE_CHANGED:
@@ -4546,11 +4554,15 @@ def engineCallback(host, action, pluginId, value1, value2, value3, valuef, value
         )
         gOut, pOut, gIn, pIn = [int(i) for i in valueStr.split(":")]  # FIXME
         host.PatchbayConnectionAddedCallback.emit(pluginId, gOut, pOut, gIn, pIn)
+        if gCarla.gui is not None and not getattr(gCarla.gui, "fIsProjectLoading", False):
+            gCarla.gui.markProjectModified()
     elif action == ENGINE_CALLBACK_PATCHBAY_CONNECTION_REMOVED:
         log_carla(
             f"engineCallback: PATCHBAY_CONNECTION_REMOVED clientId={pluginId}, connId={value1}"
         )
         host.PatchbayConnectionRemovedCallback.emit(pluginId, value1, value2)
+        if gCarla.gui is not None and not getattr(gCarla.gui, "fIsProjectLoading", False):
+            gCarla.gui.markProjectModified()
     elif action == ENGINE_CALLBACK_ENGINE_STARTED:
         host.EngineStartedCallback.emit(
             pluginId, value1, value2, value3, valuef, valueStr
