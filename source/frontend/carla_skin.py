@@ -26,6 +26,7 @@ from qt_compat import (
     QFont,
     QFontDatabase,
     QFrame,
+    QGridLayout,
     QHBoxLayout,
     QInputDialog,
     QLabel,
