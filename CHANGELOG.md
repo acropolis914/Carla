@@ -15,6 +15,11 @@ Recent developments enhance the Carla modular audio host across three primary pi
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 00:08:00
+- **fix(patchbay)**: Synchronize minimap preview bounds with infinite canvas scene limits
+  - Dynamically updated `fRenderSource` and `fInternalRatio` in `CanvasPreviewFrame` to match expanding `sceneRect()` bounds.
+  - Calculated `setViewSize` proportions relative to the live scene bounding box rather than static initial canvas dimensions.
+
 ### 2026-10-13 00:01:00
 - **fix(patchbay)**: Resolve `CanvasBox.calculateBoxSize` AttributeError
   - Aliased `calculateBoxSize` to `updatePositions` on `CanvasBox` and directly invoked `updatePositions` on toolbar toggle and project restore.

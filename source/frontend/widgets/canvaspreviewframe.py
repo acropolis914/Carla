@@ -288,7 +288,13 @@ class CanvasPreviewFrame(QFrame):
                                            frameWidth,
                                            self.width()-frameWidth*2,
                                            self.height()-frameWidth*2), rounding, rounding)
-            painter.setClipPath(clipPath)
+        # Dynamically sync fRenderSource with infinite canvas scene bounds
+        if self.fScene is not None:
+            scene_rect = self.fScene.sceneRect()
+            if not scene_rect.isNull() and scene_rect.width() > 0 and scene_rect.height() > 0:
+                if self.fRenderSource != scene_rect:
+                    self.fRenderSource = scene_rect
+                    self.fInternalRatio = max(0.01, scene_rect.width() / max(1.0, scene_rect.height()))
 
         self.fScene.render(painter, self.fRenderTarget, self.fRenderSource, Qt.KeepAspectRatio)
 

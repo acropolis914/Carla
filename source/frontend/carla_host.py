@@ -4021,8 +4021,11 @@ class HostWindow(QMainWindow):
 
         self.scene.updateLimits()
 
+        scene_w = self.scene.sceneRect().width() if not self.scene.sceneRect().isNull() and self.scene.sceneRect().width() > 0 else self.fCanvasWidth
+        scene_h = self.scene.sceneRect().height() if not self.scene.sceneRect().isNull() and self.scene.sceneRect().height() > 0 else self.fCanvasHeight
+
         self.ui.miniCanvasPreview.setViewSize(
-            float(width) / self.fCanvasWidth, float(height) / self.fCanvasHeight
+            float(width) / scene_w, float(height) / scene_h
         )
 
     @pyqtSlot(float, float)
