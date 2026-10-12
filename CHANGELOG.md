@@ -15,6 +15,12 @@ Recent developments enhance the Carla modular audio host across three primary pi
 
 ## [Unreleased] - 2026-10-12
 
+### 2026-10-12 15:07:45 (`f9ca25c51`)
+- **feat(ui)**: Add side-by-side split view and bidirectional rack-patchbay synchronization
+  - Added toggleable Side-by-Side View mode (`Ctrl+Shift+R`) placing Patchbay (left) and Rack (right) in an adjustable `QSplitter` layout.
+  - Implemented bidirectional selection sync: selecting a node in the Patchbay centers and scrolls to its slot in the Rack; selecting a slot in the Rack highlights and centers the node on the canvas.
+  - Exported `QSplitter` and `QWidget` in `qt_compat.py` for cross-version Qt compatibility.
+
 ### 2026-10-12 14:34:44 (`5cac2b881`)
 - **fix(session)**: Propagate dirty modifications on node moves, connects, and deletes
   - Wired `markProjectModified()` into `ACTION_GROUP_POSITION` moves so node relocations flag unsaved edits.

@@ -70,8 +70,10 @@ from qt_compat import (
     QPainter,
     QPalette,
     QPointF,
+    QSplitter,
     QTimer,
     QVBoxLayout,
+    QWidget,
     qCritical,
 )
 from widgets.digitalpeakmeter import DigitalPeakMeter
@@ -677,6 +679,19 @@ class HostWindow(QMainWindow):
                 self.slot_canvasCopyToClipboard
             )
             self.ui.act_canvas_arrange.setEnabled(True)
+
+            self.act_canvas_side_by_side = QAction(self.tr("Side-by-Side View"), self)
+            self.act_canvas_side_by_side.setCheckable(True)
+            self.act_canvas_side_by_side.setChecked(False)
+            self.act_canvas_side_by_side.setShortcut("Ctrl+Shift+R")
+            self.act_canvas_side_by_side.setIcon(getIcon("view-split-left-right", 16, "svgz") or getIcon("view-split-effect", 16, "svgz") or getIcon("view-refresh", 16, "svgz"))
+            self.act_canvas_side_by_side.toggled.connect(self.slot_toggleSideBySideView)
+            self.ui.menu_Canvas.addAction(self.act_canvas_side_by_side)
+            self.ui.toolBar.addAction(self.act_canvas_side_by_side)
+
+            self.ui.listWidget.itemClicked.connect(self.slot_rackItemClicked)
+            self.ui.listWidget.itemSelectionChanged.connect(self.slot_rackSelectionChanged)
+
             self.ui.graphicsView.horizontalScrollBar().valueChanged.connect(
                 self.slot_horizontalScrollBarChanged
             )
@@ -2766,6 +2781,95 @@ class HostWindow(QMainWindow):
         self.ui.scrollArea.setEnabled(len(pluginList) != 0)  # and self.fPluginCount > 0
         self.fSelectedPlugins = pluginList
 
+        # Synchronize selection to Rack: highlight and scroll to plugin slot
+        if pluginList and len(pluginList) > 0 and self.ui.listWidget is not None:
+            firstPluginId = pluginList[0]
+            if 0 <= firstPluginId < len(self.fPluginList):
+                pitem = self.fPluginList[firstPluginId]
+                if pitem is not None:
+                    try:
+                        self._sync_guard = getattr(self, "_sync_guard", False)
+                        if not self._sync_guard:
+                            self._sync_guard = True
+                            self.ui.listWidget.setCurrentItem(pitem)
+                            self.ui.listWidget.scrollToItem(pitem)
+                    finally:
+                        self._sync_guard = False
+
+    @pyqtSlot()
+    def slot_rackItemClicked(self, item=None):
+        if getattr(self, "_sync_guard", False):
+            return
+        if item is None and self.ui.listWidget is not None:
+            item = self.ui.listWidget.currentItem()
+        if item is not None and hasattr(item, "getPluginId"):
+            pluginId = item.getPluginId()
+            if pluginId >= 0:
+                try:
+                    self._sync_guard = True
+                    patchcanvas.focusGroupUsingPluginId(pluginId)
+                finally:
+                    self._sync_guard = False
+
+    @pyqtSlot()
+    def slot_rackSelectionChanged(self):
+        if getattr(self, "_sync_guard", False):
+            return
+        if self.ui.listWidget is not None:
+            item = self.ui.listWidget.currentItem()
+            if item is not None and hasattr(item, "getPluginId"):
+                pluginId = item.getPluginId()
+                if pluginId >= 0:
+                    try:
+                        self._sync_guard = True
+                        patchcanvas.focusGroupUsingPluginId(pluginId)
+                    finally:
+                        self._sync_guard = False
+
+    @pyqtSlot(bool)
+    def slot_toggleSideBySideView(self, enabled):
+        if not hasattr(self, "tabSplit"):
+            self.tabSplit = QWidget(self.ui.tabWidget)
+            self.splitLayout = QVBoxLayout(self.tabSplit)
+            self.splitLayout.setContentsMargins(0, 0, 0, 0)
+            self.splitLayout.setSpacing(0)
+
+            self.splitter = QSplitter(Qt.Horizontal, self.tabSplit)
+            self.splitter.setChildrenCollapsible(False)
+            self.splitLayout.addWidget(self.splitter)
+
+        if enabled:
+            # Dynamically reparent patchbay and rack into the splitter
+            self.splitter.addWidget(self.ui.patchbay)
+            self.splitter.addWidget(self.ui.rack)
+            self.ui.patchbay.show()
+            self.ui.rack.show()
+
+            # Set split proportion: 65% Patchbay Canvas, 35% Rack
+            w = max(self.width(), 1000)
+            self.splitter.setSizes([int(w * 0.65), int(w * 0.35)])
+
+            splitTabIndex = self.ui.tabWidget.indexOf(self.tabSplit)
+            if splitTabIndex == -1:
+                self.ui.tabWidget.insertTab(2, self.tabSplit, self.tr("Patchbay + Rack"))
+                splitTabIndex = self.ui.tabWidget.indexOf(self.tabSplit)
+
+            self.ui.tabWidget.setCurrentIndex(splitTabIndex)
+            self.ui.graphicsView.setFocus()
+            self.slot_canvasRefresh()
+        else:
+            # Restore patchbay and rack into their standalone tab positions
+            self.ui.tabWidget.insertTab(0, self.ui.rack, self.tr("Rack"))
+            self.ui.tabWidget.insertTab(1, self.ui.patchbay, self.tr("Patchbay"))
+
+            splitTabIndex = self.ui.tabWidget.indexOf(self.tabSplit)
+            if splitTabIndex != -1:
+                self.ui.tabWidget.removeTab(splitTabIndex)
+
+            self.ui.tabWidget.setCurrentIndex(1)
+            self.ui.graphicsView.setFocus()
+            self.slot_canvasRefresh()
+
     # --------------------------------------------------------------------------------------------------------
     # Canvas (host callbacks)
 
@@ -3916,7 +4020,11 @@ class HostWindow(QMainWindow):
 
     @pyqtSlot(int)
     def slot_tabChanged(self, index):
-        if index != 1:
+        isPatchbayTab = (index == 1)
+        if hasattr(self, "tabSplit") and self.ui.tabWidget.indexOf(self.tabSplit) == index:
+            isPatchbayTab = True
+
+        if not isPatchbayTab:
             return
 
         if getattr(self, "fNeedCanvasRefresh", False):
