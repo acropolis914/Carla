@@ -141,6 +141,38 @@ class PatchScene(QGraphicsScene):
         self.m_cursor_cut = QCursor(QPixmap(":/cursors/cut_"+cur_color+".png"), 1, 1)
         self.m_cursor_zoom = QCursor(QPixmap(":/cursors/zoom-area_"+cur_color+".png"), 8, 7)
 
+    def drawBackground(self, painter, rect):
+        # Draw solid background color from theme
+        painter.fillRect(rect, canvas.theme.canvas_bg)
+
+        if not getattr(options, "grid_enabled", True):
+            return
+
+        grid_size = getattr(options, "grid_size", 20)
+        if grid_size <= 4:
+            return
+
+        # Determine subtle dot color based on background contrast
+        bg_black = canvas.theme.canvas_bg.blackF()
+        if bg_black < 0.5:
+            dot_color = QColor(0, 0, 0, 32)
+        else:
+            dot_color = QColor(255, 255, 255, 32)
+
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QBrush(dot_color))
+
+        left = int(floor(rect.left() / grid_size) * grid_size)
+        top = int(floor(rect.top() / grid_size) * grid_size)
+        right = int(ceil(rect.right()))
+        bottom = int(ceil(rect.bottom()))
+
+        # Draw dots at grid intersections
+        dot_radius = 1.0
+        for x in range(left, right, grid_size):
+            for y in range(top, bottom, grid_size):
+                painter.drawRect(QRectF(x - dot_radius, y - dot_radius, dot_radius * 2, dot_radius * 2))
+
     def zoom_fit(self):
         min_x = min_y = max_x = max_y = None
         first_value = True

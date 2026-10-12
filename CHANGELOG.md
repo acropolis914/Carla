@@ -15,6 +15,12 @@ Recent developments enhance the Carla modular audio host across three primary pi
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 00:11:00
+- **feat(patchbay)**: Subtle canvas alignment dot grid and coordinate snapping
+  - Added background alignment dot rendering in `PatchScene.drawBackground()` with adaptive contrast according to canvas theme luminance.
+  - Implemented node drag snapping to the grid via `CanvasBox.fixPos()`.
+  - Added automatic grid snapping to `alignSelected()` operations (`horizontal`, `vertical`, `distribute_h`, `distribute_v`).
+
 ### 2026-10-13 00:08:00
 - **fix(patchbay)**: Synchronize minimap preview bounds with infinite canvas scene limits
   - Dynamically updated `fRenderSource` and `fInternalRatio` in `CanvasPreviewFrame` to match expanding `sceneRect()` bounds.

@@ -1673,8 +1673,13 @@ class CanvasBox(QGraphicsObject):
 
     def fixPos(self):
         self.blockSignals(True)
-        self.setX(round(self.x()))
-        self.setY(round(self.y()))
+        if getattr(options, "grid_enabled", True):
+            gs = max(1, getattr(options, "grid_size", 20))
+            self.setX(round(self.x() / gs) * gs)
+            self.setY(round(self.y() / gs) * gs)
+        else:
+            self.setX(round(self.x()))
+            self.setY(round(self.y()))
         self.blockSignals(False)
 
     def boundingRect(self):

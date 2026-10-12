@@ -2017,6 +2017,11 @@ def alignSelected(mode="horizontal"):
             n.setPos(n.x(), curr_y)
             curr_y += n.boundingRect().height() + node_gap
 
+    if getattr(options, "grid_enabled", True):
+        gs = max(1, getattr(options, "grid_size", 20))
+        for n in nodes:
+            n.setPos(round(n.x() / gs) * gs, round(n.y() / gs) * gs)
+
     syncNodePositions(nodes)
 
 

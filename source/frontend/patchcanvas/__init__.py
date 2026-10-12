@@ -102,6 +102,8 @@ class options_t(object):
         "line_style",
         "line_stroke",
         "line_opacity",
+        "grid_enabled",
+        "grid_size",
     ]
 
 
@@ -273,6 +275,8 @@ options.node_radius = 8
 options.line_style = "bezier"
 options.line_stroke = "solid"
 options.line_opacity = 100
+options.grid_enabled = True
+options.grid_size = 20
 
 features = features_t()
 features.group_info = False
@@ -298,6 +302,8 @@ def setOptions(new_options):
     options.line_style = getattr(new_options, "line_style", "bezier")
     options.line_stroke = getattr(new_options, "line_stroke", "solid")
     options.line_opacity = getattr(new_options, "line_opacity", 100)
+    options.grid_enabled = getattr(new_options, "grid_enabled", True)
+    options.grid_size = getattr(new_options, "grid_size", 20)
 
 
 
