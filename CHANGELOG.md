@@ -20,6 +20,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 02:35:00
+- **feat(ui)**: Pre-emptively hide main window on confirmed exit
+  - Triggered immediate `hide()` and event flushing on closeEvent after exit confirmation to eliminate destruction lag and UI tearing during teardown.
+
 ### 2026-10-13 02:30:00
 - **feat(project)**: Full Carla JSON project (`.carjp`) integration across open/save, recents, and drag-and-drop
   - Added support for `.carjp` in Recent Projects menu with automatic path preservation.

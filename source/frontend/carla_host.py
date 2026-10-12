@@ -4730,6 +4730,10 @@ class HostWindow(QMainWindow):
             event.ignore()
             return
 
+        # Pre-emptively hide the main window immediately so the UI disappears without stutter
+        self.hide()
+        QApplication.instance().processEvents()
+
         if (
             self.fWindowCloseHideGui
             and self.fCustomStopAction != self.CUSTOM_ACTION_APP_CLOSE
