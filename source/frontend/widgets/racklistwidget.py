@@ -181,6 +181,25 @@ class RackListItem(QListWidgetItem):
 
         self.fParent.setItemWidget(self, self.fWidget)
 
+        # Apply rack item color to patchbay canvas node
+        try:
+            from carla_shared import gCarla
+            if hasattr(gCarla, "gui") and getattr(gCarla.gui, "fWithCanvas", False):
+                import patchcanvas
+                skin_col = getattr(self.fWidget, "fSkinColor", None)
+                if skin_col and skin_col not in ((40, 40, 40), (255, 255, 255)):
+                    hex_col = f"#{skin_col[0]:02x}{skin_col[1]:02x}{skin_col[2]:02x}"
+                else:
+                    hex_col = None
+                for group in patchcanvas.canvas.group_list:
+                    if getattr(group, "plugin_id", -1) == self.fPluginId:
+                        for w in getattr(group, "widgets", []):
+                            if w is not None:
+                                w.setCustomColor(hex_col, notify=False)
+                        break
+        except Exception:
+            pass
+
         if not firstInit:
             self.host.set_custom_data(self.fPluginId, CUSTOM_DATA_TYPE_PROPERTY,
                                       "CarlaSkinIsCompacted", "true" if self.fOptions['compact'] else "false")

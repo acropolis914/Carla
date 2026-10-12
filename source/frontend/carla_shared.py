@@ -638,6 +638,7 @@ class CarlaObject():
 gCarla = CarlaObject()
 
 DEBUG_LEVEL_MAP = {
+    "debug": -1,
     "info": 0,
     "warn": 1,
     "warning": 1,
@@ -663,8 +664,24 @@ def log_carla(msg, level="info"):
         pass
 
     try:
-        from carla_logger import logger
-        logger.log_raw_string(msg_str)
+        from carla_logger import (
+            logger,
+            LOG_LEVEL_DEBUG,
+            LOG_LEVEL_INFO,
+            LOG_LEVEL_WARNING,
+            LOG_LEVEL_ERROR,
+            LOG_LEVEL_CRITICAL,
+        )
+        lvl_map = {
+            "debug": LOG_LEVEL_DEBUG,
+            "info": LOG_LEVEL_INFO,
+            "warn": LOG_LEVEL_WARNING,
+            "warning": LOG_LEVEL_WARNING,
+            "error": LOG_LEVEL_ERROR,
+            "critical": LOG_LEVEL_CRITICAL,
+        }
+        exp_lvl = lvl_map.get(str(level).lower(), None)
+        logger.log_raw_string(msg_str, explicit_level=exp_lvl)
     except Exception:
         print(msg_str, file=sys.stderr, flush=True)
 
@@ -744,112 +761,155 @@ def getIcon(icon, size, qrcformat):
 # Handle some basic command-line arguments shared between all carla variants
 
 def handleInitialCommandLineArguments(file):
+    import argparse
     initName  = os.path.basename(file) if (file is not None and os.path.dirname(file) in PATH) else sys.argv[0]
     libPrefix = None
-    readPrefixNext = False
-    readDebugNext = False
-    readLogNext = False
 
-    for arg in sys.argv[1:]:
-        if readPrefixNext:
-            readPrefixNext = False
-            gCarla.cnprefix = arg
-            continue
+    parser = argparse.ArgumentParser(
+        prog=initName,
+        description="Carla audio plugin host",
+        add_help=False,
+    )
 
-        if readLogNext:
-            readLogNext = False
-            if not arg.startswith("-"):
-                gCarla.log_file = arg
-                continue
-            # If it starts with '-', fall through to parse it as an argument
+    # Logging and diagnostics
+    parser.add_argument("--debug", nargs="?", const="info", default=None,
+                        help="Set debug level: debug, info, warn, critical.")
+    parser.add_argument("--log", nargs="?", const="carla.log", default=None,
+                        help="Log output to file (defaults to carla.log).")
+    parser.add_argument("--log-level", default=None,
+                        help="Set logger filter level: debug, info, warning, error, critical.")
+    parser.add_argument("--log-whitelist", default=None,
+                        help="Comma-separated list of tags to display (e.g. PATCHBAY,PLUGIN).")
+    parser.add_argument("--log-blacklist", default=None,
+                        help="Comma-separated list of tags to hide.")
+    parser.add_argument("--console-log", action="store_true", default=None,
+                        help="Explicitly enable terminal console output.")
+    parser.add_argument("--no-console-log", action="store_true", default=None,
+                        help="Disable terminal console output.")
 
-        if readDebugNext:
-            if arg.lower() in ("info", "warn", "warning", "critical", "error"):
-                gCarla.debug_level = arg.lower()
-                continue
-            readDebugNext = False
+    # General configuration
+    parser.add_argument("--cnprefix", default=None,
+                        help="Set a prefix for client names in multi-client mode.")
+    parser.add_argument("--with-appname", default=None,
+                        help=argparse.SUPPRESS)
+    parser.add_argument("--with-libprefix", default=None,
+                        help=argparse.SUPPRESS)
+    parser.add_argument("--osc-gui", default=None,
+                        help=argparse.SUPPRESS)
+    parser.add_argument("--autoload-lastsave", "--autoload-last-save", "--load-autosave",
+                        action="store_true", default=False,
+                        help="Autoload most recent saved project without prompting.")
+    parser.add_argument("--hidden", "--start-hidden",
+                        action="store_true", default=False,
+                        help="Start minimized/hidden to system tray.")
+    parser.add_argument("-n", "--no-gui", "--nogui",
+                        action="store_true", default=False,
+                        help="Run Carla headless, don't show UI.")
+    parser.add_argument("--gdb", action="store_true", default=False,
+                        help="Run Carla inside gdb.")
+    parser.add_argument("-h", "--help", action="store_true", default=False,
+                        help="Print this help text and exit.")
+    parser.add_argument("-v", "--version", action="store_true", default=False,
+                        help="Print version information and exit.")
 
-        if arg.startswith("--with-appname="):
-            initName = os.path.basename(arg.replace("--with-appname=", ""))
+    parsed, unknown = parser.parse_known_args()
 
-        elif arg.startswith("--with-libprefix="):
-            libPrefix = arg.replace("--with-libprefix=", "")
+    # Help handler
+    if parsed.help:
+        pathBinaries, pathResources = getPaths(libPrefix)
+        bold = "\033[1m"
+        cyan = "\033[36m"
+        green = "\033[32m"
+        yellow = "\033[33m"
+        magenta = "\033[35m"
+        gray = "\033[90m"
+        reset = "\033[0m"
 
-        elif arg.startswith("--osc-gui="):
-            gCarla.nogui = int(arg.replace("--osc-gui=", ""))
+        print(f"{bold}{cyan}Carla Plugin Host{reset} {green}v{CARLA_VERSION_STRING}{reset}")
+        print(f"{gray}Python {sys.version.split(' ', 1)[0]} | Qt {QT_VERSION_STR} | PyQt {PYQT_VERSION_STR}{reset}")
+        print(f"{gray}Binaries:  {pathBinaries}{reset}")
+        print(f"{gray}Resources: {pathResources}{reset}")
+        print("")
+        print(f"{bold}USAGE:{reset}")
+        print(f"  {green}{initName}{reset} [{yellow}OPTIONS{reset}]... [{magenta}FILE{reset}|{magenta}URL{reset}]")
+        print("")
+        print(f"{bold}ARGUMENTS:{reset}")
+        print(f"  {magenta}FILE{reset}                  Carla project (.carxp, .bws) or plugin state file")
+        print(f"  {magenta}URL{reset}                   Remote Carla-Control OSC address (e.g. osc.udp://...)")
+        print("")
+        print(f"{bold}OPTIONS:{reset}")
+        print(f"  {yellow}--debug{reset} [{cyan}LEVEL{reset}]         Debug verbosity level: {cyan}debug{reset}, {cyan}info{reset}, {cyan}warn{reset}, {cyan}critical{reset} (default: info)")
+        print(f"  {yellow}--log{reset} [{cyan}PATH{reset}]           Log raw messages to disk file (default: carla.log)")
+        print(f"  {yellow}--log-level{reset} {cyan}LEVEL{reset}      Log filter threshold: {cyan}debug{reset}, {cyan}info{reset}, {cyan}warning{reset}, {cyan}error{reset}, {cyan}critical{reset}")
+        print(f"  {yellow}--log-whitelist{reset} {cyan}TAGS{reset}   Comma-separated tags to display.")
+        print(f"                        Available tags: {green}APP{reset}, {green}ENGINE{reset}, {green}PATCHBAY{reset}, {green}PLUGIN{reset}, {green}SESSION{reset}, {green}CANVAS{reset}, {green}BACKEND{reset}")
+        print(f"  {yellow}--log-blacklist{reset} {cyan}TAGS{reset}   Comma-separated tags to suppress (same tag choices as above)")
+        print(f"  {yellow}--console-log{reset}          Force-enable colored terminal console output")
+        print(f"  {yellow}--no-console-log{reset}       Disable terminal console output entirely")
+        print(f"  {yellow}--autoload-lastsave{reset}    Automatically restore the most recently saved session on launch")
+        print(f"  {yellow}--hidden{reset}               Start application hidden/minimized to the system tray")
+        print(f"  {yellow}--cnprefix{reset} {cyan}PREFIX{reset}      Set client name prefix when running in multi-client mode")
+        if isinstance(gCarla.nogui, bool):
+            if X_LIBDIR_X is not None:
+                print(f"  {yellow}--gdb{reset}                 Run Carla inside GDB debugger")
+            print(f"  {yellow}-n{reset}, {yellow}--no-gui{reset}           Run Carla headless without GUI")
+        print(f"  {yellow}-h{reset}, {yellow}--help{reset}             Show this help message and exit")
+        print(f"  {yellow}-v{reset}, {yellow}--version{reset}          Show version details and exit")
+        print("")
+        if not isinstance(gCarla.nogui, bool):
+            print(f"{yellow}NOTE:{reset} When using {initName}, the FILE argument is only loaded on first engine launch.")
+            sys.exit(1)
+        sys.exit(0)
 
-        elif arg.startswith("--cnprefix="):
-            gCarla.cnprefix = arg.replace("--cnprefix=", "")
+    # Version handler
+    if parsed.version:
+        pathBinaries, pathResources = getPaths(libPrefix)
+        print("Using Carla version %s" % CARLA_VERSION_STRING)
+        print("  Python version: %s" % sys.version.split(" ", 1)[0])
+        print("  Qt version:     %s" % QT_VERSION_STR)
+        print("  PyQt version:   %s" % PYQT_VERSION_STR)
+        print("  Binary dir:     %s" % pathBinaries)
+        print("  Resources dir:  %s" % pathResources)
+        sys.exit(1 if gCarla.nogui else 0)
 
-        elif arg == "--cnprefix":
-            readPrefixNext = True
-
-        elif arg.startswith("--debug="):
-            gCarla.debug_level = arg.split("=", 1)[1].lower()
-
-        elif arg == "--debug":
-            readDebugNext = True
-            gCarla.debug_level = "info"
-
-        elif arg.startswith("--log="):
-            gCarla.log_file = arg.split("=", 1)[1]
-
-        elif arg == "--log":
-            readLogNext = True
-            gCarla.log_file = "carla.log"
-
-        elif arg == "--gdb":
+    # Assign parsed parameters
+    if parsed.with_appname:
+        initName = os.path.basename(parsed.with_appname)
+    if parsed.with_libprefix:
+        libPrefix = parsed.with_libprefix
+    if parsed.osc_gui:
+        try:
+            gCarla.nogui = int(parsed.osc_gui)
+        except ValueError:
             pass
+    if parsed.cnprefix:
+        gCarla.cnprefix = parsed.cnprefix
+    if parsed.debug is not None:
+        gCarla.debug_level = parsed.debug.lower()
+    if parsed.log is not None:
+        gCarla.log_file = parsed.log
+    if parsed.autoload_lastsave:
+        gCarla.autoload_lastsave = True
+    if parsed.hidden:
+        gCarla.hidden = True
+    if parsed.no_gui:
+        gCarla.nogui = True
 
-        elif arg in ("--autoload-lastsave", "--autoload-last-save", "-autoload-lastsave", "--load-autosave", "-load-autosave"):
-            gCarla.autoload_lastsave = True
-
-        elif arg in ("--hidden", "-hidden", "--start-hidden"):
-            gCarla.hidden = True
-
-        elif arg in ("-n", "--n", "-no-gui", "--no-gui", "-nogui", "--nogui"):
-            gCarla.nogui = True
-
-        elif CARLA_OS_MAC and arg.startswith("-psn_"):
-            pass
-
-        elif arg in ("-h", "--h", "-help", "--help"):
-            print("Usage: %s [OPTION]... [FILE|URL]" % initName)
-            print("")
-            print(" where FILE can be a Carla project or preset file to be loaded, or URL if using Carla-Control")
-            print("")
-            print(" and OPTION can be one or more of the following:")
-            print("")
-            print("    --cnprefix          \t Set a prefix for client names in multi-client mode.")
-            print("    --debug [level]     \t Set debug level: info, warn, critical.")
-            print("    --log [path]        \t Log output to file (defaults to carla.log).")
-            print("    --autoload-lastsave \t Autoload most recent saved project without prompting.")
-            if isinstance(gCarla.nogui, bool):
-                if X_LIBDIR_X is not None:
-                    print("    --gdb          \t Run Carla inside gdb.")
-                print(" -n,--no-gui       \t Run Carla headless, don't show UI.")
-                print("")
-            print(" -h,--help         \t Print this help text and exit.")
-            print(" -v,--version      \t Print version information and exit.")
-            print("")
-
-            if not isinstance(gCarla.nogui, bool):
-                print("NOTE: when using %s the FILE is only valid the first time the backend is started" % initName)
-                sys.exit(1)
-
-            sys.exit(0)
-
-        elif arg in ("-v", "--v", "-version", "--version"):
-            pathBinaries, pathResources = getPaths(libPrefix)
-
-            print("Using Carla version %s" % CARLA_VERSION_STRING)
-            print("  Python version: %s" % sys.version.split(" ",1)[0])
-            print("  Qt version:     %s" % QT_VERSION_STR)
-            print("  PyQt version:   %s" % PYQT_VERSION_STR)
-            print("  Binary dir:     %s" % pathBinaries)
-            print("  Resources dir:  %s" % pathResources)
-
-            sys.exit(1 if gCarla.nogui else 0)
+    # Forward to CarlaLogger if available
+    try:
+        from carla_logger import logger, NAME_TO_LEVEL
+        if parsed.log_level and parsed.log_level.upper() in NAME_TO_LEVEL:
+            logger.min_level = NAME_TO_LEVEL[parsed.log_level.upper()]
+        if parsed.log_whitelist:
+            logger.whitelist.update([t.strip().upper() for t in parsed.log_whitelist.split(",") if t.strip()])
+        if parsed.log_blacklist:
+            logger.blacklist.update([t.strip().upper() for t in parsed.log_blacklist.split(",") if t.strip()])
+        if parsed.no_console_log:
+            logger.console_enabled = False
+        elif parsed.console_log:
+            logger.console_enabled = True
+    except Exception:
+        pass
 
     if gCarla.nogui and not isinstance(gCarla.nogui, bool):
         if os.fork():

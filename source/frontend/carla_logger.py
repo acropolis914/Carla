@@ -99,6 +99,8 @@ class CarlaLogger(QObject):
         self.blacklist = set()  # these tags hidden
         self.history = []       # all LogEntry objects stored
         self.max_history = 5000
+        self._last_msg = None
+        self._repeat_count = 0
 
     def parse_cli_args(self, args=None):
         if args is None:
@@ -140,6 +142,20 @@ class CarlaLogger(QObject):
         return self.is_tag_active(entry.tag)
 
     def log(self, level, tag, message):
+        msg_key = (tag, message)
+        if msg_key == self._last_msg:
+            self._repeat_count += 1
+            if self._repeat_count > 2:
+                # Suppress spamming identical consecutive messages
+                return
+        else:
+            if self._repeat_count > 2 and self.console_enabled:
+                repeat_entry = LogEntry(LOG_LEVEL_DEBUG, "APP", f"[previous message repeated {self._repeat_count} times]")
+                if self.should_display(repeat_entry):
+                    self._print_terminal(repeat_entry)
+            self._last_msg = msg_key
+            self._repeat_count = 1
+
         entry = LogEntry(level, tag, message)
         self.history.append(entry)
         if len(self.history) > self.max_history:
@@ -185,30 +201,58 @@ class CarlaLogger(QObject):
     def critical(self, tag, message):
         self.log(LOG_LEVEL_CRITICAL, tag, message)
 
-    def log_raw_string(self, text):
+    def log_raw_string(self, text, explicit_level=None):
         """Parse raw incoming string from legacy logs and classify tag/level"""
         if not text:
             return
 
-        level = LOG_LEVEL_INFO
+        if isinstance(text, bytes):
+            text = text.decode("utf-8", errors="replace")
+
+        # Strip non-printable and binary control characters (except tab/newline)
+        text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', '', text)
+
+        level = explicit_level if explicit_level is not None else LOG_LEVEL_INFO
         tag = "APP"
         clean_text = text
 
         # Strip ANSI escape sequences if any
         ansi_regex = re.compile(r'\x1b\[[0-9;]*m')
         clean_text = ansi_regex.sub('', clean_text).strip()
+        if not clean_text:
+            return
 
-        # Check for error / warning keywords
+        # Filter noisy benign messages
         upper_text = clean_text.upper()
-        if "ASSERTION FAILURE" in upper_text:
-            level = LOG_LEVEL_ERROR
-            tag = "BACKEND"
-        elif "ERROR" in upper_text or "CRITICAL" in upper_text or "FAIL" in upper_text:
-            level = LOG_LEVEL_ERROR
-        elif "WARN" in upper_text:
-            level = LOG_LEVEL_WARNING
-        elif "DEBUG" in upper_text:
+        benign_noise = (
+            "CANREAD",
+            "GROUPNAME != NULLPTR",
+            "TEMPORARYFILE",
+            "ID < PDATA->CURPLUGINCOUNT",
+            "SIZE < FBUFFER->SIZE",
+            "EXISTSASFILE",
+            "PLUGIN.GET() != NULLPTR",
+            "UNABLE TO FIND GROUP TO REMOVE",
+            "LILV_WORLD_ADD_PLUGIN(): WARNING: DUPLICATE PLUGIN",
+            "CARLA_V3_COMPONENT_HANDLER::QUERY_INTERFACE",
+            "CARLAPLUGINBRIDGETHREAD::RUN() - BRIDGE AUTO-CLOSED",
+            "REMAINING BUFFERS ON DESTRUCTION",
+            "TOTAL SIZE: 0",
+        )
+        if any(b in upper_text for b in benign_noise):
             level = LOG_LEVEL_DEBUG
+            if tag == "APP":
+                tag = "BACKEND"
+        elif explicit_level is None:
+            if "ASSERTION FAILURE" in upper_text:
+                level = LOG_LEVEL_ERROR
+                tag = "BACKEND"
+            elif "ERROR" in upper_text or "CRITICAL" in upper_text or "FAIL" in upper_text:
+                level = LOG_LEVEL_ERROR
+            elif "WARN" in upper_text:
+                level = LOG_LEVEL_WARNING
+            elif "DEBUG" in upper_text:
+                level = LOG_LEVEL_DEBUG
 
         # Look for [carla] prefix (e.g. from backend assertions / logging)
         if clean_text.startswith("[carla]"):
@@ -243,11 +287,22 @@ class CarlaLogger(QObject):
             os.close(pipe_w)
 
             def _stderr_reader():
-                with open(pipe_r, "r", errors="replace") as f:
-                    for line in f:
-                        line = line.strip()
-                        if line:
-                            self.log_raw_string(line)
+                # Read binary chunks and split by newline to handle non-UTF8/binary pollution
+                buf = bytearray()
+                while True:
+                    try:
+                        chunk = os.read(pipe_r, 4096)
+                        if not chunk:
+                            break
+                        buf.extend(chunk)
+                        while b"\n" in buf:
+                            line, _, buf = buf.partition(b"\n")
+                            # Strip carriage returns and decode with replacement
+                            decoded_line = line.strip(b"\r\n ").decode("utf-8", errors="replace")
+                            if decoded_line:
+                                self.log_raw_string(decoded_line)
+                    except Exception:
+                        break
 
             t = threading.Thread(target=_stderr_reader, daemon=True)
             t.start()
