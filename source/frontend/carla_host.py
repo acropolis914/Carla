@@ -1318,18 +1318,12 @@ class HostWindow(QMainWindow):
         if not self.fProjectFilename:
             return qCritical("ERROR: saving project without filename set")
 
-        is_json = self.fProjectFilename.lower().endswith((".carjp", ".json"))
-        backend_save_target = self.fProjectFilename
-        tmp_backend_file = None
-
-        if is_json:
-            backend_save_target = self.fProjectFilename + "._tmp_carla_save.carxp"
-            tmp_backend_file = backend_save_target
+        backend_save_target, is_temp = storage_manager.prepare_for_backend_save(self.fProjectFilename)
 
         if not self.host.save_project(backend_save_target):
-            if tmp_backend_file and os.path.exists(tmp_backend_file):
+            if is_temp and os.path.exists(backend_save_target):
                 try:
-                    os.remove(tmp_backend_file)
+                    os.remove(backend_save_target)
                 except Exception:
                     pass
             CustomMessageBox(
@@ -1351,22 +1345,12 @@ class HostWindow(QMainWindow):
         if hasattr(self, "splitter"):
             extra_meta["split_view_sizes"] = self.splitter.sizes()
 
-        if is_json:
-            try:
-                storage_manager.finalize_from_backend_save(self.fProjectFilename, backend_save_target, positions, extra_metadata=extra_meta)
-            except Exception as e:
-                print("Failed to finalize JSON project save:", e)
-            finally:
-                if tmp_backend_file and os.path.exists(tmp_backend_file):
-                    try:
-                        os.remove(tmp_backend_file)
-                    except Exception:
-                        pass
-        elif self.fWithCanvas and os.path.exists(self.fProjectFilename):
-            try:
-                storage_manager.save_canvas_positions(self.fProjectFilename, positions, extra_metadata=extra_meta)
-            except Exception as e:
-                print("Failed to save CanvasPositions into project file:", e)
+        try:
+            storage_manager.finalize_from_backend_save(
+                self.fProjectFilename, backend_save_target, positions, extra_metadata=extra_meta
+            )
+        except Exception as e:
+            print("Failed to finalize project save:", e)
 
         # Clean manual save succeeded: prune outstanding autosaves for this project
         if hasattr(self, "fSessionManager") and self.fSessionManager is not None:

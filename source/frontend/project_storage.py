@@ -478,12 +478,24 @@ class ProjectStorageManager:
         handler = self.get_handler(filepath)
         return handler.load_full_project_as_xml_path(filepath, force_bridged=force_bridged)
 
+    def prepare_for_backend_save(self, target_filepath):
+        """Returns (backend_save_target, is_temporary) for saving from C++ backend."""
+        if str(target_filepath).lower().endswith((".carjp", ".json")):
+            tmp_xml = target_filepath + "._tmp_carla_save.carxp"
+            return tmp_xml, True
+        return target_filepath, False
+
     def finalize_from_backend_save(self, target_filepath, backend_saved_filepath, positions=None, extra_metadata=None):
         """Finalizes backend save into target format and writes canvas positions."""
         handler = self.get_handler(target_filepath)
         handler.save_full_project_from_xml_path(target_filepath, backend_saved_filepath)
         if positions is not None:
             handler.save_positions(target_filepath, positions, extra_metadata=extra_metadata)
+        if backend_saved_filepath != target_filepath and os.path.exists(backend_saved_filepath):
+            try:
+                os.remove(backend_saved_filepath)
+            except Exception:
+                pass
         return True
 
 storage_manager = ProjectStorageManager()
