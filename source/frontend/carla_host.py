@@ -639,7 +639,9 @@ class HostWindow(QMainWindow):
         self.btn_hamburger_menu = QToolButton(self.ui.toolBar)
         self.btn_hamburger_menu.setText("☰")
         self.btn_hamburger_menu.setToolTip(self.tr("Main Menu (Ctrl+M to toggle full menubar)"))
-        self.btn_hamburger_menu.setPopupMode(QToolButton.InstantPopup)
+        popup_mode = getattr(QToolButton.ToolButtonPopupMode, "InstantPopup", getattr(QToolButton, "InstantPopup", None))
+        if popup_mode is not None:
+            self.btn_hamburger_menu.setPopupMode(popup_mode)
         self._hamburger_popup = QMenu(self.btn_hamburger_menu)
         self._hamburger_popup.addAction(self.ui.menu_File.menuAction())
         self._hamburger_popup.addAction(self.ui.menu_Engine.menuAction())
