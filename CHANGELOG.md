@@ -20,11 +20,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
-### 2026-10-13 03:21:00
-- **feat(rack)**: Move minimize button to rightmost position and use glyph icon for sliders/knobs toggle
-  - Positioned the minimize/expand collapse button as the rightmost element in the header bar.
-  - Replaced text labels (`SLIDERS` / `KNOBS`) on the view toggle button with clean FontAwesome Nerd Font glyphs (`\uf0c9` / `\uf1de`) matching the icon toolbar aesthetic.
-  - Ensured the modernized LED / vertical peak meter slice container is inserted before the action button group.
+### 2026-10-13 03:25:00
+- **feat(rack)**: Swap modernized meters slice and minimize button positions
+  - Swapped layout positions so the minimize/collapse button sits next to the sliders/knobs toggle, and the modernized 2x2 LED / vertical peak meter slice is positioned at the far right.
+  - Preserved the clean FontAwesome Nerd Font glyph icons (`\uf0c9` / `\uf1de`) for the sliders/knobs view toggle.
 
 ### 2026-10-13 03:15:00
 - **feat(rack)**: Polish modernized 2x2 LEDs and rounded vertical peak meter slice

@@ -2836,12 +2836,8 @@ class PluginSlot_Minimal(PluginSlot_Default):
             slice_layout.addWidget(self._led_grid_container)
             slice_layout.addWidget(self._meter_slice_container)
 
-            # Add to layout_top right before button controls
-            btn_idx = self.ui.layout_top.indexOf(self.ui.w_buttons)
-            if btn_idx >= 0:
-                self.ui.layout_top.insertWidget(btn_idx, self._modern_slice_container)
-            else:
-                self.ui.layout_top.addWidget(self._modern_slice_container)
+            # Add to layout_top at the right end (swapped with minimize)
+            self.ui.layout_top.addWidget(self._modern_slice_container)
 
         if modernized:
             # Hide old horizontal layouts
