@@ -7,16 +7,24 @@
 
 from math import floor, ceil
 
-from qt_compat import qt_config
-
-if qt_config == 5:
-    from PyQt5.QtCore import pyqtSignal, QT_VERSION, Qt, QRectF, QTimer, QEvent, QPoint
-    from PyQt5.QtGui import QBrush, QColor, QCursor, QPainter, QPainterPath, QPen, QPixmap
-    from PyQt5.QtWidgets import QFrame, QGraphicsScene
-elif qt_config == 6:
-    from PyQt6.QtCore import pyqtSignal, QT_VERSION, Qt, QRectF, QTimer, QEvent, QPoint
-    from PyQt6.QtGui import QBrush, QColor, QCursor, QPainter, QPainterPath, QPen, QPixmap
-    from PyQt6.QtWidgets import QFrame, QGraphicsScene
+from qt_compat import (
+    pyqtSignal,
+    QT_VERSION,
+    Qt,
+    QRectF,
+    QTimer,
+    QEvent,
+    QPoint,
+    QBrush,
+    QColor,
+    QCursor,
+    QPainter,
+    QPainterPath,
+    QPen,
+    QPixmap,
+    QFrame,
+    QGraphicsScene,
+)
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Antialiasing settings
@@ -201,10 +209,10 @@ class CanvasPreviewFrame(QFrame):
             return
         if self.fMouseMode == self._MOUSE_MODE_SCALE:
             event.accept()
-            if qt_config == 5:
-                y = event.globalY()
-            else:
+            if QT_VERSION >= 0x60000:
                 y = event.globalPosition().y()
+            else:
+                y = event.globalY()
             self._scaleViewRect(y)
             return
         QFrame.mouseMoveEvent(self, event)
@@ -395,23 +403,23 @@ class CanvasPreviewFrame(QFrame):
 
     def _updateMouseMode(self, event):
         if self.fMouseLeftDown and self.fMouseRightDown:
-            if qt_config == 5:
-                self.fMouseInitialZoomPos = event.globalPos()
-            else:
+            if QT_VERSION >= 0x60000:
                 self.fMouseInitialZoomPos = event.globalPosition().toPoint()
+            else:
+                self.fMouseInitialZoomPos = event.globalPos()
             self.setCursor(self.fZoomCursors[self._kCursorZoom])
             self.fMouseMode = self._MOUSE_MODE_SCALE
 
         elif self.fMouseLeftDown:
             self.setCursor(QCursor(Qt.SizeAllCursor))
             if self.fMouseMode == self._MOUSE_MODE_NONE:
-                if qt_config == 5:
-                    x = event.x()
-                    y = event.y()
-                else:
+                if QT_VERSION >= 0x60000:
                     pos = event.position()
                     x = pos.x()
                     y = pos.y()
+                else:
+                    x = event.x()
+                    y = event.y()
                 self._moveViewRect(x, y)
             self.fMouseMode = self._MOUSE_MODE_MOVE
 

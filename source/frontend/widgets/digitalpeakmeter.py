@@ -7,16 +7,19 @@
 
 from math import sqrt
 
-from qt_compat import qt_config
-
-if qt_config == 5:
-    from PyQt5.QtCore import qCritical, Qt, QSize, QLineF, QRectF
-    from PyQt5.QtGui import QColor, QLinearGradient, QPainter, QPen, QPixmap
-    from PyQt5.QtWidgets import QWidget
-elif qt_config == 6:
-    from PyQt6.QtCore import qCritical, Qt, QSize, QLineF, QRectF
-    from PyQt6.QtGui import QColor, QLinearGradient, QPainter, QPen, QPixmap
-    from PyQt6.QtWidgets import QWidget
+from qt_compat import (
+    qCritical,
+    Qt,
+    QSize,
+    QLineF,
+    QRectF,
+    QColor,
+    QLinearGradient,
+    QPainter,
+    QPen,
+    QPixmap,
+    QWidget,
+)
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Widget Class

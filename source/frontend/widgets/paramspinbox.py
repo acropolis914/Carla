@@ -8,16 +8,21 @@
 from math import isnan, modf
 from random import random
 
-from qt_compat import qt_config
-
-if qt_config == 5:
-    from PyQt5.QtCore import pyqtSignal, pyqtSlot, QT_VERSION, Qt, QTimer
-    from PyQt5.QtGui import QCursor, QPalette
-    from PyQt5.QtWidgets import QAbstractSpinBox, QApplication, QComboBox, QDialog, QMenu, QProgressBar
-elif qt_config == 6:
-    from PyQt6.QtCore import pyqtSignal, pyqtSlot, QT_VERSION, Qt, QTimer
-    from PyQt6.QtGui import QCursor, QPalette
-    from PyQt6.QtWidgets import QAbstractSpinBox, QApplication, QComboBox, QDialog, QMenu, QProgressBar
+from qt_compat import (
+    pyqtSignal,
+    pyqtSlot,
+    QT_VERSION,
+    Qt,
+    QTimer,
+    QCursor,
+    QPalette,
+    QAbstractSpinBox,
+    QApplication,
+    QComboBox,
+    QDialog,
+    QMenu,
+    QProgressBar,
+)
 
 # ------------------------------------------------------------------------------------------------------------
 # Imports (Custom)

@@ -5,16 +5,23 @@
 # ---------------------------------------------------------------------------------------------------------------------
 # Imports (Global)
 
-from qt_compat import qt_config
-
-if qt_config == 5:
-    from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QPointF, QRectF, QTimer, QSize
-    from PyQt5.QtGui import QColor, QPainter, QPixmap
-    from PyQt5.QtWidgets import QActionGroup, QMenu, QScrollArea, QWidget
-elif qt_config == 6:
-    from PyQt6.QtCore import pyqtSignal, pyqtSlot, Qt, QPointF, QRectF, QTimer, QSize
-    from PyQt6.QtGui import QActionGroup, QColor, QPainter, QPixmap
-    from PyQt6.QtWidgets import QMenu, QScrollArea, QWidget
+from qt_compat import (
+    pyqtSignal,
+    pyqtSlot,
+    QT_VERSION,
+    Qt,
+    QPointF,
+    QRectF,
+    QTimer,
+    QSize,
+    QActionGroup,
+    QColor,
+    QPainter,
+    QPixmap,
+    QMenu,
+    QScrollArea,
+    QWidget,
+)
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Imports (Carla)
@@ -408,10 +415,10 @@ class PixmapKeyboard(QWidget):
         if self.fPcKeybOffset == 0:
             actOctaveDown.setEnabled(False)
 
-        if qt_config == 5:
-            actSelected = menu.exec_(event.screenPos().toPoint())
-        else:
+        if QT_VERSION >= 0x60000:
             actSelected = menu.exec_(event.globalPosition().toPoint())
+        else:
+            actSelected = menu.exec_(event.screenPos().toPoint())
 
         if not actSelected:
             return

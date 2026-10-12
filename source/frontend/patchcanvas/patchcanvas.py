@@ -1274,8 +1274,13 @@ def connectPorts(
     connection_dict.group_out_id = group_out_id
     connection_dict.port_out_id = port_out_id
 
-    line_shape = "bezier" if options.use_bezier_lines else "straight"
-    connection_dict.widget = CanvasLine(port_out, port_in, None, shape=line_shape)
+    line_shape = getattr(options, "line_style", "bezier") if options.use_bezier_lines else "straight"
+    line_stroke = getattr(options, "line_stroke", "solid")
+    line_opacity = getattr(options, "line_opacity", 100)
+    connection_dict.widget = CanvasLine(
+        port_out, port_in, None,
+        shape=line_shape, stroke=line_stroke, opacity=line_opacity
+    )
 
     canvas.scene.addItem(connection_dict.widget)
 

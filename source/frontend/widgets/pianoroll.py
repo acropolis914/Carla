@@ -8,34 +8,26 @@
 
 from qt_compat import qt_config
 
-if qt_config == 5:
-    from PyQt5.QtCore import Qt, QRectF, QPointF, pyqtSignal
-    from PyQt5.QtGui import QColor, QCursor, QFont, QPen, QPainter
-    from PyQt5.QtWidgets import (
-        QApplication,
-        QGraphicsItem,
-        QGraphicsLineItem,
-        QGraphicsRectItem,
-        QGraphicsSimpleTextItem,
-        QGraphicsScene,
-        QGraphicsView,
-        QStyle,
-        QWidget,
-    )
-elif qt_config == 6:
-    from PyQt6.QtCore import Qt, QRectF, QPointF, pyqtSignal
-    from PyQt6.QtGui import QColor, QCursor, QFont, QPen, QPainter
-    from PyQt6.QtWidgets import (
-        QApplication,
-        QGraphicsItem,
-        QGraphicsLineItem,
-        QGraphicsRectItem,
-        QGraphicsSimpleTextItem,
-        QGraphicsScene,
-        QGraphicsView,
-        QStyle,
-        QWidget,
-    )
+from qt_compat import (
+    Qt,
+    QRectF,
+    QPointF,
+    pyqtSignal,
+    QColor,
+    QCursor,
+    QFont,
+    QPen,
+    QPainter,
+    QApplication,
+    QGraphicsItem,
+    QGraphicsLineItem,
+    QGraphicsRectItem,
+    QGraphicsSimpleTextItem,
+    QGraphicsScene,
+    QGraphicsView,
+    QStyle,
+    QWidget,
+)
 
 # ------------------------------------------------------------------------------------------------------------
 # Imports (Custom)

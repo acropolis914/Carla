@@ -7,16 +7,22 @@
 
 from math import cos, floor, pi, sin
 
-from qt_compat import qt_config
-
-if qt_config == 5:
-    from PyQt5.QtCore import pyqtSlot, Qt, QEvent, QPointF, QRectF, QTimer, QSize
-    from PyQt5.QtGui import QColor, QConicalGradient, QFontMetrics, QPainterPath, QPen, QPixmap
-    from PyQt5.QtSvg import QSvgWidget
-elif qt_config == 6:
-    from PyQt6.QtCore import pyqtSlot, Qt, QEvent, QPointF, QRectF, QTimer, QSize
-    from PyQt6.QtGui import QColor, QConicalGradient, QFontMetrics, QPainterPath, QPen, QPixmap
-    from PyQt6.QtSvgWidgets import QSvgWidget
+from qt_compat import (
+    pyqtSlot,
+    Qt,
+    QEvent,
+    QPointF,
+    QRectF,
+    QTimer,
+    QSize,
+    QColor,
+    QConicalGradient,
+    QFontMetrics,
+    QPainterPath,
+    QPen,
+    QPixmap,
+    QSvgWidget,
+)
 
 from .commondial import CommonDial
 from carla_shared import fontMetricsHorizontalAdvance

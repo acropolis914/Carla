@@ -5,18 +5,13 @@
 # ---------------------------------------------------------------------------------------------------------------------
 # Imports (Global)
 
-from qt_compat import qt_config
-
-if qt_config == 5:
-    from PyQt5.QtCore import QRectF
-    from PyQt5.QtGui import QPainter, QPixmap
-    from PyQt5.QtSvg import QSvgWidget
-    from PyQt5.QtWidgets import QPushButton
-elif qt_config == 6:
-    from PyQt6.QtCore import QRectF
-    from PyQt6.QtGui import QPainter, QPixmap
-    from PyQt6.QtSvgWidgets import QSvgWidget
-    from PyQt6.QtWidgets import QPushButton
+from qt_compat import (
+    QRectF,
+    QPainter,
+    QPixmap,
+    QSvgWidget,
+    QPushButton,
+)
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Widget Class

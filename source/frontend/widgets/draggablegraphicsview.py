@@ -7,31 +7,22 @@
 
 import os
 
-from qt_compat import qt_config
-
-if qt_config == 5:
-    from PyQt5.QtCore import Qt, QT_VERSION, QEvent, pyqtSignal
-    from PyQt5.QtGui import QCursor, QMouseEvent, QKeySequence
-    from PyQt5.QtWidgets import (
-        QGraphicsItem,
-        QGraphicsView,
-        QMessageBox,
-        QLineEdit,
-        QListWidget,
-        QListWidgetItem,
-        QShortcut,
-    )
-elif qt_config == 6:
-    from PyQt6.QtCore import Qt, QT_VERSION, QEvent, pyqtSignal
-    from PyQt6.QtGui import QCursor, QMouseEvent, QKeySequence, QShortcut
-    from PyQt6.QtWidgets import (
-        QGraphicsItem,
-        QGraphicsView,
-        QMessageBox,
-        QLineEdit,
-        QListWidget,
-        QListWidgetItem,
-    )
+from qt_compat import (
+    Qt,
+    QT_VERSION,
+    QEvent,
+    pyqtSignal,
+    QCursor,
+    QMouseEvent,
+    QKeySequence,
+    QShortcut,
+    QGraphicsItem,
+    QGraphicsView,
+    QMessageBox,
+    QLineEdit,
+    QListWidget,
+    QListWidgetItem,
+)
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Imports (Custom Stuff)

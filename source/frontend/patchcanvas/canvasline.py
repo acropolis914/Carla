@@ -42,14 +42,15 @@ class CanvasLine(QGraphicsPathItem):
     Unified connection line item rendering both Bézier curves, straight lines,
     and stepped/orthogonal paths, with configurable stroke patterns (solid, dotted, dashed).
     """
-    def __init__(self, item1, item2, parent, shape="bezier", stroke="solid"):
+    def __init__(self, item1, item2, parent, shape=None, stroke=None, opacity=None):
         QGraphicsPathItem.__init__(self)
         self.setParentItem(parent)
 
         self.item1 = item1
         self.item2 = item2
-        self.m_shape = shape
-        self.m_stroke = stroke
+        self.m_shape = shape if shape is not None else getattr(options, "line_style", "bezier")
+        self.m_stroke = stroke if stroke is not None else getattr(options, "line_stroke", "solid")
+        self.m_opacity = opacity if opacity is not None else getattr(options, "line_opacity", 100)
 
         self.m_locked = False
         self.m_lineSelected = None  # None sentinel — ensures updateLineGradient() fires on first call
@@ -76,6 +77,14 @@ class CanvasLine(QGraphicsPathItem):
 
     def getStroke(self):
         return self.m_stroke
+
+    def setOpacityVal(self, opacity):
+        if self.m_opacity != opacity:
+            self.m_opacity = opacity
+            self.updateLineGradient()
+
+    def getOpacityVal(self):
+        return self.m_opacity
 
     def isLocked(self):
         return self.m_locked
@@ -155,10 +164,13 @@ class CanvasLine(QGraphicsPathItem):
         port_type2 = self.item2.getPortType()
         port_gradient = QLinearGradient(0, pos_top, 0, pos_bot)
 
+        # Scale alpha with user line opacity setting (20% - 100%)
+        opacity_factor = max(0.2, min(1.0, float(self.m_opacity) / 100.0))
+
         def get_color(color_val):
             c = QColor(color_val)
-            if not self.m_lineSelected:
-                c.setAlpha(127)
+            base_alpha = 255 if self.m_lineSelected else 127
+            c.setAlpha(int(base_alpha * opacity_factor))
             return c
 
         if port_type1 == PORT_TYPE_AUDIO_JACK:

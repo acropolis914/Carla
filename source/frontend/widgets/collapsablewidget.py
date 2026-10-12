@@ -5,14 +5,15 @@
 # ------------------------------------------------------------------------------------------------------------
 # Imports (Global)
 
-from qt_compat import qt_config
-
-if qt_config == 5:
-    from PyQt5.QtCore import pyqtSlot, Qt
-    from PyQt5.QtWidgets import QFrame, QSizePolicy, QToolButton, QVBoxLayout, QWidget
-elif qt_config == 6:
-    from PyQt6.QtCore import pyqtSlot, Qt
-    from PyQt6.QtWidgets import QFrame, QSizePolicy, QToolButton, QVBoxLayout, QWidget
+from qt_compat import (
+    pyqtSlot,
+    Qt,
+    QFrame,
+    QSizePolicy,
+    QToolButton,
+    QVBoxLayout,
+    QWidget,
+)
 
 # ------------------------------------------------------------------------------------------------------------
 # Widget Class

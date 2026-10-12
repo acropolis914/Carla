@@ -2546,6 +2546,15 @@ class HostWindow(QMainWindow):
         pOptions.node_radius = self.fSavedSettings.get(
             CARLA_KEY_CANVAS_NODE_RADIUS, CARLA_DEFAULT_CANVAS_NODE_RADIUS
         )
+        pOptions.line_style = self.fSavedSettings.get(
+            CARLA_KEY_CANVAS_LINE_STYLE, CARLA_DEFAULT_CANVAS_LINE_STYLE
+        )
+        pOptions.line_stroke = self.fSavedSettings.get(
+            CARLA_KEY_CANVAS_LINE_STROKE, CARLA_DEFAULT_CANVAS_LINE_STROKE
+        )
+        pOptions.line_opacity = self.fSavedSettings.get(
+            CARLA_KEY_CANVAS_LINE_OPACITY, CARLA_DEFAULT_CANVAS_LINE_OPACITY
+        )
 
         if self.fSavedSettings[CARLA_KEY_CANVAS_FANCY_EYE_CANDY]:
             pOptions.eyecandy = patchcanvas.EYECANDY_FULL
@@ -3295,6 +3304,21 @@ class HostWindow(QMainWindow):
             CARLA_KEY_CANVAS_NODE_RADIUS: settings.value(
                 CARLA_KEY_CANVAS_NODE_RADIUS,
                 CARLA_DEFAULT_CANVAS_NODE_RADIUS,
+                int,
+            ),
+            CARLA_KEY_CANVAS_LINE_STYLE: settings.value(
+                CARLA_KEY_CANVAS_LINE_STYLE,
+                CARLA_DEFAULT_CANVAS_LINE_STYLE,
+                str,
+            ),
+            CARLA_KEY_CANVAS_LINE_STROKE: settings.value(
+                CARLA_KEY_CANVAS_LINE_STROKE,
+                CARLA_DEFAULT_CANVAS_LINE_STROKE,
+                str,
+            ),
+            CARLA_KEY_CANVAS_LINE_OPACITY: settings.value(
+                CARLA_KEY_CANVAS_LINE_OPACITY,
+                CARLA_DEFAULT_CANVAS_LINE_OPACITY,
                 int,
             ),
             CARLA_KEY_CUSTOM_PAINTING: (

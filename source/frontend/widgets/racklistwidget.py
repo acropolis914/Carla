@@ -10,16 +10,19 @@ import os
 # ------------------------------------------------------------------------------------------------------------
 # Imports (PyQt)
 
-from qt_compat import qt_config
-
-if qt_config == 5:
-    from PyQt5.QtCore import Qt, QSize, QRect, QEvent
-    from PyQt5.QtGui import QColor, QPainter, QPixmap
-    from PyQt5.QtWidgets import QAbstractItemView, QListWidget, QListWidgetItem, QMessageBox
-elif qt_config == 6:
-    from PyQt6.QtCore import Qt, QSize, QRect, QEvent
-    from PyQt6.QtGui import QColor, QPainter, QPixmap
-    from PyQt6.QtWidgets import QAbstractItemView, QListWidget, QListWidgetItem, QMessageBox
+from qt_compat import (
+    Qt,
+    QSize,
+    QRect,
+    QEvent,
+    QColor,
+    QPainter,
+    QPixmap,
+    QAbstractItemView,
+    QListWidget,
+    QListWidgetItem,
+    QMessageBox,
+)
 
 # ------------------------------------------------------------------------------------------------------------
 # Imports (Custom Stuff)

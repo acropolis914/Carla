@@ -7,16 +7,18 @@
 
 from math import isnan
 
-from qt_compat import qt_config
-
-if qt_config == 5:
-    from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QPointF, QRectF
-    from PyQt5.QtGui import QColor, QFont, QLinearGradient, QPainter
-    from PyQt5.QtWidgets import QDial
-elif qt_config == 6:
-    from PyQt6.QtCore import pyqtSignal, pyqtSlot, Qt, QPointF, QRectF
-    from PyQt6.QtGui import QColor, QFont, QLinearGradient, QPainter
-    from PyQt6.QtWidgets import QDial
+from qt_compat import (
+    pyqtSignal,
+    pyqtSlot,
+    Qt,
+    QPointF,
+    QRectF,
+    QColor,
+    QFont,
+    QLinearGradient,
+    QPainter,
+    QDial,
+)
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Widget Class

@@ -71,6 +71,9 @@ from carla_shared import (
     CARLA_DEFAULT_CANVAS_FULL_REPAINTS,
     CARLA_DEFAULT_CANVAS_HQ_ANTIALIASING,
     CARLA_DEFAULT_CANVAS_INLINE_DISPLAYS,
+    CARLA_DEFAULT_CANVAS_LINE_OPACITY,
+    CARLA_DEFAULT_CANVAS_LINE_STROKE,
+    CARLA_DEFAULT_CANVAS_LINE_STYLE,
     CARLA_DEFAULT_CANVAS_NODE_RADIUS,
     CARLA_DEFAULT_CANVAS_ROUNDED_NODES,
     CARLA_DEFAULT_CANVAS_SIZE,
@@ -137,6 +140,9 @@ from carla_shared import (
     CARLA_KEY_CANVAS_FULL_REPAINTS,
     CARLA_KEY_CANVAS_HQ_ANTIALIASING,
     CARLA_KEY_CANVAS_INLINE_DISPLAYS,
+    CARLA_KEY_CANVAS_LINE_OPACITY,
+    CARLA_KEY_CANVAS_LINE_STROKE,
+    CARLA_KEY_CANVAS_LINE_STYLE,
     CARLA_KEY_CANVAS_NODE_RADIUS,
     CARLA_KEY_CANVAS_ROUNDED_NODES,
     CARLA_KEY_CANVAS_SIZE,
@@ -652,6 +658,51 @@ class CarlaSettingsW(QDialog):
                 self.ui.cb_canvas_use_opengl_canvas.setChecked
             )
 
+        # Dynamic Line Style, Stroke, and Opacity Controls in Canvas Tab
+        if hasattr(self.ui, "group_canvas_theme") and hasattr(self.ui, "gridLayout_2"):
+            # Hide old checkbox since we now have a rich style selector
+            self.ui.cb_canvas_bezier_lines.setVisible(False)
+
+            self.ui.label_canvas_line_style = QLabel(self.tr("Line style:"), self.ui.group_canvas_theme)
+            self.ui.label_canvas_line_style.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            self.ui.cb_canvas_line_style = QComboBox(self.ui.group_canvas_theme)
+            self.ui.cb_canvas_line_style.addItem(self.tr("Bézier curve"), "bezier")
+            self.ui.cb_canvas_line_style.addItem(self.tr("Straight line"), "straight")
+            self.ui.cb_canvas_line_style.addItem(self.tr("Stepped / Orthogonal"), "stepped")
+
+            self.ui.label_canvas_line_stroke = QLabel(self.tr("Line pattern:"), self.ui.group_canvas_theme)
+            self.ui.label_canvas_line_stroke.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            self.ui.cb_canvas_line_stroke = QComboBox(self.ui.group_canvas_theme)
+            self.ui.cb_canvas_line_stroke.addItem(self.tr("Solid"), "solid")
+            self.ui.cb_canvas_line_stroke.addItem(self.tr("Dotted"), "dotted")
+            self.ui.cb_canvas_line_stroke.addItem(self.tr("Dashed"), "dashed")
+
+            self.ui.label_canvas_line_opacity = QLabel(self.tr("Line opacity:"), self.ui.group_canvas_theme)
+            self.ui.label_canvas_line_opacity.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+
+            self.ui.layout_canvas_line_opacity = QHBoxLayout()
+            self.ui.sl_canvas_line_opacity = QSlider(Qt.Horizontal, self.ui.group_canvas_theme)
+            self.ui.sl_canvas_line_opacity.setMinimum(20)
+            self.ui.sl_canvas_line_opacity.setMaximum(100)
+            self.ui.sl_canvas_line_opacity.setValue(100)
+            self.ui.label_canvas_line_opacity_val = QLabel("100%", self.ui.group_canvas_theme)
+            self.ui.label_canvas_line_opacity_val.setMinimumWidth(40)
+            self.ui.sl_canvas_line_opacity.valueChanged.connect(
+                lambda v: self.ui.label_canvas_line_opacity_val.setText(f"{v}%")
+            )
+            self.ui.layout_canvas_line_opacity.addWidget(self.ui.sl_canvas_line_opacity)
+            self.ui.layout_canvas_line_opacity.addWidget(self.ui.label_canvas_line_opacity_val)
+
+            # Insert into gridLayout_2
+            self.ui.gridLayout_2.addWidget(self.ui.label_canvas_line_style, 2, 1, 1, 2)
+            self.ui.gridLayout_2.addWidget(self.ui.cb_canvas_line_style, 2, 3, 1, 1)
+
+            self.ui.gridLayout_2.addWidget(self.ui.label_canvas_line_stroke, 3, 1, 1, 2)
+            self.ui.gridLayout_2.addWidget(self.ui.cb_canvas_line_stroke, 3, 3, 1, 1)
+
+            self.ui.gridLayout_2.addWidget(self.ui.label_canvas_line_opacity, 4, 1, 1, 2)
+            self.ui.gridLayout_2.addLayout(self.ui.layout_canvas_line_opacity, 4, 3, 1, 1)
+
 
         if host.isPlugin:
             self.ui.cb_engine_audio_driver.setEnabled(False)
@@ -1026,6 +1077,33 @@ class CarlaSettingsW(QDialog):
             self.ui.label_canvas_node_radius.setText(f"{nodeRadius} px")
             self.ui.sl_canvas_node_radius.setEnabled(roundedNodes)
             self.ui.label_canvas_node_radius.setEnabled(roundedNodes)
+
+        if hasattr(self.ui, "cb_canvas_line_style"):
+            lineStyle = settings.value(
+                CARLA_KEY_CANVAS_LINE_STYLE,
+                CARLA_DEFAULT_CANVAS_LINE_STYLE,
+                str,
+            )
+            idxStyle = self.ui.cb_canvas_line_style.findData(lineStyle)
+            if idxStyle >= 0:
+                self.ui.cb_canvas_line_style.setCurrentIndex(idxStyle)
+
+            lineStroke = settings.value(
+                CARLA_KEY_CANVAS_LINE_STROKE,
+                CARLA_DEFAULT_CANVAS_LINE_STROKE,
+                str,
+            )
+            idxStroke = self.ui.cb_canvas_line_stroke.findData(lineStroke)
+            if idxStroke >= 0:
+                self.ui.cb_canvas_line_stroke.setCurrentIndex(idxStroke)
+
+            lineOpacity = settings.value(
+                CARLA_KEY_CANVAS_LINE_OPACITY,
+                CARLA_DEFAULT_CANVAS_LINE_OPACITY,
+                int,
+            )
+            self.ui.sl_canvas_line_opacity.setValue(lineOpacity)
+            self.ui.label_canvas_line_opacity_val.setText(f"{lineOpacity}%")
 
         # -------------------------------------------------------------------------------------------------------------
 
@@ -1412,6 +1490,20 @@ class CarlaSettingsW(QDialog):
                 self.ui.sl_canvas_node_radius.value(),
             )
 
+        if hasattr(self.ui, "cb_canvas_line_style"):
+            selected_style = self.ui.cb_canvas_line_style.currentData()
+            settings.setValue(CARLA_KEY_CANVAS_LINE_STYLE, selected_style)
+            # Sync bezier lines boolean flag
+            settings.setValue(CARLA_KEY_CANVAS_USE_BEZIER_LINES, bool(selected_style == "bezier"))
+            settings.setValue(
+                CARLA_KEY_CANVAS_LINE_STROKE,
+                self.ui.cb_canvas_line_stroke.currentData(),
+            )
+            settings.setValue(
+                CARLA_KEY_CANVAS_LINE_OPACITY,
+                self.ui.sl_canvas_line_opacity.value(),
+            )
+
         # -------------------------------------------------------------------------------------------------------------
 
         settings = QSafeSettings("falkTX", "Carla2")
@@ -1706,6 +1798,15 @@ class CarlaSettingsW(QDialog):
                     CARLA_DEFAULT_CANVAS_ROUNDED_NODES
                 )
                 self.ui.sl_canvas_node_radius.setValue(CARLA_DEFAULT_CANVAS_NODE_RADIUS)
+            if hasattr(self.ui, "cb_canvas_line_style"):
+                idxStyle = self.ui.cb_canvas_line_style.findData(CARLA_DEFAULT_CANVAS_LINE_STYLE)
+                if idxStyle >= 0:
+                    self.ui.cb_canvas_line_style.setCurrentIndex(idxStyle)
+                idxStroke = self.ui.cb_canvas_line_stroke.findData(CARLA_DEFAULT_CANVAS_LINE_STROKE)
+                if idxStroke >= 0:
+                    self.ui.cb_canvas_line_stroke.setCurrentIndex(idxStroke)
+                self.ui.sl_canvas_line_opacity.setValue(CARLA_DEFAULT_CANVAS_LINE_OPACITY)
+                self.ui.label_canvas_line_opacity_val.setText(f"{CARLA_DEFAULT_CANVAS_LINE_OPACITY}%")
 
         # -------------------------------------------------------------------------------------------------------------
         # Engine

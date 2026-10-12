@@ -36,6 +36,15 @@ Recent developments enhance the Carla modular audio host across three primary pi
   - Configured `QSurfaceFormat` with 4 samples on `QOpenGLWidget` when canvas antialiasing is enabled, resolving jagged lines and missing antialiasing when using OpenGL hardware acceleration.
   - Exported `QSurfaceFormat` in `qt_compat.py`.
 
+### 2026-10-12 17:34:00
+- **feat(canvas)**: Expose line style, pattern, and opacity in Canvas Settings
+  - Added configurable options `Canvas/LineStyle` (`"bezier"`, `"straight"`, `"stepped"`), `Canvas/LineStroke` (`"solid"`, `"dotted"`, `"dashed"`), and `Canvas/LineOpacity` (20% – 100%) in `carla_shared.py`, `patchcanvas/__init__.py`, and `carla_host.py`.
+  - Added line style and pattern comboboxes and an interactive opacity slider in `carla_settings.py`.
+  - Updated `CanvasLine` to dynamically scale line alpha by user opacity settings.
+- **refactor(qt)**: Complete migration of all custom UI widgets in `widgets/` to `qt_compat.py`
+  - Exported missing UI items (`QKeySequence`, `QShortcut`, `QListWidget`, `QSvgWidget`, `QToolButton`, `QDial`, `QConicalGradient`, `QProgressBar`, `QGraphicsSimpleTextItem`, `QActionGroup`) in [`qt_compat.py`](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/qt_compat.py).
+  - Cleaned up `if qt_config == 5:` boilerplate across all 13 widget modules in `widgets/` (`draggablegraphicsview.py`, `canvaspreviewframe.py`, `pixmapdial.py`, `scalabledial.py`, `commondial.py`, `digitalpeakmeter.py`, `paramspinbox.py`, `pianoroll.py`, `racklistwidget.py`, `scalablebutton.py`, `ledbutton.py`, `collapsablewidget.py`, `pixmapkeyboard.py`).
+
 ### 2026-10-12 17:11:00
 - **fix(qt)**: Resolve `qt_config` NameError in `theme.py` and clean up `canvasbox.py`
   - Replaced manual `qt_config == 6` branches in `theme.py` (`parse_pen`, font weight) with standard `Qt` pen style and `QFont.Bold` / `QFont.Normal` aliases.
