@@ -165,9 +165,43 @@ class CanvasLine(QGraphicsPathItem):
         # Scale alpha with user line opacity setting (20% - 100%)
         opacity_factor = max(0.2, min(1.0, float(self.m_opacity) / 100.0))
 
+        bg_color = getattr(canvas.theme, "canvas_bg", QColor("#1e1e2e"))
+        bg_lum = 0.2126 * (bg_color.redF() ** 2.2) + 0.7152 * (bg_color.greenF() ** 2.2) + 0.0722 * (bg_color.blueF() ** 2.2)
+
+        def ensure_contrast(c):
+            col = QColor(c)
+            # Calculate perceived relative luminance
+            c_lum = 0.2126 * (col.redF() ** 2.2) + 0.7152 * (col.greenF() ** 2.2) + 0.0722 * (col.blueF() ** 2.2)
+            contrast = (max(c_lum, bg_lum) + 0.05) / (min(c_lum, bg_lum) + 0.05)
+            # If contrast against background is too low (< 2.2:1), adjust lightness
+            if contrast < 2.2:
+                h = col.hslHueF()
+                s = col.hslSaturationF()
+                l = col.lightnessF()
+                if bg_lum < 0.5:
+                    # Dark background: boost lightness up until contrast is adequate
+                    while l < 0.90:
+                        l = min(0.92, l + 0.10)
+                        test_c = QColor.fromHslF(max(0.0, h), max(0.2, s), l)
+                        test_lum = 0.2126 * (test_c.redF() ** 2.2) + 0.7152 * (test_c.greenF() ** 2.2) + 0.0722 * (test_c.blueF() ** 2.2)
+                        if (test_lum + 0.05) / (bg_lum + 0.05) >= 2.5:
+                            return test_c
+                    return QColor.fromHslF(max(0.0, h), max(0.2, s), l)
+                else:
+                    # Light background: reduce lightness down until contrast is adequate
+                    while l > 0.15:
+                        l = max(0.10, l - 0.10)
+                        test_c = QColor.fromHslF(max(0.0, h), max(0.2, s), l)
+                        test_lum = 0.2126 * (test_c.redF() ** 2.2) + 0.7152 * (test_c.greenF() ** 2.2) + 0.0722 * (test_c.blueF() ** 2.2)
+                        if (bg_lum + 0.05) / (test_lum + 0.05) >= 2.5:
+                            return test_c
+                    return QColor.fromHslF(max(0.0, h), max(0.2, s), l)
+            return col
+
         def get_color(color_val):
-            c = QColor(color_val)
-            base_alpha = 255 if self.m_lineSelected else 127
+            c = ensure_contrast(color_val)
+            # Default unselected line has clear visibility (190 base alpha instead of muddy 127)
+            base_alpha = 255 if self.m_lineSelected else 190
             c.setAlpha(int(base_alpha * opacity_factor))
             return c
 
