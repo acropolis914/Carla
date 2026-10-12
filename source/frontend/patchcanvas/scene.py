@@ -15,6 +15,7 @@ from qt_compat import (
     Qt,
     QColor,
     QBrush,
+    QPen,
     QPointF,
     QRectF,
     QTimer,
@@ -160,26 +161,27 @@ class PatchScene(QGraphicsScene):
         if scale <= 0.001:
             return
 
-        # Choose LOD step multiplier so screen spacing stays within comfortable 14px - 45px range
+        # Choose LOD step multiplier so screen spacing stays within comfortable 15px - 40px range
         step = float(base_grid)
         screen_dist = step * scale
-        if screen_dist < 14.0:
-            while step * scale < 14.0:
+        if screen_dist < 15.0:
+            while step * scale < 15.0:
                 step *= 2.0
-        elif screen_dist > 50.0:
-            while step * scale > 50.0 and step / 2.0 >= 8.0:
+        elif screen_dist > 40.0:
+            while step * scale > 40.0 and (step / 2.0) >= 10.0:
                 step /= 2.0
 
-        grid_step = int(max(4.0, round(step)))
+        grid_step = max(5, int(round(step)))
 
-        # Determine subtle dot color based on background contrast
+        # Determine subtle dot color with lowered opacity
         bg_black = canvas.theme.canvas_bg.blackF()
         is_dark = (bg_black >= 0.5)
-        base_alpha = 48 if is_dark else 36
+        # Low opacity for non-distracting background dots
+        base_alpha = 24 if is_dark else 20
 
-        # Draw secondary major grid lines if zoomed in, or subtle hierarchy
+        # Draw secondary major grid lines if zoomed in
         major_step = grid_step * 5
-        line_color = QColor(255, 255, 255, 12) if is_dark else QColor(0, 0, 0, 10)
+        line_color = QColor(255, 255, 255, 10) if is_dark else QColor(0, 0, 0, 8)
         dot_color = QColor(255, 255, 255, base_alpha) if is_dark else QColor(0, 0, 0, base_alpha)
 
         left = int(floor(rect.left() / grid_step) * grid_step)
@@ -188,8 +190,8 @@ class PatchScene(QGraphicsScene):
         bottom = int(ceil(rect.bottom()))
 
         # 1. Subtle major grid reference lines
-        if scale >= 0.4 and major_step <= 500:
-            painter.setPen(QPen(line_color, 1.0 / scale, Qt.DotLine))
+        if scale >= 0.3 and major_step <= 800:
+            painter.setPen(QPen(line_color, max(0.5, 1.0 / scale), Qt.DotLine))
             painter.setBrush(Qt.NoBrush)
             major_left = int(floor(rect.left() / major_step) * major_step)
             major_top = int(floor(rect.top() / major_step) * major_step)
@@ -198,8 +200,8 @@ class PatchScene(QGraphicsScene):
             for y in range(major_top, bottom + major_step, major_step):
                 painter.drawLine(QPointF(rect.left(), y), QPointF(rect.right(), y))
 
-        # 2. Dynamic zoom-scaled intersection dots
-        dot_radius = max(0.6, 1.2 / scale)
+        # 2. Dynamic zoom-scaled intersection dots (guaranteed visible and crisp)
+        dot_radius = max(0.6, 1.0 / scale)
         painter.setPen(Qt.NoPen)
         painter.setBrush(QBrush(dot_color))
 

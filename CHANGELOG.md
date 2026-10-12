@@ -25,6 +25,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Replaced fixed dot spacing with an adaptive multi-tier LOD grid that scales dot frequency and radius based on zoom level.
   - Added subtle major grid reference lines at higher zoom levels for enhanced spatial orientation.
   - Made canvas cable lines scale smoothly across zoom levels with sub-pixel thickness dampening.
+  - Fixed `NameError: name 'QPen' is not defined` in `scene.py` and reduced dot grid opacity to a subtle background level.
 
 ### 2026-10-13 01:49:00
 - **fix(patchbay)**: Implement missing single-node power and bypass action slots on context toolbar
