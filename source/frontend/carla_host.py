@@ -73,6 +73,7 @@ from qt_compat import (
     QSplitter,
     QSurfaceFormat,
     QTimer,
+    QToolButton,
     QVBoxLayout,
     QWidget,
     qCritical,
@@ -625,6 +626,30 @@ class HostWindow(QMainWindow):
         self.ui.act_plugins_center.triggered.connect(self.slot_pluginsCenter)
         self.ui.act_plugins_compact.triggered.connect(self.slot_pluginsCompact)
         self.ui.act_plugins_expand.triggered.connect(self.slot_pluginsExpand)
+
+        # Menubar toggle action & compact hamburger tool button
+        self.act_settings_show_menubar = QAction(self.tr("Show Menubar"), self)
+        self.act_settings_show_menubar.setCheckable(True)
+        self.act_settings_show_menubar.setChecked(True)
+        self.act_settings_show_menubar.setShortcut("Ctrl+M")
+        self.act_settings_show_menubar.toggled.connect(self.slot_showMenubar)
+        self.ui.menu_Settings.addAction(self.act_settings_show_menubar)
+
+        # Hamburger Menu button for when menubar is hidden
+        self.btn_hamburger_menu = QToolButton(self.ui.toolBar)
+        self.btn_hamburger_menu.setText("☰")
+        self.btn_hamburger_menu.setToolTip(self.tr("Main Menu (Ctrl+M to toggle full menubar)"))
+        self.btn_hamburger_menu.setPopupMode(QToolButton.InstantPopup)
+        self._hamburger_popup = QMenu(self.btn_hamburger_menu)
+        self._hamburger_popup.addAction(self.ui.menu_File.menuAction())
+        self._hamburger_popup.addAction(self.ui.menu_Engine.menuAction())
+        self._hamburger_popup.addAction(self.ui.menu_Plugin.menuAction())
+        self._hamburger_popup.addAction(self.ui.menu_Canvas.menuAction())
+        self._hamburger_popup.addAction(self.ui.menu_Settings.menuAction())
+        self._hamburger_popup.addAction(self.ui.menu_Help.menuAction())
+        self.btn_hamburger_menu.setMenu(self._hamburger_popup)
+        self.ui.toolBar.insertWidget(self.ui.toolBar.actions()[0] if self.ui.toolBar.actions() else None, self.btn_hamburger_menu)
+        self.btn_hamburger_menu.setVisible(False)
 
         self.ui.act_settings_show_toolbar.toggled.connect(self.slot_showToolbar)
         self.ui.act_settings_show_meters.toggled.connect(self.slot_showCanvasMeters)
@@ -3187,7 +3212,14 @@ class HostWindow(QMainWindow):
 
         settings.setValue("Geometry", self.saveGeometry())
         settings.setValue("ShowToolbar", self.ui.toolBar.isEnabled())
+        settings.setValue("ShowMenubar", self.ui.menubar.isVisible())
         settings.setValue("ShowSidePanel", self.ui.dockWidget.isEnabled())
+
+        # Persist side-by-side view state and splitter ratio
+        is_split = hasattr(self, "tabSplit") and self.ui.tabWidget.indexOf(self.tabSplit) == self.ui.tabWidget.currentIndex()
+        settings.setValue("SideBySideEnabled", bool(is_split))
+        if hasattr(self, "splitter") and self.splitter is not None:
+            settings.setValue("SideBySideSizes", self.splitter.sizes())
 
         diskFolders = []
 
@@ -3233,6 +3265,23 @@ class HostWindow(QMainWindow):
             self.ui.toolBar.setEnabled(showToolbar)
             self.ui.toolBar.setVisible(showToolbar)
             self.ui.toolBar.blockSignals(False)
+
+            showMenubar = settings.value("ShowMenubar", True, bool)
+            self.slot_showMenubar(showMenubar)
+
+            # Restore side-by-side view state and splitter ratio
+            sideBySide = settings.value("SideBySideEnabled", False, bool)
+            if sideBySide and self.fWithCanvas:
+                self.act_canvas_side_by_side.setChecked(True)
+                self.slot_toggleSideBySideView(True)
+                saved_sizes = settings.value("SideBySideSizes", None)
+                if saved_sizes and hasattr(self, "splitter") and self.splitter is not None:
+                    try:
+                        int_sizes = [int(s) for s in saved_sizes]
+                        if len(int_sizes) == 2:
+                            self.splitter.setSizes(int_sizes)
+                    except Exception:
+                        pass
 
             # if settings.contains("SplitterState"):
             # self.ui.splitter.restoreState(settings.value("SplitterState", b""))
@@ -3578,6 +3627,16 @@ class HostWindow(QMainWindow):
 
     # --------------------------------------------------------------------------------------------------------
     # Settings (menu actions)
+
+    @pyqtSlot(bool)
+    def slot_showMenubar(self, yesNo):
+        self.ui.menubar.setVisible(yesNo)
+        if hasattr(self, "act_settings_show_menubar"):
+            self.act_settings_show_menubar.blockSignals(True)
+            self.act_settings_show_menubar.setChecked(yesNo)
+            self.act_settings_show_menubar.blockSignals(False)
+        if hasattr(self, "btn_hamburger_menu"):
+            self.btn_hamburger_menu.setVisible(not yesNo)
 
     @pyqtSlot(bool)
     def slot_showSidePanel(self, yesNo):

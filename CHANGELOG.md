@@ -20,6 +20,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 02:13:00
+- **feat(ui)**: Hideable menubar with compact hamburger tool button and side-by-side ratio persistence
+  - Added `Ctrl+M` toggle for `Show Menubar` under Settings menu.
+  - Added a compact "☰" hamburger popup button on the main toolbar when the menubar is hidden for one-click access to all menus.
+  - Persisted `ShowMenubar`, `SideBySideEnabled`, and `SideBySideSizes` splitter ratio across application sessions.
+
 ### 2026-10-13 01:57:00
 - **feat(patchbay)**: Adaptive zoom-dynamic dot grid and canvas cable line scaling
   - Replaced fixed dot spacing with an adaptive multi-tier LOD grid that scales dot frequency and radius based on zoom level.
