@@ -104,6 +104,7 @@ class options_t(object):
         "line_opacity",
         "grid_enabled",
         "grid_size",
+        "snap_enabled",
     ]
 
 
@@ -277,6 +278,7 @@ options.line_stroke = "solid"
 options.line_opacity = 100
 options.grid_enabled = True
 options.grid_size = 20
+options.snap_enabled = True
 
 features = features_t()
 features.group_info = False
@@ -304,6 +306,7 @@ def setOptions(new_options):
     options.line_opacity = getattr(new_options, "line_opacity", 100)
     options.grid_enabled = getattr(new_options, "grid_enabled", True)
     options.grid_size = getattr(new_options, "grid_size", 20)
+    options.snap_enabled = getattr(new_options, "snap_enabled", True)
 
 
 

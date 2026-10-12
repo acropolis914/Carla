@@ -531,6 +531,7 @@ class CanvasToolBarOverlay(QFrame):
         self.icon_zoomin  = "\uf00e" if font_family else "+"      # Zoom in
         self.icon_zoomout = "\uf010" if font_family else "-"      # Zoom out
         self.icon_grid    = "\U000f02ca" if font_family else "#"   # Grid icon
+        self.icon_snap    = "\U000f074d" if font_family else "🧲"  # Magnet / Snap icon
 
         # Mode Selection Buttons (Checkable, Mutually Exclusive)
         self.btnPointer = QPushButton(self.icon_pointer, self)
@@ -588,15 +589,25 @@ class CanvasToolBarOverlay(QFrame):
 
         add_sep()
 
-        # Canvas Grid Toggle
+        # Canvas Dot Grid Toggle
         self.btnGrid = QPushButton(self.icon_grid, self)
-        self.btnGrid.setToolTip("Toggle Dot Grid & Snapping")
+        self.btnGrid.setToolTip("Toggle Dot Grid Visibility")
         self.btnGrid.setFont(font)
         self.btnGrid.setFixedSize(28, 28)
         self.btnGrid.setCheckable(True)
         self.btnGrid.setChecked(getattr(patchcanvas.options, "grid_enabled", True))
         self.btnGrid.clicked.connect(self._slot_toggleGrid)
         layout.addWidget(self.btnGrid)
+
+        # Coordinate Snapping Toggle
+        self.btnSnap = QPushButton(self.icon_snap, self)
+        self.btnSnap.setToolTip("Toggle Coordinate Snapping to Grid")
+        self.btnSnap.setFont(font)
+        self.btnSnap.setFixedSize(28, 28)
+        self.btnSnap.setCheckable(True)
+        self.btnSnap.setChecked(getattr(patchcanvas.options, "snap_enabled", True))
+        self.btnSnap.clicked.connect(self._slot_toggleSnap)
+        layout.addWidget(self.btnSnap)
 
         self.setStyleSheet("""
             QFrame#canvas_toolbar_overlay {
@@ -649,6 +660,11 @@ class CanvasToolBarOverlay(QFrame):
         scene = self.graphicsView.scene()
         if scene:
             scene.update()
+
+    def _slot_toggleSnap(self):
+        new_state = not getattr(patchcanvas.options, "snap_enabled", True)
+        patchcanvas.options.snap_enabled = new_state
+        self.btnSnap.setChecked(new_state)
 
     def updateActiveButton(self, mode):
         self.btnPointer.setChecked(mode == 0)
@@ -790,6 +806,9 @@ class CanvasContextToolBarOverlay(QFrame):
         icon_clone = "\U000f0190 " if nf else ""
         icon_del   = "\uf1f8 " if nf else ""
         icon_align = "\uf036 " if nf else ""
+        icon_ren   = "\U000f0641 " if nf else ""
+        icon_cut   = "\uf127 " if nf else ""
+        icon_split = "\U000f0975 " if nf else ""
 
         if count == 0:
             # Global Canvas Actions
@@ -814,6 +833,7 @@ class CanvasContextToolBarOverlay(QFrame):
             self.addSeparator()
 
             plugin_id = getattr(node, "m_plugin_id", -1)
+            group_id = getattr(node, "m_group_id", -1)
             has_plugin = (0 <= plugin_id <= patchcanvas.MAX_PLUGIN_ID_ALLOWED)
             has_ui = getattr(node, "m_plugin_ui", False)
 
@@ -823,12 +843,21 @@ class CanvasContextToolBarOverlay(QFrame):
                     self.addButton(f"{icon_ui}UI", "Show Custom Plugin UI", lambda: patchcanvas.canvas.callback(patchcanvas.ACTION_PLUGIN_SHOW_UI, plugin_id, 0, ""))
                 self.addButton(f"{icon_rack}Rack", "Jump to Plugin in Rack Tab", lambda: self._slot_jump_rack(plugin_id))
                 self.addButton(f"{icon_clone}Clone", "Duplicate / Clone Plugin", lambda: patchcanvas.canvas.callback(patchcanvas.ACTION_PLUGIN_CLONE, plugin_id, 0, ""))
+                self.addButton(f"{icon_ren}Rename", "Rename Plugin", lambda: patchcanvas.canvas.callback(patchcanvas.ACTION_PLUGIN_RENAME, plugin_id, 0, ""))
                 self.addButton(f"{icon_del}Remove", "Delete / Remove Plugin", lambda: patchcanvas.canvas.callback(patchcanvas.ACTION_PLUGIN_REMOVE, plugin_id, 0, ""))
                 self.addSeparator()
 
+            # Split/Join if available
+            split_label = "Join" if getattr(node, "m_split", False) else "Split"
+            self.addButton(f"{icon_split}{split_label}", f"{split_label} Input/Output Box Groups", lambda: self._slot_split_join(node))
+
+            # Disconnect all cables from this node
+            self.addButton(f"{icon_cut}Disconnect All", "Disconnect All Cables Connected to This Node", lambda: self._slot_disconnect_node(node))
+
+            self.addSeparator()
             self.addButton(f"{icon_arr}Arrange Connected", "Align and arrange graph connected to this node", lambda: patchcanvas.arrangeConnected(node, "both"))
             self.addButton(f"{icon_aside}Park Aside", "Move this node aside", lambda: patchcanvas.moveAsideNonConnectedNodes(node))
-            self.addButton("Desel", "Deselect (Esc)", patchcanvas.deselectAllNodes)
+            self.addButton("Deselect", "Deselect (Esc)", patchcanvas.deselectAllNodes)
 
         else:
             # Multiple Nodes Batch Actions
@@ -836,18 +865,54 @@ class CanvasContextToolBarOverlay(QFrame):
             self.layout.addWidget(lbl)
             self.addSeparator()
 
-            self.addButton(f"{icon_align}Align Horiz", "Align Nodes Horizontally", lambda: patchcanvas.alignSelected("horizontal"))
-            self.addButton(f"{icon_align}Align Vert", "Align Nodes Vertically", lambda: patchcanvas.alignSelected("vertical"))
+            self.addButton(f"{icon_align}Align Horiz", "Align Selected Nodes Horizontally", lambda: patchcanvas.alignSelected("horizontal"))
+            self.addButton(f"{icon_align}Align Vert", "Align Selected Nodes Vertically", lambda: patchcanvas.alignSelected("vertical"))
             self.addButton("Distribute H", "Distribute Horizontally with equal spacing", lambda: patchcanvas.alignSelected("distribute_h"))
             self.addButton("Distribute V", "Distribute Vertically with equal spacing", lambda: patchcanvas.alignSelected("distribute_v"))
             self.addSeparator()
             self.addButton(f"{icon_repel}Repel", "Auto-Repel Selected Nodes", lambda: patchcanvas.repelNodes(selected))
+            self.addButton(f"{icon_cut}Disconnect Selected", "Disconnect all cables between or attached to selected nodes", lambda: self._slot_disconnect_selected(selected))
+            self.addSeparator()
             self.addButton("Invert", "Invert Selection", patchcanvas.invertNodeSelection)
             self.addButton("Deselect", "Clear Selection (Esc)", patchcanvas.deselectAllNodes)
 
         self.adjustSize()
         if not getattr(self, "_userMoved", False):
             self.reposition()
+
+    def _slot_split_join(self, node):
+        group_id = getattr(node, "m_group_id", -1)
+        if group_id < 0:
+            return
+        if getattr(node, "m_split", False):
+            patchcanvas.canvas.callback(patchcanvas.ACTION_GROUP_JOIN, group_id, 0, "")
+        else:
+            patchcanvas.canvas.callback(patchcanvas.ACTION_GROUP_SPLIT, group_id, 0, "")
+
+    def _slot_disconnect_node(self, node):
+        group_id = getattr(node, "m_group_id", -1)
+        port_ids = set(getattr(node, "m_port_list_ids", []))
+        conns_to_drop = []
+        for c in patchcanvas.canvas.connection_list:
+            if (c.group_out_id == group_id and c.port_out_id in port_ids) or \
+               (c.group_in_id == group_id and c.port_in_id in port_ids):
+                conns_to_drop.append(c.connection_id)
+        for cid in conns_to_drop:
+            patchcanvas.canvas.callback(patchcanvas.ACTION_PORTS_DISCONNECT, cid, 0, "")
+
+    def _slot_disconnect_selected(self, nodes):
+        node_groups_ports = set()
+        for n in nodes:
+            gid = getattr(n, "m_group_id", -1)
+            for pid in getattr(n, "m_port_list_ids", []):
+                node_groups_ports.add((gid, pid))
+        conns_to_drop = []
+        for c in patchcanvas.canvas.connection_list:
+            if (c.group_out_id, c.port_out_id) in node_groups_ports or \
+               (c.group_in_id, c.port_in_id) in node_groups_ports:
+                conns_to_drop.append(c.connection_id)
+        for cid in conns_to_drop:
+            patchcanvas.canvas.callback(patchcanvas.ACTION_PORTS_DISCONNECT, cid, 0, "")
 
     def _slot_arrange(self):
         patchcanvas.arrange()

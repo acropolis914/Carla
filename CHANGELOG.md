@@ -15,6 +15,14 @@ Recent developments enhance the Carla modular audio host across three primary pi
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 00:45:00
+- **feat(patchbay)**: Separate grid visibility from coordinate snapping and implement complete context toolbar actions
+  - Separated `options.grid_enabled` (dot grid visual background) and `options.snap_enabled` (coordinate snapping) into independent toggle controls.
+  - Added dedicated Grid button and Magnet Snap button to the left navigation tool palette.
+  - Expanded top context actions toolbar (`CanvasContextToolBarOverlay`):
+    - Single node selection: Edit, Custom UI, Jump to Rack, Clone, Rename, Remove, Split/Join box group, Disconnect All, Arrange Connected, Park Aside, Deselect.
+    - Multiple node selection: Align Horiz, Align Vert, Distribute H, Distribute V, Auto-Repel Selected, Disconnect Selected cables, Invert Selection, Deselect.
+
 ### 2026-10-13 00:38:00
 - **feat(patchbay)**: Split canvas toolbars into dedicated left navigation palette and dynamic top context actions bar
   - Resolved Qt6 `QMouseEvent.globalPos()` AttributeError by implementing `_get_event_global_pos()` using `globalPosition().toPoint()`.
