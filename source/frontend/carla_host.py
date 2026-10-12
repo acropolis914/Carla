@@ -1319,6 +1319,10 @@ class HostWindow(QMainWindow):
         except Exception as e:
             print("Failed to prepare project for loading:", e)
 
+        # Ensure engine backend is started before loading project
+        if not (self.host.isControl or self.host.is_engine_running()):
+            self.slot_engineStart()
+
         load_ok = self.host.load_project(actual_load_filename)
 
         if tmp_cleanup_file and os.path.exists(tmp_cleanup_file):
