@@ -3325,6 +3325,19 @@ class HostWindow(QMainWindow):
             showMenubar = settings.value("ShowMenubar", True, bool)
             self.slot_showMenubar(showMenubar)
 
+            showStatusBar = settings.value("ShowStatusBar", True, bool)
+            if hasattr(self.ui, "statusbar") and self.ui.statusbar is not None:
+                self.ui.statusbar.setVisible(showStatusBar)
+
+            # Apply rack spacing & padding from settings
+            rackSpacing = settings.value("RackItemSpacing", 4, int)
+            rackMinWidth = settings.value("RackItemMinWidth", 200, int)
+            if hasattr(self.ui, "listWidget") and self.ui.listWidget is not None:
+                from widgets.racklistwidget import RackListItem
+                RackListItem.kMinimumWidth = rackMinWidth
+                self.ui.listWidget.setMinimumWidth(rackMinWidth)
+                self.ui.listWidget.setSpacing(rackSpacing)
+
             # Restore side-by-side view state and splitter ratio
             sideBySide = settings.value("SideBySideEnabled", False, bool)
             if sideBySide and self.fWithCanvas and hasattr(self, "act_canvas_side_by_side") and self.act_canvas_side_by_side is not None:

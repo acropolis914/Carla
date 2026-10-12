@@ -18,6 +18,8 @@ from qt_compat import (
     QSpinBox,
     QLabel,
     QHBoxLayout,
+    QGroupBox,
+    QFormLayout,
 )
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -601,6 +603,68 @@ class CarlaSettingsW(QDialog):
             )
         )
 
+        # Modern Catppuccin Dialog & Sidebar Theme
+        self.setStyleSheet("""
+            QDialog {
+                background: #1e1e2e;
+                color: #cdd6f4;
+            }
+            QListWidget#lw_page {
+                background: #181825;
+                border: none;
+                border-right: 1px solid rgba(255, 255, 255, 12);
+                padding: 6px;
+                outline: none;
+            }
+            QListWidget#lw_page::item {
+                color: #a6adc8;
+                border-radius: 6px;
+                padding: 8px 10px;
+                margin: 2px 0px;
+                font-weight: 600;
+            }
+            QListWidget#lw_page::item:hover {
+                background: rgba(255, 255, 255, 0.06);
+                color: #cdd6f4;
+            }
+            QListWidget#lw_page::item:selected {
+                background: #89b4fa;
+                color: #11111b;
+                font-weight: bold;
+            }
+            QGroupBox {
+                border: 1px solid rgba(255, 255, 255, 14);
+                border-radius: 6px;
+                margin-top: 14px;
+                padding-top: 14px;
+                font-weight: bold;
+                color: #89b4fa;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                subcontrol-position: top left;
+                padding: 0 6px;
+            }
+            QSlider::groove:horizontal {
+                background: #313244;
+                height: 4px;
+                border-radius: 2px;
+            }
+            QSlider::sub-page:horizontal {
+                background: #89b4fa;
+                height: 4px;
+                border-radius: 2px;
+            }
+            QSlider::handle:horizontal {
+                background: #cdd6f4;
+                border: 1px solid #89b4fa;
+                width: 12px;
+                height: 12px;
+                margin: -4px 0;
+                border-radius: 6px;
+            }
+        """)
+
         for i in range(host.get_engine_driver_count()):
             self.ui.cb_engine_audio_driver.addItem(host.get_engine_driver_name(i))
 
@@ -765,6 +829,87 @@ class CarlaSettingsW(QDialog):
         self.ch_main_log_to_console = QCheckBox(self.tr("Mirror application logs to terminal (Rich formatted)"), self.ui.group_main_misc)
         self.ch_main_log_to_console.setObjectName("ch_main_log_to_console")
         self.ui.gridLayout_4.addWidget(self.ch_main_log_to_console, 4, 0, 1, 3)
+
+        # Statusbar visibility toggle
+        self.ch_main_show_statusbar = QCheckBox(self.tr("Show Statusbar at bottom"), self.ui.group_main_misc)
+        self.ch_main_show_statusbar.setObjectName("ch_main_show_statusbar")
+        self.ui.gridLayout_4.addWidget(self.ch_main_show_statusbar, 5, 0, 1, 3)
+
+        # Rack Appearance & Geometry Live Tweakables Group
+        self.group_rack_geometry = QGroupBox(self.tr("Rack Layout & Spacing"), self.ui.tab_main)
+        self.layout_rack_geo = QFormLayout(self.group_rack_geometry)
+
+        # 1. Rack Item Spacing Margin (0 - 16 px)
+        self.sl_rack_spacing = QSlider(Qt.Horizontal, self.group_rack_geometry)
+        self.sl_rack_spacing.setRange(0, 16)
+        self.lbl_rack_spacing_val = QLabel("4 px", self.group_rack_geometry)
+        layout_sp = QHBoxLayout()
+        layout_sp.addWidget(self.sl_rack_spacing)
+        layout_sp.addWidget(self.lbl_rack_spacing_val)
+        self.layout_rack_geo.addRow(self.tr("Slot vertical spacing:"), layout_sp)
+
+        # 2. Rack Item Internal Padding Top/Bottom (2 - 16 px)
+        self.sl_rack_padding = QSlider(Qt.Horizontal, self.group_rack_geometry)
+        self.sl_rack_padding.setRange(2, 16)
+        self.lbl_rack_padding_val = QLabel("6 px", self.group_rack_geometry)
+        layout_pd = QHBoxLayout()
+        layout_pd.addWidget(self.sl_rack_padding)
+        layout_pd.addWidget(self.lbl_rack_padding_val)
+        self.layout_rack_geo.addRow(self.tr("Slot internal padding:"), layout_pd)
+
+        # 3. Rack Minimum Width Constraint (180 - 450 px)
+        self.sl_rack_min_width = QSlider(Qt.Horizontal, self.group_rack_geometry)
+        self.sl_rack_min_width.setRange(180, 450)
+        self.lbl_rack_min_width_val = QLabel("200 px", self.group_rack_geometry)
+        layout_mw = QHBoxLayout()
+        layout_mw.addWidget(self.sl_rack_min_width)
+        layout_mw.addWidget(self.lbl_rack_min_width_val)
+        self.layout_rack_geo.addRow(self.tr("Slot minimum width:"), layout_mw)
+
+        if hasattr(self.ui, "verticalLayout_3"):
+            self.ui.verticalLayout_3.addWidget(self.group_rack_geometry)
+
+        # Live update hooks
+        def _on_live_rack_spacing(val):
+            self.lbl_rack_spacing_val.setText(f"{val} px")
+            if hasattr(gCarla, "gui") and gCarla.gui is not None and hasattr(gCarla.gui.ui, "listWidget"):
+                gCarla.gui.ui.listWidget.setSpacing(val)
+
+        def _on_live_rack_padding(val):
+            self.lbl_rack_padding_val.setText(f"{val} px")
+            if hasattr(gCarla, "gui") and gCarla.gui is not None and hasattr(gCarla.gui.ui, "listWidget"):
+                lw = gCarla.gui.ui.listWidget
+                for i in range(lw.count()):
+                    item = lw.item(i)
+                    if hasattr(item, "fWidget") and item.fWidget is not None:
+                        w = item.fWidget
+                        if hasattr(w, "ui") and hasattr(w.ui, "verticalLayout"):
+                            w.ui.verticalLayout.setContentsMargins(14, val, 6, val)
+                            if hasattr(w, "updateRackItemSize"):
+                                w.updateRackItemSize()
+
+        def _on_live_rack_min_width(val):
+            self.lbl_rack_min_width_val.setText(f"{val} px")
+            if hasattr(gCarla, "gui") and gCarla.gui is not None and hasattr(gCarla.gui.ui, "listWidget"):
+                from widgets.racklistwidget import RackListItem
+                RackListItem.kMinimumWidth = val
+                gCarla.gui.ui.listWidget.setMinimumWidth(val)
+                lw = gCarla.gui.ui.listWidget
+                for i in range(lw.count()):
+                    item = lw.item(i)
+                    if hasattr(item, "fWidget") and item.fWidget is not None:
+                        w = item.fWidget
+                        if hasattr(w, "setMinimumWidth"):
+                            w.setMinimumWidth(val)
+
+        def _on_live_statusbar_toggle(checked):
+            if hasattr(gCarla, "gui") and gCarla.gui is not None and hasattr(gCarla.gui.ui, "statusbar"):
+                gCarla.gui.ui.statusbar.setVisible(checked)
+
+        self.sl_rack_spacing.valueChanged.connect(_on_live_rack_spacing)
+        self.sl_rack_padding.valueChanged.connect(_on_live_rack_padding)
+        self.sl_rack_min_width.valueChanged.connect(_on_live_rack_min_width)
+        self.ch_main_show_statusbar.toggled.connect(_on_live_statusbar_toggle)
 
         if CARLA_OS_MAC:
             self.setWindowModality(Qt.WindowModal)
@@ -956,6 +1101,22 @@ class CarlaSettingsW(QDialog):
                 CARLA_KEY_MAIN_SYSTEM_ICONS, CARLA_DEFAULT_MAIN_SYSTEM_ICONS, bool
             )
         )
+
+        self.ch_main_show_statusbar.setChecked(
+            settings.value("ShowStatusBar", True, bool)
+        )
+        self.sl_rack_spacing.setValue(
+            settings.value("RackItemSpacing", 4, int)
+        )
+        self.sl_rack_padding.setValue(
+            settings.value("RackItemPadding", 6, int)
+        )
+        self.sl_rack_min_width.setValue(
+            settings.value("RackItemMinWidth", 200, int)
+        )
+        self.lbl_rack_spacing_val.setText(f"{self.sl_rack_spacing.value()} px")
+        self.lbl_rack_padding_val.setText(f"{self.sl_rack_padding.value()} px")
+        self.lbl_rack_min_width_val.setText(f"{self.sl_rack_min_width.value()} px")
 
         # -------------------------------------------------------------------------------------------------------------
         # Canvas
@@ -1429,6 +1590,10 @@ class CarlaSettingsW(QDialog):
         settings.setValue(
             CARLA_KEY_MAIN_LOG_TO_CONSOLE, self.ch_main_log_to_console.isChecked()
         )
+        settings.setValue("ShowStatusBar", self.ch_main_show_statusbar.isChecked())
+        settings.setValue("RackItemSpacing", self.sl_rack_spacing.value())
+        settings.setValue("RackItemPadding", self.sl_rack_padding.value())
+        settings.setValue("RackItemMinWidth", self.sl_rack_min_width.value())
 
         # -------------------------------------------------------------------------------------------------------------
         # Canvas
@@ -1753,6 +1918,10 @@ class CarlaSettingsW(QDialog):
             self.ch_main_log_to_console.setChecked(CARLA_DEFAULT_MAIN_LOG_TO_CONSOLE)
             self.ui.cb_main_classic_skin_default(CARLA_DEFAULT_MAIN_CLASSIC_SKIN)
             self.ui.ch_main_show_logs.setChecked(CARLA_DEFAULT_MAIN_SHOW_LOGS)
+            self.ch_main_show_statusbar.setChecked(True)
+            self.sl_rack_spacing.setValue(4)
+            self.sl_rack_padding.setValue(6)
+            self.sl_rack_min_width.setValue(200)
 
         # -------------------------------------------------------------------------------------------------------------
         # Canvas

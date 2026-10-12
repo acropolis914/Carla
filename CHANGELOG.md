@@ -20,6 +20,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 03:56:00
+- **feat(settings)**: Overhaul Settings UI with live tweakables and modern Catppuccin styling
+  - Exposed live interactive sliders for rack item vertical spacing (0–16px), slot internal padding (2–16px), and minimum slot width (180–450px) that apply instantly without app restart.
+  - Added a statusbar visibility toggle ("Show Statusbar at bottom") that reacts in real-time.
+  - Redesigned `CarlaSettingsW` dialog styling with sleek Catppuccin Mochaccino sidebar navigation and modern form card layouts.
+
 ### 2026-10-13 03:42:00
 - **feat(rack)**: Increase vertical Y-spacing margin between racklist items
   - Configured `RackListWidget.setSpacing(4)` to provide clean 4px vertical margins separating rack slots.
