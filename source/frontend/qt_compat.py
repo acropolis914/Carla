@@ -168,6 +168,7 @@ elif qt_config == 6:
         QMessageBox,
         QPushButton,
         QScrollArea,
+        QSizePolicy,
         QSlider,
         QSplitter,
         QStackedWidget,

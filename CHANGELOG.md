@@ -15,7 +15,11 @@ Recent developments enhance the Carla modular audio host across three primary pi
 
 ## [Unreleased] - 2026-10-12
 
-### 2026-10-12 15:07:45 (`f9ca25c51`)
+### 2026-10-12 15:09:12 (`982d5abcf`)
+- **fix(compat)**: Restore QSizePolicy in PyQt6 imports in qt_compat
+  - Re-added `QSizePolicy` to the `PyQt6.QtWidgets` import list so `QSizePolicy.Policy` alias definitions resolve correctly on startup.
+
+### 2026-10-12 15:07:45 (`839cdd56a`)
 - **feat(ui)**: Add side-by-side split view and bidirectional rack-patchbay synchronization
   - Added toggleable Side-by-Side View mode (`Ctrl+Shift+R`) placing Patchbay (left) and Rack (right) in an adjustable `QSplitter` layout.
   - Implemented bidirectional selection sync: selecting a node in the Patchbay centers and scrolls to its slot in the Rack; selecting a slot in the Rack highlights and centers the node on the canvas.
