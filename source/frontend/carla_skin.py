@@ -2790,7 +2790,7 @@ class PluginSlot_Minimal(PluginSlot_Default):
 
         # Initialize modernized header layout mode (default True for minimal/sliders skin)
         self.is_modernized_slice = True
-        custom_slice = self.host.get_custom_data(self.fPluginId, CUSTOM_DATA_TYPE_PROPERTY, "CarlaModernizedHeaderSlice")
+        custom_slice = self.host.get_custom_data_value(self.fPluginId, CUSTOM_DATA_TYPE_PROPERTY, "CarlaModernizedHeaderSlice")
         if custom_slice is not None and custom_slice != "":
             self.is_modernized_slice = (custom_slice.lower() in ("1", "true"))
         self._apply_modernized_slice_layout(self.is_modernized_slice)
