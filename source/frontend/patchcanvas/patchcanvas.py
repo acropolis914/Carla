@@ -930,12 +930,22 @@ def restoreGroupPositions(dataList):
                 group.widgets[1].setCustomColor(saved_node_color, notify=False)
 
         # Restore hide_unconnected_ports state
-        if data.get("hide_unconnected_ports"):
-            group.widgets[0].m_hide_unconnected_ports = True
-            group.widgets[0].updatePositions()
+        if "hide_unconnected_ports" in data:
+            hide_val = bool(data["hide_unconnected_ports"])
+            if hasattr(group.widgets[0], "setHideUnconnectedPorts"):
+                group.widgets[0].setHideUnconnectedPorts(hide_val)
+            else:
+                group.widgets[0].m_hide_unconnected_ports = hide_val
+                group.widgets[0].updatePositions()
             if group.split and group.widgets[1]:
-                group.widgets[1].m_hide_unconnected_ports = True
-                group.widgets[1].updatePositions()
+                if hasattr(group.widgets[1], "setHideUnconnectedPorts"):
+                    group.widgets[1].setHideUnconnectedPorts(hide_val)
+                else:
+                    group.widgets[1].m_hide_unconnected_ports = hide_val
+                    group.widgets[1].updatePositions()
+
+    if hasattr(canvas, "scene") and canvas.scene:
+        canvas.scene.update()
 
 
 def setGroupPos(group_id, group_pos_x, group_pos_y):

@@ -745,6 +745,12 @@ class CanvasBox(QGraphicsObject):
     def isSplit(self):
         return self.m_split
 
+    def setHideUnconnectedPorts(self, hide):
+        self.m_hide_unconnected_ports = bool(hide)
+        self.updatePositions()
+        if hasattr(self, "scene") and self.scene():
+            self.scene().update()
+
     def setCustomColor(self, color, notify=True):
         self.m_custom_color = QColor(color) if color else None
         self.update()

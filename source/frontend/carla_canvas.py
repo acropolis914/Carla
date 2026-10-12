@@ -950,6 +950,7 @@ class CanvasContextToolBarOverlay(QFrame):
 
             self.addButton(icon_power, "Batch Toggle Power (Active)", lambda: self._slot_batch_power(selected))
             self.addButton(icon_bypass, "Batch Toggle Bypass", lambda: self._slot_batch_bypass(selected))
+            self.addButton(icon_ports, "Batch Toggle Hide Unconnected Ports", lambda: self._slot_batch_hide_ports(selected))
             self.addButton(icon_cut, "Disconnect All Cables on Selected Nodes", lambda: self._slot_disconnect_selected(selected))
             self.addSeparator()
 
@@ -1069,13 +1070,31 @@ class CanvasContextToolBarOverlay(QFrame):
         for n in nodes:
             self._slot_toggle_bypass(n)
 
-    def _slot_toggle_hide_ports(self, node):
-        node.m_hide_unconnected_ports = not getattr(node, "m_hide_unconnected_ports", False)
-        if hasattr(node, "updatePositions"):
-            node.updatePositions()
+    def _slot_batch_hide_ports(self, nodes):
+        any_unhidden = any(not getattr(n, "m_hide_unconnected_ports", False) for n in nodes)
+        for n in nodes:
+            if hasattr(n, "setHideUnconnectedPorts"):
+                n.setHideUnconnectedPorts(any_unhidden)
+            else:
+                n.m_hide_unconnected_ports = any_unhidden
+                if hasattr(n, "updatePositions"):
+                    n.updatePositions()
         scene = self.graphicsView.scene()
         if scene:
             scene.update()
+        self.updateSelection()
+
+    def _slot_toggle_hide_ports(self, node):
+        new_val = not getattr(node, "m_hide_unconnected_ports", False)
+        if hasattr(node, "setHideUnconnectedPorts"):
+            node.setHideUnconnectedPorts(new_val)
+        else:
+            node.m_hide_unconnected_ports = new_val
+            if hasattr(node, "updatePositions"):
+                node.updatePositions()
+            scene = self.graphicsView.scene()
+            if scene:
+                scene.update()
         self.updateSelection()
 
     def _slot_split_join(self, node):

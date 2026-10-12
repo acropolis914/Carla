@@ -1421,6 +1421,10 @@ class HostWindow(QMainWindow):
                 if split_sizes and hasattr(self, "splitter"):
                     self.splitter.setSizes(split_sizes)
 
+            # Update context toolbar state if visible
+            if hasattr(self, "canvasFilter") and hasattr(self.canvasFilter, "contextToolBar"):
+                self.canvasFilter.contextToolBar.updateSelection()
+
             return True
         except Exception as e:
             print("Failed to load canvas positions from project:", e)

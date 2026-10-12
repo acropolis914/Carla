@@ -20,6 +20,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 01:34:00
+- **feat(patchbay)**: Persist and restore hide-unused-ports state on save and serialization
+  - Added dedicated `setHideUnconnectedPorts(hide)` method to `CanvasBox` with automatic port layout re-calculation and scene repaint.
+  - Added multi-selection batch toggle button for hiding unconnected ports to the top context toolbar.
+  - Ensured `restoreGroupPositions()` accurately applies and restores both enabled and disabled hide-unconnected-ports states upon project file deserialization.
+
 ### 2026-10-13 01:25:00
 - **feat(patchbay)**: Move shortcuts help to toolbar tooltip and collapse overlay by default
   - Collapsed the floating cheat-sheet overlay by default to reduce visual clutter on launch.
