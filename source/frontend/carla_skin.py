@@ -1316,6 +1316,11 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
         is_sliders = isinstance(self, PluginSlot_Sliders) or self.fSkinStyle.startswith("sliders")
         actSliderMode.setChecked(is_sliders)
 
+        actModernSlice = menuAppearance.addAction(self.tr("Modernized Header Slice"))
+        actModernSlice.setCheckable(True)
+        is_modern_slice = getattr(self, "is_modernized_slice", False)
+        actModernSlice.setChecked(is_modern_slice)
+
         actDarkMode = menuAppearance.addAction(self.tr("Dark Mode"))
         actDarkMode.setCheckable(True)
         is_dark = getattr(self, "is_dark", True)
@@ -1448,6 +1453,11 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
                 is_dark = getattr(self, "is_dark", True)
                 new_skin = ("sliders-dark" if is_dark else "sliders-light") if new_sliders else ("minimal-dark" if is_dark else "minimal-light")
                 gCarla.gui.changePluginSkin(self.fPluginId, new_skin)
+
+        elif actSel == actModernSlice:
+            new_slice = actModernSlice.isChecked()
+            if hasattr(self, 'setModernizedHeaderSlice'):
+                self.setModernizedHeaderSlice(new_slice)
 
         elif actSel == actDarkMode:
             new_dark = actDarkMode.isChecked()
@@ -2777,6 +2787,105 @@ class PluginSlot_Minimal(PluginSlot_Default):
             self.setSliderMode(True)
         else:
             self.setSliderMode(False)
+
+        # Initialize modernized header layout mode (default True for minimal/sliders skin)
+        self.is_modernized_slice = True
+        custom_slice = self.host.get_custom_data(self.fPluginId, CUSTOM_DATA_TYPE_PROPERTY, "CarlaModernizedHeaderSlice")
+        if custom_slice is not None and custom_slice != "":
+            self.is_modernized_slice = (custom_slice.lower() in ("1", "true"))
+        self._apply_modernized_slice_layout(self.is_modernized_slice)
+
+    def setModernizedHeaderSlice(self, enabled):
+        self.is_modernized_slice = bool(enabled)
+        self.host.set_custom_data(self.fPluginId, CUSTOM_DATA_TYPE_PROPERTY, "CarlaModernizedHeaderSlice", "true" if self.is_modernized_slice else "false")
+        if hasattr(gCarla, "gui") and gCarla.gui is not None:
+            gCarla.gui.fHasUnsavedChanges = True
+        self._apply_modernized_slice_layout(self.is_modernized_slice)
+
+    def _apply_modernized_slice_layout(self, modernized):
+        if not hasattr(self.ui, 'layout_leds') or not hasattr(self.ui, 'layout_peaks'):
+            return
+
+        # Ensure container widgets exist
+        if not hasattr(self, '_modern_slice_container'):
+            self._modern_slice_container = QWidget(parent=self)
+            self._modern_slice_container.setObjectName("w_modern_slice")
+            slice_layout = QHBoxLayout(self._modern_slice_container)
+            slice_layout.setContentsMargins(2, 1, 2, 1)
+            slice_layout.setSpacing(4)
+            slice_layout.setAlignment(Qt.AlignVCenter)
+
+            # Container for vertical 2x2 LEDs
+            self._led_grid_container = QWidget(self._modern_slice_container)
+            self._led_grid_layout = QGridLayout(self._led_grid_container)
+            self._led_grid_layout.setContentsMargins(1, 1, 1, 1)
+            self._led_grid_layout.setSpacing(2)
+            self._led_grid_container.setFixedSize(22, 22)
+
+            # Meter slice container
+            self._meter_slice_container = QWidget(self._modern_slice_container)
+            self._meter_slice_layout = QHBoxLayout(self._meter_slice_container)
+            self._meter_slice_layout.setContentsMargins(0, 0, 0, 0)
+            self._meter_slice_layout.setSpacing(2)
+
+            slice_layout.addWidget(self._led_grid_container)
+            slice_layout.addWidget(self._meter_slice_container)
+
+            # Add to layout_top right before button controls
+            self.ui.layout_top.addWidget(self._modern_slice_container)
+
+        if modernized:
+            # Hide old horizontal layouts
+            if hasattr(self.ui, 'layout_peaks'):
+                self.ui.layout_peaks.removeWidget(self.peak_in)
+                self.ui.layout_peaks.removeWidget(self.peak_out)
+            if hasattr(self.ui, 'layout_leds'):
+                self.ui.layout_leds.removeWidget(self.led_control)
+                self.ui.layout_leds.removeWidget(self.led_midi)
+                self.ui.layout_leds.removeWidget(self.led_audio_in)
+                self.ui.layout_leds.removeWidget(self.led_audio_out)
+
+            # Place LEDs in a tight 2x2 grid (9x9 circles with border radius)
+            self._led_grid_layout.addWidget(self.led_control, 0, 0)
+            self._led_grid_layout.addWidget(self.led_midi, 0, 1)
+            self._led_grid_layout.addWidget(self.led_audio_in, 1, 0)
+            self._led_grid_layout.addWidget(self.led_audio_out, 1, 1)
+
+            for led in (self.led_control, self.led_midi, self.led_audio_in, self.led_audio_out):
+                if led is not None:
+                    led.setFixedSize(8, 8)
+                    led.setStyleSheet("border-radius: 4px; padding: 0px; margin: 0px;")
+
+            # Place Peak Meters in modern vertical slice
+            self._meter_slice_layout.addWidget(self.peak_in)
+            self._meter_slice_layout.addWidget(self.peak_out)
+            for pm in (self.peak_in, self.peak_out):
+                if pm is not None:
+                    pm.setMeterOrientation(DigitalPeakMeter.VERTICAL)
+                    pm.setMinimumSize(8, 20)
+                    pm.setMaximumSize(12, 22)
+
+            self._modern_slice_container.setVisible(True)
+        else:
+            # Restore legacy layout
+            self._modern_slice_container.setVisible(False)
+            if hasattr(self.ui, 'layout_leds') and hasattr(self.ui, 'layout_peaks'):
+                for led in (self.led_control, self.led_midi, self.led_audio_in, self.led_audio_out):
+                    if led is not None:
+                        led.setFixedSize(14, 14)
+                        led.setStyleSheet("")
+                self.ui.layout_leds.addWidget(self.led_control)
+                self.ui.layout_leds.addWidget(self.led_midi)
+                self.ui.layout_leds.addWidget(self.led_audio_in)
+                self.ui.layout_leds.addWidget(self.led_audio_out)
+
+                for pm in (self.peak_in, self.peak_out):
+                    if pm is not None:
+                        pm.setMeterOrientation(DigitalPeakMeter.HORIZONTAL)
+                        pm.setMinimumSize(100, 0)
+                        pm.setMaximumSize(100, 16777215)
+                self.ui.layout_peaks.addWidget(self.peak_in)
+                self.ui.layout_peaks.addWidget(self.peak_out)
 
     def _update_bypass_state(self, is_bypassed):
         if not hasattr(self, 'b_bypass') or self.b_bypass is None:

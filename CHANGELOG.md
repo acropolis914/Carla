@@ -20,6 +20,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 02:49:00
+- **feat(rack)**: Modernized rack item slice with 2x2 mini LED circle grid and vertical peak meters
+  - Implemented compact vertical slice housing audio/MIDI activity LEDs arranged in a 2x2 grid (8px rounded circles).
+  - Configured slim vertical slice peak meters fitting within header height margins.
+  - Added an Appearance context menu toggle ("Modernized Header Slice") with per-rack-slot state persistence.
+
 ### 2026-10-13 02:35:00
 - **feat(ui)**: Pre-emptively hide main window on confirmed exit
   - Triggered immediate `hide()` and event flushing on closeEvent after exit confirmation to eliminate destruction lag and UI tearing during teardown.
