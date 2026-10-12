@@ -930,19 +930,27 @@ def restoreGroupPositions(dataList):
                 group.widgets[1].setCustomColor(saved_node_color, notify=False)
 
         # Restore hide_unconnected_ports state
-        if "hide_unconnected_ports" in data:
-            hide_val = bool(data["hide_unconnected_ports"])
-            if hasattr(group.widgets[0], "setHideUnconnectedPorts"):
-                group.widgets[0].setHideUnconnectedPorts(hide_val)
-            else:
-                group.widgets[0].m_hide_unconnected_ports = hide_val
-                group.widgets[0].updatePositions()
+        if data.get("hide_unconnected_ports"):
+            group.widgets[0]._saved_hide_unconnected_ports = True
             if group.split and group.widgets[1]:
-                if hasattr(group.widgets[1], "setHideUnconnectedPorts"):
-                    group.widgets[1].setHideUnconnectedPorts(hide_val)
-                else:
-                    group.widgets[1].m_hide_unconnected_ports = hide_val
-                    group.widgets[1].updatePositions()
+                group.widgets[1]._saved_hide_unconnected_ports = True
+
+    # Defer applying hide_unconnected_ports so nodes and connections spawn with normal bounds first
+    def _apply_deferred_hide_ports():
+        for grp in canvas.group_list:
+            for w in grp.widgets:
+                if w and getattr(w, "_saved_hide_unconnected_ports", False):
+                    delattr(w, "_saved_hide_unconnected_ports")
+                    if hasattr(w, "setHideUnconnectedPorts"):
+                        w.setHideUnconnectedPorts(True)
+                    else:
+                        w.m_hide_unconnected_ports = True
+                        if hasattr(w, "updatePositions"):
+                            w.updatePositions()
+        if hasattr(canvas, "scene") and canvas.scene:
+            canvas.scene.update()
+
+    QTimer.singleShot(50, _apply_deferred_hide_ports)
 
     if hasattr(canvas, "scene") and canvas.scene:
         canvas.scene.update()
