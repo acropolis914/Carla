@@ -24,8 +24,14 @@ try:
         "warning": "bold yellow",
         "error": "bold red",
         "critical": "bold white on red",
-        "tag": "bold magenta",
         "timestamp": "dim white",
+        "tag_app": "bold magenta",
+        "tag_engine": "bold cyan",
+        "tag_patchbay": "bold blue",
+        "tag_plugin": "bold green",
+        "tag_session": "bold yellow",
+        "tag_canvas": "bold bright_magenta",
+        "tag_backend": "bold red",
     })
     _rich_console = Console(theme=_custom_theme)
     HAVE_RICH = True
@@ -152,10 +158,13 @@ class CarlaLogger(QObject):
 
         if HAVE_RICH and _rich_console is not None:
             style_name = lvl_name.lower()
+            tag_style = f"tag_{entry.tag.lower()}"
+            if tag_style not in _custom_theme.styles:
+                tag_style = "tag_app"
             text = Text()
             text.append(f"[{time_str}] ", style="timestamp")
-            text.append(f"[{lvl_name:7s}] ", style=style_name)
-            text.append(f"[{entry.tag}] ", style="tag")
+            text.append(f"[{lvl_name}] ", style=style_name)
+            text.append(f"[{entry.tag}] ", style=tag_style)
             text.append(f"{entry.message}")
             _rich_console.print(text)
         else:
@@ -185,28 +194,42 @@ class CarlaLogger(QObject):
         tag = "APP"
         clean_text = text
 
+        # Strip ANSI escape sequences if any
+        ansi_regex = re.compile(r'\x1b\[[0-9;]*m')
+        clean_text = ansi_regex.sub('', clean_text).strip()
+
         # Check for error / warning keywords
-        upper_text = text.upper()
-        if "ERROR" in upper_text or "CRITICAL" in upper_text or "FAIL" in upper_text:
+        upper_text = clean_text.upper()
+        if "ASSERTION FAILURE" in upper_text:
+            level = LOG_LEVEL_ERROR
+            tag = "BACKEND"
+        elif "ERROR" in upper_text or "CRITICAL" in upper_text or "FAIL" in upper_text:
             level = LOG_LEVEL_ERROR
         elif "WARN" in upper_text:
             level = LOG_LEVEL_WARNING
         elif "DEBUG" in upper_text:
             level = LOG_LEVEL_DEBUG
 
-        # Look for [TAG] pattern at the start
-        m = re.match(r"^\[([A-Za-z0-9_\-]+)\]\s*(.*)$", text)
-        if m:
-            tag = m.group(1).upper()
-            clean_text = m.group(2)
-        elif "ENGINE" in upper_text:
-            tag = "ENGINE"
-        elif "PATCH" in upper_text or "CANVAS" in upper_text:
-            tag = "PATCHBAY"
-        elif "PLUGIN" in upper_text:
-            tag = "PLUGIN"
-        elif "AUTOSAVE" in upper_text or "SESSION" in upper_text:
-            tag = "SESSION"
+        # Look for [carla] prefix (e.g. from backend assertions / logging)
+        if clean_text.startswith("[carla]"):
+            tag = "BACKEND"
+            clean_text = clean_text[7:].strip()
+        else:
+            # Look for general [TAG] pattern at the start
+            m = re.match(r"^\[([A-Za-z0-9_\-]+)\]\s*(.*)$", clean_text)
+            if m:
+                tag_candidate = m.group(1).upper()
+                if tag_candidate in KNOWN_TAGS or tag_candidate not in ("CARLA",):
+                    tag = tag_candidate
+                clean_text = m.group(2)
+            elif "ENGINE" in upper_text:
+                tag = "ENGINE"
+            elif "PATCH" in upper_text or "CANVAS" in upper_text:
+                tag = "PATCHBAY"
+            elif "PLUGIN" in upper_text or "SFIZZ" in upper_text or "VST" in upper_text:
+                tag = "PLUGIN"
+            elif "AUTOSAVE" in upper_text or "SESSION" in upper_text:
+                tag = "SESSION"
 
         self.log(level, tag, clean_text)
 
