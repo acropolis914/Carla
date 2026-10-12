@@ -371,7 +371,8 @@ class RackListWidget(QListWidget):
                                  self.host.get_last_error(), QMessageBox.Ok, QMessageBox.Ok)
                 continue
 
-            if filename.endswith(".carxp"):
+            if filename.endswith(".carxp") or filename.endswith(".carjp"):
+                gCarla.gui.loadCanvasGroupPositionsFromProject(filename)
                 gCarla.gui.loadExternalCanvasGroupPositionsIfNeeded(filename)
 
         if tryItem is not None:

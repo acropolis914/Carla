@@ -8,7 +8,9 @@
 - [x] `[Diff: 1]` Fix: Rack item remove button still does not delete or show confirmation dialog (reopened: calf skin vs other skins / context menu / delete key)
 - [x] `[Diff: 1]` Fix: Left-click drag on empty canvas does not pan the UI
 - [x] `[Diff: 1]` Fix: Patchbay canvas node power button (`⏻`) does not toggle plugin processing state reliably
-- [x] `[Diff: 2]` Fix: Infinite canvas dynamic expansion/coordinate updates not reflected on the patchbay minimap
+- [ ] `[Diff: 1]` Fix: Patchbay minimap looks cut off on unloaded canvas areas (works now, but visually cut off/janky boundary clipping)
+
+
 
 
 ---
@@ -62,3 +64,5 @@
 - [x] `[Diff: 2]` feat: Improved logging with Python Rich console, loglevels, log tags, and CLI flags (`--log-whitelist`, `--log-blacklist`)
 - [ ] `[Diff: 2]` feat: Project notes for current session/save file with rich Markdown rendering support in Qt (QTextDocument markdown / preview)
 - [ ] `[Diff: 1]` feat: Standardized `argparse` integration to expose all CLI flags and `--help` with Python `rich` formatting
+- [x] `[Diff: 1]` Fix/feat: Full `.carjp` project file integration across autosave manager, recent files list, dirty tracking, and startup autoload
+

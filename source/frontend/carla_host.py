@@ -1266,7 +1266,16 @@ class HostWindow(QMainWindow):
         # Check if project contains plugins prone to in-process JUCE UI thread collisions
         force_bridged = False
         try:
-            tree = ET.parse(load_source) if load_source.endswith(".carxp") else None
+            tree = None
+            if load_source.endswith(".carxp"):
+                tree = ET.parse(load_source)
+            elif load_source.endswith((".carjp", ".json")):
+                with open(load_source, "r", encoding="utf-8") as jf:
+                    jdata = json.load(jf)
+                if isinstance(jdata, dict) and "CARLA-PROJECT" in jdata:
+                    from project_storage import dict_to_xml_elem
+                    root_elem = dict_to_xml_elem("CARLA-PROJECT", jdata["CARLA-PROJECT"])
+                    tree = ET.ElementTree(root_elem)
             if tree is not None:
                 root = tree.getroot()
                 eng_settings = root.find("EngineSettings")
@@ -1491,7 +1500,7 @@ class HostWindow(QMainWindow):
     # Recent Projects
 
     def addRecentProject(self, filename):
-        if not filename or not filename.endswith(".carxp"):
+        if not filename or not (filename.endswith(".carxp") or filename.endswith(".carjp")):
             return
         absPath = os.path.abspath(filename)
         if absPath in self.fRecentProjects:
@@ -1716,7 +1725,8 @@ class HostWindow(QMainWindow):
         fileFilter = self.tr(
             "Carla XML Project (*.carxp);;Carla JSON Project (*.carjp)"
         )
-        filename, ok = QFileDialog.getSaveFileName(
+        selected_filter = ""
+        filename, selected_filter = QFileDialog.getSaveFileName(
             self,
             self.tr("Save Carla Project File"),
             self.fSavedSettings[CARLA_KEY_MAIN_PROJECT_FOLDER],
@@ -1727,7 +1737,10 @@ class HostWindow(QMainWindow):
             return
 
         if not (filename.lower().endswith(".carxp") or filename.lower().endswith(".carjp")):
-            filename += ".carxp"
+            if "carjp" in str(selected_filter).lower():
+                filename += ".carjp"
+            else:
+                filename += ".carxp"
 
         if self.fProjectFilename != filename:
             self.fProjectFilename = filename
@@ -3773,7 +3786,7 @@ class HostWindow(QMainWindow):
     def slot_fileTreeDoubleClicked(self, modelIndex):
         filename = self.fDirModel.filePath(modelIndex)
 
-        if filename.endswith(".carxp"):
+        if filename.endswith(".carxp") or filename.endswith(".carjp"):
             if self.fPluginCount > 0:
                 ask = QMessageBox.question(
                     self,
