@@ -49,6 +49,7 @@ from qt_compat import (
     QTimer,
     QVBoxLayout,
     QWidget,
+    QWidgetAction,
 )
 from utils import QSafeSettings
 from widgets.digitalpeakmeter import DigitalPeakMeter
@@ -1321,8 +1322,50 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
         actDarkMode.setChecked(is_dark)
 
         menuAppearance.addSeparator()
-        actColor = menuAppearance.addAction(self.tr("Change Color..."))
-        actResetColor = menuAppearance.addAction(self.tr("Reset Color"))
+
+        colorMenu = menuAppearance.addMenu(self.tr("Color"))
+        paletteWidget = QWidget()
+        palLayout = QHBoxLayout(paletteWidget)
+        palLayout.setContentsMargins(6, 4, 6, 4)
+        palLayout.setSpacing(4)
+
+        catppuccin_colors = [
+            ("#f38ba8", "Red"),
+            ("#fab387", "Peach"),
+            ("#f9e2af", "Yellow"),
+            ("#a6e3a1", "Green"),
+            ("#94e2d5", "Teal"),
+            ("#89dceb", "Sky"),
+            ("#89b4fa", "Blue"),
+            ("#b4befe", "Lavender"),
+            ("#cba6f7", "Mauve"),
+            ("#f5c2e7", "Pink"),
+        ]
+
+        btn_reset = QPushButton("✕")
+        btn_reset.setToolTip(self.tr("Reset to Default Color"))
+        btn_reset.setFixedSize(22, 22)
+        btn_reset.setStyleSheet("QPushButton { font-weight: bold; color: #888; background: transparent; border: 1px solid #555; border-radius: 3px; } QPushButton:hover { color: #fff; border-color: #888; background: #333; }")
+        btn_reset.clicked.connect(lambda: (gCarla.gui.changePluginColor(self.fPluginId, (255, 255, 255), "255;255;255"), menu.close()))
+        palLayout.addWidget(btn_reset)
+
+        for col_hex, col_name in catppuccin_colors:
+            btn_col = QPushButton()
+            btn_col.setToolTip(col_name)
+            btn_col.setFixedSize(22, 22)
+            btn_col.setStyleSheet(f"QPushButton {{ background-color: {col_hex}; border: 1px solid rgba(0,0,0,0.4); border-radius: 3px; }} QPushButton:hover {{ border: 2px solid #ffffff; }}")
+            c = QColor(col_hex)
+            col_tup = (c.red(), c.green(), c.blue())
+            col_str = f"{c.red()};{c.green()};{c.blue()}"
+            btn_col.clicked.connect(lambda checked=False, t=col_tup, s=col_str: (gCarla.gui.changePluginColor(self.fPluginId, t, s), menu.close()))
+            palLayout.addWidget(btn_col)
+
+        colorWidgetAction = QWidgetAction(colorMenu)
+        colorWidgetAction.setDefaultWidget(paletteWidget)
+        colorMenu.addAction(colorWidgetAction)
+        colorMenu.addSeparator()
+        actColor = colorMenu.addAction(self.tr("Custom Color..."))
+        actResetColor = colorMenu.addAction(self.tr("Reset Color"))
 
         menu.addSeparator()
 

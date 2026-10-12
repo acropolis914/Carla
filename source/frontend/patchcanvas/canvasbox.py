@@ -17,6 +17,7 @@ from qt_compat import (
     QRectF,
     QTimer,
     QColor,
+    QColorDialog,
     QCursor,
     QFont,
     QFontMetrics,
@@ -1196,6 +1197,21 @@ class CanvasBox(QGraphicsObject):
         colorWidgetAction = QWidgetAction(colorMenu)
         colorWidgetAction.setDefaultWidget(paletteWidget)
         colorMenu.addAction(colorWidgetAction)
+        colorMenu.addSeparator()
+
+        def pickCustomColor():
+            menu.close()
+            initial = self.m_custom_color if self.m_custom_color else QColor(47, 47, 47)
+            chosen = QColorDialog.getColor(initial, None, "Select Node Color")
+            if chosen.isValid():
+                self.setCustomColor(chosen.name())
+
+        act_custom_color = colorMenu.addAction("Custom Color...")
+        act_custom_color.triggered.connect(pickCustomColor)
+
+        act_reset_color = colorMenu.addAction("Reset Color")
+        act_reset_color.triggered.connect(lambda: (self.setCustomColor(None), menu.close()))
+
         menu.addMenu(colorMenu)
 
         arrangeMenu = QMenu("Arrange & Align", menu)
@@ -1495,7 +1511,17 @@ class CanvasBox(QGraphicsObject):
         painter.setPen(pen)
         lineHinting = pen.widthF() / 2
 
-        if canvas.theme.box_bg_type == Theme.THEME_BG_GRADIENT:
+        if self.m_custom_color:
+            # Match rack custom color tinting logic: blend 15% custom tint with theme background
+            c = self.m_custom_color
+            bg1 = canvas.theme.box_bg_1
+            tinted_bg = QColor(
+                int(0.85 * bg1.red() + 0.15 * c.red()),
+                int(0.85 * bg1.green() + 0.15 * c.green()),
+                int(0.85 * bg1.blue() + 0.15 * c.blue()),
+            )
+            painter.setBrush(tinted_bg)
+        elif canvas.theme.box_bg_type == Theme.THEME_BG_GRADIENT:
             box_gradient = QLinearGradient(0, 0, 0, self.p_height)
             box_gradient.setColorAt(0, canvas.theme.box_bg_1)
             box_gradient.setColorAt(1, canvas.theme.box_bg_2)

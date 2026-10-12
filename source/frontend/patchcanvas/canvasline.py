@@ -151,8 +151,14 @@ class CanvasLine(QGraphicsPathItem):
         return CanvasBezierLineType
 
     def updateLineGradient(self):
-        p1 = self.item1.scenePos()
-        p2 = self.item2.scenePos()
+        rect1 = self.item1.sceneBoundingRect()
+        rect2 = self.item2.sceneBoundingRect()
+        p1_scene = QPointF(rect1.right(), rect1.top() + float(canvas.theme.port_height) / 2)
+        p2_scene = QPointF(rect2.left(), rect2.top() + float(canvas.theme.port_height) / 2)
+
+        # Map scene endpoints to local item coordinates for QPainter
+        p1 = self.mapFromScene(p1_scene)
+        p2 = self.mapFromScene(p2_scene)
         port_gradient = QLinearGradient(p1, p2)
 
         # Scale alpha with user line opacity setting (20% - 100%)

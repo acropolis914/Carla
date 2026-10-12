@@ -901,10 +901,12 @@ class HostWindow(QMainWindow):
 
         # Sync color to patchbay canvas node
         if self.fWithCanvas:
-            for item in patchcanvas.canvas.group_list:
-                if getattr(item, "m_plugin_id", -1) == pluginId:
-                    hex_col = f"#{color[0]:02x}{color[1]:02x}{color[2]:02x}" if color != (255, 255, 255) else None
-                    item.setCustomColor(hex_col, notify=False)
+            hex_col = f"#{color[0]:02x}{color[1]:02x}{color[2]:02x}" if color != (255, 255, 255) else None
+            for group in patchcanvas.canvas.group_list:
+                if getattr(group, "plugin_id", -1) == pluginId:
+                    for w in getattr(group, "widgets", []):
+                        if w is not None:
+                            w.setCustomColor(hex_col, notify=False)
                     break
 
     def changePluginSkin(self, pluginId, skin):
