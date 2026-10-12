@@ -228,10 +228,32 @@ class CarlaLogger(QObject):
                 tag = "PATCHBAY"
             elif "PLUGIN" in upper_text or "SFIZZ" in upper_text or "VST" in upper_text:
                 tag = "PLUGIN"
-            elif "AUTOSAVE" in upper_text or "SESSION" in upper_text:
-                tag = "SESSION"
-
         self.log(level, tag, clean_text)
+
+    def start_capturing_stderr(self):
+        """Intercept C/C++ backend stderr (fd 2) and route output through CarlaLogger"""
+        if getattr(self, "_stderr_captured", False):
+            return
+        self._stderr_captured = True
+        try:
+            import threading
+            self._orig_stderr_fd = os.dup(2)
+            pipe_r, pipe_w = os.pipe()
+            os.dup2(pipe_w, 2)
+            os.close(pipe_w)
+
+            def _stderr_reader():
+                with open(pipe_r, "r", errors="replace") as f:
+                    for line in f:
+                        line = line.strip()
+                        if line:
+                            self.log_raw_string(line)
+
+            t = threading.Thread(target=_stderr_reader, daemon=True)
+            t.start()
+        except Exception as e:
+            print("CarlaLogger: failed to capture backend stderr:", e)
 
 # Singleton global instance
 logger = CarlaLogger()
+

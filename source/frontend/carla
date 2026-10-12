@@ -28,6 +28,9 @@ if __name__ == '__main__':
 
     # ------------------------------------------------------------------------------------------------------------------
     # Read CLI args
+    from carla_logger import logger
+    logger.parse_cli_args()
+    logger.start_capturing_stderr()
 
     initName, libPrefix = handleInitialCommandLineArguments(__file__ if "__file__" in dir() else None)
 
