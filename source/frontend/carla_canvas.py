@@ -283,6 +283,106 @@ class PatchbayHelpOverlay(QFrame):
             }
         """)
 
+def _get_event_global_pos(event):
+    if hasattr(event, "globalPosition"):
+        return event.globalPosition().toPoint()
+    return event.globalPos()
+
+
+class PatchbayHelpOverlay(QFrame):
+    """Floating draggable quick-reference cheat sheet for canvas navigation and cable shortcuts."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setObjectName("patchbay_help_overlay")
+        self.setAttribute(Qt.WA_AlwaysShowToolTips, True)
+
+        self._layout = QVBoxLayout(self)
+        self._layout.setContentsMargins(6, 6, 6, 6)
+        self._layout.setSpacing(4)
+
+        # 1. Collapsed button (Circular floating icon)
+        self._btnCircle = QPushButton("?", self)
+        self._btnCircle.setFixedSize(28, 28)
+        self._btnCircle.setCursor(QCursor(Qt.PointingHandCursor))
+        self._btnCircle.setToolTip("Show Patchbay Shortcuts (H)")
+        self._btnCircle.clicked.connect(self.toggleExpanded)
+        self._layout.addWidget(self._btnCircle)
+
+        # 2. Header bar (when expanded)
+        self._headerWidget = QWidget(self)
+        header_layout = QHBoxLayout(self._headerWidget)
+        header_layout.setContentsMargins(4, 2, 4, 2)
+        header_layout.setSpacing(4)
+
+        self._lblTitle = QLabel("Patchbay Shortcuts", self._headerWidget)
+        self._lblTitle.setStyleSheet(
+            "font-weight: bold; color: #cdd6f4; font-size: 11px; background: transparent;"
+        )
+        header_layout.addWidget(self._lblTitle)
+        header_layout.addStretch()
+
+        self._btnClose = QPushButton("✕", self._headerWidget)
+        self._btnClose.setFixedSize(16, 16)
+        self._btnClose.setCursor(QCursor(Qt.PointingHandCursor))
+        self._btnClose.setStyleSheet("""
+            QPushButton {
+                background: transparent;
+                border: none;
+                color: #a6adc8;
+                font-size: 11px;
+                font-weight: bold;
+                padding: 0;
+            }
+            QPushButton:hover {
+                color: #f38ba8;
+            }
+        """)
+        self._btnClose.clicked.connect(lambda: self.setExpanded(False))
+        header_layout.addWidget(self._btnClose)
+
+        self._layout.addWidget(self._headerWidget)
+
+        # 3. Content Label
+        self._lblContent = QLabel(self)
+        self._lblContent.setTextFormat(Qt.RichText)
+        self._lblContent.setStyleSheet(
+            "color: #bac2de; font-size: 10px; line-height: 1.4; background: transparent;"
+        )
+        self._lblContent.setText("""
+            <table cellpadding="1" cellspacing="0" style="color: #bac2de; font-size: 10px;">
+              <tr><td style="color: #89b4fa; font-weight: bold;">Space + Drag</td><td>&nbsp;Pan Canvas</td></tr>
+              <tr><td style="color: #89b4fa; font-weight: bold;">Wheel</td><td>&nbsp;Zoom in/out</td></tr>
+              <tr><td style="color: #89b4fa; font-weight: bold;">F</td><td>&nbsp;Zoom to Fit</td></tr>
+              <tr><td style="color: #a6e3a1; font-weight: bold;">Alt + Drag Wire</td><td>&nbsp;Stereo Autowire L+R</td></tr>
+              <tr><td style="color: #f38ba8; font-weight: bold;">Alt / Shift + Click</td><td>&nbsp;Quick Disconnect</td></tr>
+              <tr><td style="color: #f9e2af; font-weight: bold;">Middle-Click</td><td>&nbsp;Disconnect Wire/Port</td></tr>
+              <tr><td style="color: #cba6f7; font-weight: bold;">Right-Click Node</td><td>&nbsp;Node Actions & Align</td></tr>
+            </table>
+        """)
+        self._layout.addWidget(self._lblContent)
+
+        self.setStyleSheet("""
+            QFrame#patchbay_help_overlay {
+                background-color: rgba(24, 24, 37, 0.93);
+                border: 1px solid #45475a;
+                border-radius: 8px;
+            }
+            QPushButton {
+                background-color: rgba(30, 30, 46, 0.95);
+                border: 1px solid #585b70;
+                border-radius: 14px;
+                color: #cdd6f4;
+                font-weight: bold;
+                font-size: 12px;
+            }
+            QPushButton:hover {
+                background-color: rgba(49, 50, 68, 0.98);
+                border: 1px solid #89b4fa;
+                color: #ffffff;
+            }
+        """)
+
         # Set default state to expanded (open by default)
         self.setExpanded(True)
         self._dragPos = None
@@ -290,7 +390,7 @@ class PatchbayHelpOverlay(QFrame):
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
-            self._dragPos = event.globalPos() - self.frameGeometry().topLeft()
+            self._dragPos = _get_event_global_pos(event) - self.frameGeometry().topLeft()
             event.accept()
             return
         super().mousePressEvent(event)
@@ -299,7 +399,7 @@ class PatchbayHelpOverlay(QFrame):
         if self._dragPos is not None and event.buttons() & Qt.LeftButton:
             vp = self.parentWidget()
             if vp:
-                new_pos = event.globalPos() - self._dragPos
+                new_pos = _get_event_global_pos(event) - self._dragPos
                 # Constrain within viewport bounds
                 x = max(0, min(new_pos.x(), vp.width() - self.width()))
                 y = max(0, min(new_pos.y(), vp.height() - self.height()))
@@ -362,7 +462,7 @@ class PatchbayHelpOverlay(QFrame):
 
 
 # ------------------------------------------------------------------------------------------------------------
-# Floating Photoshop-style Modal Toolbar
+# Floating Photoshop-style Modal Toolbar (Left Vertical Palette)
 # ------------------------------------------------------------------------------------------------------------
 
 _CACHED_NERD_FONT_FAMILY = None
@@ -403,7 +503,7 @@ def getBestNerdFont():
 
 
 class CanvasToolBarOverlay(QFrame):
-    """Floating Photoshop-style vertical tool palette on the left of the patchbay canvas."""
+    """Floating Photoshop-style vertical navigation/tool palette on the left of the patchbay canvas."""
 
     def __init__(self, graphicsView, parent=None):
         super().__init__(parent or graphicsView.viewport())
@@ -413,8 +513,8 @@ class CanvasToolBarOverlay(QFrame):
         self._userMoved = False
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(4, 4, 4, 4)
-        layout.setSpacing(3)
+        layout.setContentsMargins(3, 4, 3, 4)
+        layout.setSpacing(2)
 
         font_family = getBestNerdFont()
         font = QFont(font_family, 13) if font_family else QFont()
@@ -425,17 +525,14 @@ class CanvasToolBarOverlay(QFrame):
         self.icon_pointer = "\U000f01be" if font_family else "↖"   # Pointer
         self.icon_select  = "\U000f0485" if font_family else "⛶"   # Marquee
         self.icon_hand    = "\U000f0361" if font_family else "✋"   # Hand / Pan
-        self.icon_arrange = "\uf0e8" if font_family else "🔀"      # Splay / Auto-arrange
-        self.icon_repel   = "\uf065" if font_family else "↔"      # Expand / Auto-repel
-        self.icon_aside   = "\uf061" if font_family else "⏭"      # Move aside
         self.icon_fit     = "\uf0b2" if font_family else "⛶"      # Zoom fit / Arrows alt
         self.icon_zoomin  = "\uf00e" if font_family else "+"      # Zoom in
         self.icon_zoomout = "\uf010" if font_family else "-"      # Zoom out
-        self.icon_disc    = "\uf127" if font_family else "✂"      # Unlink / Cut wires
+        self.icon_grid    = "\U000f02ca" if font_family else "#"   # Grid icon
 
         # Mode Selection Buttons (Checkable, Mutually Exclusive)
         self.btnPointer = QPushButton(self.icon_pointer, self)
-        self.btnPointer.setToolTip("Pointer / Default (Q / Esc)")
+        self.btnPointer.setToolTip("Pointer Tool (Q / Esc)")
         self.btnPointer.setFont(font)
 
         self.btnSelect = QPushButton(self.icon_select, self)
@@ -460,32 +557,8 @@ class CanvasToolBarOverlay(QFrame):
             line.setFrameShape(QFrame.HLine)
             line.setFrameShadow(QFrame.Sunken)
             line.setFixedHeight(1)
-            line.setStyleSheet("background-color: #45475a; border: none;")
+            line.setStyleSheet("background-color: #45475a; border: none; margin: 2px 2px;")
             layout.addWidget(line)
-
-        add_sep()
-
-        # Canvas Arrange Tools
-        self.btnArrange = QPushButton(self.icon_arrange, self)
-        self.btnArrange.setToolTip("Auto-arrange Graph (Flow order)")
-        self.btnArrange.setFont(font)
-        self.btnArrange.setFixedSize(28, 28)
-        self.btnArrange.clicked.connect(self._slot_arrange)
-        layout.addWidget(self.btnArrange)
-
-        self.btnRepel = QPushButton(self.icon_repel, self)
-        self.btnRepel.setToolTip("Auto-Repel Overlapping Nodes")
-        self.btnRepel.setFont(font)
-        self.btnRepel.setFixedSize(28, 28)
-        self.btnRepel.clicked.connect(self._slot_repel)
-        layout.addWidget(self.btnRepel)
-
-        self.btnAside = QPushButton(self.icon_aside, self)
-        self.btnAside.setToolTip("Park Non-Connected Nodes Aside")
-        self.btnAside.setFont(font)
-        self.btnAside.setFixedSize(28, 28)
-        self.btnAside.clicked.connect(self._slot_moveAside)
-        layout.addWidget(self.btnAside)
 
         add_sep()
 
@@ -511,6 +584,18 @@ class CanvasToolBarOverlay(QFrame):
         self.btnFit.clicked.connect(self._slot_zoomFit)
         layout.addWidget(self.btnFit)
 
+        add_sep()
+
+        # Canvas Grid Toggle
+        self.btnGrid = QPushButton(self.icon_grid, self)
+        self.btnGrid.setToolTip("Toggle Dot Grid & Snapping")
+        self.btnGrid.setFont(font)
+        self.btnGrid.setFixedSize(28, 28)
+        self.btnGrid.setCheckable(True)
+        self.btnGrid.setChecked(getattr(patchcanvas.options, "grid_enabled", True))
+        self.btnGrid.clicked.connect(self._slot_toggleGrid)
+        layout.addWidget(self.btnGrid)
+
         self.setStyleSheet("""
             QFrame#canvas_toolbar_overlay {
                 background-color: rgba(24, 24, 37, 0.94);
@@ -523,7 +608,9 @@ class CanvasToolBarOverlay(QFrame):
                 border-radius: 5px;
                 color: #a6adc8;
                 font-weight: bold;
+                text-align: center;
                 padding: 0px;
+                margin: 0px;
             }
             QPushButton:hover {
                 background-color: rgba(69, 71, 90, 0.7);
@@ -553,20 +640,13 @@ class CanvasToolBarOverlay(QFrame):
         if scene and hasattr(scene, "zoom_fit"):
             scene.zoom_fit()
 
-    def _slot_arrange(self):
-        import patchcanvas
-        if hasattr(patchcanvas, "arrange"):
-            patchcanvas.arrange()
-
-    def _slot_repel(self):
-        import patchcanvas
-        if hasattr(patchcanvas, "repelNodes"):
-            patchcanvas.repelNodes()
-
-    def _slot_moveAside(self):
-        import patchcanvas
-        if hasattr(patchcanvas, "moveAsideNonConnectedNodes"):
-            patchcanvas.moveAsideNonConnectedNodes()
+    def _slot_toggleGrid(self):
+        new_state = not getattr(patchcanvas.options, "grid_enabled", True)
+        patchcanvas.options.grid_enabled = new_state
+        self.btnGrid.setChecked(new_state)
+        scene = self.graphicsView.scene()
+        if scene:
+            scene.update()
 
     def updateActiveButton(self, mode):
         self.btnPointer.setChecked(mode == 0)
@@ -575,7 +655,7 @@ class CanvasToolBarOverlay(QFrame):
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
-            self._dragPos = event.globalPos() - self.frameGeometry().topLeft()
+            self._dragPos = _get_event_global_pos(event) - self.frameGeometry().topLeft()
             event.accept()
             return
         super().mousePressEvent(event)
@@ -584,7 +664,7 @@ class CanvasToolBarOverlay(QFrame):
         if self._dragPos is not None and event.buttons() & Qt.LeftButton:
             vp = self.parentWidget()
             if vp:
-                new_pos = event.globalPos() - self._dragPos
+                new_pos = _get_event_global_pos(event) - self._dragPos
                 x = max(0, min(new_pos.x(), vp.width() - self.width()))
                 y = max(0, min(new_pos.y(), vp.height() - self.height()))
                 self.move(x, y)
@@ -611,6 +691,230 @@ class CanvasToolBarOverlay(QFrame):
 
 
 # ------------------------------------------------------------------------------------------------------------
+# Floating Context Actions Toolbar (Top Centered Palette)
+# ------------------------------------------------------------------------------------------------------------
+
+
+class CanvasContextToolBarOverlay(QFrame):
+    """Floating context-sensitive horizontal action toolbar at the top of the patchbay canvas."""
+
+    def __init__(self, graphicsView, parent=None):
+        super().__init__(parent or graphicsView.viewport())
+        self.setObjectName("canvas_context_toolbar_overlay")
+        self.graphicsView = graphicsView
+        self._dragPos = None
+        self._userMoved = False
+
+        self.layout = QHBoxLayout(self)
+        self.layout.setContentsMargins(6, 3, 6, 3)
+        self.layout.setSpacing(3)
+
+        self.font_family = getBestNerdFont()
+        self.font = QFont(self.font_family, 11) if self.font_family else QFont()
+        if not self.font_family:
+            self.font.setPointSize(9)
+
+        self.setStyleSheet("""
+            QFrame#canvas_context_toolbar_overlay {
+                background-color: rgba(24, 24, 37, 0.94);
+                border: 1px solid #45475a;
+                border-radius: 8px;
+            }
+            QPushButton {
+                background: transparent;
+                border: none;
+                border-radius: 4px;
+                color: #cdd6f4;
+                font-size: 11px;
+                font-weight: 500;
+                text-align: center;
+                padding: 4px 7px;
+                margin: 0px;
+            }
+            QPushButton:hover {
+                background-color: rgba(69, 71, 90, 0.8);
+                color: #ffffff;
+            }
+            QPushButton:pressed {
+                background-color: #89b4fa;
+                color: #11111b;
+            }
+            QLabel {
+                color: #a6adc8;
+                font-size: 10px;
+                font-weight: bold;
+                padding: 0 4px;
+            }
+        """)
+
+        self.updateSelection()
+
+    def clearLayout(self):
+        while self.layout.count():
+            item = self.layout.takeAt(0)
+            w = item.widget()
+            if w is not None:
+                w.deleteLater()
+
+    def addSeparator(self):
+        line = QFrame(self)
+        line.setFrameShape(QFrame.VLine)
+        line.setFrameShadow(QFrame.Sunken)
+        line.setFixedWidth(1)
+        line.setStyleSheet("background-color: #45475a; border: none; margin: 3px 2px;")
+        self.layout.addWidget(line)
+
+    def addButton(self, text, tooltip, callback):
+        btn = QPushButton(text, self)
+        btn.setToolTip(tooltip)
+        btn.setFont(self.font)
+        btn.clicked.connect(callback)
+        self.layout.addWidget(btn)
+        return btn
+
+    def updateSelection(self):
+        self.clearLayout()
+        selected = patchcanvas.getSelectedNodes()
+        count = len(selected)
+
+        nf = bool(self.font_family)
+        icon_arr   = "\uf0e8 " if nf else ""
+        icon_repel = "\uf065 " if nf else ""
+        icon_aside = "\uf061 " if nf else ""
+        icon_sel   = "\U000f0485 " if nf else ""
+        icon_edit  = "\U000f03eb " if nf else ""
+        icon_ui    = "\U000f0254 " if nf else ""
+        icon_rack  = "\uf1b2 " if nf else ""
+        icon_clone = "\U000f0190 " if nf else ""
+        icon_del   = "\uf1f8 " if nf else ""
+        icon_align = "\uf036 " if nf else ""
+
+        if count == 0:
+            # Global Canvas Actions
+            lbl = QLabel("CANVAS", self)
+            self.layout.addWidget(lbl)
+            self.addSeparator()
+
+            self.addButton(f"{icon_arr}Auto-Arrange", "Auto-arrange All Nodes in Signal Flow Order", self._slot_arrange)
+            self.addButton(f"{icon_repel}Repel Overlaps", "Push Apart Overlapping Nodes", self._slot_repel_all)
+            self.addButton(f"{icon_aside}Park Disconnected", "Move Disconnected Nodes Aside", self._slot_move_aside_all)
+            self.addSeparator()
+            self.addButton(f"{icon_sel}Select All", "Select All Nodes (Ctrl+A)", patchcanvas.selectAllNodes)
+
+        elif count == 1:
+            # Single Node Context Actions
+            node = selected[0]
+            name = getattr(node, "m_group_name", "Node")
+            short_name = (name[:16] + "…") if len(name) > 17 else name
+
+            lbl = QLabel(short_name.upper(), self)
+            self.layout.addWidget(lbl)
+            self.addSeparator()
+
+            plugin_id = getattr(node, "m_plugin_id", -1)
+            has_plugin = (0 <= plugin_id <= patchcanvas.MAX_PLUGIN_ID_ALLOWED)
+            has_ui = getattr(node, "m_plugin_ui", False)
+
+            if has_plugin:
+                self.addButton(f"{icon_edit}Edit", "Edit Plugin Parameters", lambda: patchcanvas.canvas.callback(patchcanvas.ACTION_PLUGIN_EDIT, plugin_id, 0, ""))
+                if has_ui:
+                    self.addButton(f"{icon_ui}UI", "Show Custom Plugin UI", lambda: patchcanvas.canvas.callback(patchcanvas.ACTION_PLUGIN_SHOW_UI, plugin_id, 0, ""))
+                self.addButton(f"{icon_rack}Rack", "Jump to Plugin in Rack Tab", lambda: self._slot_jump_rack(plugin_id))
+                self.addButton(f"{icon_clone}Clone", "Duplicate / Clone Plugin", lambda: patchcanvas.canvas.callback(patchcanvas.ACTION_PLUGIN_CLONE, plugin_id, 0, ""))
+                self.addButton(f"{icon_del}Remove", "Delete / Remove Plugin", lambda: patchcanvas.canvas.callback(patchcanvas.ACTION_PLUGIN_REMOVE, plugin_id, 0, ""))
+                self.addSeparator()
+
+            self.addButton(f"{icon_arr}Arrange Connected", "Align and arrange graph connected to this node", lambda: patchcanvas.arrangeConnected(node, "both"))
+            self.addButton(f"{icon_aside}Park Aside", "Move this node aside", lambda: patchcanvas.moveAsideNonConnectedNodes(node))
+            self.addButton("Desel", "Deselect (Esc)", patchcanvas.deselectAllNodes)
+
+        else:
+            # Multiple Nodes Batch Actions
+            lbl = QLabel(f"{count} SELECTED", self)
+            self.layout.addWidget(lbl)
+            self.addSeparator()
+
+            self.addButton(f"{icon_align}Align Horiz", "Align Nodes Horizontally", lambda: patchcanvas.alignSelected("horizontal"))
+            self.addButton(f"{icon_align}Align Vert", "Align Nodes Vertically", lambda: patchcanvas.alignSelected("vertical"))
+            self.addButton("Distribute H", "Distribute Horizontally with equal spacing", lambda: patchcanvas.alignSelected("distribute_h"))
+            self.addButton("Distribute V", "Distribute Vertically with equal spacing", lambda: patchcanvas.alignSelected("distribute_v"))
+            self.addSeparator()
+            self.addButton(f"{icon_repel}Repel", "Auto-Repel Selected Nodes", lambda: patchcanvas.repelNodes(selected))
+            self.addButton("Invert", "Invert Selection", patchcanvas.invertNodeSelection)
+            self.addButton("Deselect", "Clear Selection (Esc)", patchcanvas.deselectAllNodes)
+
+        self.adjustSize()
+        if not getattr(self, "_userMoved", False):
+            self.reposition()
+
+    def _slot_arrange(self):
+        patchcanvas.arrange()
+
+    def _slot_repel_all(self):
+        all_n = []
+        for g in patchcanvas.canvas.group_list:
+            for w in g.widgets:
+                if w is not None and w.isVisible():
+                    all_n.append(w)
+        patchcanvas.repelNodes(all_n)
+
+    def _slot_move_aside_all(self):
+        patchcanvas.moveAsideNonConnectedNodes()
+
+    def _slot_jump_rack(self, plugin_id):
+        try:
+            from carla_shared import gCarla
+            if hasattr(gCarla.gui, "ui"):
+                split_idx = gCarla.gui.ui.tabWidget.indexOf(getattr(gCarla.gui, "tabSplit", None))
+                if split_idx >= 0:
+                    gCarla.gui.ui.tabWidget.setCurrentIndex(split_idx)
+                else:
+                    gCarla.gui.ui.tabWidget.setCurrentIndex(0)
+                pitem = gCarla.gui.getPluginItem(plugin_id)
+                if pitem is not None and gCarla.gui.ui.listWidget is not None:
+                    gCarla.gui.ui.listWidget.setCurrentItem(pitem)
+                    gCarla.gui.ui.listWidget.scrollToItem(pitem)
+        except Exception as e:
+            print("Error jumping to rack:", e)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self._dragPos = _get_event_global_pos(event) - self.frameGeometry().topLeft()
+            event.accept()
+            return
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if self._dragPos is not None and event.buttons() & Qt.LeftButton:
+            vp = self.parentWidget()
+            if vp:
+                new_pos = _get_event_global_pos(event) - self._dragPos
+                x = max(0, min(new_pos.x(), vp.width() - self.width()))
+                y = max(0, min(new_pos.y(), vp.height() - self.height()))
+                self.move(x, y)
+                self._userMoved = True
+                event.accept()
+                return
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        self._dragPos = None
+        super().mouseReleaseEvent(event)
+
+    def reposition(self):
+        if getattr(self, "_userMoved", False):
+            return
+        vp = self.parentWidget()
+        if vp is None:
+            return
+        # Position floating at top center
+        x = max(12, (vp.width() - self.width()) // 2)
+        y = 12
+        self.move(x, y)
+        self.raise_()
+
+
+# ------------------------------------------------------------------------------------------------------------
 # Canvas Viewport Event Filter (Auto-Scroll & UI Disconnect)
 # ------------------------------------------------------------------------------------------------------------
 
@@ -630,10 +934,18 @@ class CanvasViewportFilter(QObject):
         self._scrollTimer.setInterval(20)  # 50 Hz smooth scrolling
         self._scrollTimer.timeout.connect(self._slot_autoScroll)
 
-        # Create floating mode toolbar & help overlay inside the viewport
+        # Create floating mode toolbar, context toolbar & help overlay inside the viewport
         self.toolBar = CanvasToolBarOverlay(self.graphicsView, self.graphicsView.viewport())
         self.toolBar.show()
         QTimer.singleShot(100, self.toolBar.reposition)
+
+        self.contextToolBar = CanvasContextToolBarOverlay(self.graphicsView, self.graphicsView.viewport())
+        self.contextToolBar.show()
+        QTimer.singleShot(100, self.contextToolBar.reposition)
+
+        scene = self.graphicsView.scene()
+        if scene and hasattr(scene, "selectionChanged"):
+            scene.selectionChanged.connect(self.contextToolBar.updateSelection)
 
         self.helpOverlay = PatchbayHelpOverlay(self.graphicsView.viewport())
         self.helpOverlay.show()
@@ -1260,6 +1572,8 @@ class CanvasViewportFilter(QObject):
         elif is_resize:
             if hasattr(self, "toolBar") and self.toolBar:
                 self.toolBar.reposition()
+            if hasattr(self, "contextToolBar") and self.contextToolBar:
+                self.contextToolBar.reposition()
             if hasattr(self, "helpOverlay") and self.helpOverlay:
                 self.helpOverlay.reposition()
 

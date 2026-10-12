@@ -15,6 +15,16 @@ Recent developments enhance the Carla modular audio host across three primary pi
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 00:38:00
+- **feat(patchbay)**: Split canvas toolbars into dedicated left navigation palette and dynamic top context actions bar
+  - Resolved Qt6 `QMouseEvent.globalPos()` AttributeError by implementing `_get_event_global_pos()` using `globalPosition().toPoint()`.
+  - Fixed button icon centering and zero-padding alignment across floating toolbars.
+  - Re-exported graph utility functions (`arrange`, `repelNodes`, `moveAsideNonConnectedNodes`, `alignSelected`, etc.) from `patchcanvas.__init__.py`.
+  - Added `CanvasContextToolBarOverlay` at top-center of the canvas dynamically reflecting selection state:
+    - *0 nodes*: Global Auto-Arrange, Repel Overlaps, Park Disconnected, and Select All.
+    - *1 node*: Node actions (Edit, Custom UI, Jump to Rack, Clone, Remove, Arrange Connected, Park Aside).
+    - *2+ nodes*: Multi-node alignment (Align H/V, Distribute H/V, Auto-Repel Selected, Invert Selection, Deselect).
+
 ### 2026-10-13 00:23:00
 - **feat(patchbay)**: Photoshop-style vertical floating toolbar on left canvas margin
   - Converted `CanvasToolBarOverlay` to a vertical column floating on the left side of the patchbay canvas.

@@ -307,6 +307,7 @@ def setOptions(new_options):
 
 
 
+
 def setFeatures(new_features):
     if canvas.initiated:
         return
@@ -315,3 +316,19 @@ def setFeatures(new_features):
     features.port_info = new_features.port_info
     features.port_rename = new_features.port_rename
     features.handle_group_pos = new_features.handle_group_pos
+
+
+# Forward graph and node layout utility functions from .patchcanvas
+from .patchcanvas import (
+    autoArrange,
+    arrange,
+    repelNodes,
+    moveAsideNonConnectedNodes,
+    alignSelected,
+    selectAllNodes,
+    deselectAllNodes,
+    invertNodeSelection,
+    selectNodesByType,
+    arrangeConnected,
+    getSelectedNodes,
+)
