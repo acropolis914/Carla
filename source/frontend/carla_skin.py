@@ -2551,7 +2551,7 @@ class PluginSlot_Minimal(PluginSlot_Default):
         self.b_minimize.clicked.connect(self.toggleCompacted)
         self.ui.layout_top.addWidget(self.b_minimize)
 
-        self.ui.verticalLayout.setContentsMargins(14, 3, 6, 3)
+        self.ui.verticalLayout.setContentsMargins(14, 6, 6, 6)
 
         styleSheet = f"""
             QFrame#PluginWidget {{
@@ -3086,22 +3086,22 @@ class PluginSlot_Minimal(PluginSlot_Default):
 
     def getFixedHeight(self):
         if getattr(self, 'is_compacted', False):
-            return 34
+            return 38
 
         if getattr(self, 'is_slider_mode', False):
             count = len(getattr(self, 'fSliderParameterList', []))
             if count == 0 and hasattr(self, 'fParameterList'):
                 count = len(self.fParameterList)
-            req_height = 44 + (count * 22)
-            return max(110, min(req_height, 360))
+            req_height = 50 + (count * 22)
+            return max(116, min(req_height, 360))
 
         if hasattr(self, 'w_knobs_left') and self.w_knobs_left is not None and self.w_knobs_left.layout() is not None:
             w = self.w_knobs_left.width()
             if w > 50:
                 knobs_h = self.w_knobs_left.layout().heightForWidth(w)
                 if knobs_h > 40:
-                    return max(80, min(36 + knobs_h, 360))
-        return 100
+                    return max(86, min(42 + knobs_h, 360))
+        return 106
 
     def setParameterValue(self, parameterId, value, sendCallback):
         PluginSlot_Default.setParameterValue(self, parameterId, value, sendCallback)
