@@ -119,22 +119,13 @@ def parse_pen(color_val, width=1, style="solid"):
     if isinstance(color_val, QPen):
         return color_val
     color = parse_color(color_val)
-    if qt_config == 6:
-        pen_style = Qt.PenStyle.SolidLine
-        if style == "dash":
-            pen_style = Qt.PenStyle.DashLine
-        elif style == "dot":
-            pen_style = Qt.PenStyle.DotLine
-        elif style == "none":
-            pen_style = Qt.PenStyle.NoPen
-    else:
-        pen_style = Qt.SolidLine
-        if style == "dash":
-            pen_style = Qt.DashLine
-        elif style == "dot":
-            pen_style = Qt.DotLine
-        elif style == "none":
-            pen_style = Qt.NoPen
+    pen_style = Qt.SolidLine
+    if style == "dash":
+        pen_style = Qt.DashLine
+    elif style == "dot":
+        pen_style = Qt.DotLine
+    elif style == "none":
+        pen_style = Qt.NoPen
     return QPen(color, width, pen_style)
 
 
@@ -200,10 +191,7 @@ def parse_theme_dict(raw):
         elif k.endswith("_text") or k.endswith("_text_sel"):
             parsed[k] = parse_pen(v, width=0)
         elif k in ("box_font_state", "port_font_state"):
-            if qt_config == 6:
-                parsed[k] = QFont.Weight.Bold if str(v).lower() == "bold" else QFont.Weight.Normal
-            else:
-                parsed[k] = QFont.Bold if str(v).lower() == "bold" else QFont.Normal
+            parsed[k] = QFont.Bold if str(v).lower() == "bold" else QFont.Normal
         elif k == "box_bg_type":
             parsed[k] = (
                 Theme.THEME_BG_GRADIENT

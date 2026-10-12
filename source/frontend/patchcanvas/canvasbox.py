@@ -1566,9 +1566,7 @@ class CanvasBox(QGraphicsObject):
             if data is None:
                 return
 
-            img_format = (
-                QImage.Format.Format_ARGB32 if qt_config == 6 else QImage.Format_ARGB32
-            )
+            img_format = QImage.Format_ARGB32
             self.m_inline_image = QImage(
                 data["data"],
                 data["width"],
@@ -1624,15 +1622,10 @@ class CanvasBox(QGraphicsObject):
         painter.drawImage(QRectF(srcx, srcy, swidth, sheight), self.m_inline_image)
 
     def itemChange(self, change, value):
-        from qt_compat import qt_config
-
-        pos_change = 1
-        if qt_config == 6:
-            from PyQt6.QtWidgets import QGraphicsItem
-
-            pos_change = QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged
-
-        if change == pos_change or change == 1:
+        if (
+            change == QGraphicsItem.ItemPositionHasChanged
+            or change == 1
+        ):
             self.repaintLines()
             self.slot_signalPositionChangedLater()
 
