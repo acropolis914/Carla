@@ -45,7 +45,7 @@ class CanvasLine(QGraphicsLineItem):
         self.item2 = item2
 
         self.m_locked = False
-        self.m_lineSelected = False
+        self.m_lineSelected = None  # None sentinel — ensures updateLineGradient() fires on first call
 
         self.setGraphicsEffect(None)
         self.updateLinePos()

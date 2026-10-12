@@ -45,7 +45,7 @@ class CanvasBezierLine(QGraphicsPathItem):
         self.item2 = item2
 
         self.m_locked = False
-        self.m_lineSelected = False
+        self.m_lineSelected = None  # None sentinel — ensures updateLineGradient() fires on first call
 
         self.setBrush(QColor(0, 0, 0, 0))
         self.setGraphicsEffect(None)
