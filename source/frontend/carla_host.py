@@ -895,6 +895,9 @@ class HostWindow(QMainWindow):
         self.host.set_custom_data(
             pluginId, CUSTOM_DATA_TYPE_PROPERTY, "CarlaColor", colorStr
         )
+        self.fHasUnsavedChanges = True
+        if hasattr(self, "markProjectModified"):
+            self.markProjectModified()
         pitem.recreateWidget(newColor=color)
         if self.ui.listWidget is not None:
             self.ui.listWidget.doItemsLayout()

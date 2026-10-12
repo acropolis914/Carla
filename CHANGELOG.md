@@ -36,7 +36,12 @@ Recent developments enhance the Carla modular audio host across three primary pi
   - Configured `QSurfaceFormat` with 4 samples on `QOpenGLWidget` when canvas antialiasing is enabled, resolving jagged lines and missing antialiasing when using OpenGL hardware acceleration.
   - Exported `QSurfaceFormat` in `qt_compat.py`.
 
-### 2026-10-12 18:24:00
+### 2026-10-12 18:30:00
+- **fix(rack)**: Fix persistence and startup synchronization of saved plugin colors on canvas nodes
+  - Added project dirty tracking and `markProjectModified()` on `changePluginColor()` to ensure custom colors persist on save.
+  - Linked `setGroupAsPlugin()` in `patchcanvas.py` to fetch saved `CarlaColor` custom data from the engine and immediately tint the patchbay node and its cable connections upon project loading.
+
+### 2026-10-12 18:24:00 (`e577fae12`)
 - **fix(canvas)**: Ensure cable gradients render regardless of line formula (bezier/straight/stepped) and stroke pattern
   - Recomputed `updateLineGradient()` on every `updateLinePos()` to ensure gradients always match latest node positions.
   - Fixed painter rendering in `CanvasLine.paint()` to draw directly with `_cached_pen` preserving `QBrush` gradient fill across all line shapes and stroke patterns (`solid`, `dotted`, `dashed`).

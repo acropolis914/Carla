@@ -991,6 +991,22 @@ def setGroupAsPlugin(group_id, plugin_id, hasUI, hasInlineDisplay):
             if group.split and group.widgets[1]:
                 group.widgets[1].setAsPlugin(plugin_id, hasUI, hasInlineDisplay)
 
+            # Sync saved custom color from backend property
+            try:
+                from carla_shared import gCarla, CUSTOM_DATA_TYPE_PROPERTY
+                saved_color = gCarla.gui.host.get_custom_data_value(
+                    plugin_id, CUSTOM_DATA_TYPE_PROPERTY, "CarlaColor"
+                )
+                if saved_color:
+                    parts = tuple(int(i) for i in saved_color.split(";", 3))
+                    if parts != (255, 255, 255):
+                        hex_col = f"#{parts[0]:02x}{parts[1]:02x}{parts[2]:02x}"
+                        group.widgets[0].setCustomColor(hex_col, notify=False)
+                        if group.split and group.widgets[1]:
+                            group.widgets[1].setCustomColor(hex_col, notify=False)
+            except Exception:
+                pass
+
             canvas.group_plugin_map[plugin_id] = group
             return
 
