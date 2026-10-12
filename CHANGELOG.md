@@ -15,6 +15,14 @@ Recent developments enhance the Carla modular audio host across three primary pi
 
 ## [Unreleased] - 2026-10-12
 
+### 2026-10-12 23:55:00
+- **feat(patchbay)**: Infinite canvas, legacy project migration, and side-by-side layout persistence
+  - Implemented dynamic scene and bounds expansion (`canvas.size_rect`, `sceneRect()`) in `canvasbox.py` and `scene.py` removing fixed boundary clamping for an infinite canvas experience.
+  - Automatically recenters legacy save files lacking `infinite_canvas = true` upon load while preserving exact coordinates for modern infinite canvas projects.
+  - Added canvasbox sub-bar button (`\uf066` / `\uf065`) to dynamically collapse and hide unconnected ports.
+  - Tightly grouped unconnected nodes within cluster bounds when triggering "Move Aside Non-Connected Nodes".
+  - Persisted `infinite_canvas`, `hide_unconnected_ports`, and side-by-side split view layout state (`split_view_enabled`, `split_view_sizes`) across XML and JSON formats.
+
 ### 2026-10-12 23:28:00
 - **feat(ui)**: Enlarged FontAwesome Nerd Font icons and TODO tracker update
   - Increased font-size for action buttons (`b_power`, `b_bypass`, `b_gui`, `b_edit`, `b_slider_mode`, `b_minimize`) from 11px to 13px (12px on minimize) for enhanced legibility.

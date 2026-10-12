@@ -375,7 +375,7 @@ def addGroup(
     icon=ICON_APPLICATION,
     pw_node_name=None,
 ):
-    log_carla(f"patchcanvas.addGroup: group_id={group_id}, group_name='{group_name}'")
+    log_carla(f"patchcanvas.addGroup: group_id={group_id}, group_name='{group_name}'", level="debug")
     if canvas.debug:
         print(
             "PatchCanvas::addGroup(%i, %s, %s, %s)"
@@ -875,6 +875,12 @@ def saveGroupPositions():
             pos1 = group.widgets[0].pos()
             pos2 = QPointF(0, 0)
 
+        col_str = ""
+        if group.widgets[0].m_custom_color:
+            col_str = group.widgets[0].m_custom_color.name()
+
+        hide_ports = getattr(group.widgets[0], "m_hide_unconnected_ports", False)
+
         ret.append(
             {
                 "name": group.group_name,
@@ -883,6 +889,8 @@ def saveGroupPositions():
                 "pos2x": pos2.x(),
                 "pos2y": pos2.y(),
                 "split": group.split,
+                "color": col_str,
+                "hide_unconnected_ports": hide_ports,
             }
         )
 
@@ -913,6 +921,21 @@ def restoreGroupPositions(dataList):
             group.widgets[1].blockSignals(True)
             group.widgets[1].setPos(data["pos2x"], data["pos2y"])
             group.widgets[1].blockSignals(False)
+
+        # Restore saved node color (unless overridden by mapped rack plugin)
+        saved_node_color = data.get("color")
+        if saved_node_color and getattr(group, "plugin_id", -1) < 0:
+            group.widgets[0].setCustomColor(saved_node_color, notify=False)
+            if group.split and group.widgets[1]:
+                group.widgets[1].setCustomColor(saved_node_color, notify=False)
+
+        # Restore hide_unconnected_ports state
+        if data.get("hide_unconnected_ports"):
+            group.widgets[0].m_hide_unconnected_ports = True
+            group.widgets[0].calculateBoxSize()
+            if group.split and group.widgets[1]:
+                group.widgets[1].m_hide_unconnected_ports = True
+                group.widgets[1].calculateBoxSize()
 
 
 def setGroupPos(group_id, group_pos_x, group_pos_y):
@@ -991,32 +1014,22 @@ def setGroupAsPlugin(group_id, plugin_id, hasUI, hasInlineDisplay):
             if group.split and group.widgets[1]:
                 group.widgets[1].setAsPlugin(plugin_id, hasUI, hasInlineDisplay)
 
-            # Sync saved custom color or assign category-based color
+            # Sync saved custom color if present
             try:
                 from carla_shared import gCarla, CUSTOM_DATA_TYPE_PROPERTY
+                pitem = gCarla.gui.getPluginItem(plugin_id) if hasattr(gCarla.gui, "getPluginItem") else None
                 saved_color = gCarla.gui.host.get_custom_data_value(
                     plugin_id, CUSTOM_DATA_TYPE_PROPERTY, "CarlaColor"
                 )
                 hex_col = None
-                if saved_color:
+                if saved_color and saved_color != "255;255;255":
                     parts = tuple(int(i) for i in saved_color.split(";", 3))
                     if parts != (255, 255, 255):
                         hex_col = f"#{parts[0]:02x}{parts[1]:02x}{parts[2]:02x}"
-                else:
-                    # Default category color mapping from Catppuccin palette
-                    category = gCarla.gui.host.get_plugin_info(plugin_id).get("category", 0)
-                    category_palette = {
-                        1: "#f38ba8",  # SYNTH -> Red
-                        2: "#89dceb",  # DELAY -> Sky
-                        3: "#a6e3a1",  # EQ -> Green
-                        4: "#94e2d5",  # FILTER -> Teal
-                        5: "#fab387",  # DISTORTION -> Peach
-                        6: "#f9e2af",  # DYNAMICS -> Yellow
-                        7: "#cba6f7",  # MODULATOR -> Mauve
-                        8: "#b4befe",  # UTILITY -> Lavender
-                        9: "#89b4fa",  # OTHER -> Blue
-                    }
-                    hex_col = category_palette.get(category, None)
+                elif pitem is not None and pitem.fOptions.get("color") is not None:
+                    c = pitem.fOptions["color"]
+                    if c != (255, 255, 255) and c != (40, 40, 40):
+                        hex_col = f"#{c[0]:02x}{c[1]:02x}{c[2]:02x}"
 
                 if hex_col:
                     group.widgets[0].setCustomColor(hex_col, notify=False)
@@ -1112,7 +1125,10 @@ def addPort(group_id, port_id, port_name, port_mode, port_type, is_alternate=Fal
 
     display_name = CanvasGetPortDisplayName(source_group.group_name, port_name)
     visual_group_id = group_id
-    log_carla(f"patchcanvas.addPort: group_id={group_id} ('{source_group.group_name}'), port_id={port_id}, port_name='{port_name}', display_name='{display_name}'")
+    log_carla(
+        f"patchcanvas.addPort: group_id={group_id} ('{source_group.group_name}'), port_id={port_id}, port_name='{port_name}', display_name='{display_name}'",
+        level="debug"
+    )
 
     if display_name != port_name:
         stream_key = (group_id, display_name)
@@ -1330,7 +1346,10 @@ def connectPorts(
 
     canvas.connection_list.append(connection_dict)
     connection_dict.widget.updateLinePos()
-    log_carla(f"patchcanvas.connectPorts: id={connection_id}, {group_out_id}:{port_out_id} -> {group_in_id}:{port_in_id}")
+    log_carla(
+        f"patchcanvas.connectPorts: id={connection_id}, {group_out_id}:{port_out_id} -> {group_in_id}:{port_in_id}",
+        level="debug"
+    )
 
     if options.eyecandy == EYECANDY_FULL:
         item = connection_dict.widget
@@ -1341,7 +1360,7 @@ def connectPorts(
 
 
 def disconnectPorts(connection_id):
-    log_carla(f"patchcanvas.disconnectPorts: id={connection_id}")
+    log_carla(f"patchcanvas.disconnectPorts: id={connection_id}", level="debug")
     if canvas.debug:
         print("PatchCanvas::disconnectPorts(%i)" % connection_id)
 
@@ -1925,6 +1944,25 @@ def invertNodeSelection():
                 w.setSelected(not w.isSelected())
 
 
+def selectNodesByType(target_type):
+    if not canvas.scene:
+        return
+    for group in canvas.group_list:
+        for w in group.widgets:
+            if w is not None and hasattr(w, "getNodeBadgeType"):
+                if w.getNodeBadgeType() == target_type:
+                    w.setSelected(True)
+
+
+def getAvailableNodeTypes():
+    types_found = set()
+    for group in canvas.group_list:
+        for w in group.widgets:
+            if w is not None and hasattr(w, "getNodeBadgeType"):
+                types_found.add(w.getNodeBadgeType())
+    return sorted(types_found)
+
+
 
 def alignSelected(mode="horizontal"):
     """
@@ -2182,18 +2220,34 @@ def moveAsideNonConnectedNodes(anchor_node=None):
     if connected_nodes:
         max_x = max(n.x() + n.boundingRect().width() for n in connected_nodes)
         min_y = min(n.y() for n in connected_nodes)
-        target_x = max_x + 120
+        max_y = max(n.y() + n.boundingRect().height() for n in connected_nodes)
+        target_x = max_x + 50
         target_y = min_y
+        max_allowed_h = max(400.0, max_y - min_y)
     else:
-        target_x = 100
-        target_y = 100
+        target_x = 60
+        target_y = 60
+        max_allowed_h = 600.0
 
     non_connected.sort(key=lambda n: node_to_group[n].group_name.lower())
+    cx = target_x
     cy = target_y
-    vertical_gap = 30
+    vertical_gap = 16
+    col_width = 0
+
     for n in non_connected:
-        n.setPos(target_x, cy)
-        cy += n.boundingRect().height() + vertical_gap
+        n_w = n.boundingRect().width()
+        n_h = n.boundingRect().height()
+        # Wrap into an adjacent column if vertical span exceeds main connected graph height
+        if (cy + n_h - target_y) > max_allowed_h and cy > target_y:
+            cx += col_width + 24
+            cy = target_y
+            col_width = n_w
+        else:
+            col_width = max(col_width, n_w)
+
+        n.setPos(cx, cy)
+        cy += n_h + vertical_gap
 
     syncNodePositions(non_connected)
 

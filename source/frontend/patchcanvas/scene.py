@@ -124,11 +124,13 @@ class PatchScene(QGraphicsScene):
         return fix
 
     def updateLimits(self):
-        w0 = canvas.size_rect.width()
-        h0 = canvas.size_rect.height()
-        w1 = self.m_view.width()
-        h1 = self.m_view.height()
-        self.m_scale_min = w1/w0 if w0/h0 > w1/h1 else h1/h0
+        w0 = max(1.0, canvas.size_rect.width())
+        h0 = max(1.0, canvas.size_rect.height())
+        w1 = max(1.0, self.m_view.width())
+        h1 = max(1.0, self.m_view.height())
+        fit_scale = w1 / w0 if w0 / h0 > w1 / h1 else h1 / h0
+        # Allow flexible zoom out without breaking lower bounds
+        self.m_scale_min = min(0.1, max(0.01, fit_scale))
 
     def updateTheme(self):
         self.setBackgroundBrush(canvas.theme.canvas_bg)

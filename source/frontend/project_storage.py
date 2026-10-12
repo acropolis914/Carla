@@ -106,8 +106,19 @@ class CarlaXmlProjectHandler(BaseProjectHandler):
                 return []
 
             data_list = []
+            is_infinite = False
             canvas_elem = root.find("CanvasPositions")
+            split_view_enabled = None
+            split_view_sizes = None
             if canvas_elem is not None:
+                is_infinite = canvas_elem.get("infinite_canvas") in ("1", "true", "True")
+                if "split_view_enabled" in canvas_elem.attrib:
+                    split_view_enabled = canvas_elem.get("split_view_enabled") in ("1", "true", "True")
+                if "split_view_sizes" in canvas_elem.attrib:
+                    try:
+                        split_view_sizes = [int(s) for s in canvas_elem.get("split_view_sizes").split(",") if s.strip()]
+                    except Exception:
+                        pass
                 for p_elem in canvas_elem.findall("Position"):
                     name = p_elem.get("name", "")
                     if name:
@@ -118,6 +129,8 @@ class CarlaXmlProjectHandler(BaseProjectHandler):
                             "pos2x": float(p_elem.get("pos2x", 0)),
                             "pos2y": float(p_elem.get("pos2y", 0)),
                             "split": p_elem.get("split") in ("1", "true", "True"),
+                            "color": p_elem.get("color", ""),
+                            "hide_unconnected_ports": p_elem.get("hide_unconnected_ports") in ("1", "true", "True"),
                         })
 
             if not data_list:
@@ -141,13 +154,22 @@ class CarlaXmlProjectHandler(BaseProjectHandler):
                                         "pos2x": x2,
                                         "pos2y": y2,
                                         "split": (x2 != 0 or y2 != 0),
+                                        "color": p_elem.get("color", ""),
+                                        "hide_unconnected_ports": False,
                                     })
+            # Attach infinite_canvas and layout metadata to the returned list
+            if hasattr(data_list, "__dict__"):
+                setattr(data_list, "infinite_canvas", is_infinite)
+                if split_view_enabled is not None:
+                    setattr(data_list, "split_view_enabled", split_view_enabled)
+                if split_view_sizes is not None:
+                    setattr(data_list, "split_view_sizes", split_view_sizes)
             return data_list
         except Exception as e:
             print("CarlaXmlProjectHandler::load_positions error:", e)
             return []
 
-    def save_positions(self, filepath, positions):
+    def save_positions(self, filepath, positions, extra_metadata=None):
         if not filepath or not os.path.exists(filepath):
             return False
         try:
@@ -161,6 +183,13 @@ class CarlaXmlProjectHandler(BaseProjectHandler):
                     root.remove(child)
 
             canvas_pos_elem = ET.SubElement(root, "CanvasPositions")
+            canvas_pos_elem.set("infinite_canvas", "true")
+            if extra_metadata:
+                if "split_view_enabled" in extra_metadata:
+                    canvas_pos_elem.set("split_view_enabled", "1" if extra_metadata["split_view_enabled"] else "0")
+                if "split_view_sizes" in extra_metadata:
+                    canvas_pos_elem.set("split_view_sizes", ",".join(str(s) for s in extra_metadata["split_view_sizes"]))
+
             for pos_data in positions:
                 name = str(pos_data.get("name", "")).strip()
                 if not name:
@@ -172,6 +201,10 @@ class CarlaXmlProjectHandler(BaseProjectHandler):
                 p_elem.set("pos2x", str(int(round(pos_data.get("pos2x", 0)))))
                 p_elem.set("pos2y", str(int(round(pos_data.get("pos2y", 0)))))
                 p_elem.set("split", "1" if pos_data.get("split") else "0")
+                if pos_data.get("color"):
+                    p_elem.set("color", str(pos_data["color"]))
+                if pos_data.get("hide_unconnected_ports"):
+                    p_elem.set("hide_unconnected_ports", "1")
 
             tree.write(filepath, encoding="UTF-8", xml_declaration=True)
             return True
@@ -234,25 +267,44 @@ class CarlaJsonProjectHandler(BaseProjectHandler):
         try:
             doc = self._read_json(filepath)
             positions = []
+            is_infinite = False
+            split_view_enabled = None
+            split_view_sizes = None
             if "CARLA-PROJECT" in doc and isinstance(doc["CARLA-PROJECT"], dict):
                 c_pos = doc["CARLA-PROJECT"].get("CanvasPositions", {})
                 if isinstance(c_pos, dict):
+                    attrs = c_pos.get("@attributes", {})
+                    is_infinite = str(attrs.get("infinite_canvas", "false")).lower() in ("1", "true")
+                    if "split_view_enabled" in attrs:
+                        split_view_enabled = str(attrs.get("split_view_enabled", "0")).lower() in ("1", "true")
+                    if "split_view_sizes" in attrs:
+                        try:
+                            split_view_sizes = [int(s) for s in str(attrs.get("split_view_sizes", "")).split(",") if s.strip()]
+                        except Exception:
+                            pass
                     pos_entries = c_pos.get("Position", [])
                     if isinstance(pos_entries, dict):
                         pos_entries = [pos_entries]
                     for pe in pos_entries:
-                        attrs = pe.get("@attributes", pe)
-                        if "name" in attrs:
+                        attrs_pe = pe.get("@attributes", pe)
+                        if "name" in attrs_pe:
                             positions.append({
-                                "name": str(attrs["name"]),
-                                "pos1x": float(attrs.get("pos1x", 0)),
-                                "pos1y": float(attrs.get("pos1y", 0)),
-                                "pos2x": float(attrs.get("pos2x", 0)),
-                                "pos2y": float(attrs.get("pos2y", 0)),
-                                "split": str(attrs.get("split", "0")) in ("1", "true", "True"),
+                                "name": str(attrs_pe["name"]),
+                                "pos1x": float(attrs_pe.get("pos1x", 0)),
+                                "pos1y": float(attrs_pe.get("pos1y", 0)),
+                                "pos2x": float(attrs_pe.get("pos2x", 0)),
+                                "pos2y": float(attrs_pe.get("pos2y", 0)),
+                                "split": str(attrs_pe.get("split", "0")) in ("1", "true", "True"),
+                                "color": str(attrs_pe.get("color", "")),
+                                "hide_unconnected_ports": str(attrs_pe.get("hide_unconnected_ports", "0")) in ("1", "true", "True"),
                             })
 
             if not positions:
+                is_infinite = bool(doc.get("infinite_canvas", False))
+                if "split_view_enabled" in doc:
+                    split_view_enabled = bool(doc.get("split_view_enabled"))
+                if "split_view_sizes" in doc:
+                    split_view_sizes = doc.get("split_view_sizes")
                 raw_positions = doc.get("canvas_positions", doc.get("positions", []))
                 for p in raw_positions:
                     if isinstance(p, dict) and "name" in p:
@@ -263,14 +315,22 @@ class CarlaJsonProjectHandler(BaseProjectHandler):
                             "pos2x": float(p.get("pos2x", 0)),
                             "pos2y": float(p.get("pos2y", 0)),
                             "split": bool(p.get("split", False)),
+                            "color": str(p.get("color", "")),
+                            "hide_unconnected_ports": bool(p.get("hide_unconnected_ports", False)),
                         })
 
+            if hasattr(positions, "__dict__"):
+                setattr(positions, "infinite_canvas", is_infinite)
+                if split_view_enabled is not None:
+                    setattr(positions, "split_view_enabled", split_view_enabled)
+                if split_view_sizes is not None:
+                    setattr(positions, "split_view_sizes", split_view_sizes)
             return positions
         except Exception as e:
             print("CarlaJsonProjectHandler::load_positions error:", e)
             return []
 
-    def save_positions(self, filepath, positions):
+    def save_positions(self, filepath, positions, extra_metadata=None):
         try:
             doc = {}
             if os.path.exists(filepath):
@@ -280,38 +340,59 @@ class CarlaJsonProjectHandler(BaseProjectHandler):
                     doc = {}
 
             if "CARLA-PROJECT" in doc and isinstance(doc["CARLA-PROJECT"], dict):
-                canvas_pos_elem = {"Position": []}
+                c_attrs = {"infinite_canvas": "true"}
+                if extra_metadata:
+                    if "split_view_enabled" in extra_metadata:
+                        c_attrs["split_view_enabled"] = "1" if extra_metadata["split_view_enabled"] else "0"
+                    if "split_view_sizes" in extra_metadata:
+                        c_attrs["split_view_sizes"] = ",".join(str(s) for s in extra_metadata["split_view_sizes"])
+
+                canvas_pos_elem = {"@attributes": c_attrs, "Position": []}
                 for p in positions:
                     name = str(p.get("name", "")).strip()
                     if not name:
                         continue
-                    canvas_pos_elem["Position"].append({
-                        "@attributes": {
-                            "name": name,
-                            "pos1x": str(int(round(p.get("pos1x", 0)))),
-                            "pos1y": str(int(round(p.get("pos1y", 0)))),
-                            "pos2x": str(int(round(p.get("pos2x", 0)))),
-                            "pos2y": str(int(round(p.get("pos2y", 0)))),
-                            "split": "1" if p.get("split") else "0",
-                        }
-                    })
+                    attrs = {
+                        "name": name,
+                        "pos1x": str(int(round(p.get("pos1x", 0)))),
+                        "pos1y": str(int(round(p.get("pos1y", 0)))),
+                        "pos2x": str(int(round(p.get("pos2x", 0)))),
+                        "pos2y": str(int(round(p.get("pos2y", 0)))),
+                        "split": "1" if p.get("split") else "0",
+                    }
+                    if p.get("color"):
+                        attrs["color"] = str(p["color"])
+                    if p.get("hide_unconnected_ports"):
+                        attrs["hide_unconnected_ports"] = "1"
+                    canvas_pos_elem["Position"].append({"@attributes": attrs})
                 doc["CARLA-PROJECT"]["CanvasPositions"] = canvas_pos_elem
             else:
                 doc["format"] = "carla-project-json"
                 doc["version"] = "1.0"
+                doc["infinite_canvas"] = True
+                if extra_metadata:
+                    doc["split_view_enabled"] = bool(extra_metadata.get("split_view_enabled", False))
+                    if "split_view_sizes" in extra_metadata:
+                        doc["split_view_sizes"] = extra_metadata["split_view_sizes"]
+
                 clean_positions = []
                 for p in positions:
                     name = str(p.get("name", "")).strip()
                     if not name:
                         continue
-                    clean_positions.append({
+                    entry = {
                         "name": name,
                         "pos1x": int(round(p.get("pos1x", 0))),
                         "pos1y": int(round(p.get("pos1y", 0))),
                         "pos2x": int(round(p.get("pos2x", 0))),
                         "pos2y": int(round(p.get("pos2y", 0))),
                         "split": bool(p.get("split", False)),
-                    })
+                    }
+                    if p.get("color"):
+                        entry["color"] = str(p["color"])
+                    if p.get("hide_unconnected_ports"):
+                        entry["hide_unconnected_ports"] = True
+                    clean_positions.append(entry)
                 doc["canvas_positions"] = clean_positions
 
             tmp_path = filepath + ".tmp"
@@ -388,21 +469,21 @@ class ProjectStorageManager:
         handler = self.get_handler(filepath)
         return handler.load_positions(filepath)
 
-    def save_canvas_positions(self, filepath, positions):
+    def save_canvas_positions(self, filepath, positions, extra_metadata=None):
         handler = self.get_handler(filepath)
-        return handler.save_positions(filepath, positions)
+        return handler.save_positions(filepath, positions, extra_metadata=extra_metadata)
 
     def prepare_for_backend_load(self, filepath, force_bridged=False):
         """Prepares a file path readable by the C++ engine (converts .carjp to temporary xml if needed)"""
         handler = self.get_handler(filepath)
         return handler.load_full_project_as_xml_path(filepath, force_bridged=force_bridged)
 
-    def finalize_from_backend_save(self, target_filepath, backend_saved_filepath, positions=None):
+    def finalize_from_backend_save(self, target_filepath, backend_saved_filepath, positions=None, extra_metadata=None):
         """Finalizes backend save into target format and writes canvas positions."""
         handler = self.get_handler(target_filepath)
         handler.save_full_project_from_xml_path(target_filepath, backend_saved_filepath)
         if positions is not None:
-            handler.save_positions(target_filepath, positions)
+            handler.save_positions(target_filepath, positions, extra_metadata=extra_metadata)
         return True
 
 storage_manager = ProjectStorageManager()

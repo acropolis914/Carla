@@ -666,6 +666,7 @@ class CanvasBox(QGraphicsObject):
         self.m_search_highlight = 0  # 0: None, 1: Matched (orange), 2: Active/Hovered (bright/thick orange)
         self.m_hover_btn_id = None
         self.m_pressed_btn_id = None
+        self.m_hide_unconnected_ports = False
 
         # Set Font
         self.m_font_name = getSystemFont(
@@ -941,25 +942,27 @@ class CanvasBox(QGraphicsObject):
         )
 
     def checkItemPos(self):
+        # In infinite canvas mode, expand canvas boundaries dynamically instead of clamping nodes
+        pos = self.scenePos()
+        node_rect = QRectF(pos.x(), pos.y(), self.p_width, self.p_height)
+
         if canvas.size_rect.isNull():
-            return
-
-        pos = self.scenePos()
-        if canvas.size_rect.contains(pos) and canvas.size_rect.contains(
-            pos + QPointF(self.p_width, self.p_height)
-        ):
-            return
-
-        if pos.x() < canvas.size_rect.x():
-            self.setPos(canvas.size_rect.x(), pos.y())
-        elif pos.x() + self.p_width > canvas.size_rect.width():
-            self.setPos(canvas.size_rect.width() - self.p_width, pos.y())
-
-        pos = self.scenePos()
-        if pos.y() < canvas.size_rect.y():
-            self.setPos(pos.x(), canvas.size_rect.y())
-        elif pos.y() + self.p_height > canvas.size_rect.height():
-            self.setPos(pos.x(), canvas.size_rect.height() - self.p_height)
+            canvas.size_rect = QRectF(node_rect)
+        elif not canvas.size_rect.contains(node_rect):
+            # Grow size_rect to envelop the node plus margin
+            margin = 500.0
+            expanded_rect = canvas.size_rect.united(
+                QRectF(
+                    node_rect.x() - margin,
+                    node_rect.y() - margin,
+                    node_rect.width() + 2 * margin,
+                    node_rect.height() + 2 * margin,
+                )
+            )
+            canvas.size_rect = expanded_rect
+            if canvas.scene:
+                canvas.scene.setSceneRect(expanded_rect)
+                canvas.scene.updateLimits()
 
     def removeIconFromScene(self):
         if self.icon_svg is None:
@@ -991,8 +994,29 @@ class CanvasBox(QGraphicsObject):
             ):
                 port_list.append(port)
 
-        if len(port_list) == 0:
-            self.p_height = canvas.theme.box_header_height
+        # Filter connected vs unconnected if hide_unconnected_ports is enabled
+        connected_port_ids = set()
+        if getattr(self, "m_hide_unconnected_ports", False):
+            for conn in canvas.connection_list:
+                if conn.group_out_id == self.m_group_id:
+                    connected_port_ids.add((PORT_MODE_OUTPUT, conn.port_out_id))
+                if conn.group_in_id == self.m_group_id:
+                    connected_port_ids.add((PORT_MODE_INPUT, conn.port_in_id))
+
+        visible_port_list = []
+        for port in port_list:
+            is_connected = (port.port_mode, port.port_id) in connected_port_ids
+            if getattr(self, "m_hide_unconnected_ports", False) and not is_connected:
+                port.widget.setVisible(False)
+            else:
+                port.widget.setVisible(True)
+                visible_port_list.append(port)
+
+        subbar_h = 22 if self.m_plugin_id >= 0 else 0
+        header_total_h = canvas.theme.box_header_height + subbar_h
+
+        if len(visible_port_list) == 0:
+            self.p_height = header_total_h + canvas.theme.box_header_spacing + 4
             self.p_width_in = 0
             self.p_width_out = 0
         else:
@@ -1007,13 +1031,12 @@ class CanvasBox(QGraphicsObject):
                 PORT_TYPE_PARAMETER,
             )
             last_in_type = last_out_type = PORT_TYPE_NULL
-            subbar_h = 22 if self.m_plugin_id >= 0 else 0
             last_in_pos = last_out_pos = (
-                canvas.theme.box_header_height + subbar_h + canvas.theme.box_header_spacing
+                header_total_h + canvas.theme.box_header_spacing
             )
 
             for port_type in port_types:
-                for port in port_list:
+                for port in visible_port_list:
                     if port.port_type != port_type:
                         continue
 
@@ -1051,7 +1074,7 @@ class CanvasBox(QGraphicsObject):
             )
             self.p_height += canvas.theme.box_pen.width()
 
-            self.repositionPorts(port_list)
+            self.repositionPorts(visible_port_list)
 
         self.repaintLines(True)
         self.update()
@@ -1569,6 +1592,11 @@ class CanvasBox(QGraphicsObject):
                                     if hasattr(pwidget, "_update_bypass_state"):
                                         pwidget._update_bypass_state(bool(new_val == 0.0))
                                 self.update()
+                            elif btn_id == "hide_ports":
+                                self.m_hide_unconnected_ports = not getattr(self, "m_hide_unconnected_ports", False)
+                                self.calculateBoxSize()
+                                if hasattr(self, "scene") and self.scene():
+                                    self.scene().update()
                         except Exception as e:
                             print(f"Error handling toolbar button {btn_id}:", e)
                         return
@@ -1968,8 +1996,13 @@ class CanvasBox(QGraphicsObject):
             jump_state = "inactive"
             jump_tip = "Jump to Rack View (Focus and view plugin controls in Rack)"
 
+            # 4. Hide Unconnected Ports State
+            hide_ports_active = getattr(self, "m_hide_unconnected_ports", False)
+            hide_ports_state = "active" if hide_ports_active else "inactive"
+            hide_ports_tip = "Hide Unused Ports: Active (Click to show all ports)" if hide_ports_active else "Hide Unused Ports: Inactive (Click to hide unconnected ports)"
+
             # Button definitions with Nerd Font / FontAwesome icons
-            # Power: ⏻ (\uf011), Bypass: ⊘ (\uf05e), Jump:  (\uf08e)
+            # Power: ⏻ (\uf011), Bypass: ⊘ (\uf05e), Jump:  (\uf08e), Hide Unconnected Ports: / (\uf066/\uf065)
             btn_defs = [
                 {
                     "id": "power",
@@ -1982,6 +2015,12 @@ class CanvasBox(QGraphicsObject):
                     "icon": "\uf05e",
                     "state": bypass_state,
                     "tip": bypass_tip,
+                },
+                {
+                    "id": "hide_ports",
+                    "icon": "\uf066" if hide_ports_active else "\uf065",
+                    "state": hide_ports_state,
+                    "tip": hide_ports_tip,
                 },
                 {
                     "id": "jump",

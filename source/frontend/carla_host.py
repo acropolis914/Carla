@@ -1246,18 +1246,21 @@ class HostWindow(QMainWindow):
                                 has_juce_vst3 = True
                                 break
                     if has_juce_vst3:
-                        ask = QMessageBox.question(
-                            self,
-                            self.tr("Plugin Bridge Recommendation"),
-                            self.tr(
-                                "This project contains plugins that may crash if loaded in-process (e.g. KV-Element / JUCE).\n\n"
-                                "Would you like to load plugins bridged in separate processes for stability?"
-                            ),
-                            QMessageBox.Yes | QMessageBox.No,
-                            QMessageBox.Yes,
-                        )
-                        if ask == QMessageBox.Yes:
+                        if getattr(gCarla, "autoload_lastsave", False):
                             force_bridged = True
+                        else:
+                            ask = QMessageBox.question(
+                                self,
+                                self.tr("Plugin Bridge Recommendation"),
+                                self.tr(
+                                    "This project contains plugins that may crash if loaded in-process (e.g. KV-Element / JUCE).\n\n"
+                                    "Would you like to load plugins bridged in separate processes for stability?"
+                                ),
+                                QMessageBox.Yes | QMessageBox.No,
+                                QMessageBox.Yes,
+                            )
+                            if ask == QMessageBox.Yes:
+                                force_bridged = True
         except Exception as e:
             print("Bridge pre-check warning:", e)
 
@@ -1342,9 +1345,15 @@ class HostWindow(QMainWindow):
 
         positions = patchcanvas.saveGroupPositions() if self.fWithCanvas else []
 
+        extra_meta = {}
+        is_split = hasattr(self, "tabSplit") and self.ui.tabWidget.indexOf(self.tabSplit) == self.ui.tabWidget.currentIndex()
+        extra_meta["split_view_enabled"] = is_split
+        if hasattr(self, "splitter"):
+            extra_meta["split_view_sizes"] = self.splitter.sizes()
+
         if is_json:
             try:
-                storage_manager.finalize_from_backend_save(self.fProjectFilename, backend_save_target, positions)
+                storage_manager.finalize_from_backend_save(self.fProjectFilename, backend_save_target, positions, extra_metadata=extra_meta)
             except Exception as e:
                 print("Failed to finalize JSON project save:", e)
             finally:
@@ -1355,7 +1364,7 @@ class HostWindow(QMainWindow):
                         pass
         elif self.fWithCanvas and os.path.exists(self.fProjectFilename):
             try:
-                storage_manager.save_canvas_positions(self.fProjectFilename, positions)
+                storage_manager.save_canvas_positions(self.fProjectFilename, positions, extra_metadata=extra_meta)
             except Exception as e:
                 print("Failed to save CanvasPositions into project file:", e)
 
@@ -1414,6 +1423,20 @@ class HostWindow(QMainWindow):
                 return False
 
             patchcanvas.restoreGroupPositions(data_list)
+
+            # Auto-recenter legacy saves that do NOT have infinite_canvas == True
+            is_infinite = getattr(data_list, "infinite_canvas", False)
+            if not is_infinite:
+                patchcanvas.centerGraphInCanvas()
+
+            # Restore side-by-side view layout if persisted
+            split_enabled = getattr(data_list, "split_view_enabled", None)
+            split_sizes = getattr(data_list, "split_view_sizes", None)
+            if split_enabled is not None:
+                self.slot_toggleSideBySideView(bool(split_enabled))
+                if split_sizes and hasattr(self, "splitter"):
+                    self.splitter.setSizes(split_sizes)
+
             return True
         except Exception as e:
             print("Failed to load canvas positions from project:", e)
@@ -1537,18 +1560,21 @@ class HostWindow(QMainWindow):
             if hasattr(self, "fSessionManager") and self.fSessionManager is not None:
                 newer_autosave = self.fSessionManager.check_newer_autosave(recent_file)
                 if newer_autosave:
-                    mtime_str = datetime.fromtimestamp(os.path.getmtime(newer_autosave)).strftime("%Y-%m-%d %H:%M:%S")
-                    rec_ask = QMessageBox.question(
-                        self,
-                        self.tr("Autosave Recovery Detected"),
-                        self.tr(
-                            f"A newer autosave exists from {mtime_str} for recent project '{os.path.basename(recent_file)}'.\n\nWould you like to recover the autosaved session instead?"
-                        ),
-                        QMessageBox.Yes | QMessageBox.No,
-                        QMessageBox.Yes,
-                    )
-                    if rec_ask == QMessageBox.Yes:
+                    if getattr(gCarla, "autoload_lastsave", False):
                         recovery_source = newer_autosave
+                    else:
+                        mtime_str = datetime.fromtimestamp(os.path.getmtime(newer_autosave)).strftime("%Y-%m-%d %H:%M:%S")
+                        rec_ask = QMessageBox.question(
+                            self,
+                            self.tr("Autosave Recovery Detected"),
+                            self.tr(
+                                f"A newer autosave exists from {mtime_str} for recent project '{os.path.basename(recent_file)}'.\n\nWould you like to recover the autosaved session instead?"
+                            ),
+                            QMessageBox.Yes | QMessageBox.No,
+                            QMessageBox.Yes,
+                        )
+                        if rec_ask == QMessageBox.Yes:
+                            recovery_source = newer_autosave
 
             if getattr(gCarla, "autoload_lastsave", False):
                 self.loadProjectLater(recent_file, source_override=recovery_source)
@@ -2000,13 +2026,39 @@ class HostWindow(QMainWindow):
         self.fIsProjectLoading = False
         self.projectLoadingFinished(False)
 
-        # Synchronize active state, button styles, labels, and parameters across all plugin widgets
-        for pitem in self.fPluginList:
+        # Synchronize active state, button styles, labels, parameters, and colors across all plugin widgets
+        for pluginId, pitem in enumerate(self.fPluginList):
             if pitem is None:
                 continue
             widget = pitem.getWidget()
             if widget is not None and hasattr(widget, "refreshState"):
                 widget.refreshState()
+
+            # Ensure saved CarlaColor is synchronized between rack item and patchbay canvas node
+            saved_color = self.host.get_custom_data_value(
+                pluginId, CUSTOM_DATA_TYPE_PROPERTY, "CarlaColor"
+            )
+            color_tup = None
+            hex_col = None
+            if saved_color:
+                try:
+                    parts = tuple(int(i) for i in saved_color.split(";", 3))
+                    if parts != (255, 255, 255):
+                        color_tup = parts
+                        hex_col = f"#{parts[0]:02x}{parts[1]:02x}{parts[2]:02x}"
+                except Exception:
+                    pass
+
+            if color_tup is not None and pitem.fOptions.get("color") != color_tup:
+                pitem.recreateWidget(newColor=color_tup)
+
+            if self.fWithCanvas and hex_col:
+                for group in patchcanvas.canvas.group_list:
+                    if getattr(group, "plugin_id", -1) == pluginId:
+                        for w in getattr(group, "widgets", []):
+                            if w is not None:
+                                w.setCustomColor(hex_col, notify=False)
+                        break
 
     # --------------------------------------------------------------------------------------------------------
     # Plugins
@@ -2234,6 +2286,15 @@ class HostWindow(QMainWindow):
         act_desel.triggered.connect(self._deselectAllCanvasNodes)
         act_inv = selectMenu.addAction("Invert Selection\tCtrl+Shift+I")
         act_inv.triggered.connect(self._invertCanvasSelection)
+        selectMenu.addSeparator()
+
+        from patchcanvas.patchcanvas import getAvailableNodeTypes, selectNodesByType
+        byTypeMenu = QMenu("By Type", selectMenu)
+        for t_name in getAvailableNodeTypes():
+            act_t = byTypeMenu.addAction(t_name)
+            act_t.triggered.connect(lambda checked=False, t=t_name: (selectNodesByType(t), self.updateMiniCanvasLater()))
+        selectMenu.addMenu(byTypeMenu)
+
         menu.addMenu(selectMenu)
 
         menu.exec_(QCursor.pos())
@@ -2478,6 +2539,8 @@ class HostWindow(QMainWindow):
         pitem = self.ui.listWidget.createItem(
             pluginId, self.fSavedSettings[CARLA_KEY_MAIN_CLASSIC_SKIN]
         )
+        while len(self.fPluginList) <= pluginId:
+            self.fPluginList.append(None)
         self.fPluginList[pluginId] = pitem
         self.fPluginCount = len([p for p in self.fPluginList if p is not None])
 
@@ -2838,8 +2901,9 @@ class HostWindow(QMainWindow):
         self.ui.scrollArea.setEnabled(len(pluginList) != 0)  # and self.fPluginCount > 0
         self.fSelectedPlugins = pluginList
 
-        # Synchronize selection to Rack: highlight and scroll to plugin slot
-        if pluginList and len(pluginList) > 0 and self.ui.listWidget is not None:
+        # Synchronize selection to Rack only if rack is visible (e.g. in dual-view)
+        is_split = hasattr(self, "tabSplit") and self.ui.tabWidget.indexOf(self.tabSplit) == self.ui.tabWidget.currentIndex()
+        if is_split and pluginList and len(pluginList) > 0 and self.ui.listWidget is not None:
             firstPluginId = pluginList[0]
             if 0 <= firstPluginId < len(self.fPluginList):
                 pitem = self.fPluginList[firstPluginId]
@@ -2935,7 +2999,8 @@ class HostWindow(QMainWindow):
         self, clientId, clientIcon, pluginId, clientName
     ):
         log_carla(
-            f"carla_host: slot_handlePatchbayClientAddedCallback clientId={clientId}, clientIcon={clientIcon}, pluginId={pluginId}, clientName='{clientName}'"
+            f"carla_host: slot_handlePatchbayClientAddedCallback clientId={clientId}, clientIcon={clientIcon}, pluginId={pluginId}, clientName='{clientName}'",
+            level="debug"
         )
         pcSplit = patchcanvas.SPLIT_UNDEF
         pcIcon = patchcanvas.ICON_APPLICATION
@@ -2972,6 +3037,17 @@ class HostWindow(QMainWindow):
                 patchcanvas.setGroupAsPlugin(
                     clientId, pluginId, hasCustomUI, hasInlineDisplay
                 )
+                pitem = self.getPluginItem(pluginId)
+                if pitem and pitem.getWidget():
+                    sc = getattr(pitem.getWidget(), "fSkinColor", None)
+                    if sc and sc not in ((40, 40, 40), (255, 255, 255)):
+                        hex_col = f"#{sc[0]:02x}{sc[1]:02x}{sc[2]:02x}"
+                        for group in patchcanvas.canvas.group_list:
+                            if getattr(group, "plugin_id", -1) == pluginId:
+                                for w in getattr(group, "widgets", []):
+                                    if w is not None:
+                                        w.setCustomColor(hex_col, notify=False)
+                                break
             except Exception as e:
                 print("Error mapping plugin to canvas client:", clientName, e)
                 return
@@ -3042,7 +3118,8 @@ class HostWindow(QMainWindow):
         self, clientId, portId, portFlags, portGroupId, portName
     ):
         log_carla(
-            f"carla_host: slot_handlePatchbayPortAddedCallback clientId={clientId}, portId={portId}, name='{portName}'"
+            f"carla_host: slot_handlePatchbayPortAddedCallback clientId={clientId}, portId={portId}, name='{portName}'",
+            level="debug"
         )
         if portFlags & PATCHBAY_PORT_IS_INPUT:
             portMode = patchcanvas.PORT_MODE_INPUT
@@ -4710,12 +4787,14 @@ def engineCallback(host, action, pluginId, value1, value2, value3, valuef, value
         )
     elif action == ENGINE_CALLBACK_PATCHBAY_PORT_ADDED:
         log_carla(
-            f"engineCallback: PATCHBAY_PORT_ADDED clientId={pluginId}, portId={value1}, flags={value2}, name='{valueStr}'"
+            f"engineCallback: PATCHBAY_PORT_ADDED clientId={pluginId}, portId={value1}, flags={value2}, name='{valueStr}'",
+            level="debug"
         )
         host.PatchbayPortAddedCallback.emit(pluginId, value1, value2, value3, valueStr)
     elif action == ENGINE_CALLBACK_PATCHBAY_PORT_REMOVED:
         log_carla(
-            f"engineCallback: PATCHBAY_PORT_REMOVED clientId={pluginId}, portId={value1}"
+            f"engineCallback: PATCHBAY_PORT_REMOVED clientId={pluginId}, portId={value1}",
+            level="debug"
         )
         host.PatchbayPortRemovedCallback.emit(pluginId, value1)
     elif action == ENGINE_CALLBACK_PATCHBAY_PORT_CHANGED:
@@ -4730,7 +4809,8 @@ def engineCallback(host, action, pluginId, value1, value2, value3, valuef, value
         host.PatchbayPortGroupChangedCallback.emit(pluginId, value1, value2, valueStr)
     elif action == ENGINE_CALLBACK_PATCHBAY_CONNECTION_ADDED:
         log_carla(
-            f"engineCallback: PATCHBAY_CONNECTION_ADDED clientId={pluginId}, conn='{valueStr}'"
+            f"engineCallback: PATCHBAY_CONNECTION_ADDED clientId={pluginId}, conn='{valueStr}'",
+            level="debug"
         )
         gOut, pOut, gIn, pIn = [int(i) for i in valueStr.split(":")]  # FIXME
         host.PatchbayConnectionAddedCallback.emit(pluginId, gOut, pOut, gIn, pIn)
@@ -4738,7 +4818,8 @@ def engineCallback(host, action, pluginId, value1, value2, value3, valuef, value
             gCarla.gui.markProjectModified()
     elif action == ENGINE_CALLBACK_PATCHBAY_CONNECTION_REMOVED:
         log_carla(
-            f"engineCallback: PATCHBAY_CONNECTION_REMOVED clientId={pluginId}, connId={value1}"
+            f"engineCallback: PATCHBAY_CONNECTION_REMOVED clientId={pluginId}, connId={value1}",
+            level="debug"
         )
         host.PatchbayConnectionRemovedCallback.emit(pluginId, value1, value2)
         if gCarla.gui is not None and not getattr(gCarla.gui, "fIsProjectLoading", False):

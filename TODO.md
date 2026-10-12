@@ -17,9 +17,9 @@
 - [ ] `[Diff: 1]` feat: Search selection persists selected items until user interaction
 - [ ] `[Diff: 2]` feat: Subtle canvas alignment dots/grid with snapping; align functions respect grid snap
 - [ ] `[Diff: 2]` feat: Auto repel arrangement tools (auto repel selected vs auto repel all), defaulting auto arrange and auto repel to selected items only
-- [ ] `[Diff: 3]` feat: Infinite canvas with `infinite-canvas = true` project metadata and migration for legacy files (recenter by subtracting half total bounding box on both X and Y axes)
+- [x] `[Diff: 3]` feat: Infinite canvas with `infinite-canvas = true` project metadata and migration for legacy files (recenter by subtracting half total bounding box on both X and Y axes)
 - [x] `[Diff: 1]` feat: Canvasbox sub-bar action buttons (quick controls/actions bar with Nerd Font icons)
-- [ ] `[Diff: 2]` feat: Option/checkbox on canvasbox to collapse or hide ports without active connections
+- [x] `[Diff: 2]` feat: Option/checkbox on canvasbox to collapse or hide ports without active connections
 
 
 ---
@@ -27,7 +27,9 @@
 ## 🔗 Cables & Patchbay Visuals
 - [x] `[Diff: 2]` feat: Cable routing styles (Bezier, Straight/Linear, Orthogonal/Right-angle)
 - [x] `[Diff: 2]` feat: Dynamic cable coloring based on source and destination node colors with linear gradients
+- [ ] `[Diff: 1]` Fix/feat: Patchbay canvasbox color changes dynamically update connected canvas line gradients immediately without requiring redraw or node moves
 - [ ] `[Diff: 3]` feat: Visual signal/event flow animations — pulsing/glow animations on active nodes and animated traveling pulses or particles along cables when audio/MIDI events are transmitted
+
 
 ---
 
