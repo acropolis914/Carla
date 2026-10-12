@@ -772,15 +772,17 @@ class CanvasContextToolBarOverlay(QFrame):
             item = self.layout.takeAt(0)
             w = item.widget()
             if w is not None:
+                w.setParent(None)
                 w.deleteLater()
 
     def addSeparator(self):
         line = QFrame(self)
         line.setFrameShape(QFrame.VLine)
         line.setFrameShadow(QFrame.Sunken)
-        line.setFixedWidth(1)
         line.setStyleSheet("background-color: #45475a; border: none; margin: 3px 2px;")
+        line.setFixedSize(1, 18)
         self.layout.addWidget(line)
+        self._items.append(line)
 
     def addButton(self, text, tooltip, callback):
         btn = QPushButton(text, self)
@@ -788,9 +790,18 @@ class CanvasContextToolBarOverlay(QFrame):
         btn.setFont(self.font)
         btn.clicked.connect(callback)
         self.layout.addWidget(btn)
+        self._items.append(btn)
         return btn
 
+    def addLabel(self, text):
+        lbl = QLabel(text, self)
+        lbl.setFont(self.font)
+        self.layout.addWidget(lbl)
+        self._items.append(lbl)
+        return lbl
+
     def updateSelection(self):
+        self._items = []
         self.clearLayout()
         selected = patchcanvas.getSelectedNodes()
         count = len(selected)
@@ -812,8 +823,7 @@ class CanvasContextToolBarOverlay(QFrame):
 
         if count == 0:
             # Global Canvas Actions
-            lbl = QLabel("CANVAS", self)
-            self.layout.addWidget(lbl)
+            self.addLabel("CANVAS")
             self.addSeparator()
 
             self.addButton(f"{icon_arr}Auto-Arrange", "Auto-arrange All Nodes in Signal Flow Order", self._slot_arrange)
@@ -828,8 +838,7 @@ class CanvasContextToolBarOverlay(QFrame):
             name = getattr(node, "m_group_name", "Node")
             short_name = (name[:16] + "…") if len(name) > 17 else name
 
-            lbl = QLabel(short_name.upper(), self)
-            self.layout.addWidget(lbl)
+            self.addLabel(short_name.upper())
             self.addSeparator()
 
             plugin_id = getattr(node, "m_plugin_id", -1)
@@ -861,8 +870,7 @@ class CanvasContextToolBarOverlay(QFrame):
 
         else:
             # Multiple Nodes Batch Actions
-            lbl = QLabel(f"{count} SELECTED", self)
-            self.layout.addWidget(lbl)
+            self.addLabel(f"{count} SELECTED")
             self.addSeparator()
 
             self.addButton(f"{icon_align}Align Horiz", "Align Selected Nodes Horizontally", lambda: patchcanvas.alignSelected("horizontal"))
@@ -876,7 +884,25 @@ class CanvasContextToolBarOverlay(QFrame):
             self.addButton("Invert", "Invert Selection", patchcanvas.invertNodeSelection)
             self.addButton("Deselect", "Clear Selection (Esc)", patchcanvas.deselectAllNodes)
 
-        self.adjustSize()
+        # Calculate exact pixel width
+        total_w = self.layout.contentsMargins().left() + self.layout.contentsMargins().right()
+        spacing = self.layout.spacing()
+        for w in self._items:
+            w.show()
+            if isinstance(w, QFrame) and not isinstance(w, (QLabel, QPushButton)):
+                w.setFixedSize(1, 18)
+                total_w += 1 + spacing
+            else:
+                txt = getattr(w, "text", lambda: "")()
+                fm = w.fontMetrics()
+                w_item = fm.boundingRect(txt).width() + 18
+                w.setFixedSize(w_item, 24)
+                total_w += w_item + spacing
+
+        if self._items:
+            total_w -= spacing
+
+        self.setFixedSize(max(60, total_w), 32)
         if not getattr(self, "_userMoved", False):
             self.reposition()
 

@@ -15,6 +15,11 @@ Recent developments enhance the Carla modular audio host across three primary pi
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 00:54:00
+- **fix(patchbay)**: Resolve empty top context toolbar on selection update
+  - Fixed Qt layout collapsing to minimal empty margins during dynamic clear/rebuild by explicitly sizing items via font metrics and unparenting discarded widgets.
+  - Ensured top context toolbar correctly displays actions for canvas (unselected), single node, and multiple nodes.
+
 ### 2026-10-13 00:45:00
 - **feat(patchbay)**: Separate grid visibility from coordinate snapping and implement complete context toolbar actions
   - Separated `options.grid_enabled` (dot grid visual background) and `options.snap_enabled` (coordinate snapping) into independent toggle controls.
