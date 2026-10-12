@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        platform: [alpine, ubuntu, fedora, arch]
+        platform: [alpine, ubuntu, fedora, archlinux]
     container:
       image: ${{ matrix.platform }}:latest
     steps:
