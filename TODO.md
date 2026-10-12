@@ -8,6 +8,8 @@
 - [x] `[Diff: 1]` Fix: Rack item remove button still does not delete or show confirmation dialog (reopened: calf skin vs other skins / context menu / delete key)
 - [x] `[Diff: 1]` Fix: Left-click drag on empty canvas does not pan the UI
 - [x] `[Diff: 1]` Fix: Patchbay canvas node power button (`⏻`) does not toggle plugin processing state reliably
+- [ ] `[Diff: 2]` Fix: Infinite canvas dynamic expansion/coordinate updates not reflected on the patchbay minimap
+
 
 ---
 
