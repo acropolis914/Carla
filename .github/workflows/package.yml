@@ -12,14 +12,14 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        platform: [alpine, ubuntu, fedora, nix]
+        platform: [alpine, ubuntu, fedora, arch]
     container:
       image: ${{ matrix.platform }}:latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          submodules: true
+          submodules: false
 
       - name: Install build dependencies
         run: |
