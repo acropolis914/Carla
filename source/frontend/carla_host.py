@@ -71,6 +71,7 @@ from qt_compat import (
     QPalette,
     QPointF,
     QSplitter,
+    QSurfaceFormat,
     QTimer,
     QVBoxLayout,
     QWidget,
@@ -544,6 +545,10 @@ class HostWindow(QMainWindow):
 
             if self.fSavedSettings[CARLA_KEY_CANVAS_USE_OPENGL] and hasGL:
                 self.ui.glView = QGLWidget(self)
+                if self.fSavedSettings[CARLA_KEY_CANVAS_ANTIALIASING] != patchcanvas.ANTIALIASING_NONE:
+                    gl_format = QSurfaceFormat()
+                    gl_format.setSamples(4)
+                    self.ui.glView.setFormat(gl_format)
                 self.ui.graphicsView.setViewport(self.ui.glView)
 
             self.setupCanvas()

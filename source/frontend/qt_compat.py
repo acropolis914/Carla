@@ -47,6 +47,7 @@ if qt_config == 5:
         QPainterPathStroker,
         QPalette,
         QPen,
+        QSurfaceFormat,
     )
 
     # QtWidgets
@@ -138,6 +139,7 @@ elif qt_config == 6:
         QPainterPathStroker,
         QPalette,
         QPen,
+        QSurfaceFormat,
     )
 
     # QtWidgets

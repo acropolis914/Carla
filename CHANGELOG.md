@@ -15,7 +15,12 @@ Recent developments enhance the Carla modular audio host across three primary pi
 
 ## [Unreleased] - 2026-10-12
 
-### 2026-10-12 15:59:00
+### 2026-10-12 16:23:15 (`2357653cc`)
+- **fix(canvas)**: Enable 4x MSAA hardware multisampling for OpenGL canvas viewport
+  - Configured `QSurfaceFormat` with 4 samples on `QOpenGLWidget` when canvas antialiasing is enabled, resolving jagged lines and missing antialiasing when using OpenGL hardware acceleration.
+  - Exported `QSurfaceFormat` in `qt_compat.py`.
+
+### 2026-10-12 15:59:00 (`3f3c6711c`)
 - **perf(canvas)**: Remove `repaintLines()` cascade from `CanvasBoxShadow.draw()` — eliminates per-frame `updateLinePos()` call on every box shadow repaint, which was cascading into O(connections) work every render tick when dragging nodes with many connections loaded.
 
 ### 2026-10-12 15:37:00 (`e213d7f02`)
