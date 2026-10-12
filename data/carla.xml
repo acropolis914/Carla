@@ -10,4 +10,9 @@
     <comment>Carla plugin preset</comment>
     <glob pattern="*.carxs"/>
   </mime-type>
+  <mime-type type="application/x-carla-project-json">
+    <sub-class-of type="application/json"/>
+    <comment>Carla JSON project</comment>
+    <glob pattern="*.carjp"/>
+  </mime-type>
 </mime-info>

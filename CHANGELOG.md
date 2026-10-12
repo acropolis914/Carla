@@ -26,6 +26,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Enabled double-clicking `.carjp` files in the file browser tree and drag-and-drop loading into rack/canvas.
   - Updated Save/Save As dialog to respect `.carjp` file filter and automatically append the proper extension.
   - Added plugin crash pre-check and bridged execution support for JSON project files during load.
+  - Registered `application/x-carla-project-json` MIME type in `data/carla.xml` and `data/desktop/carla.desktop`.
 
 ### 2026-10-13 02:18:00
 - **feat(ui)**: Hideable menubar with global Ctrl+M, hamburger tool button, and toolbar context menu
