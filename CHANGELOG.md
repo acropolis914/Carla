@@ -20,7 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
-### 2026-10-13 04:02:00
+### 2026-10-13 04:09:00
+- **fix(settings)**: Import `gCarla` and modernize settings tab layout and headers
+  - Fixed `NameError: name 'gCarla' is not defined` during live updates (`_on_live_rack_spacing`, `_on_live_rack_padding`, `_on_live_rack_min_width`, `_on_live_statusbar_toggle`).
+  - Removed outdated tab icons and replaced with modern typography and clean tab labels in `lw_page`.
+  - Hid legacy page header icons (`label_icon_*`) across all settings dialog tabs.
 - **fix(settings)**: Correct parent widget for `group_rack_geometry` in `CarlaSettingsW`
   - Fixed `AttributeError: 'Ui_CarlaSettingsW' object has no attribute 'tab_main'` by referencing `page_main` and `verticalLayout_5`.
 

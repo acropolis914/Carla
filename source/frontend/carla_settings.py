@@ -196,6 +196,7 @@ from carla_shared import (
     CARLA_KEY_WINE_RT_PRIO_ENABLED,
     CARLA_KEY_WINE_SERVER_RT_PRIO,
     fontMetricsHorizontalAdvance,
+    gCarla,
     getAndSetPath,
     getIcon,
     splitter,
@@ -595,13 +596,42 @@ class CarlaSettingsW(QDialog):
         # -------------------------------------------------------------------------------------------------------------
         # Set-up GUI
 
-        self.ui.lw_page.setFixedWidth(
-            48
-            + 6 * 3
-            + fontMetricsHorizontalAdvance(
-                self.ui.lw_page.fontMetrics(), "  Experimental  "
-            )
-        )
+        # Modern sidebar layout & styling
+        self.ui.lw_page.setIconSize(QSize(0, 0))
+        self.ui.lw_page.setFixedWidth(160)
+        self.ui.lw_page.setShowGrid(False)
+
+        # Remove hideous legacy icons and clean tab labels
+        tab_titles = [
+            self.tr("General"),
+            self.tr("Patchbay"),
+            self.tr("Engine"),
+            self.tr("OSC"),
+            self.tr("File Paths"),
+            self.tr("Plugin Paths"),
+            self.tr("Wine"),
+            self.tr("Experimental"),
+        ]
+        for row in range(self.ui.lw_page.rowCount()):
+            item = self.ui.lw_page.item(row, 0)
+            if item is not None:
+                item.setIcon(QIcon())
+                if row < len(tab_titles):
+                    item.setText(tab_titles[row])
+
+        # Remove hideous page header icons
+        for icon_attr in (
+            "label_icon_main",
+            "label_icon_canvas",
+            "label_icon_engine",
+            "label_icon_osc",
+            "label_icon_files",
+            "label_icon_paths",
+            "label_icon_wine",
+            "label_icon_experimental",
+        ):
+            if hasattr(self.ui, icon_attr):
+                getattr(self.ui, icon_attr).hide()
 
         # Modern Catppuccin Dialog & Sidebar Theme
         self.setStyleSheet("""
@@ -609,25 +639,29 @@ class CarlaSettingsW(QDialog):
                 background: #1e1e2e;
                 color: #cdd6f4;
             }
-            QListWidget#lw_page {
+            QTableWidget#lw_page {
                 background: #181825;
                 border: none;
                 border-right: 1px solid rgba(255, 255, 255, 12);
-                padding: 6px;
+                padding: 8px 6px;
                 outline: none;
+                gridline-color: transparent;
             }
-            QListWidget#lw_page::item {
+            QTableWidget#lw_page::item {
                 color: #a6adc8;
                 border-radius: 6px;
-                padding: 8px 10px;
-                margin: 2px 0px;
+                padding: 10px 14px;
+                margin: 3px 0px;
+                font-family: 'JetBrains Mono', 'Fira Code', 'Inter', system-ui, sans-serif;
+                font-size: 11px;
                 font-weight: 600;
+                border: none;
             }
-            QListWidget#lw_page::item:hover {
+            QTableWidget#lw_page::item:hover {
                 background: rgba(255, 255, 255, 0.06);
                 color: #cdd6f4;
             }
-            QListWidget#lw_page::item:selected {
+            QTableWidget#lw_page::item:selected {
                 background: #89b4fa;
                 color: #11111b;
                 font-weight: bold;
