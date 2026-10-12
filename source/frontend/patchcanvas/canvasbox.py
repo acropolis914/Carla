@@ -1079,6 +1079,9 @@ class CanvasBox(QGraphicsObject):
         self.repaintLines(True)
         self.update()
 
+    def calculateBoxSize(self):
+        self.updatePositions()
+
     def repositionPorts(self, port_list=None):
         if port_list is None:
             port_list = []
@@ -1594,7 +1597,7 @@ class CanvasBox(QGraphicsObject):
                                 self.update()
                             elif btn_id == "hide_ports":
                                 self.m_hide_unconnected_ports = not getattr(self, "m_hide_unconnected_ports", False)
-                                self.calculateBoxSize()
+                                self.updatePositions()
                                 if hasattr(self, "scene") and self.scene():
                                     self.scene().update()
                         except Exception as e:

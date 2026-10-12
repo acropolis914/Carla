@@ -13,7 +13,11 @@ Recent developments enhance the Carla modular audio host across three primary pi
 
 ---
 
-## [Unreleased] - 2026-10-12
+## [Unreleased] - 2026-10-13
+
+### 2026-10-13 00:01:00
+- **fix(patchbay)**: Resolve `CanvasBox.calculateBoxSize` AttributeError
+  - Aliased `calculateBoxSize` to `updatePositions` on `CanvasBox` and directly invoked `updatePositions` on toolbar toggle and project restore.
 
 ### 2026-10-12 23:55:00
 - **feat(patchbay)**: Infinite canvas, legacy project migration, and side-by-side layout persistence

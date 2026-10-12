@@ -932,10 +932,10 @@ def restoreGroupPositions(dataList):
         # Restore hide_unconnected_ports state
         if data.get("hide_unconnected_ports"):
             group.widgets[0].m_hide_unconnected_ports = True
-            group.widgets[0].calculateBoxSize()
+            group.widgets[0].updatePositions()
             if group.split and group.widgets[1]:
                 group.widgets[1].m_hide_unconnected_ports = True
-                group.widgets[1].calculateBoxSize()
+                group.widgets[1].updatePositions()
 
 
 def setGroupPos(group_id, group_pos_x, group_pos_y):
