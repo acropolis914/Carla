@@ -20,6 +20,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 04:16:00
+- **feat(settings)**: Refine settings sidebar typography, dimensions, and outline removal
+  - Compacted tab row heights to 32px and trimmed sidebar width to 136px.
+  - Replaced monospace font with modern system sans-serif font stack (`-apple-system`, `Inter`, `Roboto`, `Segoe UI`).
+  - Removed table item outlines and softened border separators with translucent Catppuccin surface styling.
+  - Polished button and group box outlines with clean rounded corners and unified accent highlights.
+
 ### 2026-10-13 04:10:00
 - **fix(settings)**: Import `QSize` and `QIcon` from `qt_compat`
   - Fixed `NameError: name 'QSize' is not defined` when initializing settings sidebar icon size.

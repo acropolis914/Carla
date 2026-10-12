@@ -598,12 +598,13 @@ class CarlaSettingsW(QDialog):
         # -------------------------------------------------------------------------------------------------------------
         # Set-up GUI
 
-        # Modern sidebar layout & styling
+        # Modern compact sidebar layout & styling
         self.ui.lw_page.setIconSize(QSize(0, 0))
-        self.ui.lw_page.setFixedWidth(160)
+        self.ui.lw_page.setFixedWidth(136)
         self.ui.lw_page.setShowGrid(False)
+        self.ui.lw_page.verticalHeader().setDefaultSectionSize(32)
 
-        # Remove hideous legacy icons and clean tab labels
+        # Tab titles with refined typography
         tab_titles = [
             self.tr("General"),
             self.tr("Patchbay"),
@@ -644,42 +645,59 @@ class CarlaSettingsW(QDialog):
             QTableWidget#lw_page {
                 background: #181825;
                 border: none;
-                border-right: 1px solid rgba(255, 255, 255, 12);
-                padding: 8px 6px;
-                outline: none;
+                border-right: 1px solid rgba(255, 255, 255, 0.05);
+                padding: 6px 4px;
+                outline: 0;
                 gridline-color: transparent;
             }
             QTableWidget#lw_page::item {
                 color: #a6adc8;
-                border-radius: 6px;
-                padding: 10px 14px;
-                margin: 3px 0px;
-                font-family: 'JetBrains Mono', 'Fira Code', 'Inter', system-ui, sans-serif;
+                border-radius: 5px;
+                padding: 6px 12px;
+                margin: 1px 2px;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Ubuntu", Cantarell, sans-serif;
                 font-size: 11px;
-                font-weight: 600;
+                font-weight: 500;
                 border: none;
+                outline: none;
             }
             QTableWidget#lw_page::item:hover {
-                background: rgba(255, 255, 255, 0.06);
+                background: rgba(255, 255, 255, 0.05);
                 color: #cdd6f4;
             }
             QTableWidget#lw_page::item:selected {
                 background: #89b4fa;
                 color: #11111b;
-                font-weight: bold;
+                font-weight: 600;
             }
             QGroupBox {
-                border: 1px solid rgba(255, 255, 255, 14);
+                border: 1px solid rgba(255, 255, 255, 0.06);
                 border-radius: 6px;
                 margin-top: 14px;
                 padding-top: 14px;
-                font-weight: bold;
+                font-weight: 600;
                 color: #89b4fa;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
                 subcontrol-position: top left;
                 padding: 0 6px;
+            }
+            QPushButton {
+                background: #313244;
+                color: #cdd6f4;
+                border: 1px solid rgba(255, 255, 255, 0.08);
+                border-radius: 4px;
+                padding: 4px 12px;
+                font-size: 11px;
+                font-weight: 500;
+            }
+            QPushButton:hover {
+                background: #45475a;
+                color: #ffffff;
+            }
+            QPushButton:pressed {
+                background: #585b70;
             }
             QSlider::groove:horizontal {
                 background: #313244;
