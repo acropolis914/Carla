@@ -2811,23 +2811,27 @@ class PluginSlot_Minimal(PluginSlot_Default):
         if not hasattr(self, '_modern_slice_container'):
             self._modern_slice_container = QWidget(parent=self)
             self._modern_slice_container.setObjectName("w_modern_slice")
+            self._modern_slice_container.setStyleSheet(
+                "QWidget#w_modern_slice { background: rgba(0, 0, 0, 40); border: 1px solid rgba(255, 255, 255, 12); border-radius: 4px; }"
+            )
             slice_layout = QHBoxLayout(self._modern_slice_container)
-            slice_layout.setContentsMargins(2, 1, 2, 1)
+            slice_layout.setContentsMargins(3, 2, 3, 2)
             slice_layout.setSpacing(4)
             slice_layout.setAlignment(Qt.AlignVCenter)
 
             # Container for vertical 2x2 LEDs
             self._led_grid_container = QWidget(self._modern_slice_container)
             self._led_grid_layout = QGridLayout(self._led_grid_container)
-            self._led_grid_layout.setContentsMargins(1, 1, 1, 1)
+            self._led_grid_layout.setContentsMargins(0, 0, 0, 0)
             self._led_grid_layout.setSpacing(2)
-            self._led_grid_container.setFixedSize(22, 22)
+            self._led_grid_container.setFixedSize(20, 20)
 
             # Meter slice container
             self._meter_slice_container = QWidget(self._modern_slice_container)
             self._meter_slice_layout = QHBoxLayout(self._meter_slice_container)
             self._meter_slice_layout.setContentsMargins(0, 0, 0, 0)
             self._meter_slice_layout.setSpacing(2)
+            self._meter_slice_container.setFixedHeight(20)
 
             slice_layout.addWidget(self._led_grid_container)
             slice_layout.addWidget(self._meter_slice_container)
@@ -2846,7 +2850,7 @@ class PluginSlot_Minimal(PluginSlot_Default):
                 self.ui.layout_leds.removeWidget(self.led_audio_in)
                 self.ui.layout_leds.removeWidget(self.led_audio_out)
 
-            # Place LEDs in a tight 2x2 grid (9x9 circles with border radius)
+            # Place LEDs in a tight 2x2 grid
             self._led_grid_layout.addWidget(self.led_control, 0, 0)
             self._led_grid_layout.addWidget(self.led_midi, 0, 1)
             self._led_grid_layout.addWidget(self.led_audio_in, 1, 0)
@@ -2855,7 +2859,7 @@ class PluginSlot_Minimal(PluginSlot_Default):
             for led in (self.led_control, self.led_midi, self.led_audio_in, self.led_audio_out):
                 if led is not None:
                     led.setFixedSize(8, 8)
-                    led.setStyleSheet("border-radius: 4px; padding: 0px; margin: 0px;")
+                    led.setStyleSheet("background: transparent; border: none; padding: 0px; margin: 0px;")
 
             # Place Peak Meters in modern vertical slice
             self._meter_slice_layout.addWidget(self.peak_in)
@@ -2863,8 +2867,8 @@ class PluginSlot_Minimal(PluginSlot_Default):
             for pm in (self.peak_in, self.peak_out):
                 if pm is not None:
                     pm.setMeterOrientation(DigitalPeakMeter.VERTICAL)
-                    pm.setMinimumSize(8, 20)
-                    pm.setMaximumSize(12, 22)
+                    pm.setFixedSize(6, 20)
+                    pm.setStyleSheet("background: rgba(15, 15, 20, 180); border-radius: 2px;")
 
             self._modern_slice_container.setVisible(True)
         else:
@@ -2885,6 +2889,7 @@ class PluginSlot_Minimal(PluginSlot_Default):
                         pm.setMeterOrientation(DigitalPeakMeter.HORIZONTAL)
                         pm.setMinimumSize(100, 0)
                         pm.setMaximumSize(100, 16777215)
+                        pm.setStyleSheet("")
                 self.ui.layout_peaks.addWidget(self.peak_in)
                 self.ui.layout_peaks.addWidget(self.peak_out)
 

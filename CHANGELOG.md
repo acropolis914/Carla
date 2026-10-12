@@ -20,6 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 03:15:00
+- **feat(rack)**: Polish modernized 2x2 LEDs and rounded vertical peak meter slice
+  - Fixed `LEDButton` scaling to accurately render SVGs/pixmaps within its bounded widget rectangle without overflowing or resetting custom dimensions.
+  - Styled `_modern_slice_container` with a rounded pill background and subtle border, perfectly sizing the 2x2 grid and vertical peak meters without clipping.
+
 ### 2026-10-13 03:10:00
 - **fix(project)**: Ensure audio engine backend initialization before startup autoload
   - Fixed startup project autoloading for `.carjp` and recent files by initializing backend engine state before dispatching project load requests.

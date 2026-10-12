@@ -43,6 +43,12 @@ class LEDButton(QPushButton):
 
         self.setColor(self.BLUE)
 
+        self.fCustomSize = False
+
+    def setFixedSize(self, *args):
+        self.fCustomSize = True
+        super().setFixedSize(*args)
+
     def setColor(self, color):
         self.fColor = color
 
@@ -50,28 +56,22 @@ class LEDButton(QPushButton):
             self.fLastColor = self.UNSET
 
         if self._loadImageNowIfNeeded():
-            #if isinstance(self.fImage, QPixmap):
-                #size = self.fImage.width()
-            #else:
-                #size = self.fImage.sizeHint().width()
-
             self.fRect = QRectF(self.fImage.rect())
-            self.setFixedSize(self.fImage.size())
+            if not getattr(self, 'fCustomSize', False):
+                super().setFixedSize(self.fImage.size())
 
     def paintEvent(self, event):
         painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing, True)
         event.accept()
 
         self._loadImageNowIfNeeded()
 
+        target_rect = QRectF(self.rect())
         if isinstance(self.fImage, QPixmap):
-            size = self.fImage.width()
-            rect = QRectF(0, 0, size, size)
-            painter.drawPixmap(rect, self.fImage, rect)
+            painter.drawPixmap(target_rect.toRect(), self.fImage)
         else:
-            size = self.fImage.sizeHint().width()
-            rect = QRectF(0, 0, size, size)
-            self.fImage.renderer().render(painter, rect)
+            self.fImage.renderer().render(painter, target_rect)
 
     def _loadImageNowIfNeeded(self):
         if self.isChecked():
