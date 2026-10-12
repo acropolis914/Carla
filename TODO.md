@@ -24,7 +24,7 @@
 - [ ] feat: Reposition/resize bottom bar audio info (sample rate, buffer size, DSP load, etc.) — make more compact or relocate to settings
 - [ ] feat: Settings dialog sidebar enhancement — use a more readable, cohesive font
 - [ ] feat: Settings dialog polish & cleanup — reorganize sections, improve layout, use system icons instead of custom/outdated ones, and remove obsolete options deprecated by recent updates
-- [ ] feat: Smoother patchbay rendering and interaction performance (higher refresh/frame rate, reduced dragging jitter and cable render overhead)
+- [x] feat: Smoother patchbay rendering and interaction performance (higher refresh/frame rate, reduced dragging jitter and cable render overhead)
 - [ ] feat: Mini DSP load graph over time with side label and hover tooltip
 - [ ] feat: Cable routing styles (Bezier, Straight/Linear, Orthogonal/Right-angle)
 - [ ] feat: Dynamic cable coloring based on source and destination node colors with linear gradients

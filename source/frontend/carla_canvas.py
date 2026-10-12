@@ -646,12 +646,6 @@ class CanvasViewportFilter(QObject):
             except Exception as e:
                 log_carla(f"carla_canvas: connection distance check error: {e}")
 
-        if items:
-            types_str = ", ".join(type(x).__name__ for x in items)
-            log_carla(
-                f"carla_canvas: click at {vp_pos} did not match port/cable. Items: [{types_str}]"
-            )
-
         return (None, None, None)
 
     def extractPortAndGroupIds(self, item):
@@ -1069,11 +1063,6 @@ class CanvasViewportFilter(QObject):
             is_middle_click = btn == Qt.MiddleButton
             is_disconnect_click = is_middle_click or (
                 btn in (Qt.LeftButton, Qt.RightButton) and (is_alt or is_shift)
-            )
-
-            log_carla(
-                f"carla_canvas: MousePress pos={event.pos()} btn={btn} "
-                f"alt={is_alt} shift={is_shift} mid={is_middle_click} disc_cand={is_disconnect_click}"
             )
 
             if is_disconnect_click:

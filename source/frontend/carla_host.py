@@ -2598,9 +2598,15 @@ class HostWindow(QMainWindow):
         if self.fSavedSettings[CARLA_KEY_CANVAS_FULL_REPAINTS]:
             self.ui.graphicsView.setViewportUpdateMode(QGraphicsView.FullViewportUpdate)
         else:
-            self.ui.graphicsView.setViewportUpdateMode(
-                QGraphicsView.MinimalViewportUpdate
-            )
+            smart_mode = getattr(QGraphicsView, "SmartViewportUpdate", None)
+            if smart_mode is None and hasattr(QGraphicsView, "ViewportUpdateMode"):
+                smart_mode = getattr(QGraphicsView.ViewportUpdateMode, "SmartViewportUpdate", None)
+            if smart_mode is not None:
+                self.ui.graphicsView.setViewportUpdateMode(smart_mode)
+            else:
+                self.ui.graphicsView.setViewportUpdateMode(
+                    QGraphicsView.MinimalViewportUpdate
+                )
 
     def updateCanvasInitialPos(self):
         x = self.ui.graphicsView.horizontalScrollBar().value() + self.width() / 4

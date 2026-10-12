@@ -15,7 +15,13 @@ Recent developments enhance the Carla modular audio host across three primary pi
 
 ## [Unreleased] - 2026-10-12
 
-### 2026-10-12 15:20:45 (`4678b5f5f`)
+### 2026-10-12 15:26:30 (`ed641774b`)
+- **perf(canvas)**: Optimize patchbay rendering with SmartViewportUpdate and eliminate event hot path logging
+  - Upgraded graphicsView viewport update mode to `SmartViewportUpdate` for intelligent partial blits when dragging nodes and cables.
+  - Removed per-click and per-miss verbose `log_carla` calls in `CanvasViewportFilter` to prevent hot-path I/O stalls during interaction.
+  - Streamlined cable render pipeline in `CanvasBezierLine.paint` by removing redundant double path stroking.
+
+### 2026-10-12 15:20:45 (`6c4960fc0`)
 - **fix(ui)**: Fix rack plugin removal across all skins and enable empty canvas left-click drag panning
   - Connected `b_remove` in `PluginSlot_Calf` and fixed `Delete` key handling in `RackListWidget` to invoke `self.host.remove_plugin()` with a confirmation prompt.
   - Implemented left-click drag panning on empty canvas area in `DraggableGraphicsView` for fluid navigation without needing to switch modal tools.
