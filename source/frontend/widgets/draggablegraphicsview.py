@@ -22,6 +22,7 @@ from qt_compat import (
     QLineEdit,
     QListWidget,
     QListWidgetItem,
+    QRectF,
 )
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -205,12 +206,18 @@ class DraggableGraphicsView(QGraphicsView):
             item = self.itemAt(pos)
             if item is None:
                 clicked_on_empty_canvas = True
-            elif hasattr(item, "type"):
-                itype = item.type()
-                # Check if it's not a node box, icon, port, or cable
-                is_node_or_conn = (itype in (QGraphicsItem.UserType + 1, QGraphicsItem.UserType + 2, QGraphicsItem.UserType + 3,
-                                             QGraphicsItem.UserType + 4, QGraphicsItem.UserType + 5, QGraphicsItem.UserType + 6,
-                                             QGraphicsItem.UserType + 7, QGraphicsItem.UserType + 8))
+            else:
+                top_item = item.topLevelItem() if hasattr(item, "topLevelItem") and item.topLevelItem() is not None else item
+                itype = getattr(item, "type", lambda: 0)()
+                top_type = getattr(top_item, "type", lambda: 0)()
+                is_node_or_conn = (
+                    itype in (QGraphicsItem.UserType + 1, QGraphicsItem.UserType + 2, QGraphicsItem.UserType + 3,
+                              QGraphicsItem.UserType + 4, QGraphicsItem.UserType + 5, QGraphicsItem.UserType + 6,
+                              QGraphicsItem.UserType + 7, QGraphicsItem.UserType + 8)
+                    or top_type in (QGraphicsItem.UserType + 1, QGraphicsItem.UserType + 2, QGraphicsItem.UserType + 3,
+                                    QGraphicsItem.UserType + 4, QGraphicsItem.UserType + 5, QGraphicsItem.UserType + 6,
+                                    QGraphicsItem.UserType + 7, QGraphicsItem.UserType + 8)
+                )
                 if not is_node_or_conn:
                     clicked_on_empty_canvas = True
 
@@ -242,8 +249,46 @@ class DraggableGraphicsView(QGraphicsView):
             vsb = self.verticalScrollBar()
             if hsb and vsb:
                 start_h, start_v = getattr(self, "fPanStartScroll", (hsb.value(), vsb.value()))
-                hsb.setValue(start_h - delta.x())
-                vsb.setValue(start_v - delta.y())
+                target_h = start_h - delta.x()
+                target_v = start_v - delta.y()
+
+                # In infinite canvas mode, dynamically expand sceneRect when panning near boundaries
+                sc = self.scene()
+                if sc is not None:
+                    s_rect = sc.sceneRect()
+                    margin = 800.0
+                    needs_expand = False
+                    new_x = s_rect.x()
+                    new_y = s_rect.y()
+                    new_w = s_rect.width()
+                    new_h = s_rect.height()
+
+                    if target_h >= hsb.maximum() - 50:
+                        new_w += margin
+                        needs_expand = True
+                    elif target_h <= hsb.minimum() + 50 and target_h < 0:
+                        new_x -= margin
+                        new_w += margin
+                        needs_expand = True
+
+                    if target_v >= vsb.maximum() - 50:
+                        new_h += margin
+                        needs_expand = True
+                    elif target_v <= vsb.minimum() + 50 and target_v < 0:
+                        new_y -= margin
+                        new_h += margin
+                        needs_expand = True
+
+                    if needs_expand:
+                        expanded = QRectF(new_x, new_y, new_w, new_h)
+                        sc.setSceneRect(expanded)
+                        self.setSceneRect(expanded)
+                        import patchcanvas.patchcanvas as pc
+                        if hasattr(pc, "canvas"):
+                            pc.canvas.size_rect = expanded
+
+                hsb.setValue(target_h)
+                vsb.setValue(target_v)
             event.accept()
             return
 

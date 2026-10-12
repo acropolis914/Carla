@@ -20,7 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
-### 2026-10-13 04:16:00
+### 2026-10-13 05:03:00
+- **fix(ui)**: Fix Ctrl+M menubar double-press requirement and infinite canvas panning on right edge
+  - Moved `act_settings_show_menubar` and hamburger button setup before `loadSettings(True)` so that restored menubar visibility state immediately syncs with the action state, eliminating the initial double-press bug.
+  - Enhanced canvas empty-area hit testing to check `topLevelItem()` to avoid false negatives on child elements.
+  - Implemented dynamic scene boundary expansion during panning in `DraggableGraphicsView` so panning smoothly continues across infinite canvas coordinates without hitting scrollbar clamp limits on the right or bottom.
 - **feat(settings)**: Refine settings sidebar typography, dimensions, and outline removal
   - Compacted tab row heights to 32px and trimmed sidebar width to 136px.
   - Replaced monospace font with modern system sans-serif font stack (`-apple-system`, `Inter`, `Roboto`, `Segoe UI`).

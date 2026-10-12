@@ -533,6 +533,39 @@ class HostWindow(QMainWindow):
             self.ui.menu_Settings.setTitle("Panels")
 
         # ----------------------------------------------------------------------------------------------------
+        # Menubar toggle action & compact hamburger tool button
+        self.act_settings_show_menubar = QAction(self.tr("Show Menubar"), self)
+        self.act_settings_show_menubar.setCheckable(True)
+        self.act_settings_show_menubar.setChecked(True)
+        self.act_settings_show_menubar.setShortcut("Ctrl+M")
+        shortcut_context = getattr(Qt.ShortcutContext, "WindowShortcut", getattr(Qt, "WindowShortcut", None))
+        if shortcut_context is not None:
+            self.act_settings_show_menubar.setShortcutContext(shortcut_context)
+        self.act_settings_show_menubar.toggled.connect(self.slot_showMenubar)
+        self.addAction(self.act_settings_show_menubar)
+        self.ui.menu_Settings.addAction(self.act_settings_show_menubar)
+
+        # Hamburger Menu button for when menubar is hidden
+        self.btn_hamburger_menu = QToolButton(self.ui.toolBar)
+        self.btn_hamburger_menu.setText("☰")
+        self.btn_hamburger_menu.setToolTip(self.tr("Main Menu (Ctrl+M to toggle full menubar)"))
+        popup_mode = getattr(QToolButton.ToolButtonPopupMode, "InstantPopup", getattr(QToolButton, "InstantPopup", None))
+        if popup_mode is not None:
+            self.btn_hamburger_menu.setPopupMode(popup_mode)
+        self._hamburger_popup = QMenu(self.btn_hamburger_menu)
+        self._hamburger_popup.addAction(self.ui.menu_File.menuAction())
+        self._hamburger_popup.addAction(self.ui.menu_Engine.menuAction())
+        self._hamburger_popup.addAction(self.ui.menu_Plugin.menuAction())
+        self._hamburger_popup.addAction(self.ui.menu_Canvas.menuAction())
+        self._hamburger_popup.addAction(self.ui.menu_Settings.menuAction())
+        self._hamburger_popup.addAction(self.ui.menu_Help.menuAction())
+        self.btn_hamburger_menu.setMenu(self._hamburger_popup)
+        first_action = self.ui.toolBar.actions()[0] if self.ui.toolBar.actions() else None
+        self.act_hamburger_toolbutton = self.ui.toolBar.insertWidget(first_action, self.btn_hamburger_menu)
+        self.act_hamburger_toolbutton.setVisible(False)
+        self.btn_hamburger_menu.setVisible(False)
+
+        # ----------------------------------------------------------------------------------------------------
         # Load Settings
 
         self.loadSettings(True)
@@ -626,38 +659,6 @@ class HostWindow(QMainWindow):
         self.ui.act_plugins_center.triggered.connect(self.slot_pluginsCenter)
         self.ui.act_plugins_compact.triggered.connect(self.slot_pluginsCompact)
         self.ui.act_plugins_expand.triggered.connect(self.slot_pluginsExpand)
-
-        # Menubar toggle action & compact hamburger tool button
-        self.act_settings_show_menubar = QAction(self.tr("Show Menubar"), self)
-        self.act_settings_show_menubar.setCheckable(True)
-        self.act_settings_show_menubar.setChecked(True)
-        self.act_settings_show_menubar.setShortcut("Ctrl+M")
-        shortcut_context = getattr(Qt.ShortcutContext, "WindowShortcut", getattr(Qt, "WindowShortcut", None))
-        if shortcut_context is not None:
-            self.act_settings_show_menubar.setShortcutContext(shortcut_context)
-        self.act_settings_show_menubar.toggled.connect(self.slot_showMenubar)
-        self.addAction(self.act_settings_show_menubar)
-        self.ui.menu_Settings.addAction(self.act_settings_show_menubar)
-
-        # Hamburger Menu button for when menubar is hidden
-        self.btn_hamburger_menu = QToolButton(self.ui.toolBar)
-        self.btn_hamburger_menu.setText("☰")
-        self.btn_hamburger_menu.setToolTip(self.tr("Main Menu (Ctrl+M to toggle full menubar)"))
-        popup_mode = getattr(QToolButton.ToolButtonPopupMode, "InstantPopup", getattr(QToolButton, "InstantPopup", None))
-        if popup_mode is not None:
-            self.btn_hamburger_menu.setPopupMode(popup_mode)
-        self._hamburger_popup = QMenu(self.btn_hamburger_menu)
-        self._hamburger_popup.addAction(self.ui.menu_File.menuAction())
-        self._hamburger_popup.addAction(self.ui.menu_Engine.menuAction())
-        self._hamburger_popup.addAction(self.ui.menu_Plugin.menuAction())
-        self._hamburger_popup.addAction(self.ui.menu_Canvas.menuAction())
-        self._hamburger_popup.addAction(self.ui.menu_Settings.menuAction())
-        self._hamburger_popup.addAction(self.ui.menu_Help.menuAction())
-        self.btn_hamburger_menu.setMenu(self._hamburger_popup)
-        first_action = self.ui.toolBar.actions()[0] if self.ui.toolBar.actions() else None
-        self.act_hamburger_toolbutton = self.ui.toolBar.insertWidget(first_action, self.btn_hamburger_menu)
-        self.act_hamburger_toolbutton.setVisible(False)
-        self.btn_hamburger_menu.setVisible(False)
 
         # Allow right-clicking top toolbar to toggle menubar/toolbar
         self.ui.toolBar.setContextMenuPolicy(Qt.CustomContextMenu)
