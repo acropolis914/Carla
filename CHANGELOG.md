@@ -20,6 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 03:32:00
+- **fix(patchbay)**: Guard `act_canvas_side_by_side` initialization during startup `loadSettings`
+  - Fixed `AttributeError: 'HostWindow' object has no attribute 'act_canvas_side_by_side'` during startup settings restoration.
+  - Deferred side-by-side state loading until after canvas actions are initialized in `HostWindow.__init__`.
+
 ### 2026-10-13 03:30:00
 - **feat(rack)**: Lower minimum width of rack items to 200px
   - Reduced `PluginSlot_Minimal` minimum width constraint from 260px down to 200px.

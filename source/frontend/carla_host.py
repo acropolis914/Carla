@@ -731,6 +731,20 @@ class HostWindow(QMainWindow):
             self.ui.menu_Canvas.addAction(self.act_canvas_side_by_side)
             self.ui.toolBar.addAction(self.act_canvas_side_by_side)
 
+            # Restore side-by-side settings if saved
+            settings = QSettings()
+            if settings.value("SideBySideEnabled", False, bool):
+                self.act_canvas_side_by_side.setChecked(True)
+                self.slot_toggleSideBySideView(True)
+                saved_sizes = settings.value("SideBySideSizes", None)
+                if saved_sizes and hasattr(self, "splitter") and self.splitter is not None:
+                    try:
+                        int_sizes = [int(s) for s in saved_sizes]
+                        if len(int_sizes) == 2:
+                            self.splitter.setSizes(int_sizes)
+                    except Exception:
+                        pass
+
             self.ui.listWidget.itemClicked.connect(self.slot_rackItemClicked)
             self.ui.listWidget.itemSelectionChanged.connect(self.slot_rackSelectionChanged)
 
@@ -3313,7 +3327,7 @@ class HostWindow(QMainWindow):
 
             # Restore side-by-side view state and splitter ratio
             sideBySide = settings.value("SideBySideEnabled", False, bool)
-            if sideBySide and self.fWithCanvas:
+            if sideBySide and self.fWithCanvas and hasattr(self, "act_canvas_side_by_side") and self.act_canvas_side_by_side is not None:
                 self.act_canvas_side_by_side.setChecked(True)
                 self.slot_toggleSideBySideView(True)
                 saved_sizes = settings.value("SideBySideSizes", None)
