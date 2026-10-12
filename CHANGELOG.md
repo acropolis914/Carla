@@ -36,8 +36,12 @@ Recent developments enhance the Carla modular audio host across three primary pi
   - Configured `QSurfaceFormat` with 4 samples on `QOpenGLWidget` when canvas antialiasing is enabled, resolving jagged lines and missing antialiasing when using OpenGL hardware acceleration.
   - Exported `QSurfaceFormat` in `qt_compat.py`.
 
-### 2026-10-12 17:36:00
-- **fix(settings)**: Centralize Qt imports in carla_settings and export QSpinBox in qt_compat
+### 2026-10-12 17:42:00
+- **feat(patchbay)**: Implement dynamic source-to-destination gradient coloring along cables
+  - Updated `CanvasLine.updateLineGradient()` to construct `QLinearGradient` directly oriented between output and input port endpoints (`scenePos()`).
+  - Smoothly interpolates the cable color between the source port color at 0.0 and destination port color at 1.0.
+
+### 2026-10-12 17:36:00 (`dd3cab7d0`)
   - Fixed `NameError: name 'QComboBox' is not defined` when opening Carla Settings dialog by importing `QComboBox`, `QSlider`, and `QSpinBox` via `qt_compat.py`.
   - Added `QSpinBox` to Qt5 and Qt6 exports in `qt_compat.py`.
 

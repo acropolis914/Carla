@@ -151,18 +151,9 @@ class CanvasLine(QGraphicsPathItem):
         return CanvasBezierLineType
 
     def updateLineGradient(self):
-        pos_top = self.boundingRect().top()
-        pos_bot = self.boundingRect().bottom()
-        if self.item2.scenePos().y() >= self.item1.scenePos().y():
-            pos1 = 0
-            pos2 = 1
-        else:
-            pos1 = 1
-            pos2 = 0
-
-        port_type1 = self.item1.getPortType()
-        port_type2 = self.item2.getPortType()
-        port_gradient = QLinearGradient(0, pos_top, 0, pos_bot)
+        p1 = self.item1.scenePos()
+        p2 = self.item2.scenePos()
+        port_gradient = QLinearGradient(p1, p2)
 
         # Scale alpha with user line opacity setting (20% - 100%)
         opacity_factor = max(0.2, min(1.0, float(self.m_opacity) / 100.0))
@@ -173,23 +164,21 @@ class CanvasLine(QGraphicsPathItem):
             c.setAlpha(int(base_alpha * opacity_factor))
             return c
 
-        if port_type1 == PORT_TYPE_AUDIO_JACK:
-            port_gradient.setColorAt(pos1, get_color(canvas.theme.line_audio_jack_sel if self.m_lineSelected else canvas.theme.line_audio_jack))
-        elif port_type1 == PORT_TYPE_MIDI_JACK:
-            port_gradient.setColorAt(pos1, get_color(canvas.theme.line_midi_jack_sel if self.m_lineSelected else canvas.theme.line_midi_jack))
-        elif port_type1 == PORT_TYPE_MIDI_ALSA:
-            port_gradient.setColorAt(pos1, get_color(canvas.theme.line_midi_alsa_sel if self.m_lineSelected else canvas.theme.line_midi_alsa))
-        elif port_type1 == PORT_TYPE_PARAMETER:
-            port_gradient.setColorAt(pos1, get_color(canvas.theme.line_parameter_sel if self.m_lineSelected else canvas.theme.line_parameter))
+        def get_port_color(port):
+            ptype = port.getPortType()
+            theme = canvas.theme
+            if ptype == PORT_TYPE_AUDIO_JACK:
+                return theme.line_audio_jack_sel if self.m_lineSelected else theme.line_audio_jack
+            elif ptype == PORT_TYPE_MIDI_JACK:
+                return theme.line_midi_jack_sel if self.m_lineSelected else theme.line_midi_jack
+            elif ptype == PORT_TYPE_MIDI_ALSA:
+                return theme.line_midi_alsa_sel if self.m_lineSelected else theme.line_midi_alsa
+            elif ptype == PORT_TYPE_PARAMETER:
+                return theme.line_parameter_sel if self.m_lineSelected else theme.line_parameter
+            return theme.line_audio_jack
 
-        if port_type2 == PORT_TYPE_AUDIO_JACK:
-            port_gradient.setColorAt(pos2, get_color(canvas.theme.line_audio_jack_sel if self.m_lineSelected else canvas.theme.line_audio_jack))
-        elif port_type2 == PORT_TYPE_MIDI_JACK:
-            port_gradient.setColorAt(pos2, get_color(canvas.theme.line_midi_jack_sel if self.m_lineSelected else canvas.theme.line_midi_jack))
-        elif port_type2 == PORT_TYPE_MIDI_ALSA:
-            port_gradient.setColorAt(pos2, get_color(canvas.theme.line_midi_alsa_sel if self.m_lineSelected else canvas.theme.line_midi_alsa))
-        elif port_type2 == PORT_TYPE_PARAMETER:
-            port_gradient.setColorAt(pos2, get_color(canvas.theme.line_parameter_sel if self.m_lineSelected else canvas.theme.line_parameter))
+        port_gradient.setColorAt(0.0, get_color(get_port_color(self.item1)))
+        port_gradient.setColorAt(1.0, get_color(get_port_color(self.item2)))
 
         pen_style = Qt.SolidLine
         if self.m_stroke == "dotted":
