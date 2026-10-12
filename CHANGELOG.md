@@ -36,7 +36,12 @@ Recent developments enhance the Carla modular audio host across three primary pi
   - Configured `QSurfaceFormat` with 4 samples on `QOpenGLWidget` when canvas antialiasing is enabled, resolving jagged lines and missing antialiasing when using OpenGL hardware acceleration.
   - Exported `QSurfaceFormat` in `qt_compat.py`.
 
-### 2026-10-12 17:34:00
+### 2026-10-12 17:36:00
+- **fix(settings)**: Centralize Qt imports in carla_settings and export QSpinBox in qt_compat
+  - Fixed `NameError: name 'QComboBox' is not defined` when opening Carla Settings dialog by importing `QComboBox`, `QSlider`, and `QSpinBox` via `qt_compat.py`.
+  - Added `QSpinBox` to Qt5 and Qt6 exports in `qt_compat.py`.
+
+### 2026-10-12 17:34:00 (`38b2215df`)
 - **feat(canvas)**: Expose line style, pattern, and opacity in Canvas Settings
   - Added configurable options `Canvas/LineStyle` (`"bezier"`, `"straight"`, `"stepped"`), `Canvas/LineStroke` (`"solid"`, `"dotted"`, `"dashed"`), and `Canvas/LineOpacity` (20% – 100%) in `carla_shared.py`, `patchcanvas/__init__.py`, and `carla_host.py`.
   - Added line style and pattern comboboxes and an interactive opacity slider in `carla_settings.py`.

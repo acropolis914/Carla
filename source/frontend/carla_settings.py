@@ -5,30 +5,20 @@
 # ---------------------------------------------------------------------------------------------------------------------
 # Imports (PyQt)
 
-from qt_compat import qt_config
-
-if qt_config == 5:
-    from PyQt5.QtCore import pyqtSlot, QT_VERSION, Qt
-    from PyQt5.QtWidgets import (
-        QDialog,
-        QDialogButtonBox,
-        QFileDialog,
-        QCheckBox,
-        QSpinBox,
-        QLabel,
-        QHBoxLayout,
-    )
-elif qt_config == 6:
-    from PyQt6.QtCore import pyqtSlot, QT_VERSION, Qt
-    from PyQt6.QtWidgets import (
-        QDialog,
-        QDialogButtonBox,
-        QFileDialog,
-        QCheckBox,
-        QSpinBox,
-        QLabel,
-        QHBoxLayout,
-    )
+from qt_compat import (
+    pyqtSlot,
+    QT_VERSION,
+    Qt,
+    QDialog,
+    QDialogButtonBox,
+    QFileDialog,
+    QCheckBox,
+    QComboBox,
+    QSlider,
+    QSpinBox,
+    QLabel,
+    QHBoxLayout,
+)
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Imports (Custom)
