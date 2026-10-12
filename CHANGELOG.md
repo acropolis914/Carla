@@ -36,7 +36,12 @@ Recent developments enhance the Carla modular audio host across three primary pi
   - Configured `QSurfaceFormat` with 4 samples on `QOpenGLWidget` when canvas antialiasing is enabled, resolving jagged lines and missing antialiasing when using OpenGL hardware acceleration.
   - Exported `QSurfaceFormat` in `qt_compat.py`.
 
-### 2026-10-12 18:20:00
+### 2026-10-12 18:24:00
+- **fix(canvas)**: Ensure cable gradients render regardless of line formula (bezier/straight/stepped) and stroke pattern
+  - Recomputed `updateLineGradient()` on every `updateLinePos()` to ensure gradients always match latest node positions.
+  - Fixed painter rendering in `CanvasLine.paint()` to draw directly with `_cached_pen` preserving `QBrush` gradient fill across all line shapes and stroke patterns (`solid`, `dotted`, `dashed`).
+
+### 2026-10-12 18:20:00 (`ceaa6b6e1`)
 - **fix(canvas)**: Fix cable linear gradients not rendering across canvas nodes
   - Resolved gradient vector calculation in `CanvasLine.updateLineGradient()` by mapping scene port bounding rect endpoints into the item's local coordinate system (`mapFromScene()`).
 - **feat(rack)**: Add unified Catppuccin color palette and custom color picker to rack item menu

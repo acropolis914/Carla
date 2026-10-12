@@ -143,6 +143,7 @@ class CanvasLine(QGraphicsPathItem):
                 path.cubicTo(item1_new_x, item1_y, item2_new_x, item2_y, item2_x, item2_y)
 
             self.setPath(path)
+            self.updateLineGradient()
             self.updateLineSelected()
 
     def type(self):
@@ -214,15 +215,16 @@ class CanvasLine(QGraphicsPathItem):
         painter.save()
         painter.setRenderHint(QPainter.Antialiasing, bool(options.antialiasing))
 
-        pen = self.pen()
+        pen = self._cached_pen if self._cached_pen is not None else self.pen()
         scale = canvas.scene.getScaleFactor() if hasattr(canvas.scene, "getScaleFactor") else 1.0
         min_width = max(2.0, 2.0 / scale)
-        if pen.widthF() < min_width:
+        if pen.widthF() != min_width:
             pen = QPen(pen)
             pen.setWidthF(min_width)
-            painter.setPen(pen)
 
-        QGraphicsPathItem.paint(self, painter, option, widget)
+        painter.setPen(pen)
+        painter.setBrush(Qt.NoBrush)
+        painter.drawPath(self.path())
 
         # Cosmetic glow overlay — skip entirely when eye candy is off
         if options.eyecandy:
