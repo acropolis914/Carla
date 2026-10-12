@@ -5,7 +5,7 @@
 - [x] Fix: Node right-click preserves multi-selection so Align Horizontally / Vertically works
 
 ## Features
-- [ ] feat: Improved logging with Python Rich console, loglevels, log tags, and CLI flags (`--log-whitelist`, `--log-blacklist`)
+- [x] feat: Improved logging with Python Rich console, loglevels, log tags, and CLI flags (`--log-whitelist`, `--log-blacklist`)
 - [ ] feat: Minimize to system tray
 - [ ] feat: Side-by-side view for mini rack and patchbay
 - [ ] feat: Synchronized colors, bypass state, and switch button between rack node and patchbay node
@@ -15,3 +15,7 @@
 - [ ] feat: Offer to save dirty edits on exit (Yes, No, Cancel) with visual save status indicator (dirty/saved)
 - [ ] feat: Status indicator for last autosave timestamp and countdown timer to next autosave
 - [ ] feat: Subtle canvas alignment dots/grid with snapping; align functions respect grid snap
+- [ ] feat: Infinite canvas with `infinite-canvas = true` project metadata and migration for legacy files (recenter by subtracting half total bounding box on both X and Y axes)
+- [ ] feat: Auto repel arrangement tools (auto repel selected vs auto repel all), defaulting auto arrange and auto repel to selected items only
+- [ ] feat: Patchbay selection keyboard shortcuts (Ctrl+A to select all, Photoshop-style selection shortcuts: Ctrl+D to deselect, Ctrl+Shift+I to invert selection)
+

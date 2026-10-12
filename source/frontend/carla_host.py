@@ -39,6 +39,7 @@ from carla_canvas import (
 )
 from project_storage import storage_manager
 from project_session import ProjectSessionManager
+from carla_logger import logger, KNOWN_TAGS
 
 # ------------------------------------------------------------------------------------------------------------
 # Imports (PyQt)
@@ -463,6 +464,10 @@ class HostWindow(QMainWindow):
 
         # ----------------------------------------------------------------------------------------------------
         # Set up GUI (logs)
+        logger.parse_cli_args()
+        logger.console_enabled = self.fSavedSettings.get(
+            CARLA_KEY_MAIN_LOG_TO_CONSOLE, CARLA_DEFAULT_MAIN_LOG_TO_CONSOLE
+        )
 
         try:
             with open("/tmp/carla.log", "w") as f:
@@ -470,11 +475,34 @@ class HostWindow(QMainWindow):
         except Exception:
             pass
 
-        _orig_append = self.ui.text_logs.appendPlainText
+        self._orig_log_append = self.ui.text_logs.appendPlainText
+
+        # Tag checklist layout in log_options
+        self.ui.group_log_tags = QFrame(self.ui.log_options)
+        self.ui.group_log_tags.setObjectName("group_log_tags")
+        self.ui.group_log_tags_layout = QVBoxLayout(self.ui.group_log_tags)
+        self.ui.group_log_tags_layout.setContentsMargins(0, 8, 0, 0)
+        self.ui.group_log_tags_layout.setSpacing(4)
+
+        lbl_tags = QLabel(self.tr("Filter Tags:"), self.ui.group_log_tags)
+        lbl_tags.setStyleSheet("font-weight: bold;")
+        self.ui.group_log_tags_layout.addWidget(lbl_tags)
+
+        self.log_tag_checkboxes = {}
+        for tag_name in KNOWN_TAGS:
+            chk = QCheckBox(tag_name, self.ui.group_log_tags)
+            chk.setChecked(True)
+            chk.stateChanged.connect(self.slot_logFilterChanged)
+            self.ui.group_log_tags_layout.addWidget(chk)
+            self.log_tag_checkboxes[tag_name] = chk
+
+        self.ui.verticalLayout_8.addWidget(self.ui.group_log_tags)
+
+        # Connect logger signal
+        logger.logAdded.connect(self.slot_onLogAdded)
 
         def _log_append(text):
-            _orig_append(text)
-            log_carla(f"[APP_LOG] {text}")
+            logger.log_raw_string(text)
 
         self.ui.text_logs.appendPlainText = _log_append
 
@@ -3016,6 +3044,11 @@ class HostWindow(QMainWindow):
                 CARLA_DEFAULT_MAIN_AUTOSAVE_MAX,
                 int,
             ),
+            CARLA_KEY_MAIN_LOG_TO_CONSOLE: settings.value(
+                CARLA_KEY_MAIN_LOG_TO_CONSOLE,
+                CARLA_DEFAULT_MAIN_LOG_TO_CONSOLE,
+                bool,
+            ),
             CARLA_KEY_CANVAS_THEME: settings.value(
                 CARLA_KEY_CANVAS_THEME, CARLA_DEFAULT_CANVAS_THEME, str
             ),
@@ -3753,9 +3786,32 @@ class HostWindow(QMainWindow):
 
     @pyqtSlot()
     def slot_logClear(self):
+        logger.history.clear()
         self.ui.text_logs.clear()
         self.ui.text_logs.appendPlainText("======= Logs cleared ========")
         self.slot_logButtonsState(False)
+
+    @pyqtSlot(object)
+    def slot_onLogAdded(self, entry):
+        if not hasattr(self, "log_tag_checkboxes"):
+            return
+        # Check if entry's tag is checked
+        chk = self.log_tag_checkboxes.get(entry.tag)
+        if chk is not None and not chk.isChecked():
+            return
+        if hasattr(self, "_orig_log_append"):
+            self._orig_log_append(entry.formatted_ui())
+
+    @pyqtSlot()
+    def slot_logFilterChanged(self):
+        """Re-render visible logs from history when checklist changes"""
+        if not hasattr(self, "_orig_log_append"):
+            return
+        self.ui.text_logs.clear()
+        for entry in logger.history:
+            chk = self.log_tag_checkboxes.get(entry.tag)
+            if chk is None or chk.isChecked():
+                self._orig_log_append(entry.formatted_ui())
 
     # --------------------------------------------------------------------------------------------------------
     # Timers

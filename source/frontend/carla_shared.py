@@ -193,6 +193,7 @@ CARLA_KEY_MAIN_AUTOSAVE_ENABLED  = "Main/AutosaveEnabled" # bool
 CARLA_KEY_MAIN_AUTOSAVE_INTERVAL = "Main/AutosaveInterval"# int (minutes)
 CARLA_KEY_MAIN_AUTOSAVE_MAX      = "Main/AutosaveMax"     # int
 CARLA_KEY_MAIN_PROJECT_FORMAT    = "Main/ProjectFormat"   # str (xml or json)
+CARLA_KEY_MAIN_LOG_TO_CONSOLE     = "Main/LogToConsole"    # bool
 
 CARLA_KEY_CANVAS_THEME             = "Canvas/Theme"           # str
 CARLA_KEY_CANVAS_SIZE              = "Canvas/Size"            # str "NxN"
@@ -282,6 +283,7 @@ CARLA_DEFAULT_MAIN_AUTOSAVE_ENABLED  = True
 CARLA_DEFAULT_MAIN_AUTOSAVE_INTERVAL = 3
 CARLA_DEFAULT_MAIN_AUTOSAVE_MAX      = 5
 CARLA_DEFAULT_MAIN_PROJECT_FORMAT    = "xml"
+CARLA_DEFAULT_MAIN_LOG_TO_CONSOLE     = True
 
 # Canvas
 CARLA_DEFAULT_CANVAS_THEME             = "Modern Dark"
@@ -653,7 +655,12 @@ def log_carla(msg, level="info"):
             f.write(msg_str + "\n")
     except Exception:
         pass
-    print(msg_str, file=sys.stderr, flush=True)
+
+    try:
+        from carla_logger import logger
+        logger.log_raw_string(msg_str)
+    except Exception:
+        print(msg_str, file=sys.stderr, flush=True)
 
 # ------------------------------------------------------------------------------------------------------------
 # Set CWD

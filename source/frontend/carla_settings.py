@@ -95,6 +95,7 @@ from carla_shared import (
     CARLA_DEFAULT_MAIN_AUTOSAVE_ENABLED,
     CARLA_DEFAULT_MAIN_AUTOSAVE_INTERVAL,
     CARLA_DEFAULT_MAIN_AUTOSAVE_MAX,
+    CARLA_DEFAULT_MAIN_LOG_TO_CONSOLE,
     CARLA_DEFAULT_MAIN_CLASSIC_SKIN,
     CARLA_DEFAULT_MAIN_CONFIRM_EXIT,
     CARLA_DEFAULT_MAIN_PRO_THEME_COLOR,
@@ -162,6 +163,7 @@ from carla_shared import (
     CARLA_KEY_MAIN_AUTOSAVE_ENABLED,
     CARLA_KEY_MAIN_AUTOSAVE_INTERVAL,
     CARLA_KEY_MAIN_AUTOSAVE_MAX,
+    CARLA_KEY_MAIN_LOG_TO_CONSOLE,
     CARLA_KEY_MAIN_CLASSIC_SKIN,
     CARLA_KEY_MAIN_CONFIRM_EXIT,
     CARLA_KEY_MAIN_EXPERIMENTAL,
@@ -700,6 +702,10 @@ class CarlaSettingsW(QDialog):
         self.ch_main_autosave.toggled.connect(self.lbl_autosave_interval.setEnabled)
         self.ch_main_autosave.toggled.connect(self.lbl_autosave_max.setEnabled)
 
+        self.ch_main_log_to_console = QCheckBox(self.tr("Mirror application logs to terminal (Rich formatted)"), self.ui.group_main_misc)
+        self.ch_main_log_to_console.setObjectName("ch_main_log_to_console")
+        self.ui.gridLayout_4.addWidget(self.ch_main_log_to_console, 4, 0, 1, 3)
+
         if CARLA_OS_MAC:
             self.setWindowModality(Qt.WindowModal)
 
@@ -870,6 +876,14 @@ class CarlaSettingsW(QDialog):
         self.sb_autosave_max.setEnabled(autosave_enabled)
         self.lbl_autosave_interval.setEnabled(autosave_enabled)
         self.lbl_autosave_max.setEnabled(autosave_enabled)
+
+        self.ch_main_log_to_console.setChecked(
+            settings.value(
+                CARLA_KEY_MAIN_LOG_TO_CONSOLE,
+                CARLA_DEFAULT_MAIN_LOG_TO_CONSOLE,
+                bool,
+            )
+        )
 
         self.ui.cb_main_classic_skin_default.setChecked(
             settings.value(
@@ -1325,6 +1339,9 @@ class CarlaSettingsW(QDialog):
         settings.setValue(
             CARLA_KEY_MAIN_AUTOSAVE_MAX, self.sb_autosave_max.value()
         )
+        settings.setValue(
+            CARLA_KEY_MAIN_LOG_TO_CONSOLE, self.ch_main_log_to_console.isChecked()
+        )
 
         # -------------------------------------------------------------------------------------------------------------
         # Canvas
@@ -1632,6 +1649,7 @@ class CarlaSettingsW(QDialog):
             self.ch_main_autosave.setChecked(CARLA_DEFAULT_MAIN_AUTOSAVE_ENABLED)
             self.sb_autosave_interval.setValue(CARLA_DEFAULT_MAIN_AUTOSAVE_INTERVAL)
             self.sb_autosave_max.setValue(CARLA_DEFAULT_MAIN_AUTOSAVE_MAX)
+            self.ch_main_log_to_console.setChecked(CARLA_DEFAULT_MAIN_LOG_TO_CONSOLE)
             self.ui.cb_main_classic_skin_default(CARLA_DEFAULT_MAIN_CLASSIC_SKIN)
             self.ui.ch_main_show_logs.setChecked(CARLA_DEFAULT_MAIN_SHOW_LOGS)
 
