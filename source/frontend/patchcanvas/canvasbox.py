@@ -46,6 +46,7 @@ from qt_compat import (
     QGroupBox,
     QCheckBox,
     QPushButton,
+    QWidgetAction,
 )
 
 # ------------------------------------------------------------------------------------------------------------
@@ -636,6 +637,9 @@ class CanvasBox(QGraphicsObject):
         self.m_plugin_ui = False
         self.m_plugin_inline = self.INLINE_DISPLAY_DISABLED
 
+        # Custom node color / tinting
+        self.m_custom_color = None
+
         # Base Variables
         self.p_width = 50
         self.p_width_in = 0
@@ -735,6 +739,14 @@ class CanvasBox(QGraphicsObject):
 
     def isSplit(self):
         return self.m_split
+
+    def setCustomColor(self, color):
+        self.m_custom_color = QColor(color) if color else None
+        self.update()
+        self.repaintLines()
+
+    def getCustomColor(self):
+        return self.m_custom_color
 
     def getSplitMode(self):
         return self.m_split_mode
@@ -1142,6 +1154,47 @@ class CanvasBox(QGraphicsObject):
         menu.addSeparator()
         act_x_properties = menu.addAction("Properties")
 
+        # Catppuccin quick color preset submenu
+        colorMenu = QMenu("Color", menu)
+        paletteWidget = QWidget()
+        palLayout = QHBoxLayout(paletteWidget)
+        palLayout.setContentsMargins(6, 4, 6, 4)
+        palLayout.setSpacing(4)
+
+        catppuccin_colors = [
+            ("#f38ba8", "Red"),
+            ("#fab387", "Peach"),
+            ("#f9e2af", "Yellow"),
+            ("#a6e3a1", "Green"),
+            ("#94e2d5", "Teal"),
+            ("#89dceb", "Sky"),
+            ("#89b4fa", "Blue"),
+            ("#b4befe", "Lavender"),
+            ("#cba6f7", "Mauve"),
+            ("#f5c2e7", "Pink"),
+        ]
+
+        # Reset button
+        btn_reset = QPushButton("✕")
+        btn_reset.setToolTip("Reset to Default Color")
+        btn_reset.setFixedSize(22, 22)
+        btn_reset.setStyleSheet("QPushButton { font-weight: bold; color: #888; background: transparent; border: 1px solid #555; border-radius: 3px; } QPushButton:hover { color: #fff; border-color: #888; background: #333; }")
+        btn_reset.clicked.connect(lambda: (self.setCustomColor(None), menu.close()))
+        palLayout.addWidget(btn_reset)
+
+        for col_hex, col_name in catppuccin_colors:
+            btn_col = QPushButton()
+            btn_col.setToolTip(col_name)
+            btn_col.setFixedSize(22, 22)
+            btn_col.setStyleSheet(f"QPushButton {{ background-color: {col_hex}; border: 1px solid rgba(0,0,0,0.4); border-radius: 3px; }} QPushButton:hover {{ border: 2px solid #ffffff; }}")
+            btn_col.clicked.connect(lambda checked=False, c=col_hex: (self.setCustomColor(c), menu.close()))
+            palLayout.addWidget(btn_col)
+
+        colorWidgetAction = QWidgetAction(colorMenu)
+        colorWidgetAction.setDefaultWidget(paletteWidget)
+        colorMenu.addAction(colorWidgetAction)
+        menu.addMenu(colorMenu)
+
         arrangeMenu = QMenu("Arrange & Align", menu)
         act_arr_connected_both = arrangeMenu.addAction("Arrange Connected (Both)")
         act_arr_connected_before = arrangeMenu.addAction("Arrange Connected (Before)")
@@ -1481,7 +1534,7 @@ class CanvasBox(QGraphicsObject):
                     header_rect, canvas.theme.box_header_pixmap, header_rect.topLeft()
                 )
             else:
-                header_bg = canvas.theme.box_bg_2
+                header_bg = self.m_custom_color if self.m_custom_color else canvas.theme.box_bg_2
                 if header_bg:
                     painter.setPen(Qt.NoPen)
                     painter.setBrush(header_bg)

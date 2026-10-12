@@ -117,6 +117,7 @@ if qt_config == 5:
         QToolButton,
         QVBoxLayout,
         QWidget,
+        QWidgetAction,
     )
 
     try:
@@ -245,6 +246,7 @@ elif qt_config == 6:
         QToolButton,
         QVBoxLayout,
         QWidget,
+        QWidgetAction,
     )
 
     try:

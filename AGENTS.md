@@ -6,3 +6,8 @@
 
 ## 🚀 Commits
 - Use Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`, etc.).
+
+## ⚡ Direct Execution (Anti-Exploration Loop)
+- Limit codebase reading to targeted single lookups.
+- NEVER chain more than 2-3 exploratory reads without immediately modifying files or producing the implementation. Move straight to writing the code.
+

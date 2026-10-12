@@ -165,6 +165,12 @@ class CanvasLine(QGraphicsPathItem):
             return c
 
         def get_port_color(port):
+            parent = port.parentItem()
+            if parent is not None and hasattr(parent, "getCustomColor"):
+                custom_c = parent.getCustomColor()
+                if custom_c is not None:
+                    return custom_c
+
             ptype = port.getPortType()
             theme = canvas.theme
             if ptype == PORT_TYPE_AUDIO_JACK:
