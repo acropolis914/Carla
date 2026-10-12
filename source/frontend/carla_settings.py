@@ -836,7 +836,7 @@ class CarlaSettingsW(QDialog):
         self.ui.gridLayout_4.addWidget(self.ch_main_show_statusbar, 5, 0, 1, 3)
 
         # Rack Appearance & Geometry Live Tweakables Group
-        self.group_rack_geometry = QGroupBox(self.tr("Rack Layout & Spacing"), self.ui.tab_main)
+        self.group_rack_geometry = QGroupBox(self.tr("Rack Layout & Spacing"), self.ui.page_main)
         self.layout_rack_geo = QFormLayout(self.group_rack_geometry)
 
         # 1. Rack Item Spacing Margin (0 - 16 px)
@@ -866,8 +866,8 @@ class CarlaSettingsW(QDialog):
         layout_mw.addWidget(self.lbl_rack_min_width_val)
         self.layout_rack_geo.addRow(self.tr("Slot minimum width:"), layout_mw)
 
-        if hasattr(self.ui, "verticalLayout_3"):
-            self.ui.verticalLayout_3.addWidget(self.group_rack_geometry)
+        if hasattr(self.ui, "verticalLayout_5"):
+            self.ui.verticalLayout_5.insertWidget(self.ui.verticalLayout_5.count() - 1, self.group_rack_geometry)
 
         # Live update hooks
         def _on_live_rack_spacing(val):

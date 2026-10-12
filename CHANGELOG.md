@@ -20,6 +20,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 04:02:00
+- **fix(settings)**: Correct parent widget for `group_rack_geometry` in `CarlaSettingsW`
+  - Fixed `AttributeError: 'Ui_CarlaSettingsW' object has no attribute 'tab_main'` by referencing `page_main` and `verticalLayout_5`.
+
 ### 2026-10-13 03:56:00
 - **feat(settings)**: Overhaul Settings UI with live tweakables and modern Catppuccin styling
   - Exposed live interactive sliders for rack item vertical spacing (0–16px), slot internal padding (2–16px), and minimum slot width (180–450px) that apply instantly without app restart.
