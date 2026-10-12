@@ -47,6 +47,7 @@ ACTION_PLUGIN_REMOVE = 13  # plugin_id, N, N
 ACTION_PLUGIN_SHOW_UI = 14  # plugin_id, N, N
 ACTION_BG_RIGHT_CLICK = 15  # N, N, N
 ACTION_INLINE_DISPLAY = 16  # plugin_id, N, N
+ACTION_PLUGIN_COLOR = 17  # plugin_id, N, color_hex_str
 
 # Icon
 ICON_APPLICATION = 0

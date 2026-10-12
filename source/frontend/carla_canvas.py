@@ -1419,3 +1419,19 @@ def canvasCallback(action, value1, value2, valueStr):
         pluginId = value1
         width, height = [int(v) for v in valueStr.split(":")]
         return host.render_inline_display(pluginId, width, height)
+
+    elif action == getattr(patchcanvas, "ACTION_PLUGIN_COLOR", 17):
+        pluginId = value1
+        colorStr = valueStr
+        pitem = gCarla.gui.getPluginItem(pluginId)
+        if pitem is not None:
+            # Sync color to rack item options and trigger redraw
+            pitem.fOptions["custom_color"] = colorStr if colorStr else None
+            pwidget = pitem.getWidget()
+            if pwidget is not None:
+                if hasattr(pwidget, "ui") and hasattr(pwidget.ui, "group_plugin"):
+                    border_style = f"border-top: 3px solid {colorStr};" if colorStr else ""
+                    pwidget.setStyleSheet(border_style)
+                pwidget.update()
+            if hasattr(gCarla.gui, "markProjectModified"):
+                gCarla.gui.markProjectModified()

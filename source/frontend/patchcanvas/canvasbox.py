@@ -740,10 +740,13 @@ class CanvasBox(QGraphicsObject):
     def isSplit(self):
         return self.m_split
 
-    def setCustomColor(self, color):
+    def setCustomColor(self, color, notify=True):
         self.m_custom_color = QColor(color) if color else None
         self.update()
         self.repaintLines()
+        if notify and self.m_plugin_id >= 0:
+            color_str = color if color else ""
+            canvas.callback(17, self.m_plugin_id, 0, color_str)  # 17 = ACTION_PLUGIN_COLOR
 
     def getCustomColor(self):
         return self.m_custom_color

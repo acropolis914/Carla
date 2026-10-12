@@ -36,8 +36,12 @@ Recent developments enhance the Carla modular audio host across three primary pi
   - Configured `QSurfaceFormat` with 4 samples on `QOpenGLWidget` when canvas antialiasing is enabled, resolving jagged lines and missing antialiasing when using OpenGL hardware acceleration.
   - Exported `QSurfaceFormat` in `qt_compat.py`.
 
-### 2026-10-12 17:47:00
-- **feat(patchbay)**: Add custom node colors and horizontal Catppuccin preset palette in context menu
+### 2026-10-12 17:53:00
+- **feat(rack)**: Synchronize node colors between patchbay and rack items
+  - Added `ACTION_PLUGIN_COLOR` to patchcanvas callback architecture and notified when `setCustomColor()` is changed on a plugin node.
+  - Linked `canvasCallback` to propagate the custom tint color to the corresponding `PluginListItem` in the rack.
+
+### 2026-10-12 17:47:00 (`f5ca2fe6a`)
   - Added "Color" submenu to node context menu with horizontal one-click Catppuccin color buttons (Red, Peach, Yellow, Green, Teal, Sky, Blue, Lavender, Mauve, Pink) and reset button.
   - Linked custom node colors into `CanvasLine.updateLineGradient()`, dynamically tinting connection cable gradients to match source and target node colors.
 
