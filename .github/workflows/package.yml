@@ -33,6 +33,9 @@ jobs:
             fedora)
               dnf install -y git make gcc gcc-c++ qt6-qtbase-devel qt6-qtsvg-devel qt6-qttools-devel python3 python3-pyqt6 sdl2-devel rpm-build
               ;;
+            archlinux)
+              pacman -Syu --noconfirm && pacman -S --noconfirm git make gcc qt6-base qt6-svg qt6-tools python python-pyqt6 sdl2
+              ;;
             nix)
               nix-env -iA nixpkgs.nix nixpkgs.nixpkgs-unstable
               ;;
