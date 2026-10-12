@@ -15,7 +15,12 @@ Recent developments enhance the Carla modular audio host across three primary pi
 
 ## [Unreleased] - 2026-10-12
 
-### 2026-10-12 15:09:12 (`982d5abcf`)
+### 2026-10-12 15:20:45 (`4678b5f5f`)
+- **fix(ui)**: Fix rack plugin removal across all skins and enable empty canvas left-click drag panning
+  - Connected `b_remove` in `PluginSlot_Calf` and fixed `Delete` key handling in `RackListWidget` to invoke `self.host.remove_plugin()` with a confirmation prompt.
+  - Implemented left-click drag panning on empty canvas area in `DraggableGraphicsView` for fluid navigation without needing to switch modal tools.
+
+### 2026-10-12 15:09:12 (`b2ab7196b`)
 - **fix(compat)**: Restore QSizePolicy in PyQt6 imports in qt_compat
   - Re-added `QSizePolicy` to the `PyQt6.QtWidgets` import list so `QSizePolicy.Policy` alias definitions resolve correctly on startup.
 

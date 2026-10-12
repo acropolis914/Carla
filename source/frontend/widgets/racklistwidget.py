@@ -376,13 +376,17 @@ class RackListWidget(QListWidget):
         pluginId = item.getPluginId()
 
         if event.key() == Qt.Key_Delete:
-            msg = QMessageBox(self)
-            msg.setIcon(QMessageBox.question)
-            msg.setWindowTitle("Remove Plugin")
-            msg.setText("Are you sure you want to remove the selected plugin?")
-            msg.setStandardButtons(QMessageBox.yes | QMessageBox.no)
-            if msg.exec_() == QMessageBox.yes:
-                gCarla.gui.removePlugin(pluginId)
+            pinfo = self.host.get_plugin_info(pluginId) if self.host is not None else {}
+            name = pinfo.get("name", self.tr("this plugin")) if isinstance(pinfo, dict) else self.tr("this plugin")
+            ask = QMessageBox.question(
+                self,
+                self.tr("Remove Plugin"),
+                self.tr(f"Are you sure you want to remove '{name}'?"),
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No,
+            )
+            if ask == QMessageBox.Yes and self.host is not None:
+                self.host.remove_plugin(pluginId)
             event.accept()
             return
 

@@ -1,8 +1,8 @@
 # Carla Development Tasks
 
 ## Bugs
-- [ ] Fix: Rack item remove button still does not delete or show confirmation dialog (reopened: calf skin vs other skins / context menu / delete key)
-- [ ] Fix: Left-click drag on empty canvas does not pan the UI
+- [x] Fix: Rack item remove button still does not delete or show confirmation dialog (reopened: calf skin vs other skins / context menu / delete key)
+- [x] Fix: Left-click drag on empty canvas does not pan the UI
 - [x] Fix: Node right-click preserves multi-selection so Align Horizontally / Vertically works
 
 
@@ -26,3 +26,5 @@
 - [ ] feat: Settings dialog polish & cleanup — reorganize sections, improve layout, use system icons instead of custom/outdated ones, and remove obsolete options deprecated by recent updates
 - [ ] feat: Smoother patchbay rendering and interaction performance (higher refresh/frame rate, reduced dragging jitter and cable render overhead)
 - [ ] feat: Mini DSP load graph over time with side label and hover tooltip
+- [ ] feat: Cable routing styles (Bezier, Straight/Linear, Orthogonal/Right-angle)
+- [ ] feat: Dynamic cable coloring based on source and destination node colors with linear gradients

@@ -1783,6 +1783,8 @@ class PluginSlot_Calf(AbstractPluginSlot):
         self.b_gui    = self.ui.b_gui
         self.b_edit   = self.ui.b_edit
         self.b_remove = self.ui.b_remove
+        if self.b_remove is not None:
+            self.b_remove.clicked.connect(self.slot_removePlugin)
 
         self.label_name = self.ui.label_name
         self.led_midi   = self.ui.led_midi

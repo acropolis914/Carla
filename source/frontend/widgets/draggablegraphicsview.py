@@ -13,6 +13,7 @@ if qt_config == 5:
     from PyQt5.QtCore import Qt, QT_VERSION, QEvent, pyqtSignal
     from PyQt5.QtGui import QCursor, QMouseEvent, QKeySequence
     from PyQt5.QtWidgets import (
+        QGraphicsItem,
         QGraphicsView,
         QMessageBox,
         QLineEdit,
@@ -24,6 +25,7 @@ elif qt_config == 6:
     from PyQt6.QtCore import Qt, QT_VERSION, QEvent, pyqtSignal
     from PyQt6.QtGui import QCursor, QMouseEvent, QKeySequence, QShortcut
     from PyQt6.QtWidgets import (
+        QGraphicsItem,
         QGraphicsView,
         QMessageBox,
         QLineEdit,
@@ -182,28 +184,34 @@ class DraggableGraphicsView(QGraphicsView):
                                  gCarla.gui.host.get_last_error(), QMessageBox.Ok, QMessageBox.Ok)
 
     def mousePressEvent(self, event):
+        pos = event.position().toPoint() if hasattr(event, "position") else event.pos()
+
+        # Check if left click occurred on empty canvas (no interactive nodes/cables/ports)
+        clicked_on_empty_canvas = False
+        if event.button() == Qt.LeftButton and self.fToolMode == TOOL_POINTER and not (event.modifiers() & (Qt.ControlModifier | Qt.ShiftModifier | Qt.AltModifier)):
+            item = self.itemAt(pos)
+            if item is None:
+                clicked_on_empty_canvas = True
+            elif hasattr(item, "type"):
+                itype = item.type()
+                # Check if it's not a node box, icon, port, or cable
+                is_node_or_conn = (itype in (QGraphicsItem.UserType + 1, QGraphicsItem.UserType + 2, QGraphicsItem.UserType + 3,
+                                             QGraphicsItem.UserType + 4, QGraphicsItem.UserType + 5, QGraphicsItem.UserType + 6,
+                                             QGraphicsItem.UserType + 7, QGraphicsItem.UserType + 8))
+                if not is_node_or_conn:
+                    clicked_on_empty_canvas = True
+
         if (event.button() == Qt.MiddleButton and not (event.modifiers() & Qt.ControlModifier)) or (
-            event.button() == Qt.LeftButton and (self.fToolMode == TOOL_HAND or getattr(self, "fSpacePanning", False))
+            event.button() == Qt.LeftButton and (self.fToolMode == TOOL_HAND or getattr(self, "fSpacePanning", False) or clicked_on_empty_canvas)
         ):
             self.fPanning = True
-            self.setDragMode(QGraphicsView.ScrollHandDrag)
+            self.fPanStartPos = pos
+            self.fPanStartScroll = (
+                self.horizontalScrollBar().value() if self.horizontalScrollBar() else 0,
+                self.verticalScrollBar().value() if self.verticalScrollBar() else 0
+            )
             self.setCursor(QCursor(Qt.ClosedHandCursor))
-            timestamp = event.timestamp()
-            QGraphicsView.mousePressEvent(self, event)
-            if timestamp is not None:
-                if qt_config == 5:
-                    synth_event = QMouseEvent(QEvent.MouseButtonPress,
-                                        event.localPos(), event.windowPos(), event.screenPos(),
-                                        Qt.LeftButton, Qt.LeftButton,
-                                        Qt.NoModifier,
-                                        Qt.MouseEventSynthesizedByApplication)
-                    synth_event.setTimestamp(timestamp)
-                else:
-                    synth_event = QMouseEvent(QEvent.MouseButtonPress,
-                                        event.position(), event.scenePosition(), event.globalPosition(),
-                                        Qt.LeftButton, Qt.LeftButton,
-                                        Qt.NoModifier)
-                QGraphicsView.mousePressEvent(self, synth_event)
+            event.accept()
             return
 
         if event.button() == Qt.LeftButton and self.fToolMode == TOOL_SELECT:
@@ -212,6 +220,21 @@ class DraggableGraphicsView(QGraphicsView):
             return
 
         QGraphicsView.mousePressEvent(self, event)
+
+    def mouseMoveEvent(self, event):
+        if getattr(self, "fPanning", False):
+            pos = event.position().toPoint() if hasattr(event, "position") else event.pos()
+            delta = pos - getattr(self, "fPanStartPos", pos)
+            hsb = self.horizontalScrollBar()
+            vsb = self.verticalScrollBar()
+            if hsb and vsb:
+                start_h, start_v = getattr(self, "fPanStartScroll", (hsb.value(), vsb.value()))
+                hsb.setValue(start_h - delta.x())
+                vsb.setValue(start_v - delta.y())
+            event.accept()
+            return
+
+        QGraphicsView.mouseMoveEvent(self, event)
 
     def mouseReleaseEvent(self, event):
         if getattr(self, "fPanning", False) and (
@@ -222,6 +245,8 @@ class DraggableGraphicsView(QGraphicsView):
                 self.setCursor(QCursor(Qt.OpenHandCursor))
             else:
                 self.setToolMode(self.fToolMode)
+            event.accept()
+            return
 
         QGraphicsView.mouseReleaseEvent(self, event)
 
