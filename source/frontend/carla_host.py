@@ -2582,13 +2582,14 @@ class HostWindow(QMainWindow):
             self.ui.graphicsView.setRenderHint(QPainter.SmoothPixmapTransform, fullAA)
             self.ui.graphicsView.setRenderHint(QPainter.TextAntialiasing, fullAA)
 
+            hq_aa_attr = getattr(QPainter.RenderHint, "HighQualityAntialiasing", getattr(QPainter, "HighQualityAntialiasing", None)) if hasattr(QPainter, "RenderHint") else getattr(QPainter, "HighQualityAntialiasing", None)
             if (
                 self.fSavedSettings[CARLA_KEY_CANVAS_USE_OPENGL]
                 and hasGL
-                and QPainter.HighQualityAntialiasing is not None
+                and hq_aa_attr is not None
             ):
                 self.ui.graphicsView.setRenderHint(
-                    QPainter.HighQualityAntialiasing,
+                    hq_aa_attr,
                     self.fSavedSettings[CARLA_KEY_CANVAS_HQ_ANTIALIASING],
                 )
 

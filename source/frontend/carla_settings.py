@@ -634,6 +634,25 @@ class CarlaSettingsW(QDialog):
             self.ui.cb_canvas_use_opengl.setEnabled(False)
             self.ui.cb_canvas_render_hq_aa.setEnabled(False)
 
+        # Expose "Use OpenGL for rendering" in Canvas settings page
+        if hasattr(self.ui, "group_canvas_render"):
+            self.ui.cb_canvas_use_opengl_canvas = QCheckBox(
+                self.tr("Use OpenGL for rendering (needs restart)"),
+                self.ui.group_canvas_render,
+            )
+            self.ui.cb_canvas_use_opengl_canvas.setEnabled(hasCanvasGL)
+            self.ui.group_canvas_render.layout().insertWidget(
+                1, self.ui.cb_canvas_use_opengl_canvas
+            )
+            # Sync state bidirectionally between Canvas and Experimental tabs
+            self.ui.cb_canvas_use_opengl_canvas.toggled.connect(
+                self.ui.cb_canvas_use_opengl.setChecked
+            )
+            self.ui.cb_canvas_use_opengl.toggled.connect(
+                self.ui.cb_canvas_use_opengl_canvas.setChecked
+            )
+
+
         if host.isPlugin:
             self.ui.cb_engine_audio_driver.setEnabled(False)
 

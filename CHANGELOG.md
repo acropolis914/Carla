@@ -15,7 +15,12 @@ Recent developments enhance the Carla modular audio host across three primary pi
 
 ## [Unreleased] - 2026-10-12
 
-### 2026-10-12 15:26:30 (`ed641774b`)
+### 2026-10-12 15:37:00 (`e213d7f02`)
+- **fix(canvas)**: Fix HighQualityAntialiasing crash and expose Use OpenGL in Canvas settings
+  - Fixed `AttributeError: type object 'QPainter' has no attribute 'HighQualityAntialiasing'` on Qt6 by safely probing `QPainter.RenderHint`.
+  - Exposed "Use OpenGL for rendering (needs restart)" directly in **Settings → Canvas → Rendering** with bidirectional state synchronization to the Experimental tab.
+
+### 2026-10-12 15:26:30 (`e225021e5`)
 - **perf(canvas)**: Optimize patchbay rendering with SmartViewportUpdate and eliminate event hot path logging
   - Upgraded graphicsView viewport update mode to `SmartViewportUpdate` for intelligent partial blits when dragging nodes and cables.
   - Removed per-click and per-miss verbose `log_carla` calls in `CanvasViewportFilter` to prevent hot-path I/O stalls during interaction.
