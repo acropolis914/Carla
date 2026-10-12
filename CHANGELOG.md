@@ -20,6 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 03:30:00
+- **feat(rack)**: Lower minimum width of rack items to 200px
+  - Reduced `PluginSlot_Minimal` minimum width constraint from 260px down to 200px.
+  - Allowed type badge and preset selector combo box to flexibly compress down to 44px and 50px respectively, maximizing rack compaction.
+
 ### 2026-10-13 03:26:00
 - **feat(rack)**: Place minimize button to the right of the modernized meters
   - Arranged the header layout so the modernized LED and vertical peak meter slice appears before the minimize button, placing the minimize button directly to the right of the meters.

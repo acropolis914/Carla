@@ -2470,7 +2470,7 @@ class PluginSlot_Minimal(PluginSlot_Default):
         self.label_badge.setObjectName("label_badge")
         self.label_badge.setToolTip(f"Plugin Type: {plugin_type_str}")
 
-        self.label_badge.setMinimumWidth(56)
+        self.label_badge.setMinimumWidth(44)
         self.label_badge.setMaximumWidth(56)
         self.label_badge.setAlignment(Qt.AlignCenter)
 
@@ -2481,8 +2481,8 @@ class PluginSlot_Minimal(PluginSlot_Default):
         else:
             self.ui.layout_top.addWidget(self.label_badge)
 
-        self.setMinimumWidth(260)
-        self.ui.layout_top.setSpacing(4)
+        self.setMinimumWidth(200)
+        self.ui.layout_top.setSpacing(3)
 
         progCount = self.host.get_program_count(self.fPluginId)
         usingMidiPrograms = False
@@ -2492,9 +2492,10 @@ class PluginSlot_Minimal(PluginSlot_Default):
         if progCount > 0:
             self.cb_presets = QComboBox(parent=self)
             self.cb_presets.setObjectName("cb_presets")
-            self.cb_presets.setMinimumWidth(70)
+            self.cb_presets.setMinimumWidth(50)
             self.cb_presets.setMaximumWidth(130)
             self.cb_presets.setMaximumHeight(22)
+            self.cb_presets.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
             self.cb_presets.setToolTip("Preset Selector")
             curProg = self.host.get_current_midi_program_index(self.fPluginId) if usingMidiPrograms else self.host.get_current_program_index(self.fPluginId)
 
