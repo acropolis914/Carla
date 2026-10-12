@@ -25,13 +25,13 @@ jobs:
         run: |
           case "${{ matrix.platform }}" in
             alpine)
-              apk add --no-cache git make gcc g++ qt6-qtbase-dev qt6-qtsvg-dev qt6-qttools-dev python3 py3-pyqt6 sdl2-dev glibc-dev
+              apk add --no-cache git make gcc g++ qt6-qtbase-dev qt6-qtsvg-dev qt6-qttools-dev python3 py3-pyqt6 sdl2-dev musl-dev pkgconf
               ;;
             ubuntu)
-              apt-get update && apt-get install -y git make build-essential qt6-base-dev qt6-svg-dev qt6-tools-dev python3 python3-pyqt6 sdl2-dev debhelper dh-make
+                              apt-get update && apt-get install -y git make build-essential qt6-base-dev qt6-svg-dev qt6-tools-dev python3 python3-pyqt6 libsdl2-dev debhelper dh-make pkg-config
               ;;
             fedora)
-              dnf install -y git make gcc gcc-c++ qt6-qtbase-devel qt6-qtsvg-devel qt6-qttools-devel python3 python3-pyqt6 sdl2-devel rpm-build
+              dnf install -y git make gcc gcc-c++ qt6-qtbase-devel qt6-qtsvg-devel qt6-qttools-devel python3 python3-pyqt6 SDL2-devel rpm-build pkgconf
               ;;
             archlinux)
               pacman -Syu --noconfirm && pacman -S --noconfirm git make gcc qt6-base qt6-svg qt6-tools python python-pyqt6 sdl2
