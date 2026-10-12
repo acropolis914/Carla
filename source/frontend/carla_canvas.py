@@ -1062,6 +1062,55 @@ class CanvasContextToolBarOverlay(QFrame):
         if color.isValid():
             self._apply_color_to_nodes(nodes, color.name())
 
+    def _slot_toggle_power(self, node):
+        pid = getattr(node, "m_plugin_id", -1)
+        if not (0 <= pid <= patchcanvas.MAX_PLUGIN_ID_ALLOWED):
+            return
+        try:
+            from carla_shared import gCarla
+            from carla_backend import PARAMETER_ACTIVE
+            pwidget = gCarla.gui.getPluginWidget(pid) if hasattr(gCarla.gui, "getPluginWidget") else None
+            if pwidget is not None and hasattr(pwidget, "fIsActive"):
+                cur = bool(pwidget.fIsActive)
+            elif hasattr(gCarla.gui, "host") and hasattr(gCarla.gui.host, "get_internal_parameter_value"):
+                cur = bool(gCarla.gui.host.get_internal_parameter_value(pid, PARAMETER_ACTIVE) >= 0.5)
+            else:
+                cur = True
+            new_state = not cur
+            gCarla.gui.host.set_active(pid, new_state)
+            if pwidget is not None:
+                pwidget.setActive(new_state, sendCallback=True, sendHost=False)
+            if hasattr(node, "update"):
+                node.update()
+            scene = self.graphicsView.scene()
+            if scene:
+                scene.update()
+        except Exception as e:
+            print(f"CanvasContextToolBarOverlay::_slot_toggle_power error: {e}")
+
+    def _slot_toggle_bypass(self, node):
+        pid = getattr(node, "m_plugin_id", -1)
+        if not (0 <= pid <= patchcanvas.MAX_PLUGIN_ID_ALLOWED):
+            return
+        try:
+            from carla_shared import gCarla
+            from carla_backend import PARAMETER_DRYWET
+            pwidget = gCarla.gui.getPluginWidget(pid) if hasattr(gCarla.gui, "getPluginWidget") else None
+            cur_val = gCarla.gui.host.get_internal_parameter_value(pid, PARAMETER_DRYWET)
+            new_val = 1.0 if cur_val == 0.0 else 0.0
+            gCarla.gui.host.set_drywet(pid, new_val)
+            if pwidget is not None:
+                pwidget.setParameterValue(PARAMETER_DRYWET, new_val, True)
+                if hasattr(pwidget, "_update_bypass_state"):
+                    pwidget._update_bypass_state(bool(new_val == 0.0))
+            if hasattr(node, "update"):
+                node.update()
+            scene = self.graphicsView.scene()
+            if scene:
+                scene.update()
+        except Exception as e:
+            print(f"CanvasContextToolBarOverlay::_slot_toggle_bypass error: {e}")
+
     def _slot_batch_power(self, nodes):
         for n in nodes:
             self._slot_toggle_power(n)

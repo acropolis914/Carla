@@ -20,6 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 01:49:00
+- **fix(patchbay)**: Implement missing single-node power and bypass action slots on context toolbar
+  - Resolved `AttributeError: 'CanvasContextToolBarOverlay' object has no attribute '_slot_toggle_power'` by implementing `_slot_toggle_power` and `_slot_toggle_bypass`.
+  - Added full rack plugin state sync and canvas scene update on toggle.
+
 ### 2026-10-13 01:34:00
 - **feat(patchbay)**: Persist and restore hide-unused-ports state on save and serialization
   - Added dedicated `setHideUnconnectedPorts(hide)` method to `CanvasBox` with automatic port layout re-calculation and scene repaint.
