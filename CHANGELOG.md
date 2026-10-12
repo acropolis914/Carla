@@ -20,6 +20,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 03:26:00
+- **feat(rack)**: Place minimize button to the right of the modernized meters
+  - Arranged the header layout so the modernized LED and vertical peak meter slice appears before the minimize button, placing the minimize button directly to the right of the meters.
+
 ### 2026-10-13 03:25:00
 - **feat(rack)**: Swap modernized meters slice and minimize button positions
   - Swapped layout positions so the minimize/collapse button sits next to the sliders/knobs toggle, and the modernized 2x2 LED / vertical peak meter slice is positioned at the far right.
