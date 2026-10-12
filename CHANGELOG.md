@@ -20,6 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Structured `CarlaLogger` supporting Python Rich terminal formatting, log levels, timestamps, and categories (`APP`, `ENGINE`, `PATCHBAY`, `PLUGIN`, `SESSION`, `CANVAS`, `BACKEND`).
   - Added CLI flags `--log-level`, `--log-whitelist`, `--log-blacklist`, and `--console-log` / `--no-console-log`.
   - Added in-UI Log tab tag checklist filter to dynamically toggle visible categories without losing history, and a settings option to mirror logs to terminal.
+- **Session Safety & Autosave Status Indicators**:
+  - Save on exit prompt with `Save`, `Discard`, and `Cancel` options whenever a session has unsaved modifications.
+  - Visual dirty/saved indicator (`*` prefix in title bar, plus `● Unsaved` / `✓ Saved` badge in the status bar).
+  - Statusbar display showing last autosave timestamp and live countdown timer to the next autosave.
+
 
 ### Fixed
 - **Autosave Path Normalization & Recursion Prevention**:

@@ -24,9 +24,14 @@ class ProjectSessionManager:
         self.interval_minutes = 3
         self.max_autosaves = 5
 
-        # Background timer
-        self._timer = QTimer()
-        self._timer.timeout.connect(self._on_timer_tick)
+        # Timing tracking
+        self.last_autosave_time = None
+        self._next_autosave_timestamp = None
+
+        # Background timer (checks every 1 sec for countdown accuracy)
+        self._tick_timer = QTimer()
+        self._tick_timer.setInterval(1000)
+        self._tick_timer.timeout.connect(self._on_tick)
 
         # Debounce timer for updating node positions on move
         self._pos_debounce_timer = QTimer()
@@ -43,13 +48,19 @@ class ProjectSessionManager:
         if max_autosaves is not None:
             self.max_autosaves = max(1, int(max_autosaves))
 
-        self._timer.stop()
+        self._tick_timer.stop()
         if self.enabled:
-            self._timer.start(self.interval_minutes * 60 * 1000)
+            self._next_autosave_timestamp = time.time() + (self.interval_minutes * 60)
+            self._tick_timer.start()
 
     def stop(self):
-        self._timer.stop()
+        self._tick_timer.stop()
         self._pos_debounce_timer.stop()
+
+    def get_seconds_until_next_autosave(self):
+        if not self.enabled or self._next_autosave_timestamp is None:
+            return None
+        return max(0, int(self._next_autosave_timestamp - time.time()))
 
     @staticmethod
     def get_canonical_project_filepath(project_filepath):
@@ -156,6 +167,8 @@ class ProjectSessionManager:
                 storage_manager.save_canvas_positions(autosave_file, positions)
 
             self._last_autosave_file = autosave_file
+            self.last_autosave_time = datetime.now()
+            self._next_autosave_timestamp = time.time() + (self.interval_minutes * 60)
 
             # 3. Prune old autosaves to enforce max retention
             self._prune_autosaves(autosave_dir)
@@ -193,6 +206,7 @@ class ProjectSessionManager:
         try:
             shutil.rmtree(autosave_dir, ignore_errors=True)
             self._last_autosave_file = None
+            self.last_autosave_time = None
         except Exception as e:
             print("ProjectSessionManager::prune_all_autosaves failed:", e)
 
@@ -214,5 +228,10 @@ class ProjectSessionManager:
                 except Exception:
                     pass
 
-    def _on_timer_tick(self):
-        self.create_autosave(is_scheduled=True)
+    def _on_tick(self):
+        if not self.enabled:
+            return
+        now = time.time()
+        if self._next_autosave_timestamp and now >= self._next_autosave_timestamp:
+            self._next_autosave_timestamp = now + (self.interval_minutes * 60)
+            self.create_autosave(is_scheduled=True)

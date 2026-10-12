@@ -810,6 +810,18 @@ class HostWindow(QMainWindow):
             enabled=self.fSavedSettings.get(CARLA_KEY_MAIN_AUTOSAVE_ENABLED, CARLA_DEFAULT_MAIN_AUTOSAVE_ENABLED),
         )
 
+        # Autosave and project status indicators in statusbar
+        self.label_save_status = QLabel(self.ui.tw_statusbar)
+        self.label_save_status.setObjectName("label_save_status")
+        self.label_save_status.setStyleSheet("font-weight: bold; margin-left: 8px; margin-right: 4px;")
+        self.ui.horizontalLayout_3.addWidget(self.label_save_status)
+
+        self.label_autosave_status = QLabel(self.ui.tw_statusbar)
+        self.label_autosave_status.setObjectName("label_autosave_status")
+        self.label_autosave_status.setStyleSheet("color: gray; margin-left: 4px; margin-right: 8px;")
+        self.ui.horizontalLayout_3.addWidget(self.label_autosave_status)
+        self.updateSessionStatusIndicators()
+
         # For NSM we wait for the open message
         if NSM_URL and host.nsmOK:
             host.nsm_ready(NSM_CALLBACK_INIT)
@@ -1106,7 +1118,37 @@ class HostWindow(QMainWindow):
         if self.fSessionManagerName:
             title += " (%s)" % self.fSessionManagerName
 
+        if getattr(self, "fHasUnsavedChanges", False):
+            title = "* " + title
+
         self.setWindowTitle(title)
+        self.updateSessionStatusIndicators()
+
+    def updateSessionStatusIndicators(self):
+        if not hasattr(self, "label_save_status") or not hasattr(self, "label_autosave_status"):
+            return
+
+        is_dirty = getattr(self, "fHasUnsavedChanges", False)
+        if is_dirty:
+            self.label_save_status.setText(self.tr("● Unsaved"))
+            self.label_save_status.setStyleSheet("color: #ffaa00; font-weight: bold; margin-left: 8px; margin-right: 4px;")
+        else:
+            self.label_save_status.setText(self.tr("✓ Saved"))
+            self.label_save_status.setStyleSheet("color: #55ff55; font-weight: bold; margin-left: 8px; margin-right: 4px;")
+
+        if hasattr(self, "fSessionManager") and self.fSessionManager is not None and self.fSessionManager.enabled:
+            secs_left = self.fSessionManager.get_seconds_until_next_autosave()
+            last_time = self.fSessionManager.last_autosave_time
+            last_str = last_time.strftime("%H:%M:%S") if last_time else self.tr("None")
+
+            if secs_left is not None:
+                mins = secs_left // 60
+                secs = secs_left % 60
+                self.label_autosave_status.setText(self.tr(f"Autosave: last {last_str} | next in {mins:02d}:{secs:02d}"))
+            else:
+                self.label_autosave_status.setText(self.tr(f"Autosave: last {last_str}"))
+        else:
+            self.label_autosave_status.setText(self.tr("Autosave: Off"))
 
     def updateBufferSize(self, newBufferSize):
         if self.fBufferSize == newBufferSize:
@@ -1216,6 +1258,8 @@ class HostWindow(QMainWindow):
 
         self.fIsProjectLoading = False
         self.projectLoadingFinished(False)
+        self.fHasUnsavedChanges = False
+        self.setProperWindowTitle()
 
         for pitem in self.fPluginList:
             if pitem is None:
@@ -1282,6 +1326,8 @@ class HostWindow(QMainWindow):
         if hasattr(self, "fSessionManager") and self.fSessionManager is not None:
             self.fSessionManager.prune_all_autosaves_on_manual_save(self.fProjectFilename)
 
+        self.fHasUnsavedChanges = False
+        self.setProperWindowTitle()
         self.addRecentProject(self.fProjectFilename)
 
     def projectLoadingStarted(self):
@@ -4186,6 +4232,7 @@ class HostWindow(QMainWindow):
 
     def idleSlow(self):
         self.getAndRefreshRuntimeInfo()
+        self.updateSessionStatusIndicators()
 
         if self.fPluginCount == 0 or self.fCurrentlyRemovingAllPlugins:
             return
@@ -4300,6 +4347,26 @@ class HostWindow(QMainWindow):
             return False
         if self.fWindowCloseHideGui:
             return False
+
+        # If project has unsaved changes, offer Save, Discard, Cancel
+        if getattr(self, "fHasUnsavedChanges", False):
+            proj_name = os.path.basename(self.fProjectFilename) if self.fProjectFilename else self.tr("Untitled Project")
+            res = QMessageBox.question(
+                self,
+                self.tr("Save Changes"),
+                self.tr(f"The project '{proj_name}' has unsaved changes.\n\nDo you want to save before closing?"),
+                QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
+                QMessageBox.Save,
+            )
+            if res == QMessageBox.Cancel:
+                return True
+            if res == QMessageBox.Save:
+                self.slot_fileSave()
+                # If still unsaved (e.g. user canceled file dialog), abort close
+                if getattr(self, "fHasUnsavedChanges", False):
+                    return True
+            return False
+
         if self.fSavedSettings[CARLA_KEY_MAIN_CONFIRM_EXIT]:
             return (
                 QMessageBox.question(
