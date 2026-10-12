@@ -1947,6 +1947,7 @@ class PluginSlot_Compact(AbstractPluginSlot):
         AbstractPluginSlot.__init__(self, parent, host, pluginId, skinColor, skinStyle)
         self.ui = ui_carla_plugin_compact.Ui_PluginWidget()
         self.ui.setupUi(self)
+        self.ui.horizontalLayout_2.setContentsMargins(14, 3, 6, 3)
 
         self.is_dark = skinStyle in ("minimal-dark", "sliders-dark") or "light" not in skinStyle
         p = CATPPUCCIN_MOCHA if self.is_dark else CATPPUCCIN_LATTE
@@ -2041,49 +2042,52 @@ class PluginSlot_Compact(AbstractPluginSlot):
                 background: transparent;
             }}
             QPushButton {{
-                background: transparent;
-                border: none;
+                background: rgba(255, 255, 255, 0.05);
+                border: 1px solid rgba(255, 255, 255, 0.12);
                 color: {p['subtext0']};
                 font-size: 10px;
                 font-weight: 700;
-                padding: 2px 4px;
-                border-radius: 4px;
+                padding: 2px 6px;
+                border-radius: 3px;
             }}
             QPushButton:hover {{
-                background: transparent;
-                border: none;
+                background: rgba(255, 255, 255, 0.13);
+                border-color: rgba(255, 255, 255, 0.35);
                 color: {p['text']};
             }}
             QPushButton:pressed {{
-                color: {p['blue']};
+                background: rgba(255, 255, 255, 0.25);
+                border-color: rgba(255, 255, 255, 0.6);
+                color: #ffffff;
             }}
             QPushButton#btn_bypass {{
-                background: transparent;
-                border: none;
+                background: rgba(255, 255, 255, 0.05);
+                border: 1px solid rgba(255, 255, 255, 0.12);
                 font-size: 10px;
                 font-weight: 700;
                 color: {p['overlay1']};
-                padding: 2px 4px;
+                padding: 2px 6px;
+                border-radius: 3px;
             }}
             QPushButton#btn_bypass:hover {{
                 color: {p['text']};
-                background: transparent;
-                border: none;
+                background: rgba(255, 255, 255, 0.13);
+                border-color: rgba(255, 255, 255, 0.35);
             }}
             QPushButton#btn_bypass:checked {{
-                background: transparent;
-                border: none;
+                background: rgba(250, 179, 135, 0.18);
+                border: 1px solid rgba(250, 179, 135, 0.45);
                 color: {bypass_active};
                 font-weight: 800;
             }}
             QPushButton#btn_bypass:checked:hover {{
                 color: {p['yellow']};
-                background: transparent;
-                border: none;
+                background: rgba(250, 179, 135, 0.28);
+                border-color: rgba(250, 179, 135, 0.65);
             }}
             QPushButton#btn_expand, QPushButton#btn_minimize {{
-                background: transparent;
-                border: none;
+                background: rgba(255, 255, 255, 0.04);
+                border: 1px solid rgba(255, 255, 255, 0.10);
                 color: {p['overlay1']};
                 font-size: 11px;
                 font-weight: bold;
@@ -2092,14 +2096,16 @@ class PluginSlot_Compact(AbstractPluginSlot):
                 min-height: 20px;
                 max-height: 22px;
                 padding: 0px;
+                border-radius: 3px;
             }}
             QPushButton#btn_expand:hover, QPushButton#btn_minimize:hover {{
-                background: transparent;
-                border: none;
+                background: rgba(255, 255, 255, 0.13);
+                border-color: rgba(255, 255, 255, 0.35);
                 color: {p['text']};
             }}
             QPushButton#btn_expand:pressed, QPushButton#btn_minimize:pressed {{
-                color: {p['blue']};
+                background: rgba(255, 255, 255, 0.25);
+                color: #ffffff;
             }}
             QLabel#label_name {{
                 font-size: 11px;
@@ -2367,17 +2373,23 @@ class PluginSlot_Minimal(PluginSlot_Default):
         slider_handle = p['text']
         slider_handle_border = p['blue'] if not has_custom_color else accent_color
 
-        if not bool(self.getHints() & PLUGIN_HAS_CUSTOM_UI):
-            self.b_gui.hide()
+        # Create clean QPushButton instances with FontAwesome Nerd Font glyphs for minimal style
+        # Power / DSP Active: \uf011
+        btn_power = QPushButton("\uf011", parent=self.ui.w_buttons)
+        btn_power.setObjectName("btn_power")
+        btn_power.setCheckable(True)
+        btn_power.setChecked(self.fIsActive)
+        btn_power.setMinimumSize(22, 22)
+        btn_power.setMaximumSize(22, 22)
+        btn_power.setFlat(True)
+        btn_power.setToolTip("Power / DSP Active (Toggle DSP processing)")
+        btn_power.clicked.connect(self.slot_enableClicked)
 
-        self.ui.w_buttons.setMinimumSize(0, 24)
-        self.ui.w_buttons.setMaximumSize(16777215, 24)
-        self.ui.horizontalLayout.setSpacing(4)
-
-        self.b_bypass = QPushButton("BYP", parent=self.ui.w_buttons)
+        # Bypass (Dry/Wet): \uf05e
+        self.b_bypass = QPushButton("\uf05e", parent=self.ui.w_buttons)
         self.b_bypass.setObjectName("btn_bypass")
-        self.b_bypass.setMinimumSize(32, 22)
-        self.b_bypass.setMaximumSize(38, 22)
+        self.b_bypass.setMinimumSize(22, 22)
+        self.b_bypass.setMaximumSize(22, 22)
         self.b_bypass.setFlat(True)
         self.b_bypass.setCheckable(True)
 
@@ -2392,16 +2404,74 @@ class PluginSlot_Minimal(PluginSlot_Default):
                 self._update_bypass_state(bypassed)
             self.b_bypass.clicked.connect(_on_bypass_clicked)
         else:
-            self.b_bypass.hide()
+            self.b_bypass.setEnabled(False)
+            self.b_bypass.setToolTip("Bypass: Not supported for this plugin")
 
-        self.ui.horizontalLayout.insertWidget(1, self.b_bypass)
+        # Custom UI: \uf2d0
+        has_custom_ui = bool(self.getHints() & PLUGIN_HAS_CUSTOM_UI)
+        btn_gui = QPushButton("\uf2d0", parent=self.ui.w_buttons)
+        btn_gui.setObjectName("btn_gui")
+        btn_gui.setCheckable(True)
+        btn_gui.setChecked(getattr(self.b_gui, "isChecked", lambda: False)())
+        btn_gui.setMinimumSize(22, 22)
+        btn_gui.setMaximumSize(22, 22)
+        btn_gui.setFlat(True)
+        btn_gui.setEnabled(has_custom_ui)
+        btn_gui.clicked.connect(self.slot_showCustomUi)
+        if has_custom_ui:
+            btn_gui.setToolTip("Custom UI (Toggle plugin editor window)")
+        else:
+            btn_gui.setToolTip("Custom UI: Not available for this plugin")
+
+        # Edit Parameters: \uf013
+        btn_edit = QPushButton("\uf013", parent=self.ui.w_buttons)
+        btn_edit.setObjectName("btn_edit")
+        btn_edit.setCheckable(True)
+        btn_edit.setChecked(getattr(self.b_edit, "isChecked", lambda: False)())
+        btn_edit.setMinimumSize(22, 22)
+        btn_edit.setMaximumSize(22, 22)
+        btn_edit.setFlat(True)
+        btn_edit.setToolTip("Edit Parameters (Open plugin controls and MIDI settings)")
+        btn_edit.clicked.connect(self.slot_showEditDialog)
+
+        # Remove old ScalableButtons from horizontalLayout
+        for old_b in (self.b_enable, self.b_gui, self.b_edit):
+            if old_b is not None:
+                self.ui.horizontalLayout.removeWidget(old_b)
+                old_b.hide()
+                old_b.deleteLater()
+
+        self.b_enable = btn_power
+        self.b_gui = btn_gui
+        self.b_edit = btn_edit
+
+        self.ui.w_buttons.setMinimumSize(0, 24)
+        self.ui.w_buttons.setMaximumSize(16777215, 24)
+        self.ui.horizontalLayout.setSpacing(2)
+
+        self.ui.horizontalLayout.addWidget(self.b_enable)
+        self.ui.horizontalLayout.addWidget(self.b_bypass)
+        self.ui.horizontalLayout.addWidget(self.b_gui)
+        self.ui.horizontalLayout.addWidget(self.b_edit)
 
         plugin_type_str = getPluginTypeAsString(self.fPluginInfo['type'])
         self.label_badge = QLabel(f" {plugin_type_str} ", parent=self)
         self.label_badge.setObjectName("label_badge")
+        self.label_badge.setToolTip(f"Plugin Type: {plugin_type_str}")
+
+        self.label_badge.setMinimumWidth(56)
+        self.label_badge.setMaximumWidth(56)
+        self.label_badge.setAlignment(Qt.AlignCenter)
+
+        # Place Type Badge BEFORE Plugin Title for uniform alignment
         idx = self.ui.layout_top.indexOf(self.label_name)
         if idx >= 0:
-            self.ui.layout_top.insertWidget(idx + 1, self.label_badge)
+            self.ui.layout_top.insertWidget(idx, self.label_badge)
+        else:
+            self.ui.layout_top.addWidget(self.label_badge)
+
+        self.setMinimumWidth(260)
+        self.ui.layout_top.setSpacing(4)
 
         progCount = self.host.get_program_count(self.fPluginId)
         usingMidiPrograms = False
@@ -2411,8 +2481,10 @@ class PluginSlot_Minimal(PluginSlot_Default):
         if progCount > 0:
             self.cb_presets = QComboBox(parent=self)
             self.cb_presets.setObjectName("cb_presets")
-            self.cb_presets.setMaximumWidth(140)
+            self.cb_presets.setMinimumWidth(70)
+            self.cb_presets.setMaximumWidth(130)
             self.cb_presets.setMaximumHeight(22)
+            self.cb_presets.setToolTip("Preset Selector")
             curProg = self.host.get_current_midi_program_index(self.fPluginId) if usingMidiPrograms else self.host.get_current_program_index(self.fPluginId)
 
             # Lazy load: only fetch the current active preset name on startup
@@ -2445,27 +2517,29 @@ class PluginSlot_Minimal(PluginSlot_Default):
                 self.cb_presets.currentIndexChanged.connect(self.slot_midiProgramChanged)
             else:
                 self.cb_presets.currentIndexChanged.connect(self.slot_programChanged)
-            idx2 = self.ui.layout_top.indexOf(self.label_badge)
+            idx2 = self.ui.layout_top.indexOf(self.label_name)
             if idx2 >= 0:
                 self.ui.layout_top.insertWidget(idx2 + 1, self.cb_presets)
 
-        self.b_slider_mode = QPushButton("SLIDERS" if not self.is_slider_mode else "KNOBS", parent=self)
+        self.b_slider_mode = QPushButton("\uf0c9" if not self.is_slider_mode else "\uf1de", parent=self)
         self.b_slider_mode.setObjectName("btn_slider_mode")
-        self.b_slider_mode.setMinimumSize(60, 22)
-        self.b_slider_mode.setMaximumSize(74, 22)
+        self.b_slider_mode.setMinimumSize(22, 22)
+        self.b_slider_mode.setMaximumSize(22, 22)
         self.b_slider_mode.setFlat(True)
         self.b_slider_mode.setToolTip("Switch to Sliders view" if not self.is_slider_mode else "Switch to Knobs view")
         self.b_slider_mode.clicked.connect(self.slot_toggleSliderMode)
         self.ui.layout_top.addWidget(self.b_slider_mode)
 
-        self.b_minimize = QPushButton("▲", parent=self)
+        self.b_minimize = QPushButton("\uf077", parent=self)
         self.b_minimize.setFlat(True)
         self.b_minimize.setObjectName("btn_minimize")
         self.b_minimize.setMinimumSize(22, 22)
-        self.b_minimize.setMaximumSize(24, 22)
-        self.b_minimize.setToolTip("Minimize")
+        self.b_minimize.setMaximumSize(22, 22)
+        self.b_minimize.setToolTip("Minimize / Collapse Rack Slot")
         self.b_minimize.clicked.connect(self.toggleCompacted)
         self.ui.layout_top.addWidget(self.b_minimize)
+
+        self.ui.verticalLayout.setContentsMargins(14, 3, 6, 3)
 
         styleSheet = f"""
             QFrame#PluginWidget {{
@@ -2474,79 +2548,146 @@ class PluginSlot_Minimal(PluginSlot_Default):
             QPushButton {{
                 background: transparent;
                 border: none;
+                outline: none;
                 color: {p['subtext0']};
                 font-weight: 700;
-                font-size: 10px;
-                padding: 2px 4px;
+                font-size: 13px;
+                padding: 0px;
                 border-radius: 4px;
             }}
             QPushButton:hover {{
-                background: transparent;
+                background: rgba(255, 255, 255, 0.08);
                 border: none;
+                outline: none;
                 color: {p['text']};
             }}
             QPushButton:pressed {{
+                background: rgba(255, 255, 255, 0.16);
+                border: none;
+                outline: none;
                 color: {p['blue']};
+                padding-top: 2px;
+            }}
+            QPushButton:disabled {{
+                background: transparent;
+                border: none;
+                outline: none;
+                color: rgba(140, 145, 160, 0.30);
+            }}
+            QPushButton#btn_power {{
+                background: transparent;
+                font-size: 13px;
+                color: {p['subtext0']};
+            }}
+            QPushButton#btn_power:checked {{
+                color: {p['blue']};
+            }}
+            QPushButton#btn_power:hover {{
+                background: rgba(255, 255, 255, 0.08);
+                color: {p['text']};
             }}
             QPushButton#btn_bypass {{
                 background: transparent;
                 border: none;
-                font-size: 10px;
+                outline: none;
+                font-size: 13px;
                 font-weight: 700;
-                color: {p['overlay1']};
-                padding: 2px 4px;
+                color: {p['subtext0']};
+                padding: 0px;
+                border-radius: 4px;
             }}
             QPushButton#btn_bypass:hover {{
                 color: {p['text']};
-                background: transparent;
+                background: rgba(255, 255, 255, 0.08);
                 border: none;
+                outline: none;
+            }}
+            QPushButton#btn_bypass:pressed {{
+                background: rgba(255, 255, 255, 0.16);
+                border: none;
+                outline: none;
+                padding-top: 2px;
             }}
             QPushButton#btn_bypass:checked {{
                 background: transparent;
                 border: none;
+                outline: none;
                 color: {bypass_active};
                 font-weight: 800;
             }}
             QPushButton#btn_bypass:checked:hover {{
                 color: {p['yellow']};
+                background: rgba(250, 179, 135, 0.12);
+                border: none;
+                outline: none;
+            }}
+            QPushButton#btn_bypass:disabled {{
                 background: transparent;
                 border: none;
+                outline: none;
+                color: rgba(140, 145, 160, 0.25);
+            }}
+            QPushButton#btn_gui {{
+                font-size: 13px;
+            }}
+            QPushButton#btn_gui:checked {{
+                color: {p['lavender']};
+            }}
+            QPushButton#btn_edit {{
+                font-size: 13px;
+            }}
+            QPushButton#btn_edit:checked {{
+                color: {p['mauve']};
             }}
             QPushButton#btn_slider_mode {{
                 background: transparent;
                 border: none;
+                outline: none;
                 color: {p['blue']};
                 font-weight: 700;
-                font-size: 10px;
-                padding: 2px 4px;
+                font-size: 13px;
+                padding: 0px;
+                border-radius: 4px;
             }}
             QPushButton#btn_slider_mode:hover {{
                 color: {p['lavender']};
-                background: transparent;
+                background: rgba(255, 255, 255, 0.08);
                 border: none;
+                outline: none;
             }}
             QPushButton#btn_slider_mode:pressed {{
                 color: {p['sapphire']};
+                background: rgba(255, 255, 255, 0.16);
+                border: none;
+                outline: none;
+                padding-top: 2px;
             }}
             QPushButton#btn_minimize, QPushButton#btn_expand {{
                 background: transparent;
                 border: none;
+                outline: none;
+                border-radius: 4px;
                 color: {p['overlay1']};
-                font-size: 11px;
+                font-size: 12px;
                 font-weight: bold;
-                min-width: 20px;
-                max-width: 24px;
-                min-height: 20px;
+                min-width: 22px;
+                max-width: 22px;
+                min-height: 22px;
                 max-height: 22px;
                 padding: 0px;
             }}
             QPushButton#btn_minimize:hover, QPushButton#btn_expand:hover {{
-                background: transparent;
+                background: rgba(255, 255, 255, 0.08);
                 border: none;
+                outline: none;
                 color: {p['text']};
             }}
             QPushButton#btn_minimize:pressed, QPushButton#btn_expand:pressed {{
                 color: {p['blue']};
+                background: rgba(255, 255, 255, 0.16);
+                border: none;
+                outline: none;
+                padding-top: 2px;
             }}
             QLabel,
             QLabel#label_name,
@@ -2642,9 +2783,9 @@ class PluginSlot_Minimal(PluginSlot_Default):
             return
         self.b_bypass.blockSignals(True)
         self.b_bypass.setChecked(is_bypassed)
-        self.b_bypass.setText("BYP")
+        self.b_bypass.setText("\uf05e")
         if is_bypassed:
-            self.b_bypass.setToolTip("Bypassed (Dry/Wet = 0%) — Click to activate")
+            self.b_bypass.setToolTip("Bypassed (Dry/Wet = 0%) — Click to activate audio")
         else:
             self.b_bypass.setToolTip("Active (Dry/Wet = 100%) — Click to bypass")
         self.b_bypass.blockSignals(False)
@@ -2794,8 +2935,8 @@ class PluginSlot_Minimal(PluginSlot_Default):
                 self.scroll_area.setVisible(False)
             if hasattr(self, 'b_slider_mode') and self.b_slider_mode is not None:
                 self.b_slider_mode.setVisible(False)
-            self.b_minimize.setText("▼")
-            self.b_minimize.setToolTip("Expand")
+            self.b_minimize.setText("\uf078")
+            self.b_minimize.setToolTip("Expand Rack Slot")
         else:
             if hasattr(self.ui, 'line') and self.ui.line is not None:
                 self.ui.line.setVisible(True)
@@ -2815,8 +2956,8 @@ class PluginSlot_Minimal(PluginSlot_Default):
                     self.w_knobs_left.setVisible(True)
                 if self.w_knobs_right is not None:
                     self.w_knobs_right.setVisible(True)
-            self.b_minimize.setText("▲")
-            self.b_minimize.setToolTip("Minimize")
+            self.b_minimize.setText("\uf077")
+            self.b_minimize.setToolTip("Minimize / Collapse Rack Slot")
 
         self.updateRackItemSize()
 

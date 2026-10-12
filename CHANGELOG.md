@@ -15,7 +15,113 @@ Recent developments enhance the Carla modular audio host across three primary pi
 
 ## [Unreleased] - 2026-10-12
 
-### 2026-10-12 16:47:00 (`79af505ae`)
+### 2026-10-12 23:28:00
+- **feat(ui)**: Enlarged FontAwesome Nerd Font icons and TODO tracker update
+  - Increased font-size for action buttons (`b_power`, `b_bypass`, `b_gui`, `b_edit`, `b_slider_mode`, `b_minimize`) from 11px to 13px (12px on minimize) for enhanced legibility.
+  - Increased canvas box toolbar button icon font size to 9pt on 18×18 square targets.
+  - Checked off canvas box sub-bar action buttons in `TODO.md`.
+
+### 2026-10-12 23:26:00
+- **feat(ui)**: Pure FontAwesome Nerd Font buttons and transparent button styling
+  - Converted Power (`\uf011`), Bypass (`\uf05e`), Custom UI (`\uf2d0`), and Parameters/Edit (`\uf013`) into pure `QPushButton` controls using FontAwesome Nerd Font glyphs.
+  - Eliminated static background fills across all header buttons (Bypass, Expand/Minimize, Power, GUI, Edit, Slider mode) for a clean, borderless transparent look.
+  - Added subtle hover (`0.08`) and pressed (`0.16`) translucent feedback without distracting borders or hard backgrounds.
+
+### 2026-10-12 23:22:00
+- **feat(ui)**: Clean borderless buttons, consistent type badge width, and FontAwesome / Nerd Font glyphs
+  - Removed all button border outlines in both Rack headers and Canvas boxes for a clean, minimal look.
+  - Standardized the Type Badge width to 56px with centered alignment so plugin titles align uniformly.
+  - Converted minimize/expand (`\uf077` / `\uf078`) and slider view toggles (`\uf0c9` / `\uf1de`) to FontAwesome / Nerd Font icons with 22×22 square sizing.
+  - Kept Custom UI button (`b_gui`) always visible, transitioning into a disabled state when unavailable.
+
+### 2026-10-12 23:15:00
+- **feat(ui)**: Standardized square action buttons, Nerd Font icons, and responsive header layout
+  - Fixed action buttons (`b_enable`, `b_bypass`, `b_gui`, `b_edit`) to consistent square dimensions (22×22 px in rack slots, 18×18 px in canvas boxes) with 3 explicit states: Active (accent glow/border), Inactive (neutral subtle border), and Disabled/Unavailable (greyed out `opacity: 0.35`).
+  - Unified iconography with FontAwesome / Nerd Font glyphs across Canvas and Rack headers (`\uf011` Power, `\uf05e` Bypass, `\uf08e` Jump to Rack).
+  - Repositioned the category/type badge pill before the plugin name in the rack header for uniform left title alignment.
+  - Reduced minimum width constraints (down to 260px) and set preset selector sizing for responsive layout fitting on smaller screens.
+  - Added comprehensive tooltips to all header buttons, type badge, and preset controls.
+
+### 2026-10-12 23:00:00
+- **feat(rack)**: CarlaSkin 2-line headers and canvas-style buttons
+  - Restructured plugin slot headers into a 2-line layout: Line 1 aligns the plugin title, type badge, peak meters, and minimize toggle; Line 2 provides a dedicated action toolbar for power, bypass, GUI, edit, presets, and slider mode.
+  - Increased left margin padding to give the category colorbar generous separation from the controls.
+  - Upgraded rack buttons to mirror canvas box aesthetics with neutral translucent backgrounds (`rgba(255, 255, 255, 0.05)`), subtle borders (`0.12`), hover highlights, and crisp pressed feedback.
+  - Resolved plugin active state synchronization between patchbay canvas toolbar and host engine/rack widget (`pwidget.setActive(..., sendHost=True)`).
+  - Toggling power now updates the DSP engine, rack UI enable toggle, and canvas node simultaneously.
+- **feat(patchbay)**: Toolbar button visuals and tactile feedback
+  - Removed darker shading and dividing line behind canvas box toolbar buttons for a seamless transparent look.
+  - Added interactive visual feedback for buttons including hover glow, distinct pressed background highlight, and tactile 1px offset shift.
+
+### 2026-10-12 22:22:00
+- **feat(patchbay)**: Neutral square toolbar styling
+  - Adjusted sub-bar height to 22px and rendered 14×14 square buttons with 4px top/bottom padding.
+  - Replaced colored fills with unified neutral translucent backgrounds, subtle borders, and muted icon tints.
+
+### 2026-10-12 21:50:00
+- **feat(patchbay)**: Semantic Bypass button and "Jump to Rack" context menu
+  - Preserved the native top-left icon (`CanvasIcon`) completely undisturbed; plugin titles display with clean padding.
+  - Added "Jump to Rack" to the node right-click context menu for all rack plugins, focusing and scrolling the paired rack item smoothly without header clutter.
+  - Placed the compact, semantic power toggle (`⏻`) neatly on the right next to the category badge pill, rendering only for plugins that expose bypass capabilities.
+  - Ensured clicking bypass toggles the active state in-place without triggering selection sync or shifting views.
+
+
+- **refactor(cli)**: Modernize command-line argument parsing with `argparse.ArgumentParser`
+  - Replaced legacy manual `sys.argv` string inspection loop in `handleInitialCommandLineArguments()` with standard `argparse.ArgumentParser` and `parse_known_args()`.
+  - Unified host options and `CarlaLogger` configuration (`--log-level`, `--log-whitelist`, `--log-blacklist`, `--console-log`, `--no-console-log`) into a single declarative parser.
+  - Safely handles positional project files, OSC URLs, and unknown backend pass-through flags without errors.
+  - Automatically loads plugins in bridge mode and selects newer autosaves without prompt dialogs when `--autoload-lastsave` is active.
+
+- **docs(cli)**: Rich colored help banner with app info, versions, and full tag options
+  - Added Carla version header, Python, Qt, PyQt version specs, and binary/resource paths directly inside `--help`.
+  - Added ANSI color highlighting for options, arguments, and tags.
+  - Listed all available logging filter tags (`APP`, `ENGINE`, `PATCHBAY`, `PLUGIN`, `SESSION`, `CANVAS`, `BACKEND`) in `--log-whitelist` and `--log-blacklist`.
+  - Added binary stream decoding and control-character sanitization to stderr capture in `CarlaLogger`.
+  - Wired explicit debug level forwarding from `log_carla()` through `DEBUG_LEVEL_MAP` to prevent suppression leaks.
+
+- **refactor(logging)**: Deduplicate repeated messages and filter non-fatal backend assertion noise
+  - Added consecutive log deduplication in `CarlaLogger` with repeat counting to prevent runaway spam in console output.
+  - Filtered benign C++ backend assertions (`canRead`, `groupName != nullptr`, `TemporaryFile`, buffer sizes, `plugin.get() != nullptr`) to debug level.
+  - Suppressed yabridge/Wine boilerplate, duplicate LV2 plugin notices, `carla_v3_component_handler` queries, and `PatchCanvas::removeGroup` warnings on shutdown.
+  - Demoted high-frequency port discovery, client addition, and connection callback messages (`addPort`, `connectPorts`, `slot_handlePatchbayClientAddedCallback`, `addGroup`, `unhiding box`) to debug level, keeping default info level clean.
+
+- **feat(patchbay)**: Add type-based node selection to patchbay context menus
+  - Implemented `getNodeBadgeType()` on `CanvasBox`, mapping each node to its exact functional type (`SYNTH`, `EQ`, `DELAY`, `FILTER`, `DIST`, `DYN`, `MOD`, `UTIL`, `FX`, `PLUGIN`, `SINK`, `SOURCE`, `IN`, `OUT`, `HW`, `APP`, `NODE`).
+  - Added "Select All of Same Type ({type})" to individual node context menus.
+  - Added "Select -> By Type" dynamic submenu to both canvas background and node item context menus.
+  - Added `selectNodesByType(target_type)` and `getAvailableNodeTypes()` in `patchcanvas.py`.
+
+- **feat(patchbay)**: 100% badge coverage across all plugins, external clients, and I/O nodes
+  - Added fallback badges `PLUGIN` (Blue) and `SYNTH` (Red) for plugins without explicit category tags.
+  - Added `APP` (Mauve) for bidirectional client apps and `NODE` (Slate) fallback, guaranteeing every node displays a badge.
+
+- **feat(patchbay)**: Add header badge pills for sinks, sources, hardware, and inputs/outputs
+  - Implemented dynamic role detection in `canvasbox.py` for non-plugin nodes.
+  - Added color-coded badges: `SINK` (Green), `SOURCE` (Peach), `IN` (Sky), `OUT` (Yellow), and `HW` (Lavender) alongside existing category badges.
+
+- **feat(patchbay)**: Neutral default nodes with clean category badges in header
+  - Removed forced default category coloring so unstyled nodes and rack items remain clean and neutral by default.
+  - Implemented crisp, color-coded category pill badges (e.g. `SYNTH`, `FX`, `EQ`, `DYN`, `UTIL`) inside patchbay node headers for instant visual classification without cluttering or tinting the whole node.
+
+- **fix(color)**: Properly reset patchbay node color to default category tone when rack item color is reset
+  - Updated `changePluginColor()` in `carla_host.py` to restore the node's Catppuccin category color when resetting a rack item rather than leaving it in an unsynced state.
+  - Updated `getColorAndSkinStyle()` and `createPluginSlot()` in `carla_skin.py` to cleanly revert to the category palette whenever `CarlaColor` is reset to `"255;255;255"`.
+
+- **feat(patchbay)**: Support individual color customization and persistence for non-rack patchbay items
+  - Enabled color selection and persistence for all patchbay items (e.g. ALSA, JACK, PipeWire hardware, external clients) via canvas positions metadata in `patchcanvas.py` and `project_storage.py`.
+  - Serialized custom node colors into project files (`.carxp`, `.carjp`, `.json`) under canvas group position tags.
+  - Prioritized mapped rack item colors on load so synced rack items always govern their canvas counterparts while standalone nodes retain their independently assigned colors.
+
+- **feat(patchbay)**: Improve node header readability with soft color tinting and adaptive contrast text
+  - Blended 35% custom color tint with base header background in `canvasbox.py` for distinct, non-garish node headers.
+  - Added custom color accent divider line under node headers.
+  - Implemented dynamic luminance calculation for node header text to guarantee high contrast and readability against tinted headers.
+
+- **fix(color)**: Bidirectional saved color synchronization on project load & vibrant category palettes
+  - Updated `getColorFromCategory()` in `carla_skin.py` to use vivid Catppuccin category tones instead of dark gray shades, giving unstyled nodes and rack items distinct colors immediately.
+  - Aligned rack context menu structure by elevating Color submenu to the top level, matching canvas node context menus with direct `QColorDialog` triggers.
+  - Synchronized colors directly from rack widgets (`fSkinColor`) to patchbay canvas nodes on both `PluginListItem.recreateWidget()` and `slot_handlePatchbayClientAddedCallback()`.
+
 - **fix(canvas)**: Preserve active selection on canvas right-click and add Select menu to node context menu
   - Prevented right-click mouse press and release on canvas background from deselecting highlighted items in `scene.py`.
   - Added "Select" submenu (`Select All`, `Deselect`, `Invert Selection`) to both canvas background and node item context menus in `canvasbox.py`.
@@ -215,3 +321,51 @@ Recent developments enhance the Carla modular audio host across three primary pi
 - **feat(patchcanvas)**: Add directional right-drag marquee selection and non-overlapping node alignment
   - Left-to-right drag selects all touched/intersected items; right-to-left drag selects enclosed items only.
   - Added repel spacing in horizontal and vertical alignment to avoid node overlap.
+
+---
+
+## [Unreleased] - 2026-10-06
+
+### 2026-10-06
+- **perf(patchbay)**: Debounce heavy canvas refresh during rack reordering (`3bdb33f11`)
+  - Throttled canvas redraw triggers while drag-reordering rack items to eliminate UI stuttering.
+- **refactor(rack)**: Native `moveRow` reordering without manual widget shuffling (`1b32d180a`)
+  - Switched rack reordering to use native `QModelIndex::moveRow`, preventing Qt garbage collection segfaults.
+- **fix(rack)**: Prevent list widget crashes and destruction during fast reordering (`a897cf0c5`, `fb6dd9261`, `c44f4161b`, `f57456a4e`)
+  - Parked widgets in temporary holding container during moves rather than unparenting to `None`.
+  - Preserved active rack selection state seamlessly during item drag-reordering.
+- **feat(ui)**: Modern native rack buttons and Unicode symbol icons (`815691ce8`, `67e54e3b9`, `b7c76a47d`, `fb8318e89`)
+  - Replaced overlapping power icons with native dark-themed `QPushButton` for bypass and minimize controls.
+  - Updated UI iconography to clean Unicode symbols across compact and standard rack modes.
+
+---
+
+## [Unreleased] - 2026-10-05
+
+### 2026-10-05
+- **feat(packaging)**: Arch Linux / Pacman integration and PKGBUILD (`f8a2a6c79`, `9105b012b`, `8d4984256`)
+  - Added native `PKGBUILD` for `carla-improved` package targeting Qt6.
+  - Added helper `build.sh` script and `installation.md` guide for rapid building and pacman installation.
+- **feat(session)**: Recent projects list and autoload on startup (`4da5fdaa8`)
+  - Added `Recent Projects` submenu under `File` with file path previews.
+  - Added startup prompt to resume last opened project and `--autoload-lastsave` CLI flag.
+- **feat(patchbay)**: Canvas node quick search with fuzzy matching (`0f50c125f`)
+  - Implemented `Ctrl+F` in-canvas search bar with fuzzy filtering and direct viewport centering.
+- **feat(patchbay)**: Persistent canvas node coordinates in project files (`c79581357`)
+  - Automatically saved and restored canvas node positions inside `.carxp` project files.
+- **feat(ui)**: Blender-inspired socket aesthetics, rounded nodes, and system typography (`e4eeb3315`, `311e6d60c`)
+  - Introduced circular socket styling, rounded canvas node containers, and refined port colors.
+  - Unified system fonts across the interface and added initial CLI debug/logging flags.
+- **feat(ui)**: Pianoroll enhancements and theme system (`a6acc8bd0`, `7ba0b3c45`)
+  - Styled pianoroll view, upgraded keyboard bitmaps, and installed data-driven `themes.json`.
+- **fix(patchbay)**: Patchbay rack node sync and PyQt6 inline display support (`65eaa7e6a`)
+  - Fixed sync between rack items and canvas nodes, port drag connections, and PyQt6 inline display rendering.
+
+---
+
+## [Unreleased] - 2026-10-04
+
+### 2026-10-04
+- **fix(canvas)**: Initial patchbay canvas stability improvements (`831bf93b3`)
+  - Fixed initial canvas rendering glitches, drag-connection line offsets, and view initialization.
+

@@ -664,6 +664,8 @@ class CanvasBox(QGraphicsObject):
         self.m_port_list_ids = []
         self.m_connection_lines = []
         self.m_search_highlight = 0  # 0: None, 1: Matched (orange), 2: Active/Hovered (bright/thick orange)
+        self.m_hover_btn_id = None
+        self.m_pressed_btn_id = None
 
         # Set Font
         self.m_font_name = getSystemFont(
@@ -673,6 +675,7 @@ class CanvasBox(QGraphicsObject):
             canvas.theme.port_font_size, canvas.theme.port_font_state
         )
 
+        self.setAcceptHoverEvents(True)
         # Icon
         if canvas.theme.box_use_icon:
             self.icon_svg = CanvasIcon(icon, self.m_group_name, self)
@@ -745,15 +748,67 @@ class CanvasBox(QGraphicsObject):
         self.m_custom_color = QColor(color) if color else None
         self.update()
         self.repaintLines()
-        if notify and self.m_plugin_id >= 0:
-            color_str = color if color else ""
-            canvas.callback(17, self.m_plugin_id, 0, color_str)  # 17 = ACTION_PLUGIN_COLOR
+        if notify:
+            if self.m_plugin_id >= 0:
+                color_str = color if color else ""
+                canvas.callback(17, self.m_plugin_id, 0, color_str)  # 17 = ACTION_PLUGIN_COLOR
+            else:
+                try:
+                    from carla_shared import gCarla
+                    if hasattr(gCarla, "gui"):
+                        gCarla.gui.fHasUnsavedChanges = True
+                        if hasattr(gCarla.gui, "markProjectModified"):
+                            gCarla.gui.markProjectModified()
+                except Exception:
+                    pass
 
     def getCustomColor(self):
         return self.m_custom_color
 
     def getSplitMode(self):
         return self.m_split_mode
+
+    def getNodeBadgeType(self):
+        if self.m_plugin_id >= 0:
+            try:
+                from carla_shared import gCarla
+                from carla_skin import CATEGORY_BADGES
+                pinfo = gCarla.gui.host.get_plugin_info(self.m_plugin_id)
+                cat = pinfo.get("category", 0)
+                if cat in CATEGORY_BADGES:
+                    return CATEGORY_BADGES[cat][0]
+                hints = pinfo.get("hints", 0)
+                from carla_backend import PLUGIN_IS_SYNTH
+                if hints & PLUGIN_IS_SYNTH:
+                    return "SYNTH"
+                return "PLUGIN"
+            except Exception:
+                return "PLUGIN"
+
+        has_ins = False
+        has_outs = False
+        pid_set = set(self.m_port_list_ids)
+        for port in canvas.port_list:
+            if port.port_id in pid_set:
+                if getattr(port, "port_mode", None) == PORT_MODE_INPUT:
+                    has_ins = True
+                elif getattr(port, "port_mode", None) == PORT_MODE_OUTPUT:
+                    has_outs = True
+
+        low_name = self.m_group_name.lower()
+        if self.m_split_mode == PORT_MODE_INPUT or (has_ins and not has_outs):
+            if any(k in low_name for k in ("sink", "playback", "speaker", "headphone")):
+                return "SINK"
+            return "IN"
+        elif self.m_split_mode == PORT_MODE_OUTPUT or (has_outs and not has_ins):
+            if any(k in low_name for k in ("source", "capture", "mic")):
+                return "SOURCE"
+            return "OUT"
+        elif getattr(self, "m_icon", None) == 1 or any(k in low_name for k in ("system", "hardware", "alsa", "hw:")):
+            return "HW"
+        elif has_ins and has_outs:
+            return "APP"
+        return "NODE"
 
     def getPortCount(self):
         return len(self.m_port_list_ids)
@@ -817,7 +872,8 @@ class CanvasBox(QGraphicsObject):
         if len(self.m_port_list_ids) == 0:
             if options.auto_hide_groups:
                 log_carla(
-                    f"CanvasBox.addPortFromGroup: unhiding box '{self.m_group_name}' (id={self.m_group_id}) on first port '{port_name}'"
+                    f"CanvasBox.addPortFromGroup: unhiding box '{self.m_group_name}' (id={self.m_group_id}) on first port '{port_name}'",
+                    level="debug"
                 )
                 if options.eyecandy == EYECANDY_FULL:
                     CanvasItemFX(self, True, False)
@@ -951,8 +1007,9 @@ class CanvasBox(QGraphicsObject):
                 PORT_TYPE_PARAMETER,
             )
             last_in_type = last_out_type = PORT_TYPE_NULL
+            subbar_h = 22 if self.m_plugin_id >= 0 else 0
             last_in_pos = last_out_pos = (
-                canvas.theme.box_header_height + canvas.theme.box_header_spacing
+                canvas.theme.box_header_height + subbar_h + canvas.theme.box_header_spacing
             )
 
             for port_type in port_types:
@@ -1232,6 +1289,20 @@ class CanvasBox(QGraphicsObject):
         act_sel_all = selectMenu.addAction("Select All\tCtrl+A")
         act_desel = selectMenu.addAction("Deselect\tCtrl+D")
         act_inv = selectMenu.addAction("Invert Selection\tCtrl+Shift+I")
+        selectMenu.addSeparator()
+
+        my_type = self.getNodeBadgeType()
+        act_sel_same_type = selectMenu.addAction(f"Select All of Same Type ({my_type})")
+
+        from .patchcanvas import getAvailableNodeTypes, selectNodesByType
+        byTypeMenu = QMenu("By Type", selectMenu)
+        type_actions = []
+        for t_name in getAvailableNodeTypes():
+            act_t = byTypeMenu.addAction(t_name)
+            act_t.triggered.connect(lambda checked=False, t=t_name: selectNodesByType(t))
+            type_actions.append(act_t)
+        selectMenu.addMenu(byTypeMenu)
+
         menu.addMenu(selectMenu)
 
         num_selected = len(canvas.scene.selectedItems()) if canvas.scene else 0
@@ -1252,6 +1323,7 @@ class CanvasBox(QGraphicsObject):
 
         if self.m_plugin_id >= 0 and self.m_plugin_id <= MAX_PLUGIN_ID_ALLOWED:
             menu.addSeparator()
+            act_p_jump_rack = menu.addAction("Jump to Rack")
             act_p_edit = menu.addAction("Edit")
             act_p_ui = menu.addAction("Show Custom UI")
             menu.addSeparator()
@@ -1264,6 +1336,7 @@ class CanvasBox(QGraphicsObject):
                 act_p_ui.setVisible(False)
 
         else:
+            act_p_jump_rack = None
             act_p_edit = act_p_ui = None
             act_p_clone = act_p_rename = None
             act_p_replace = act_p_remove = None
@@ -1335,6 +1408,10 @@ class CanvasBox(QGraphicsObject):
             from .patchcanvas import invertNodeSelection
             invertNodeSelection()
 
+        elif act_selected == act_sel_same_type:
+            from .patchcanvas import selectNodesByType
+            selectNodesByType(my_type)
+
         elif act_selected == act_x_arrange:
             from .patchcanvas import arrange
             arrange()
@@ -1354,6 +1431,22 @@ class CanvasBox(QGraphicsObject):
                 canvas.callback(ACTION_GROUP_JOIN, self.m_group_id, 0, "")
             else:
                 canvas.callback(ACTION_GROUP_SPLIT, self.m_group_id, 0, "")
+
+        elif act_selected == act_p_jump_rack:
+            try:
+                from carla_shared import gCarla
+                if hasattr(gCarla.gui, "ui"):
+                    split_idx = gCarla.gui.ui.tabWidget.indexOf(getattr(gCarla.gui, "tabSplit", None))
+                    if split_idx >= 0:
+                        gCarla.gui.ui.tabWidget.setCurrentIndex(split_idx)
+                    else:
+                        gCarla.gui.ui.tabWidget.setCurrentIndex(0)
+                    pitem = gCarla.gui.getPluginItem(self.m_plugin_id)
+                    if pitem is not None and gCarla.gui.ui.listWidget is not None:
+                        gCarla.gui.ui.listWidget.setCurrentItem(pitem)
+                        gCarla.gui.ui.listWidget.scrollToItem(pitem)
+            except Exception as e:
+                print("Error jumping to rack:", e)
 
         elif act_selected == act_p_edit:
             canvas.callback(ACTION_PLUGIN_EDIT, self.m_plugin_id, 0, "")
@@ -1421,6 +1514,65 @@ class CanvasBox(QGraphicsObject):
             return
 
         elif event.button() == Qt.LeftButton:
+            pos = event.pos()
+            # Check click on toolbar buttons (Power, Bypass, Jump)
+            if self.m_plugin_id >= 0 and hasattr(self, "m_toolbar_buttons"):
+                for btn in self.m_toolbar_buttons:
+                    rect = btn.get("rect")
+                    if rect and rect.contains(pos):
+                        event.accept()
+                        self.m_mouse_down = False
+                        if btn.get("state") == "disabled":
+                            return
+                        btn_id = btn.get("id")
+                        self.m_pressed_btn_id = btn_id
+                        self.update()
+                        try:
+                            from carla_shared import gCarla
+                            from carla_backend import PARAMETER_ACTIVE, PARAMETER_DRYWET
+                            pitem = gCarla.gui.getPluginItem(self.m_plugin_id) if hasattr(gCarla.gui, "getPluginItem") else None
+                            pwidget = pitem.getWidget() if (pitem and hasattr(pitem, "getWidget")) else None
+
+                            if btn_id == "jump":
+                                if hasattr(gCarla.gui, "ui"):
+                                    split_idx = gCarla.gui.ui.tabWidget.indexOf(getattr(gCarla.gui, "tabSplit", None))
+                                    if split_idx >= 0:
+                                        gCarla.gui.ui.tabWidget.setCurrentIndex(split_idx)
+                                    else:
+                                        gCarla.gui.ui.tabWidget.setCurrentIndex(0)
+                                    if pitem is not None and gCarla.gui.ui.listWidget is not None:
+                                        gCarla.gui.ui.listWidget.setCurrentItem(pitem)
+                                        gCarla.gui.ui.listWidget.scrollToItem(pitem)
+                            elif btn_id == "power":
+                                # Determine current active status reliably
+                                if pwidget is not None and hasattr(pwidget, "fIsActive"):
+                                    cur = bool(pwidget.fIsActive)
+                                elif hasattr(gCarla.gui, "host") and hasattr(gCarla.gui.host, "get_internal_parameter_value"):
+                                    cur = bool(gCarla.gui.host.get_internal_parameter_value(self.m_plugin_id, PARAMETER_ACTIVE) >= 0.5)
+                                else:
+                                    cur = True
+                                new_state = not cur
+
+                                gCarla.gui.host.set_active(self.m_plugin_id, new_state)
+                                if pwidget is not None:
+                                    pwidget.setActive(new_state, sendCallback=True, sendHost=False)
+
+                                self.update()
+                                if hasattr(self, "scene") and self.scene():
+                                    self.scene().update()
+                            elif btn_id == "bypass":
+                                cur_val = gCarla.gui.host.get_internal_parameter_value(self.m_plugin_id, PARAMETER_DRYWET)
+                                new_val = 1.0 if cur_val == 0.0 else 0.0
+                                gCarla.gui.host.set_drywet(self.m_plugin_id, new_val)
+                                if pwidget is not None:
+                                    pwidget.setParameterValue(PARAMETER_DRYWET, new_val, True)
+                                    if hasattr(pwidget, "_update_bypass_state"):
+                                        pwidget._update_bypass_state(bool(new_val == 0.0))
+                                self.update()
+                        except Exception as e:
+                            print(f"Error handling toolbar button {btn_id}:", e)
+                        return
+
             if ctrlDown:
                 event.accept()
                 self.setSelected(not self.isSelected())
@@ -1447,7 +1599,40 @@ class CanvasBox(QGraphicsObject):
             self.repaintLines()
         QGraphicsObject.mouseMoveEvent(self, event)
 
+    def hoverMoveEvent(self, event):
+        pos = event.pos()
+        matched_tip = None
+        hover_btn = None
+        if self.m_plugin_id >= 0 and hasattr(self, "m_toolbar_buttons"):
+            for btn in self.m_toolbar_buttons:
+                rect = btn.get("rect")
+                if rect and rect.contains(pos):
+                    matched_tip = btn.get("tip")
+                    hover_btn = btn.get("id")
+                    break
+
+        if hover_btn != self.m_hover_btn_id:
+            self.m_hover_btn_id = hover_btn
+            self.update()
+
+        if matched_tip:
+            self.setToolTip(matched_tip)
+        else:
+            self.setToolTip(self.m_group_name)
+        QGraphicsObject.hoverMoveEvent(self, event)
+
+    def hoverLeaveEvent(self, event):
+        if self.m_hover_btn_id is not None or self.m_pressed_btn_id is not None:
+            self.m_hover_btn_id = None
+            self.m_pressed_btn_id = None
+            self.update()
+        self.setToolTip(self.m_group_name)
+        QGraphicsObject.hoverLeaveEvent(self, event)
+
     def mouseReleaseEvent(self, event):
+        if self.m_pressed_btn_id is not None:
+            self.m_pressed_btn_id = None
+            self.update()
         if self.m_cursor_moving:
             self.unsetCursor()
             QTimer.singleShot(0, self.fixPos)
@@ -1563,12 +1748,28 @@ class CanvasBox(QGraphicsObject):
                     header_rect, canvas.theme.box_header_pixmap, header_rect.topLeft()
                 )
             else:
-                header_bg = self.m_custom_color if self.m_custom_color else canvas.theme.box_bg_2
+                if self.m_custom_color:
+                    # Tint header cleanly: blend 35% custom color with 65% base header background
+                    base_h = canvas.theme.box_bg_2 if canvas.theme.box_bg_2 else QColor(36, 39, 58)
+                    c = self.m_custom_color
+                    header_bg = QColor(
+                        int(0.65 * base_h.red() + 0.35 * c.red()),
+                        int(0.65 * base_h.green() + 0.35 * c.green()),
+                        int(0.65 * base_h.blue() + 0.35 * c.blue()),
+                    )
+                else:
+                    header_bg = canvas.theme.box_bg_2
+
                 if header_bg:
                     painter.setPen(Qt.NoPen)
                     painter.setBrush(header_bg)
                     painter.drawRect(header_rect)
-                    painter.setPen(canvas.theme.box_pen)
+
+                    # Accent line at bottom of header using custom color if available
+                    accent_col = self.m_custom_color if self.m_custom_color else canvas.theme.box_pen.color()
+                    accent_pen = QPen(accent_col)
+                    accent_pen.setWidthF(1.5)
+                    painter.setPen(accent_pen)
                     painter.drawLine(
                         QPointF(header_rect.left(), header_rect.bottom()),
                         QPointF(header_rect.right(), header_rect.bottom()),
@@ -1581,6 +1782,15 @@ class CanvasBox(QGraphicsObject):
 
         if self.isSelected():
             painter.setPen(canvas.theme.box_text_sel)
+        elif self.m_custom_color:
+            # High-contrast readable title text against tinted header
+            base_h = canvas.theme.box_bg_2 if canvas.theme.box_bg_2 else QColor(36, 39, 58)
+            c = self.m_custom_color
+            lum = (0.299 * (0.65 * base_h.red() + 0.35 * c.red()) +
+                   0.587 * (0.65 * base_h.green() + 0.35 * c.green()) +
+                   0.114 * (0.65 * base_h.blue() + 0.35 * c.blue()))
+            text_color = QColor(20, 20, 20) if lum > 145 else QColor(245, 245, 250)
+            painter.setPen(QPen(text_color))
         else:
             painter.setPen(canvas.theme.box_text)
 
@@ -1599,19 +1809,258 @@ class CanvasBox(QGraphicsObject):
             available_width = self.p_width - 20  # 10px padding on each side
 
         # Truncate string gracefully based on available pixel width
+        badge_info = None
+        badge_w = 0
+        if self.m_plugin_id >= 0:
+            try:
+                from carla_shared import gCarla
+                from carla_skin import CATEGORY_BADGES
+                pinfo = gCarla.gui.host.get_plugin_info(self.m_plugin_id)
+                cat = pinfo.get("category", 0)
+                if cat in CATEGORY_BADGES:
+                    badge_info = CATEGORY_BADGES[cat]
+                else:
+                    # Fallback for plugins with category NONE/0
+                    hints = pinfo.get("hints", 0)
+                    from carla_backend import PLUGIN_IS_SYNTH
+                    if hints & PLUGIN_IS_SYNTH:
+                        badge_info = ("SYNTH", "#f38ba8")
+                    else:
+                        badge_info = ("PLUGIN", "#89b4fa")
+            except Exception:
+                badge_info = ("PLUGIN", "#89b4fa")
+        else:
+            # Determine badge for sinks, sources, hardware, apps, and split I/O
+            has_ins = False
+            has_outs = False
+            pid_set = set(self.m_port_list_ids)
+            for port in canvas.port_list:
+                if port.port_id in pid_set:
+                    if getattr(port, "port_mode", None) == PORT_MODE_INPUT:
+                        has_ins = True
+                    elif getattr(port, "port_mode", None) == PORT_MODE_OUTPUT:
+                        has_outs = True
+
+            low_name = self.m_group_name.lower()
+            if self.m_split_mode == PORT_MODE_INPUT or (has_ins and not has_outs):
+                if any(k in low_name for k in ("sink", "playback", "speaker", "headphone")):
+                    badge_info = ("SINK", "#a6e3a1")  # Green
+                else:
+                    badge_info = ("IN", "#89dceb")    # Sky
+            elif self.m_split_mode == PORT_MODE_OUTPUT or (has_outs and not has_ins):
+                if any(k in low_name for k in ("source", "capture", "mic")):
+                    badge_info = ("SOURCE", "#fab387")  # Peach
+                else:
+                    badge_info = ("OUT", "#f9e2af")     # Yellow
+            elif getattr(self, "m_icon", None) == 1 or any(k in low_name for k in ("system", "hardware", "alsa", "hw:")):
+                badge_info = ("HW", "#b4befe")          # Lavender
+            elif has_ins and has_outs:
+                badge_info = ("APP", "#cba6f7")         # Mauve
+            else:
+                badge_info = ("NODE", "#6c7086")        # Slate
+
+        # Check if plugin actually supports active/bypass
+        has_rack_pair = self.m_plugin_id >= 0
+        has_bypass_support = False
+        is_active = True
+        btn_size = 12
+
+        if has_rack_pair:
+            try:
+                from carla_shared import gCarla
+                pitem = gCarla.gui.getPluginItem(self.m_plugin_id) if hasattr(gCarla.gui, "getPluginItem") else None
+                pwidget = pitem.getWidget() if (pitem and hasattr(pitem, "getWidget")) else None
+                if pwidget is not None and hasattr(pwidget, "fIsActive"):
+                    has_bypass_support = True
+                    is_active = bool(pwidget.fIsActive)
+                elif hasattr(gCarla.gui, "host") and hasattr(gCarla.gui.host, "get_internal_parameter_value"):
+                    from carla_backend import PARAMETER_ACTIVE
+                    val = gCarla.gui.host.get_internal_parameter_value(self.m_plugin_id, PARAMETER_ACTIVE)
+                    has_bypass_support = (val >= 0.0)
+                    is_active = bool(val >= 0.5)
+            except Exception:
+                has_bypass_support = True
+                is_active = True
+
+        byp_w = (btn_size + 4) if has_bypass_support else 0
+
+        if badge_info:
+            b_text = badge_info[0]
+            badge_w = max(26, len(b_text) * 6 + 8)
+            available_width = max(10, available_width - badge_w - 6)
+        else:
+            available_width = max(10, available_width - 6)
+
         elided_name = metrics.elidedText(
             self.m_group_name, elide_mode, int(max(0, available_width))
         )
 
         if not canvas.theme.box_use_icon:
-            # Re-center based on the actual drawn (potentially elided) text size
             drawn_name_size = fontHorizontalAdvance(self.m_font_name, elided_name)
-            rem = self.p_width - drawn_name_size
-            textPos = QPointF(rem / 2, canvas.theme.box_text_ypos)
+            rem = self.p_width - drawn_name_size - (badge_w + 4 if badge_info else 0)
+            textPos = QPointF(max(8, rem / 2), canvas.theme.box_text_ypos)
+        else:
+            textPos = QPointF(25, canvas.theme.box_text_ypos)
 
         painter.setRenderHint(QPainter.Antialiasing, False)
         painter.drawText(QPointF(round(textPos.x()), round(textPos.y())), elided_name)
         painter.setRenderHint(QPainter.Antialiasing, True)
+
+        # Right-aligned Category badge pill in top header line
+        if badge_info:
+            b_text, b_col_hex = badge_info
+            b_col = QColor(b_col_hex)
+            b_h = 12
+            b_y = int(lineHinting + (header_height - b_h) / 2) if header_height > 0 else int(lineHinting + 2)
+            b_x = int(self.p_width - 6 - badge_w)
+            b_rect = QRectF(b_x, b_y, badge_w, b_h)
+
+            painter.save()
+            painter.setPen(Qt.NoPen)
+            # Muted semantic translucent badge
+            pill_bg = QColor(b_col.red(), b_col.green(), b_col.blue(), 40)
+            painter.setBrush(pill_bg)
+            painter.drawRoundedRect(b_rect, 2.5, 2.5)
+
+            painter.setPen(QPen(b_col, 0.8))
+            painter.setBrush(Qt.NoBrush)
+            painter.drawRoundedRect(b_rect, 2.5, 2.5)
+
+            b_font = QFont(self.m_font_name)
+            b_font.setPointSize(max(6, b_font.pointSize() - 4))
+            b_font.setBold(True)
+            painter.setFont(b_font)
+            painter.setPen(b_col)
+            painter.drawText(b_rect, Qt.AlignCenter, b_text)
+            painter.restore()
+
+        # Line 2: Centered Button Toolbar for rack paired nodes
+        self.m_toolbar_buttons = []
+
+        if has_rack_pair and header_height > 0:
+            subbar_y = header_height
+            subbar_h = 22
+
+            # Inspect states for 3 controls
+            # 1. Power State
+            power_state = "active" if is_active else "inactive"
+            power_tip = "Power: Active (Click to disable DSP processing)" if is_active else "Power: Disabled (Click to enable DSP processing)"
+
+            # 2. Bypass State (Dry/Wet)
+            bypass_state = "disabled"
+            bypass_tip = "Bypass: Not supported for this plugin"
+            try:
+                from carla_backend import PLUGIN_CAN_DRYWET, PARAMETER_DRYWET
+                from carla_shared import gCarla
+                hints = gCarla.gui.host.get_plugin_info(self.m_plugin_id).get("hints", 0) if hasattr(gCarla.gui, "host") else 0
+                if bool(hints & PLUGIN_CAN_DRYWET):
+                    dw_val = gCarla.gui.host.get_internal_parameter_value(self.m_plugin_id, PARAMETER_DRYWET)
+                    if dw_val == 0.0:
+                        bypass_state = "active"    # Bypassed
+                        bypass_tip = "Bypass: Active (Dry/Wet 0% - Click to activate audio)"
+                    else:
+                        bypass_state = "inactive"  # Passing through normally
+                        bypass_tip = "Bypass: Inactive (Dry/Wet 100% - Click to bypass)"
+            except Exception:
+                pass
+
+            # 3. Jump to Rack State
+            jump_state = "inactive"
+            jump_tip = "Jump to Rack View (Focus and view plugin controls in Rack)"
+
+            # Button definitions with Nerd Font / FontAwesome icons
+            # Power: ⏻ (\uf011), Bypass: ⊘ (\uf05e), Jump:  (\uf08e)
+            btn_defs = [
+                {
+                    "id": "power",
+                    "icon": "\uf011",
+                    "state": power_state,
+                    "tip": power_tip,
+                },
+                {
+                    "id": "bypass",
+                    "icon": "\uf05e",
+                    "state": bypass_state,
+                    "tip": bypass_tip,
+                },
+                {
+                    "id": "jump",
+                    "icon": "\uf08e",
+                    "state": jump_state,
+                    "tip": jump_tip,
+                },
+            ]
+
+            # Uniform fixed square buttons
+            btn_size = 18.0
+            btn_spacing = 6.0
+            total_btns_w = len(btn_defs) * btn_size + (len(btn_defs) - 1) * btn_spacing
+            start_x = max(6.0, (self.p_width - total_btns_w) / 2.0)
+            btn_y = subbar_y + (subbar_h - btn_size) / 2.0
+
+            btn_font = QFont(self.m_font_name)
+            btn_font.setPointSize(max(9, btn_font.pointSize()))
+            btn_font.setBold(True)
+            painter.save()
+            painter.setFont(btn_font)
+
+            cur_x = start_x
+
+            for b in btn_defs:
+                b_rect = QRectF(cur_x, btn_y, btn_size, btn_size)
+                b["rect"] = b_rect
+                self.m_toolbar_buttons.append(b)
+
+                btn_id = b["id"]
+                st = b["state"]
+                is_hovered = (getattr(self, "m_hover_btn_id", None) == btn_id and st != "disabled")
+                is_pressed = (getattr(self, "m_pressed_btn_id", None) == btn_id and st != "disabled")
+
+                if st == "disabled":
+                    btn_bg = QColor(255, 255, 255, 4)
+                    btn_border = QColor(255, 255, 255, 12)
+                    icon_pen = QColor(140, 145, 160, 60)
+                elif is_pressed:
+                    btn_bg = QColor(255, 255, 255, 55)
+                    btn_border = QColor(255, 255, 255, 140)
+                    icon_pen = QColor(255, 255, 255, 255)
+                elif is_hovered:
+                    btn_bg = QColor(255, 255, 255, 28)
+                    btn_border = QColor(255, 255, 255, 80)
+                    icon_pen = QColor(250, 250, 255, 250)
+                elif st == "active":
+                    if btn_id == "power":
+                        btn_bg = QColor(137, 180, 250, 35)
+                        btn_border = QColor(137, 180, 250, 160)
+                        icon_pen = QColor(137, 180, 250, 255)
+                    elif btn_id == "bypass":
+                        btn_bg = QColor(250, 179, 135, 35)
+                        btn_border = QColor(250, 179, 135, 160)
+                        icon_pen = QColor(250, 179, 135, 255)
+                    else:
+                        btn_bg = QColor(255, 255, 255, 18)
+                        btn_border = QColor(255, 255, 255, 50)
+                        icon_pen = QColor(230, 235, 245, 240)
+                else: # inactive
+                    btn_bg = QColor(255, 255, 255, 10)
+                    btn_border = QColor(255, 255, 255, 24)
+                    icon_pen = QColor(180, 185, 200, 170)
+
+                painter.setPen(Qt.NoPen)
+                painter.setBrush(btn_bg)
+                painter.drawRoundedRect(b_rect, 3.0, 3.0)
+
+                draw_rect = b_rect.translated(0, 0.8) if is_pressed else b_rect
+                painter.setPen(icon_pen)
+                # Fallback to standard unicode icon if nerd font glyph not present
+                try:
+                    painter.drawText(draw_rect, Qt.AlignCenter, b["icon"])
+                except Exception:
+                    pass
+
+                cur_x += btn_size + btn_spacing
+
+            painter.restore()
 
         painter.restore()
 

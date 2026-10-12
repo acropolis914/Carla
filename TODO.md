@@ -7,7 +7,7 @@
 ## 🐛 Bugs
 - [x] `[Diff: 1]` Fix: Rack item remove button still does not delete or show confirmation dialog (reopened: calf skin vs other skins / context menu / delete key)
 - [x] `[Diff: 1]` Fix: Left-click drag on empty canvas does not pan the UI
-- [x] `[Diff: 1]` Fix: Node right-click preserves multi-selection so Align Horizontally / Vertically works
+- [x] `[Diff: 1]` Fix: Patchbay canvas node power button (`⏻`) does not toggle plugin processing state reliably
 
 ---
 
@@ -18,6 +18,9 @@
 - [ ] `[Diff: 2]` feat: Subtle canvas alignment dots/grid with snapping; align functions respect grid snap
 - [ ] `[Diff: 2]` feat: Auto repel arrangement tools (auto repel selected vs auto repel all), defaulting auto arrange and auto repel to selected items only
 - [ ] `[Diff: 3]` feat: Infinite canvas with `infinite-canvas = true` project metadata and migration for legacy files (recenter by subtracting half total bounding box on both X and Y axes)
+- [x] `[Diff: 1]` feat: Canvasbox sub-bar action buttons (quick controls/actions bar with Nerd Font icons)
+- [ ] `[Diff: 2]` feat: Option/checkbox on canvasbox to collapse or hide ports without active connections
+
 
 ---
 
@@ -30,7 +33,7 @@
 
 ## 🎚️ Rack & Dual-View Integration
 - [x] `[Diff: 2]` feat: Side-by-side view for mini rack and patchbay with bidirectional focus/scroll synchronization
-- [ ] `[Diff: 2]` feat: Synchronized colors, bypass state, and switch button between rack node and patchbay node
+- [x] `[Diff: 2]` feat: Synchronized colors, bypass state, and switch button between rack node and patchbay node
 - [ ] `[Diff: 2]` feat: Minified rack mode exposing only essential controls
 
 ---
@@ -53,3 +56,5 @@
 - [x] `[Diff: 1]` feat: Offer to save dirty edits on exit (Yes, No, Cancel) with visual save status indicator (dirty/saved)
 - [x] `[Diff: 1]` feat: Status indicator for last autosave timestamp and countdown timer to next autosave
 - [x] `[Diff: 2]` feat: Improved logging with Python Rich console, loglevels, log tags, and CLI flags (`--log-whitelist`, `--log-blacklist`)
+- [ ] `[Diff: 2]` feat: Project notes for current session/save file with rich Markdown rendering support in Qt (QTextDocument markdown / preview)
+- [ ] `[Diff: 1]` feat: Standardized `argparse` integration to expose all CLI flags and `--help` with Python `rich` formatting
