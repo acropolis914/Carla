@@ -748,7 +748,9 @@ class CanvasBox(QGraphicsObject):
     def setCustomColor(self, color, notify=True):
         self.m_custom_color = QColor(color) if color else None
         self.update()
-        self.repaintLines()
+        self.repaintLines(True)
+        if hasattr(self, "scene") and self.scene():
+            self.scene().update()
         if notify:
             if self.m_plugin_id >= 0:
                 color_str = color if color else ""

@@ -15,6 +15,10 @@ Recent developments enhance the Carla modular audio host across three primary pi
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 00:15:00
+- **fix(patchbay)**: Immediate cable gradient refresh on node color change
+  - Force-repainted connected cable lines and scheduled an instant scene redraw inside `CanvasBox.setCustomColor()`, updating gradient endpoints immediately without requiring node repositioning.
+
 ### 2026-10-13 00:14:00
 - **feat(patchbay)**: Physics-based iterative auto-repel tools
   - Added `repelNodes()` with AABB overlap resolution and configurable padding/iterations.
