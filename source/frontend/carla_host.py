@@ -632,7 +632,9 @@ class HostWindow(QMainWindow):
         self.act_settings_show_menubar.setCheckable(True)
         self.act_settings_show_menubar.setChecked(True)
         self.act_settings_show_menubar.setShortcut("Ctrl+M")
-        self.act_settings_show_menubar.setShortcutContext(Qt.WindowShortcut)
+        shortcut_context = getattr(Qt.ShortcutContext, "WindowShortcut", getattr(Qt, "WindowShortcut", None))
+        if shortcut_context is not None:
+            self.act_settings_show_menubar.setShortcutContext(shortcut_context)
         self.act_settings_show_menubar.toggled.connect(self.slot_showMenubar)
         self.addAction(self.act_settings_show_menubar)
         self.ui.menu_Settings.addAction(self.act_settings_show_menubar)
