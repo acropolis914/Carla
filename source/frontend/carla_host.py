@@ -1477,13 +1477,19 @@ class HostWindow(QMainWindow):
             return False
 
     def loadExternalCanvasGroupPositionsIfNeeded(self, filename):
+        if not filename or not filename.endswith(".carxp"):
+            return False
+
         extrafile = filename.rsplit(".", 1)[0] + ".json"
         if not os.path.exists(extrafile):
             return False
 
-        with open(filename, "r") as fh:
-            if "".join(fh.readlines(90)).find("<CARLA-PROJECT VERSION='2.0'>") < 0:
-                return False
+        try:
+            with open(filename, "r") as fh:
+                if "".join(fh.readlines(90)).find("<CARLA-PROJECT VERSION='2.0'>") < 0:
+                    return False
+        except Exception:
+            return False
 
         with open(extrafile, "r") as fh:
             try:
