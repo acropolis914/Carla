@@ -1310,25 +1310,25 @@ class HostWindow(QMainWindow):
         except Exception as e:
             print("Bridge pre-check warning:", e)
 
-        logger.info(f"[PROJECT-LOAD] load_source='{load_source}', fProjectFilename='{self.fProjectFilename}', engine_running={self.host.is_engine_running()}")
+        logger.info("SESSION", f"load_source='{load_source}', fProjectFilename='{self.fProjectFilename}', engine_running={self.host.is_engine_running()}")
         actual_load_filename = load_source
         tmp_cleanup_file = None
         try:
             actual_load_filename = storage_manager.prepare_for_backend_load(load_source, force_bridged=force_bridged)
             if actual_load_filename != load_source:
                 tmp_cleanup_file = actual_load_filename
-            logger.info(f"[PROJECT-LOAD] prepared actual_load_filename='{actual_load_filename}', exists={os.path.exists(actual_load_filename)}")
+            logger.info("SESSION", f"prepared actual_load_filename='{actual_load_filename}', exists={os.path.exists(actual_load_filename)}")
         except Exception as e:
-            logger.error(f"[PROJECT-LOAD] Failed to prepare project for loading: {e}")
+            logger.error("SESSION", f"Failed to prepare project for loading: {e}")
 
         # Ensure engine backend is started before loading project
         if not (self.host.isControl or self.host.is_engine_running()):
-            logger.info("[PROJECT-LOAD] Engine not running; calling slot_engineStart()")
+            logger.info("SESSION", "Engine not running; calling slot_engineStart()")
             self.slot_engineStart()
 
-        logger.info(f"[PROJECT-LOAD] Calling self.host.load_project('{actual_load_filename}')")
+        logger.info("SESSION", f"Calling self.host.load_project('{actual_load_filename}')")
         load_ok = self.host.load_project(actual_load_filename)
-        logger.info(f"[PROJECT-LOAD] load_project returned {load_ok}, last_error='{self.host.get_last_error()}'")
+        logger.info("SESSION", f"load_project returned {load_ok}, last_error='{self.host.get_last_error()}'")
 
         if tmp_cleanup_file and os.path.exists(tmp_cleanup_file):
             try:
@@ -1341,7 +1341,7 @@ class HostWindow(QMainWindow):
             self.projectLoadingFinished(True)
 
             last_err = self.host.get_last_error()
-            logger.error(f"[PROJECT-LOAD] Failed to load project: {last_err} (file: {actual_load_filename})")
+            logger.error("SESSION", f"Failed to load project: {last_err} (file: {actual_load_filename})")
             CustomMessageBox(
                 self,
                 QMessageBox.Critical,
