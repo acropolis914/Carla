@@ -6,23 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Overview
 
-**Clara** (*Carla Improved*) is an enhanced fork of the Carla modular audio host focused on modern UX, performance, and workflow ergonomics:
-
-| Domain | Key Highlights |
-|---|---|
-| **Patchbay Workflow** | Photoshop/Blender-inspired modal navigation (`V`, `H`, `Space`, `Q`), infinite canvas, directional marquee box selection, snap-to-grid alignment with non-overlapping repel, and smooth 4x MSAA rendering. |
-| **Visuals & Cabling** | Catppuccin-themed node categories, role badges (`SOURCE`, `SINK`, `HW`), dynamic source-to-destination cable gradients, multiple cable routing styles (Bezier, Straight, Stepped), and instant color synchronization. |
-| **Unified Controls** | Compact floating icon toolbars with standardized Nerd Font glyphs, batch power/bypass toggles, quick color swatch popups, and bidirectional focus synchronization between the rack and patchbay. |
-| **Session Safety** | Automatic dirty tracking, rotating autosave engine (`.autosaves/`), countdown timers, and safe-exit verification prompts. |
-| **Diagnostics** | Rich console logging with categorical color tags, C++ backend `stderr` capture, and in-UI live filter checklists. |
+**Clara** (*Carla Improved*) key highlights:
+- **Modal Navigation**: Photoshop/Blender hotkeys (`V`, `H`, `Space`, `Q`), infinite canvas, directional marquee box selection, and minimap tracking.
+- **Dynamic Cable Gradients & Routing**: Source-to-destination color gradients with Bezier, straight, and stepped routing formulas.
+- **Catppuccin Theming**: Automatic category colors, role badges (`SOURCE`, `SINK`, `HW`), and quick popup color swatches.
+- **Unified Toolbars**: Floating palettes with standardized Nerd Font glyphs, batch mute/bypass, and alignment/repel tools.
+- **Rack & Patchbay Sync**: Side-by-side view with bidirectional scroll, focus, and color synchronization.
+- **Session Safety**: Rotating autosaves (`.autosaves/`), countdown timers, dirty edit tracking, and save-on-exit prompts.
+- **Rich Diagnostics**: Terminal logs with Python `rich` formatting, color tags, and C++ backend `stderr` capture.
 
 ---
 
+
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 01:25:00
+- **feat(patchbay)**: Move shortcuts help to toolbar tooltip and collapse overlay by default
+  - Collapsed the floating cheat-sheet overlay by default to reduce visual clutter on launch.
+  - Added a dedicated Help icon button (`nf-fa-question-circle`) to the left toolbar with a rich HTML tooltip displaying all patchbay and cable shortcuts on hover.
 
 
-### 2026-10-13 01:12:00
 - **feat(patchbay)**: Sensible Nerd Font icon glyphs and quick color preset swatch popup menu
   - Audited and updated all toolbar glyphs across left palette and top context bar to high-readability, standardized Nerd Font icons (`mouse-pointer`, `select-drag`, `hand-paper`, `magnet`, `power-off`, `random`, `sliders`, `desktop`, `paint-brush`, `trash`, etc.).
   - Added quick popup color swatch menu for node tinting with Catppuccin presets (`Default Dark`, `Crimson`, `Synth`, `Audio`, `MIDI`, `FX`, `Dynamics`, `Teal`, `Sky`, `Flamingo`), Reset, and Custom Color Picker dialog.

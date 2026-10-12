@@ -391,8 +391,8 @@ class PatchbayHelpOverlay(QFrame):
             }
         """)
 
-        # Set default state to expanded (open by default)
-        self.setExpanded(True)
+        # Set default state to collapsed (hidden/icon-only by default)
+        self.setExpanded(False)
         self._dragPos = None
         self._userMoved = False
 
@@ -538,6 +538,7 @@ class CanvasToolBarOverlay(QFrame):
         self.icon_fit     = "\uf0b2" if font_family else "⛶"   # nf-fa-arrows-alt
         self.icon_grid    = "\uf00a" if font_family else "#"   # nf-fa-th
         self.icon_snap    = "\uf076" if font_family else "🧲"  # nf-fa-magnet
+        self.icon_help    = "\uf059" if font_family else "?"   # nf-fa-question-circle
 
         # Mode Selection Buttons (Checkable, Mutually Exclusive)
         self.btnPointer = QPushButton(self.icon_pointer, self)
@@ -614,6 +615,22 @@ class CanvasToolBarOverlay(QFrame):
         self.btnSnap.setChecked(getattr(patchcanvas.options, "snap_enabled", True))
         self.btnSnap.clicked.connect(self._slot_toggleSnap)
         layout.addWidget(self.btnSnap)
+
+        add_sep()
+
+        # Patchbay Shortcuts Help Tooltip
+        self.btnHelp = QPushButton(self.icon_help, self)
+        self.btnHelp.setFont(font)
+        self.btnHelp.setFixedSize(28, 28)
+        self.btnHelp.setToolTip("""<b>Patchbay Shortcuts:</b><br/>
+• <b>Space + Drag</b>: Pan Canvas<br/>
+• <b>Wheel</b>: Zoom in/out<br/>
+• <b>F</b>: Zoom to Fit All<br/>
+• <b>Alt + Drag Wire</b>: Stereo Autowire (L+R)<br/>
+• <b>Alt / Shift + Click</b>: Quick Disconnect<br/>
+• <b>Middle-Click</b>: Disconnect Wire/Port<br/>
+• <b>Right-Click Node</b>: Node Actions & Align""")
+        layout.addWidget(self.btnHelp)
 
         self.setStyleSheet("""
             QFrame#canvas_toolbar_overlay {
