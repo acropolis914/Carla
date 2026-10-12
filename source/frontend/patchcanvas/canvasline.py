@@ -217,10 +217,11 @@ class CanvasLine(QGraphicsPathItem):
 
         pen = self._cached_pen if self._cached_pen is not None else self.pen()
         scale = canvas.scene.getScaleFactor() if hasattr(canvas.scene, "getScaleFactor") else 1.0
-        min_width = max(2.0, 2.0 / scale)
-        if pen.widthF() != min_width:
+        # Dynamic cable thickness: maintain clear visibility across zoom levels while remaining crisp when zoomed in
+        effective_width = max(1.5, min(6.0, 2.2 / (scale ** 0.6)))
+        if abs(pen.widthF() - effective_width) > 0.05:
             pen = QPen(pen)
-            pen.setWidthF(min_width)
+            pen.setWidthF(effective_width)
 
         painter.setPen(pen)
         painter.setBrush(Qt.NoBrush)

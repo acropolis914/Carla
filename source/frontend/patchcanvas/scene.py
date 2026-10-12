@@ -151,30 +151,61 @@ class PatchScene(QGraphicsScene):
         if not getattr(options, "grid_enabled", True):
             return
 
-        grid_size = getattr(options, "grid_size", 20)
-        if grid_size <= 4:
+        base_grid = getattr(options, "grid_size", 20)
+        if base_grid <= 4:
             return
+
+        # Adaptive grid step based on camera zoom factor
+        scale = self.getScaleFactor() if hasattr(self, "getScaleFactor") else 1.0
+        if scale <= 0.001:
+            return
+
+        # Choose LOD step multiplier so screen spacing stays within comfortable 14px - 45px range
+        step = float(base_grid)
+        screen_dist = step * scale
+        if screen_dist < 14.0:
+            while step * scale < 14.0:
+                step *= 2.0
+        elif screen_dist > 50.0:
+            while step * scale > 50.0 and step / 2.0 >= 8.0:
+                step /= 2.0
+
+        grid_step = int(max(4.0, round(step)))
 
         # Determine subtle dot color based on background contrast
         bg_black = canvas.theme.canvas_bg.blackF()
-        if bg_black < 0.5:
-            dot_color = QColor(0, 0, 0, 32)
-        else:
-            dot_color = QColor(255, 255, 255, 32)
+        is_dark = (bg_black >= 0.5)
+        base_alpha = 48 if is_dark else 36
 
-        painter.setPen(Qt.NoPen)
-        painter.setBrush(QBrush(dot_color))
+        # Draw secondary major grid lines if zoomed in, or subtle hierarchy
+        major_step = grid_step * 5
+        line_color = QColor(255, 255, 255, 12) if is_dark else QColor(0, 0, 0, 10)
+        dot_color = QColor(255, 255, 255, base_alpha) if is_dark else QColor(0, 0, 0, base_alpha)
 
-        left = int(floor(rect.left() / grid_size) * grid_size)
-        top = int(floor(rect.top() / grid_size) * grid_size)
+        left = int(floor(rect.left() / grid_step) * grid_step)
+        top = int(floor(rect.top() / grid_step) * grid_step)
         right = int(ceil(rect.right()))
         bottom = int(ceil(rect.bottom()))
 
-        # Draw dots at grid intersections
-        dot_radius = 1.0
-        for x in range(left, right, grid_size):
-            for y in range(top, bottom, grid_size):
-                painter.drawRect(QRectF(x - dot_radius, y - dot_radius, dot_radius * 2, dot_radius * 2))
+        # 1. Subtle major grid reference lines
+        if scale >= 0.4 and major_step <= 500:
+            painter.setPen(QPen(line_color, 1.0 / scale, Qt.DotLine))
+            painter.setBrush(Qt.NoBrush)
+            major_left = int(floor(rect.left() / major_step) * major_step)
+            major_top = int(floor(rect.top() / major_step) * major_step)
+            for x in range(major_left, right + major_step, major_step):
+                painter.drawLine(QPointF(x, rect.top()), QPointF(x, rect.bottom()))
+            for y in range(major_top, bottom + major_step, major_step):
+                painter.drawLine(QPointF(rect.left(), y), QPointF(rect.right(), y))
+
+        # 2. Dynamic zoom-scaled intersection dots
+        dot_radius = max(0.6, 1.2 / scale)
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QBrush(dot_color))
+
+        for x in range(left, right + grid_step, grid_step):
+            for y in range(top, bottom + grid_step, grid_step):
+                painter.drawRect(QRectF(x - dot_radius, y - dot_radius, dot_radius * 2.0, dot_radius * 2.0))
 
     def zoom_fit(self):
         min_x = min_y = max_x = max_y = None
