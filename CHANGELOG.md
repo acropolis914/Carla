@@ -41,7 +41,12 @@ Recent developments enhance the Carla modular audio host across three primary pi
   - Added project dirty tracking and `markProjectModified()` on `changePluginColor()` to ensure custom colors persist on save.
   - Linked `setGroupAsPlugin()` in `patchcanvas.py` to fetch saved `CarlaColor` custom data from the engine and immediately tint the patchbay node and its cable connections upon project loading.
 
-### 2026-10-12 18:24:00 (`e577fae12`)
+### 2026-10-12 18:58:00
+- **feat(patchbay)**: Assign distinctive Catppuccin category colors to nodes by default and sync saved colors
+  - Added default Catppuccin category color palette mapping (Synth: Red, Delay: Sky, EQ: Green, Filter: Teal, Distortion: Peach, Dynamics: Yellow, Modulator: Mauve, Utility: Lavender, Other: Blue) for patchbay nodes without explicit custom overrides.
+  - Linked `CarlaColor` retrieval in `setGroupAsPlugin()` to restore project-saved custom node tints reliably upon initial load.
+
+### 2026-10-12 18:24:00 (`e577fae12`) (`e577fae12`)
 - **fix(canvas)**: Ensure cable gradients render regardless of line formula (bezier/straight/stepped) and stroke pattern
   - Recomputed `updateLineGradient()` on every `updateLinePos()` to ensure gradients always match latest node positions.
   - Fixed painter rendering in `CanvasLine.paint()` to draw directly with `_cached_pen` preserving `QBrush` gradient fill across all line shapes and stroke patterns (`solid`, `dotted`, `dashed`).

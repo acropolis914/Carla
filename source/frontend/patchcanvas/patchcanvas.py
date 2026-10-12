@@ -991,19 +991,37 @@ def setGroupAsPlugin(group_id, plugin_id, hasUI, hasInlineDisplay):
             if group.split and group.widgets[1]:
                 group.widgets[1].setAsPlugin(plugin_id, hasUI, hasInlineDisplay)
 
-            # Sync saved custom color from backend property
+            # Sync saved custom color or assign category-based color
             try:
                 from carla_shared import gCarla, CUSTOM_DATA_TYPE_PROPERTY
                 saved_color = gCarla.gui.host.get_custom_data_value(
                     plugin_id, CUSTOM_DATA_TYPE_PROPERTY, "CarlaColor"
                 )
+                hex_col = None
                 if saved_color:
                     parts = tuple(int(i) for i in saved_color.split(";", 3))
                     if parts != (255, 255, 255):
                         hex_col = f"#{parts[0]:02x}{parts[1]:02x}{parts[2]:02x}"
-                        group.widgets[0].setCustomColor(hex_col, notify=False)
-                        if group.split and group.widgets[1]:
-                            group.widgets[1].setCustomColor(hex_col, notify=False)
+                else:
+                    # Default category color mapping from Catppuccin palette
+                    category = gCarla.gui.host.get_plugin_info(plugin_id).get("category", 0)
+                    category_palette = {
+                        1: "#f38ba8",  # SYNTH -> Red
+                        2: "#89dceb",  # DELAY -> Sky
+                        3: "#a6e3a1",  # EQ -> Green
+                        4: "#94e2d5",  # FILTER -> Teal
+                        5: "#fab387",  # DISTORTION -> Peach
+                        6: "#f9e2af",  # DYNAMICS -> Yellow
+                        7: "#cba6f7",  # MODULATOR -> Mauve
+                        8: "#b4befe",  # UTILITY -> Lavender
+                        9: "#89b4fa",  # OTHER -> Blue
+                    }
+                    hex_col = category_palette.get(category, None)
+
+                if hex_col:
+                    group.widgets[0].setCustomColor(hex_col, notify=False)
+                    if group.split and group.widgets[1]:
+                        group.widgets[1].setCustomColor(hex_col, notify=False)
             except Exception:
                 pass
 
