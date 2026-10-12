@@ -15,6 +15,12 @@ Recent developments enhance the Carla modular audio host across three primary pi
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 00:23:00
+- **feat(patchbay)**: Photoshop-style vertical floating toolbar on left canvas margin
+  - Converted `CanvasToolBarOverlay` to a vertical column floating on the left side of the patchbay canvas.
+  - Expanded tools with Auto-Arrange, Auto-Repel, Move Aside Non-Connected, Zoom In, Zoom Out, and Zoom to Fit.
+  - Maintained smooth drag repositioning and dark translucent Catppuccin theme styling with subtle dividers.
+
 ### 2026-10-13 00:19:00
 - **fix(patchbay)**: Fix NameError for `options` in `PatchScene.drawBackground`
   - Added missing `options`, `ceil`, `QColor`, and `QBrush` imports to `scene.py` preventing crashes during canvas background repaints.

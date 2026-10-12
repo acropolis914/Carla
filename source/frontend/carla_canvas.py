@@ -403,7 +403,7 @@ def getBestNerdFont():
 
 
 class CanvasToolBarOverlay(QFrame):
-    """Floating Photoshop/Blender style modal tool selection pill."""
+    """Floating Photoshop-style vertical tool palette on the left of the patchbay canvas."""
 
     def __init__(self, graphicsView, parent=None):
         super().__init__(parent or graphicsView.viewport())
@@ -412,20 +412,28 @@ class CanvasToolBarOverlay(QFrame):
         self._dragPos = None
         self._userMoved = False
 
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(4, 3, 4, 3)
-        layout.setSpacing(2)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(4, 4, 4, 4)
+        layout.setSpacing(3)
 
         font_family = getBestNerdFont()
         font = QFont(font_family, 13) if font_family else QFont()
         if not font_family:
-            font.setPointSize(12)
+            font.setPointSize(11)
 
         # Icons: Nerd Font glyphs or clean unicode symbols
-        self.icon_pointer = "\U000f01be" if font_family else "↖"   # nf-md-cursor_default / arrow
-        self.icon_select  = "\U000f0485" if font_family else "⛶"   # nf-md-select_drag / marquee
-        self.icon_hand    = "\U000f0361" if font_family else "✋"   # nf-md-hand_back_right / hand
+        self.icon_pointer = "\U000f01be" if font_family else "↖"   # Pointer
+        self.icon_select  = "\U000f0485" if font_family else "⛶"   # Marquee
+        self.icon_hand    = "\U000f0361" if font_family else "✋"   # Hand / Pan
+        self.icon_arrange = "\uf0e8" if font_family else "🔀"      # Splay / Auto-arrange
+        self.icon_repel   = "\uf065" if font_family else "↔"      # Expand / Auto-repel
+        self.icon_aside   = "\uf061" if font_family else "⏭"      # Move aside
+        self.icon_fit     = "\uf0b2" if font_family else "⛶"      # Zoom fit / Arrows alt
+        self.icon_zoomin  = "\uf00e" if font_family else "+"      # Zoom in
+        self.icon_zoomout = "\uf010" if font_family else "-"      # Zoom out
+        self.icon_disc    = "\uf127" if font_family else "✂"      # Unlink / Cut wires
 
+        # Mode Selection Buttons (Checkable, Mutually Exclusive)
         self.btnPointer = QPushButton(self.icon_pointer, self)
         self.btnPointer.setToolTip("Pointer / Default (Q / Esc)")
         self.btnPointer.setFont(font)
@@ -439,7 +447,7 @@ class CanvasToolBarOverlay(QFrame):
         self.btnHand.setFont(font)
 
         for btn in (self.btnPointer, self.btnSelect, self.btnHand):
-            btn.setFixedSize(30, 28)
+            btn.setFixedSize(28, 28)
             btn.setCheckable(True)
             layout.addWidget(btn)
 
@@ -447,9 +455,65 @@ class CanvasToolBarOverlay(QFrame):
         self.btnSelect.clicked.connect(lambda: self._setMode(1))
         self.btnHand.clicked.connect(lambda: self._setMode(2))
 
+        def add_sep():
+            line = QFrame(self)
+            line.setFrameShape(QFrame.HLine)
+            line.setFrameShadow(QFrame.Sunken)
+            line.setFixedHeight(1)
+            line.setStyleSheet("background-color: #45475a; border: none;")
+            layout.addWidget(line)
+
+        add_sep()
+
+        # Canvas Arrange Tools
+        self.btnArrange = QPushButton(self.icon_arrange, self)
+        self.btnArrange.setToolTip("Auto-arrange Graph (Flow order)")
+        self.btnArrange.setFont(font)
+        self.btnArrange.setFixedSize(28, 28)
+        self.btnArrange.clicked.connect(self._slot_arrange)
+        layout.addWidget(self.btnArrange)
+
+        self.btnRepel = QPushButton(self.icon_repel, self)
+        self.btnRepel.setToolTip("Auto-Repel Overlapping Nodes")
+        self.btnRepel.setFont(font)
+        self.btnRepel.setFixedSize(28, 28)
+        self.btnRepel.clicked.connect(self._slot_repel)
+        layout.addWidget(self.btnRepel)
+
+        self.btnAside = QPushButton(self.icon_aside, self)
+        self.btnAside.setToolTip("Park Non-Connected Nodes Aside")
+        self.btnAside.setFont(font)
+        self.btnAside.setFixedSize(28, 28)
+        self.btnAside.clicked.connect(self._slot_moveAside)
+        layout.addWidget(self.btnAside)
+
+        add_sep()
+
+        # Zoom & View Tools
+        self.btnZoomIn = QPushButton(self.icon_zoomin, self)
+        self.btnZoomIn.setToolTip("Zoom In (+)")
+        self.btnZoomIn.setFont(font)
+        self.btnZoomIn.setFixedSize(28, 28)
+        self.btnZoomIn.clicked.connect(lambda: self._zoom(120))
+        layout.addWidget(self.btnZoomIn)
+
+        self.btnZoomOut = QPushButton(self.icon_zoomout, self)
+        self.btnZoomOut.setToolTip("Zoom Out (-)")
+        self.btnZoomOut.setFont(font)
+        self.btnZoomOut.setFixedSize(28, 28)
+        self.btnZoomOut.clicked.connect(lambda: self._zoom(-120))
+        layout.addWidget(self.btnZoomOut)
+
+        self.btnFit = QPushButton(self.icon_fit, self)
+        self.btnFit.setToolTip("Zoom to Fit All Nodes (F)")
+        self.btnFit.setFont(font)
+        self.btnFit.setFixedSize(28, 28)
+        self.btnFit.clicked.connect(self._slot_zoomFit)
+        layout.addWidget(self.btnFit)
+
         self.setStyleSheet("""
             QFrame#canvas_toolbar_overlay {
-                background-color: rgba(24, 24, 37, 0.92);
+                background-color: rgba(24, 24, 37, 0.94);
                 border: 1px solid #45475a;
                 border-radius: 8px;
             }
@@ -472,12 +536,37 @@ class CanvasToolBarOverlay(QFrame):
         """)
 
         self.updateActiveButton(0)
-        self.setFixedSize(102, 36)
+        self.adjustSize()
 
     def _setMode(self, mode):
         if hasattr(self.graphicsView, "setToolMode"):
             self.graphicsView.setToolMode(mode)
         self.updateActiveButton(mode)
+
+    def _zoom(self, delta):
+        scene = self.graphicsView.scene()
+        if scene and hasattr(scene, "zoom_wheel"):
+            scene.zoom_wheel(delta)
+
+    def _slot_zoomFit(self):
+        scene = self.graphicsView.scene()
+        if scene and hasattr(scene, "zoom_fit"):
+            scene.zoom_fit()
+
+    def _slot_arrange(self):
+        import patchcanvas
+        if hasattr(patchcanvas, "arrange"):
+            patchcanvas.arrange()
+
+    def _slot_repel(self):
+        import patchcanvas
+        if hasattr(patchcanvas, "repelNodes"):
+            patchcanvas.repelNodes()
+
+    def _slot_moveAside(self):
+        import patchcanvas
+        if hasattr(patchcanvas, "moveAsideNonConnectedNodes"):
+            patchcanvas.moveAsideNonConnectedNodes()
 
     def updateActiveButton(self, mode):
         self.btnPointer.setChecked(mode == 0)
@@ -514,9 +603,9 @@ class CanvasToolBarOverlay(QFrame):
         vp = self.parentWidget()
         if vp is None:
             return
-        # Position top-center
-        x = max(10, (vp.width() - self.width()) // 2)
-        y = 12
+        # Position floating on the left side (Photoshop palette position)
+        x = 12
+        y = max(12, (vp.height() - self.height()) // 2)
         self.move(x, y)
         self.raise_()
 
