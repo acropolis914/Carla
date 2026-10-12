@@ -40,8 +40,11 @@ class CanvasBoxShadow(QGraphicsDropShadowEffect):
         self.setColor(color)
 
     def draw(self, painter):
-        if self.m_fakeParent:
-            self.m_fakeParent.repaintLines()
+        # NOTE: repaintLines() intentionally removed from here.
+        # Previously this caused updateLinePos() to be called on every shadow
+        # paint event, cascading into expensive line updates for every box on
+        # each frame with many connections. Lines are already updated in
+        # CanvasBox.mouseMoveEvent() and repaintLines(forced=True) where needed.
         QGraphicsDropShadowEffect.draw(self, painter)
 
 # ------------------------------------------------------------------------------------------------------------

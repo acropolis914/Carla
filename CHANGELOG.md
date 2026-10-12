@@ -15,6 +15,9 @@ Recent developments enhance the Carla modular audio host across three primary pi
 
 ## [Unreleased] - 2026-10-12
 
+### 2026-10-12 15:59:00
+- **perf(canvas)**: Remove `repaintLines()` cascade from `CanvasBoxShadow.draw()` — eliminates per-frame `updateLinePos()` call on every box shadow repaint, which was cascading into O(connections) work every render tick when dragging nodes with many connections loaded.
+
 ### 2026-10-12 15:37:00 (`e213d7f02`)
 - **fix(canvas)**: Fix HighQualityAntialiasing crash and expose Use OpenGL in Canvas settings
   - Fixed `AttributeError: type object 'QPainter' has no attribute 'HighQualityAntialiasing'` on Qt6 by safely probing `QPainter.RenderHint`.
