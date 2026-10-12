@@ -20,6 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 03:35:00
+- **feat(rack)**: Lower `RackListItem.kMinimumWidth` hard floor from 620px to 200px
+  - Reduced `RackListItem.kMinimumWidth` and `RackListWidget.minimumWidth` constraint from 620px to 200px, eliminating the hard floor that prevented rack items and splitters from resizing smaller.
+  - Reduced parameter name label minimum width in `SliderParamWidget` from 85px to 40px for compact slider layouts.
+
 ### 2026-10-13 03:32:00
 - **fix(patchbay)**: Guard `act_canvas_side_by_side` initialization during startup `loadSettings`
   - Fixed `AttributeError: 'HostWindow' object has no attribute 'act_canvas_side_by_side'` during startup settings restoration.

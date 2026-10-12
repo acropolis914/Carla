@@ -38,7 +38,7 @@ from patchcanvas.theme import Theme
 
 class RackListItem(QListWidgetItem):
     kRackItemType = QListWidgetItem.UserType + 1
-    kMinimumWidth = 620
+    kMinimumWidth = 200
 
     def __init__(self, parent, pluginId, useClassicSkin):
         QListWidgetItem.__init__(self, parent, self.kRackItemType)

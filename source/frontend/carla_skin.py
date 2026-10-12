@@ -2243,7 +2243,7 @@ class SliderParamWidget(QWidget):
         self.setFixedHeight(22)
 
         self.label = QLabel(name)
-        self.label.setMinimumWidth(85)
+        self.label.setMinimumWidth(40)
         self.label.setMaximumWidth(120)
         f = self.label.font()
         f.setPointSize(9)
