@@ -1273,10 +1273,8 @@ def connectPorts(
     connection_dict.group_out_id = group_out_id
     connection_dict.port_out_id = port_out_id
 
-    if options.use_bezier_lines:
-        connection_dict.widget = CanvasBezierLine(port_out, port_in, None)
-    else:
-        connection_dict.widget = CanvasLine(port_out, port_in, None)
+    line_shape = "bezier" if options.use_bezier_lines else "straight"
+    connection_dict.widget = CanvasLine(port_out, port_in, None, shape=line_shape)
 
     canvas.scene.addItem(connection_dict.widget)
 

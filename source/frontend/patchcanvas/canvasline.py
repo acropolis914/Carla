@@ -8,13 +8,13 @@
 from qt_compat import qt_config
 
 if qt_config == 5:
-    from PyQt5.QtCore import Qt, QLineF
-    from PyQt5.QtGui import QColor, QLinearGradient, QPainter, QPen
-    from PyQt5.QtWidgets import QGraphicsLineItem
+    from PyQt5.QtCore import Qt, QPointF
+    from PyQt5.QtGui import QColor, QLinearGradient, QPainter, QPainterPath, QPen
+    from PyQt5.QtWidgets import QGraphicsPathItem
 elif qt_config == 6:
-    from PyQt6.QtCore import Qt, QLineF
-    from PyQt6.QtGui import QColor, QLinearGradient, QPainter, QPen
-    from PyQt6.QtWidgets import QGraphicsLineItem
+    from PyQt6.QtCore import Qt, QPointF
+    from PyQt6.QtGui import QColor, QLinearGradient, QPainter, QPainterPath, QPen
+    from PyQt6.QtWidgets import QGraphicsPathItem
 
 # ------------------------------------------------------------------------------------------------------------
 # Imports (Custom)
@@ -23,6 +23,7 @@ from . import (
     canvas,
     options,
     CanvasLineType,
+    CanvasBezierLineType,
     ACTION_PORTS_DISCONNECT,
     EYECANDY_FULL,
     PORT_MODE_OUTPUT,
@@ -36,19 +37,45 @@ from .canvasportglow import CanvasPortGlow
 
 # ------------------------------------------------------------------------------------------------------------
 
-class CanvasLine(QGraphicsLineItem):
-    def __init__(self, item1, item2, parent):
-        QGraphicsLineItem.__init__(self)
+class CanvasLine(QGraphicsPathItem):
+    """
+    Unified connection line item rendering both Bézier curves, straight lines,
+    and stepped/orthogonal paths, with configurable stroke patterns (solid, dotted, dashed).
+    """
+    def __init__(self, item1, item2, parent, shape="bezier", stroke="solid"):
+        QGraphicsPathItem.__init__(self)
         self.setParentItem(parent)
 
         self.item1 = item1
         self.item2 = item2
+        self.m_shape = shape
+        self.m_stroke = stroke
 
         self.m_locked = False
         self.m_lineSelected = None  # None sentinel — ensures updateLineGradient() fires on first call
 
+        self._cached_pen = None
+        self._cached_cosm_pen = None
+
+        self.setBrush(QColor(0, 0, 0, 0))
         self.setGraphicsEffect(None)
         self.updateLinePos()
+
+    def setShape(self, shape):
+        if self.m_shape != shape:
+            self.m_shape = shape
+            self.updateLinePos()
+
+    def getShape(self):
+        return self.m_shape
+
+    def setStroke(self, stroke):
+        if self.m_stroke != stroke:
+            self.m_stroke = stroke
+            self.updateLineGradient()
+
+    def getStroke(self):
+        return self.m_stroke
 
     def isLocked(self):
         return self.m_locked
@@ -85,16 +112,34 @@ class CanvasLine(QGraphicsLineItem):
         if self.item1.getPortMode() == PORT_MODE_OUTPUT:
             rect1 = self.item1.sceneBoundingRect()
             rect2 = self.item2.sceneBoundingRect()
-            line = QLineF(rect1.right(),
-                          rect1.top() + float(canvas.theme.port_height)/2,
-                          rect2.left(),
-                          rect2.top() + float(canvas.theme.port_height)/2)
-            self.setLine(line)
 
+            item1_x = rect1.right()
+            item2_x = rect2.left()
+            item1_y = rect1.top() + float(canvas.theme.port_height) / 2
+            item2_y = rect2.top() + float(canvas.theme.port_height) / 2
+
+            path = QPainterPath(QPointF(item1_x, item1_y))
+
+            if self.m_shape == "straight":
+                path.lineTo(item2_x, item2_y)
+            elif self.m_shape == "stepped":
+                mid_x = (item1_x + item2_x) / 2
+                path.lineTo(mid_x, item1_y)
+                path.lineTo(mid_x, item2_y)
+                path.lineTo(item2_x, item2_y)
+            else:
+                # Default: cubic Bézier
+                item1_new_x = item1_x + abs(item1_x - item2_x) / 2
+                item2_new_x = item2_x - abs(item1_x - item2_x) / 2
+                path.cubicTo(item1_new_x, item1_y, item2_new_x, item2_y, item2_x, item2_y)
+
+            self.setPath(path)
             self.updateLineSelected()
 
     def type(self):
-        return CanvasLineType
+        if self.m_shape == "straight":
+            return CanvasLineType
+        return CanvasBezierLineType
 
     def updateLineGradient(self):
         pos_top = self.boundingRect().top()
@@ -134,8 +179,16 @@ class CanvasLine(QGraphicsLineItem):
         elif port_type2 == PORT_TYPE_PARAMETER:
             port_gradient.setColorAt(pos2, get_color(canvas.theme.line_parameter_sel if self.m_lineSelected else canvas.theme.line_parameter))
 
+        pen_style = Qt.SolidLine
+        if self.m_stroke == "dotted":
+            pen_style = Qt.DotLine
+        elif self.m_stroke == "dashed":
+            pen_style = Qt.DashLine
+
+        cap_style = Qt.RoundCap if self.m_shape == "straight" else Qt.FlatCap
+
         # Cache built pen so paint() never allocates per frame
-        self._cached_pen = QPen(port_gradient, 2.00001, Qt.SolidLine, Qt.RoundCap)
+        self._cached_pen = QPen(port_gradient, 2.00001, pen_style, cap_style)
         self.setPen(self._cached_pen)
 
         # Pre-build cosmetic overlay pen — stored for reuse
@@ -152,12 +205,11 @@ class CanvasLine(QGraphicsLineItem):
         scale = canvas.scene.getScaleFactor() if hasattr(canvas.scene, "getScaleFactor") else 1.0
         min_width = max(2.0, 2.0 / scale)
         if pen.widthF() < min_width:
-            # Only alloc a new QPen when we genuinely need a wider stroke
             pen = QPen(pen)
             pen.setWidthF(min_width)
             painter.setPen(pen)
 
-        QGraphicsLineItem.paint(self, painter, option, widget)
+        QGraphicsPathItem.paint(self, painter, option, widget)
 
         # Cosmetic glow overlay — skip entirely when eye candy is off
         if options.eyecandy:
@@ -166,8 +218,13 @@ class CanvasLine(QGraphicsLineItem):
                 painter.setPen(cosm_pen)
                 painter.setBrush(Qt.NoBrush)
                 painter.setOpacity(0.2)
-                painter.drawLine(self.line())
+                painter.drawPath(self.path())
 
         painter.restore()
 
 # ------------------------------------------------------------------------------------------------------------
+# Backward Compatibility Alias
+
+class CanvasBezierLine(CanvasLine):
+    def __init__(self, item1, item2, parent, stroke="solid"):
+        CanvasLine.__init__(self, item1, item2, parent, shape="bezier", stroke=stroke)
