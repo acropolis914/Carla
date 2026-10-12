@@ -1,7 +1,7 @@
 # Maintainer: acroarch
 # Contributor: falkTX <falktx@falktx.com>
 
-pkgname=carla-improved
+pkgname=clara-git
 pkgver=2.5.1.r578.gc7958135
 pkgrel=1
 pkgdesc="Audio Plugin Host (fork with UI/UX enhancements, quick search, recent projects, and node positioning)"
@@ -16,6 +16,8 @@ depends=(
   'libx11'
   'libxcursor'
   'libxrandr'
+  'qt6-wayland'
+  'wayland'
   'python-pyqt6'
   'sdl2'
   'qt6-base'
@@ -24,6 +26,7 @@ depends=(
   'liblo'
   'file'
   'libsndfile'
+  'ttf-nerd-fonts-symbols'
 )
 makedepends=(
   'git'
