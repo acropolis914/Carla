@@ -5,16 +5,17 @@
 # ------------------------------------------------------------------------------------------------------------
 # Imports (Global)
 
-from qt_compat import qt_config
-
-if qt_config == 5:
-    from PyQt5.QtCore import pyqtSlot, qCritical, qFatal, qWarning, QObject
-    from PyQt5.QtCore import QPointF, QRectF, QTimer
-    from PyQt5.QtWidgets import QGraphicsObject
-elif qt_config == 6:
-    from PyQt6.QtCore import pyqtSlot, qCritical, qFatal, qWarning, QObject
-    from PyQt6.QtCore import QPointF, QRectF, QTimer
-    from PyQt6.QtWidgets import QGraphicsObject
+from qt_compat import (
+    pyqtSlot,
+    qCritical,
+    qFatal,
+    qWarning,
+    QObject,
+    QPointF,
+    QRectF,
+    QTimer,
+    QGraphicsObject,
+)
 
 # ------------------------------------------------------------------------------------------------------------
 # Imports (Custom)

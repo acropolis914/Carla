@@ -36,6 +36,11 @@ Recent developments enhance the Carla modular audio host across three primary pi
   - Configured `QSurfaceFormat` with 4 samples on `QOpenGLWidget` when canvas antialiasing is enabled, resolving jagged lines and missing antialiasing when using OpenGL hardware acceleration.
   - Exported `QSurfaceFormat` in `qt_compat.py`.
 
+### 2026-10-12 17:09:00
+- **refactor(qt)**: Centralize Qt5/Qt6 imports through `qt_compat.py` across `patchcanvas`
+  - Exported missing Qt items (`QGraphicsPathItem`, `QGraphicsLineItem`, `QGraphicsObject`, `QGraphicsDropShadowEffect`, `QFontMetrics`, `QPolygonF`, `pyqtSignal`, `pyqtSlot`, `qFatal`, `qWarning`, `QAbstractAnimation`, `QGraphicsSvgItem`, `QSvgRenderer`, `QFormLayout`, `QGroupBox`, `QTabWidget`, `QTableWidget`, `QTableWidgetItem`) in [`qt_compat.py`](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/qt_compat.py).
+  - Replaced repetitive `if qt_config == 5: from PyQt5... elif qt_config == 6: from PyQt6...` import boilerplate across all `patchcanvas` modules with direct `from qt_compat import ...`.
+
 ### 2026-10-12 17:03:00
 - **refactor(canvas)**: Unify line drawing and Bézier formulas into single configurable `CanvasLine`
   - Re-implemented `CanvasLine` as a flexible `QGraphicsPathItem` supporting orthogonal geometry `shape` (`"bezier"`, `"straight"`, `"stepped"`) and stroke pattern (`"solid"`, `"dotted"`, `"dashed"`).

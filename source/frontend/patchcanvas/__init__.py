@@ -5,14 +5,7 @@
 # ------------------------------------------------------------------------------------------------------------
 # Imports (Global)
 
-from qt_compat import qt_config
-
-if qt_config == 5:
-    from PyQt5.QtCore import QPointF, QRectF
-    from PyQt5.QtWidgets import QGraphicsItem
-elif qt_config == 6:
-    from PyQt6.QtCore import QPointF, QRectF
-    from PyQt6.QtWidgets import QGraphicsItem
+from qt_compat import QPointF, QRectF, QGraphicsItem
 
 # ------------------------------------------------------------------------------------------------------------
 # Imports (Theme)

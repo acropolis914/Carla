@@ -5,14 +5,7 @@
 # ------------------------------------------------------------------------------------------------------------
 # Imports (Global)
 
-from qt_compat import qt_config
-
-if qt_config == 5:
-    from PyQt5.QtGui import QColor
-    from PyQt5.QtWidgets import QGraphicsDropShadowEffect
-elif qt_config == 6:
-    from PyQt6.QtGui import QColor
-    from PyQt6.QtWidgets import QGraphicsDropShadowEffect
+from qt_compat import QColor, QGraphicsDropShadowEffect
 
 # ------------------------------------------------------------------------------------------------------------
 # Imports (Custom)

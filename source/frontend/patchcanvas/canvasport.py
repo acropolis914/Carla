@@ -7,16 +7,23 @@
 
 from math import floor
 
-from qt_compat import qt_config
-
-if qt_config == 5:
-    from PyQt5.QtCore import qCritical, Qt, QLineF, QPointF, QRectF, QTimer
-    from PyQt5.QtGui import QCursor, QFont, QFontMetrics, QPainter, QPainterPath, QPen
-    from PyQt5.QtWidgets import QApplication, QGraphicsItem, QMenu
-elif qt_config == 6:
-    from PyQt6.QtCore import qCritical, Qt, QLineF, QPointF, QRectF, QTimer
-    from PyQt6.QtGui import QCursor, QFont, QFontMetrics, QPainter, QPainterPath, QPen
-    from PyQt6.QtWidgets import QApplication, QGraphicsItem, QMenu
+from qt_compat import (
+    qCritical,
+    Qt,
+    QLineF,
+    QPointF,
+    QRectF,
+    QTimer,
+    QCursor,
+    QFont,
+    QFontMetrics,
+    QPainter,
+    QPainterPath,
+    QPen,
+    QApplication,
+    QGraphicsItem,
+    QMenu,
+)
 
 def getSystemFont(size=None, weight=None):
     base_font = QApplication.font() if QApplication.instance() else QFont()

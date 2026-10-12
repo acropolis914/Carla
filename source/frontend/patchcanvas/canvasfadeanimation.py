@@ -5,14 +5,7 @@
 # ------------------------------------------------------------------------------------------------------------
 # Imports (Global)
 
-from qt_compat import qt_config
-
-if qt_config == 5:
-    from PyQt5.QtCore import QAbstractAnimation
-    from PyQt5.QtWidgets import QGraphicsObject
-elif qt_config == 6:
-    from PyQt6.QtCore import QAbstractAnimation
-    from PyQt6.QtWidgets import QGraphicsObject
+from qt_compat import QAbstractAnimation, QGraphicsObject
 
 # ------------------------------------------------------------------------------------------------------------
 # Imports (Custom)

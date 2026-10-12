@@ -29,6 +29,11 @@ if qt_config == 5:
         QSize,
         QTimer,
         qCritical,
+        qFatal,
+        qWarning,
+        pyqtSignal,
+        pyqtSlot,
+        QAbstractAnimation,
     )
 
     # QtGui
@@ -39,14 +44,18 @@ if qt_config == 5:
         QCursor,
         QFont,
         QFontDatabase,
+        QFontMetrics,
         QImage,
         QImageWriter,
+        QLinearGradient,
         QMouseEvent,
         QPainter,
         QPainterPath,
         QPainterPathStroker,
         QPalette,
         QPen,
+        QPixmap,
+        QPolygonF,
         QSurfaceFormat,
     )
 
@@ -63,10 +72,18 @@ if qt_config == 5:
         QDoubleSpinBox,
         QFileDialog,
         QFileSystemModel,
+        QFormLayout,
         QFrame,
+        QGraphicsColorizeEffect,
+        QGraphicsDropShadowEffect,
         QGraphicsItem,
+        QGraphicsLineItem,
+        QGraphicsObject,
+        QGraphicsPathItem,
+        QGraphicsRectItem,
         QGraphicsScene,
         QGraphicsView,
+        QGroupBox,
         QHeaderView,
         QHBoxLayout,
         QInputDialog,
@@ -85,9 +102,18 @@ if qt_config == 5:
         QSizePolicy,
         QStyle,
         QSystemTrayIcon,
+        QTabWidget,
+        QTableWidget,
+        QTableWidgetItem,
         QVBoxLayout,
         QWidget,
     )
+
+    try:
+        from PyQt5.QtSvg import QGraphicsSvgItem, QSvgRenderer
+    except ImportError:
+        QGraphicsSvgItem = None
+        QSvgRenderer = None
 
     # QtOpenGL
     try:
@@ -120,6 +146,11 @@ elif qt_config == 6:
         Qt,
         QTimer,
         qCritical,
+        qFatal,
+        qWarning,
+        pyqtSignal,
+        pyqtSlot,
+        QAbstractAnimation,
     )
 
     # QtGui
@@ -131,14 +162,18 @@ elif qt_config == 6:
         QFileSystemModel,
         QFont,
         QFontDatabase,
+        QFontMetrics,
         QImage,
         QImageWriter,
+        QLinearGradient,
         QMouseEvent,
         QPainter,
         QPainterPath,
         QPainterPathStroker,
         QPalette,
         QPen,
+        QPixmap,
+        QPolygonF,
         QSurfaceFormat,
     )
 
@@ -154,10 +189,18 @@ elif qt_config == 6:
         QDialogButtonBox,
         QDoubleSpinBox,
         QFileDialog,
+        QFormLayout,
         QFrame,
+        QGraphicsColorizeEffect,
+        QGraphicsDropShadowEffect,
         QGraphicsItem,
+        QGraphicsLineItem,
+        QGraphicsObject,
+        QGraphicsPathItem,
+        QGraphicsRectItem,
         QGraphicsScene,
         QGraphicsView,
+        QGroupBox,
         QHBoxLayout,
         QHeaderView,
         QInputDialog,
@@ -176,9 +219,19 @@ elif qt_config == 6:
         QStackedWidget,
         QStyle,
         QSystemTrayIcon,
+        QTabWidget,
+        QTableWidget,
+        QTableWidgetItem,
         QVBoxLayout,
         QWidget,
     )
+
+    try:
+        from PyQt6.QtSvgWidgets import QGraphicsSvgItem
+        from PyQt6.QtSvg import QSvgRenderer
+    except ImportError:
+        QGraphicsSvgItem = None
+        QSvgRenderer = None
 
     # Qt6 moved QOpenGLWidget into QtOpenGLWidgets.
     #

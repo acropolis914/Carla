@@ -5,19 +5,14 @@
 # ------------------------------------------------------------------------------------------------------------
 # Imports (Global)
 
-from qt_compat import qt_config
-
-if qt_config == 5:
-    from PyQt5.QtCore import qCritical, QRectF
-    from PyQt5.QtGui import QPainter
-    from PyQt5.QtSvg import QGraphicsSvgItem, QSvgRenderer
-    from PyQt5.QtWidgets import QGraphicsColorizeEffect
-elif qt_config == 6:
-    from PyQt6.QtCore import qCritical, QRectF
-    from PyQt6.QtGui import QPainter
-    from PyQt6.QtSvg import QSvgRenderer
-    from PyQt6.QtSvgWidgets import QGraphicsSvgItem
-    from PyQt6.QtWidgets import QGraphicsColorizeEffect
+from qt_compat import (
+    qCritical,
+    QRectF,
+    QPainter,
+    QGraphicsSvgItem,
+    QSvgRenderer,
+    QGraphicsColorizeEffect,
+)
 
 # ------------------------------------------------------------------------------------------------------------
 # Imports (Custom)

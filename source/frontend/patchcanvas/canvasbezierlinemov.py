@@ -5,16 +5,15 @@
 # ------------------------------------------------------------------------------------------------------------
 # Imports (Global)
 
-from qt_compat import qt_config
-
-if qt_config == 5:
-    from PyQt5.QtCore import qWarning, Qt, QPointF
-    from PyQt5.QtGui import QPainter, QPainterPath, QPen
-    from PyQt5.QtWidgets import QGraphicsPathItem
-elif qt_config == 6:
-    from PyQt6.QtCore import qWarning, Qt, QPointF
-    from PyQt6.QtGui import QPainter, QPainterPath, QPen
-    from PyQt6.QtWidgets import QGraphicsPathItem
+from qt_compat import (
+    qWarning,
+    Qt,
+    QPointF,
+    QPainter,
+    QPainterPath,
+    QPen,
+    QGraphicsPathItem,
+)
 
 # ------------------------------------------------------------------------------------------------------------
 # Imports (Custom)

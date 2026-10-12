@@ -7,98 +7,46 @@
 
 import json
 import subprocess
-from qt_compat import qt_config
-
-if qt_config == 5:
-    from PyQt5.QtCore import (
-        pyqtSignal,
-        pyqtSlot,
-        qCritical,
-        QT_VERSION,
-        Qt,
-        QPointF,
-        QRectF,
-        QTimer,
-    )
-    from PyQt5.QtGui import (
-        QColor,
-        QCursor,
-        QFont,
-        QFontMetrics,
-        QImage,
-        QLinearGradient,
-        QPainter,
-        QPainterPath,
-        QPen,
-    )
-    from PyQt5.QtSvg import QGraphicsSvgItem
-    from PyQt5.QtWidgets import (
-        QApplication,
-        QGraphicsItem,
-        QGraphicsObject,
-        QMenu,
-        QDialog,
-        QTabWidget,
-        QWidget,
-        QVBoxLayout,
-        QHBoxLayout,
-        QFormLayout,
-        QLabel,
-        QLineEdit,
-        QDialogButtonBox,
-        QFrame,
-        QTableWidget,
-        QTableWidgetItem,
-        QHeaderView,
-        QGroupBox,
-        QCheckBox,
-        QPushButton,
-    )
-elif qt_config == 6:
-    from PyQt6.QtCore import (
-        pyqtSignal,
-        pyqtSlot,
-        qCritical,
-        QT_VERSION,
-        Qt,
-        QPointF,
-        QRectF,
-        QTimer,
-    )
-    from PyQt6.QtGui import (
-        QColor,
-        QCursor,
-        QFont,
-        QFontMetrics,
-        QImage,
-        QLinearGradient,
-        QPainter,
-        QPainterPath,
-        QPen,
-    )
-    from PyQt6.QtSvgWidgets import QGraphicsSvgItem
-    from PyQt6.QtWidgets import (
-        QApplication,
-        QGraphicsItem,
-        QGraphicsObject,
-        QMenu,
-        QDialog,
-        QTabWidget,
-        QWidget,
-        QVBoxLayout,
-        QHBoxLayout,
-        QFormLayout,
-        QLabel,
-        QLineEdit,
-        QDialogButtonBox,
-        QFrame,
-        QTableWidget,
-        QTableWidgetItem,
-        QHeaderView,
-        QGroupBox,
-        QCheckBox,
-        QPushButton,
-    )
+from qt_compat import (
+    pyqtSignal,
+    pyqtSlot,
+    qCritical,
+    QT_VERSION,
+    Qt,
+    QPointF,
+    QRectF,
+    QTimer,
+    QColor,
+    QCursor,
+    QFont,
+    QFontMetrics,
+    QImage,
+    QLinearGradient,
+    QPainter,
+    QPainterPath,
+    QPen,
+    QGraphicsSvgItem,
+    QApplication,
+    QGraphicsItem,
+    QGraphicsObject,
+    QMenu,
+    QDialog,
+    QTabWidget,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QFormLayout,
+    QLabel,
+    QLineEdit,
+    QDialogButtonBox,
+    QFrame,
+    QTableWidget,
+    QTableWidgetItem,
+    QHeaderView,
+    QGroupBox,
+    QCheckBox,
+    QPushButton,
+)
 
 # ------------------------------------------------------------------------------------------------------------
 # Backwards-compatible horizontalAdvance/width call, depending on Qt version

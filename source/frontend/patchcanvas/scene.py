@@ -7,16 +7,21 @@
 
 from math import floor
 
-from qt_compat import qt_config
-
-if qt_config == 5:
-    from PyQt5.QtCore import QT_VERSION, pyqtSignal, pyqtSlot, qFatal, Qt, QPointF, QRectF, QTimer
-    from PyQt5.QtGui import QCursor, QPixmap, QPolygonF
-    from PyQt5.QtWidgets import QGraphicsRectItem, QGraphicsScene
-elif qt_config == 6:
-    from PyQt6.QtCore import QT_VERSION, pyqtSignal, pyqtSlot, qFatal, Qt, QPointF, QRectF, QTimer
-    from PyQt6.QtGui import QCursor, QPixmap, QPolygonF
-    from PyQt6.QtWidgets import QGraphicsRectItem, QGraphicsScene
+from qt_compat import (
+    QT_VERSION,
+    pyqtSignal,
+    pyqtSlot,
+    qFatal,
+    Qt,
+    QPointF,
+    QRectF,
+    QTimer,
+    QCursor,
+    QPixmap,
+    QPolygonF,
+    QGraphicsRectItem,
+    QGraphicsScene,
+)
 
 # ------------------------------------------------------------------------------------------------------------
 # Imports (Custom)

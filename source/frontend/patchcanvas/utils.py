@@ -8,12 +8,7 @@
 import json
 import subprocess
 
-from qt_compat import qt_config
-
-if qt_config == 5:
-    from PyQt5.QtCore import qCritical, QPointF, QTimer
-elif qt_config == 6:
-    from PyQt6.QtCore import qCritical, QPointF, QTimer
+from qt_compat import qCritical, QPointF, QTimer
 
 # ------------------------------------------------------------------------------------------------------------
 # Imports (Custom)

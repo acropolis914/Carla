@@ -8,14 +8,7 @@
 import json
 import os
 
-from qt_compat import qt_config
-
-if qt_config == 5:
-    from PyQt5.QtCore import Qt
-    from PyQt5.QtGui import QBrush, QColor, QFont, QPen, QPixmap
-elif qt_config == 6:
-    from PyQt6.QtCore import Qt
-    from PyQt6.QtGui import QBrush, QColor, QFont, QPen, QPixmap
+from qt_compat import Qt, QBrush, QColor, QFont, QPen, QPixmap
 
 # ------------------------------------------------------------------------------------------------------------
 # Theme definition file path
