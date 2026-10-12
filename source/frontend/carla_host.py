@@ -632,7 +632,9 @@ class HostWindow(QMainWindow):
         self.act_settings_show_menubar.setCheckable(True)
         self.act_settings_show_menubar.setChecked(True)
         self.act_settings_show_menubar.setShortcut("Ctrl+M")
+        self.act_settings_show_menubar.setShortcutContext(Qt.WindowShortcut)
         self.act_settings_show_menubar.toggled.connect(self.slot_showMenubar)
+        self.addAction(self.act_settings_show_menubar)
         self.ui.menu_Settings.addAction(self.act_settings_show_menubar)
 
         # Hamburger Menu button for when menubar is hidden
@@ -650,8 +652,14 @@ class HostWindow(QMainWindow):
         self._hamburger_popup.addAction(self.ui.menu_Settings.menuAction())
         self._hamburger_popup.addAction(self.ui.menu_Help.menuAction())
         self.btn_hamburger_menu.setMenu(self._hamburger_popup)
-        self.ui.toolBar.insertWidget(self.ui.toolBar.actions()[0] if self.ui.toolBar.actions() else None, self.btn_hamburger_menu)
+        first_action = self.ui.toolBar.actions()[0] if self.ui.toolBar.actions() else None
+        self.act_hamburger_toolbutton = self.ui.toolBar.insertWidget(first_action, self.btn_hamburger_menu)
+        self.act_hamburger_toolbutton.setVisible(False)
         self.btn_hamburger_menu.setVisible(False)
+
+        # Allow right-clicking top toolbar to toggle menubar/toolbar
+        self.ui.toolBar.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.ui.toolBar.customContextMenuRequested.connect(self._slot_toolbarContextMenu)
 
         self.ui.act_settings_show_toolbar.toggled.connect(self.slot_showToolbar)
         self.ui.act_settings_show_meters.toggled.connect(self.slot_showCanvasMeters)
@@ -3637,8 +3645,17 @@ class HostWindow(QMainWindow):
             self.act_settings_show_menubar.blockSignals(True)
             self.act_settings_show_menubar.setChecked(yesNo)
             self.act_settings_show_menubar.blockSignals(False)
+        if hasattr(self, "act_hamburger_toolbutton"):
+            self.act_hamburger_toolbutton.setVisible(not yesNo)
         if hasattr(self, "btn_hamburger_menu"):
             self.btn_hamburger_menu.setVisible(not yesNo)
+
+    def _slot_toolbarContextMenu(self, pos):
+        menu = QMenu(self.ui.toolBar)
+        if hasattr(self, "act_settings_show_menubar"):
+            menu.addAction(self.act_settings_show_menubar)
+        menu.addAction(self.ui.act_settings_show_toolbar)
+        menu.exec_(self.ui.toolBar.mapToGlobal(pos))
 
     @pyqtSlot(bool)
     def slot_showSidePanel(self, yesNo):

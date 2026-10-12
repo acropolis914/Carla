@@ -20,12 +20,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
-### 2026-10-13 02:13:00
-- **feat(ui)**: Hideable menubar with compact hamburger tool button and side-by-side ratio persistence
-  - Added `Ctrl+M` toggle for `Show Menubar` under Settings menu.
-  - Added a compact "☰" hamburger popup button on the main toolbar when the menubar is hidden for one-click access to all menus.
+### 2026-10-13 02:18:00
+- **feat(ui)**: Hideable menubar with global Ctrl+M, hamburger tool button, and toolbar context menu
+  - Bound `Ctrl+M` to `HostWindow` with `Qt.WindowShortcut` context so it works globally even when the menubar is hidden.
+  - Managed embedded `QWidgetAction` visibility so the "☰" hamburger menu tool button shows immediately on the toolbar when the menubar is hidden.
+  - Added right-click context menu to the toolbar to easily toggle menubar and toolbar visibility.
   - Persisted `ShowMenubar`, `SideBySideEnabled`, and `SideBySideSizes` splitter ratio across application sessions.
-  - Resolved `AttributeError: type object 'QToolButton' has no attribute 'InstantPopup'` with multi-Qt scoped enum fallback.
 
 ### 2026-10-13 01:57:00
 - **feat(patchbay)**: Adaptive zoom-dynamic dot grid and canvas cable line scaling
