@@ -248,6 +248,7 @@ class RackListWidget(QListWidget):
         self.setDragEnabled(True)
         self.setDragDropMode(QAbstractItemView.DropOnly)
         self.setDropIndicatorShown(True)
+        self.setSpacing(4)
         self.viewport().setAcceptDrops(True)
 
         self._updateStyle()

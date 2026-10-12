@@ -20,6 +20,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 03:42:00
+- **feat(rack)**: Increase vertical Y-spacing margin between racklist items
+  - Configured `RackListWidget.setSpacing(4)` to provide clean 4px vertical margins separating rack slots.
+
 ### 2026-10-13 03:39:00
 - **feat(rack)**: Increase top and bottom vertical padding of racklist items
   - Increased `PluginSlot_Minimal` vertical contents margins from 3px to 6px (`(14, 6, 6, 6)`).
