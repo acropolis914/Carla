@@ -59,6 +59,7 @@ if qt_config == 5:
         QPixmap,
         QPolygonF,
         QSurfaceFormat,
+        QIcon,
     )
 
     # QtWidgets
@@ -191,6 +192,7 @@ elif qt_config == 6:
         QPolygonF,
         QShortcut,
         QSurfaceFormat,
+        QIcon,
     )
 
     # QtWidgets

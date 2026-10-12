@@ -15,6 +15,12 @@ Recent developments enhance the Carla modular audio host across three primary pi
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 01:12:00
+- **feat(patchbay)**: Sensible Nerd Font icon glyphs and quick color preset swatch popup menu
+  - Audited and updated all toolbar glyphs across left palette and top context bar to high-readability, standardized Nerd Font icons (`mouse-pointer`, `select-drag`, `hand-paper`, `magnet`, `power-off`, `random`, `sliders`, `desktop`, `paint-brush`, `trash`, etc.).
+  - Added quick popup color swatch menu for node tinting with Catppuccin presets (`Default Dark`, `Crimson`, `Synth`, `Audio`, `MIDI`, `FX`, `Dynamics`, `Teal`, `Sky`, `Flamingo`), Reset, and Custom Color Picker dialog.
+  - Exported `QIcon` in `qt_compat.py` across PyQt5 and PyQt6 environments.
+
 ### 2026-10-13 01:02:00
 - **feat(patchbay)**: Transform top context toolbar into compact icon-only palette with expanded actions
   - Replaced bulky text labels with sleek 26x26 square icon buttons and rich contextual tooltips.

@@ -19,6 +19,7 @@ from patchcanvas import patchcanvas
 # Imports (PyQt)
 # ------------------------------------------------------------------------------------------------------------
 from qt_compat import (
+    QAction,
     QApplication,
     QColor,
     QColorDialog,
@@ -28,10 +29,14 @@ from qt_compat import (
     QFontDatabase,
     QFrame,
     QHBoxLayout,
+    QIcon,
     QLabel,
+    QMenu,
     QMouseEvent,
     QObject,
+    QPainter,
     QPainterPathStroker,
+    QPixmap,
     QPoint,
     QPointF,
     QPushButton,
@@ -524,15 +529,15 @@ class CanvasToolBarOverlay(QFrame):
         if not font_family:
             font.setPointSize(11)
 
-        # Icons: Nerd Font glyphs or clean unicode symbols
-        self.icon_pointer = "\U000f01be" if font_family else "↖"   # Pointer
-        self.icon_select  = "\U000f0485" if font_family else "⛶"   # Marquee
-        self.icon_hand    = "\U000f0361" if font_family else "✋"   # Hand / Pan
-        self.icon_fit     = "\uf0b2" if font_family else "⛶"      # Zoom fit / Arrows alt
-        self.icon_zoomin  = "\uf00e" if font_family else "+"      # Zoom in
-        self.icon_zoomout = "\uf010" if font_family else "-"      # Zoom out
+        # Icons: Sensible Nerd Font glyphs or clean unicode symbols
+        self.icon_pointer = "\uf245" if font_family else "↖"   # Pointer (mouse-pointer)
+        self.icon_select  = "\U000f0a59" if font_family else "⛶"   # Marquee (select-drag)
+        self.icon_hand    = "\uf256" if font_family else "✋"   # Hand / Pan (hand-paper-o)
+        self.icon_fit     = "\uf066" if font_family else "⛶"   # Zoom fit (arrows-alt)
+        self.icon_zoomin  = "\uf00e" if font_family else "+"   # Zoom in (search-plus)
+        self.icon_zoomout = "\uf010" if font_family else "-"   # Zoom out (search-minus)
         self.icon_grid    = "\U000f02ca" if font_family else "#"   # Grid icon
-        self.icon_snap    = "\U000f074d" if font_family else "🧲"  # Magnet / Snap icon
+        self.icon_snap    = "\uf076" if font_family else "🧲"  # Magnet / Snap icon (magnet)
 
         # Mode Selection Buttons (Checkable, Mutually Exclusive)
         self.btnPointer = QPushButton(self.icon_pointer, self)
@@ -816,30 +821,30 @@ class CanvasContextToolBarOverlay(QFrame):
         count = len(selected)
 
         nf = bool(self.font_family)
-        # Nerd Font glyphs or clean unicode symbols
-        icon_arr     = "\uf0e8" if nf else "🔀"  # Splay / Auto-arrange
-        icon_repel   = "\uf065" if nf else "↔"   # Expand / Repel
-        icon_aside   = "\uf061" if nf else "⏭"   # Move aside / Park
-        icon_sel     = "\U000f0485" if nf else "⛶"  # Select all
-        icon_desel   = "\U000f0156" if nf else "✕"  # Deselect / Close circle
-        icon_inv     = "\U000f05d0" if nf else "⇄"  # Invert selection
-        icon_edit    = "\U000f03eb" if nf else "⚙"  # Parameters / Edit
-        icon_ui      = "\U000f0254" if nf else "🖥"  # Custom GUI
-        icon_rack    = "\uf1b2" if nf else "📦"  # Rack / Cubes
-        icon_clone   = "\U000f0190" if nf else "⧉"  # Clone / Duplicate
-        icon_ren     = "\U000f0641" if nf else "✎"  # Rename
-        icon_del     = "\uf1f8" if nf else "🗑"  # Remove / Trash
-        icon_cut     = "\uf127" if nf else "✂"  # Unlink / Cut wires
-        icon_split   = "\U000f0975" if nf else "⚯"  # Split / Join
-        icon_color   = "\U000f0766" if nf else "🎨" # Palette / Color
-        icon_prop    = "\U000f02fc" if nf else "ℹ"  # Info / Properties
-        icon_power   = "\U000f0425" if nf else "⏻"  # Power / Active
-        icon_bypass  = "\U000f05cc" if nf else "⮀"  # Bypass / Dry-wet
-        icon_ports   = "\U000f0699" if nf else "👁"  # Hide/Show unconnected ports
-        icon_al_h    = "\U000f0037" if nf else "═"  # Align horizontal
-        icon_al_v    = "\U000f0038" if nf else "║"  # Align vertical
-        icon_dist_h  = "\U000f0034" if nf else "⬌"  # Distribute horizontal
-        icon_dist_v  = "\U000f0035" if nf else "⬍"  # Distribute vertical
+        # Sensible Nerd Font glyphs with clean unicode fallbacks
+        icon_arr     = "\uf0e8" if nf else "🔀"  # sitemap / auto-arrange
+        icon_repel   = "\uf07e" if nf else "↔"   # arrows-h / repel
+        icon_aside   = "\uf1c0" if nf else "⏭"   # database/inbox / park aside
+        icon_sel     = "\U000f0484" if nf else "⛶"  # select-all
+        icon_desel   = "\uf00d" if nf else "✕"  # times / close
+        icon_inv     = "\uf0ec" if nf else "⇄"  # exchange / invert
+        icon_edit    = "\uf1de" if nf else "⚙"  # sliders / edit parameters
+        icon_ui      = "\uf108" if nf else "🖥"  # desktop / custom gui
+        icon_rack    = "\uf1b2" if nf else "📦"  # cubes / rack
+        icon_clone   = "\uf24d" if nf else "⧉"  # clone / duplicate
+        icon_ren     = "\uf044" if nf else "✎"  # pencil / rename
+        icon_del     = "\uf014" if nf else "🗑"  # trash / remove
+        icon_cut     = "\uf0c4" if nf else "✂"  # scissors / disconnect
+        icon_split   = "\uf0db" if nf else "⚯"  # columns / split-join
+        icon_color   = "\uf1fc" if nf else "🎨" # paint-brush / tint color
+        icon_prop    = "\uf05a" if nf else "ℹ"  # info-circle / properties
+        icon_power   = "\uf011" if nf else "⏻"  # power-off / active
+        icon_bypass  = "\uf074" if nf else "⮀"  # random/exchange / bypass
+        icon_ports   = "\uf070" if nf else ""  # eye-slash / hide ports
+        icon_al_h    = "\U000f0037" if nf else "═"  # align horizontal
+        icon_al_v    = "\U000f0038" if nf else "║"  # align vertical
+        icon_dist_h  = "\U000f11e3" if nf else "⬌"  # distribute horizontal
+        icon_dist_v  = "\U000f11e4" if nf else "⬍"  # distribute vertical
 
         if count == 0:
             # Global Canvas Actions
@@ -885,7 +890,10 @@ class CanvasContextToolBarOverlay(QFrame):
                 self.addSeparator()
 
             # Appearance & Box Setup
-            self.addButton(icon_color, "Choose Node Tint Color...", lambda: self._slot_choose_color(node))
+            btnColor = self.addButton(icon_color, "Node Tint Color Presets & Custom...", lambda: None)
+            btnColor.clicked.disconnect()
+            btnColor.clicked.connect(lambda: self._slot_show_color_menu(btnColor, [node]))
+
             if hasattr(node, "showPropertiesDialog"):
                 self.addButton(icon_prop, "Node Properties & Badges...", node.showPropertiesDialog)
 
@@ -919,7 +927,10 @@ class CanvasContextToolBarOverlay(QFrame):
             self.addSeparator()
 
             # Batch Operations
-            self.addButton(icon_color, "Batch Color Selected Nodes...", lambda: self._slot_batch_color(selected))
+            btnBatchColor = self.addButton(icon_color, "Batch Color Selected Nodes...", lambda: None)
+            btnBatchColor.clicked.disconnect()
+            btnBatchColor.clicked.connect(lambda: self._slot_show_color_menu(btnBatchColor, selected))
+
             self.addButton(icon_power, "Batch Toggle Power (Active)", lambda: self._slot_batch_power(selected))
             self.addButton(icon_bypass, "Batch Toggle Bypass", lambda: self._slot_batch_bypass(selected))
             self.addButton(icon_cut, "Disconnect All Cables on Selected Nodes", lambda: self._slot_disconnect_selected(selected))
@@ -953,76 +964,85 @@ class CanvasContextToolBarOverlay(QFrame):
         if not getattr(self, "_userMoved", False):
             self.reposition()
 
-    def _slot_toggle_power(self, node):
-        try:
-            from carla_backend import PARAMETER_ACTIVE
-            from carla_shared import gCarla
-            pid = getattr(node, "m_plugin_id", -1)
-            if pid < 0:
-                return
-            pitem = gCarla.gui.getPluginItem(pid) if hasattr(gCarla.gui, "getPluginItem") else None
-            pwidget = pitem.getWidget() if (pitem and hasattr(pitem, "getWidget")) else None
-            if pwidget is not None and hasattr(pwidget, "fIsActive"):
-                cur = bool(pwidget.fIsActive)
-            elif hasattr(gCarla.gui, "host") and hasattr(gCarla.gui.host, "get_internal_parameter_value"):
-                cur = bool(gCarla.gui.host.get_internal_parameter_value(pid, PARAMETER_ACTIVE) >= 0.5)
-            else:
-                cur = True
-            new_state = not cur
-            gCarla.gui.host.set_active(pid, new_state)
-            if pwidget is not None:
-                pwidget.setActive(new_state, sendCallback=True, sendHost=False)
-            node.update()
-            scene = self.graphicsView.scene()
-            if scene:
-                scene.update()
-        except Exception as e:
-            print("Error toggling node power:", e)
+    def _slot_show_color_menu(self, source_button, nodes):
+        menu = QMenu(self)
+        menu.setStyleSheet("""
+            QMenu {
+                background-color: #181825;
+                border: 1px solid #45475a;
+                border-radius: 6px;
+                padding: 4px;
+            }
+            QMenu::item {
+                color: #cdd6f4;
+                padding: 4px 18px 4px 10px;
+                border-radius: 4px;
+                font-size: 11px;
+            }
+            QMenu::item:selected {
+                background-color: #313244;
+                color: #ffffff;
+            }
+            QMenu::separator {
+                height: 1px;
+                background-color: #45475a;
+                margin: 3px 6px;
+            }
+        """)
 
-    def _slot_toggle_bypass(self, node):
-        try:
-            from carla_backend import PARAMETER_DRYWET
-            from carla_shared import gCarla
-            pid = getattr(node, "m_plugin_id", -1)
-            if pid < 0:
-                return
-            pitem = gCarla.gui.getPluginItem(pid) if hasattr(gCarla.gui, "getPluginItem") else None
-            pwidget = pitem.getWidget() if (pitem and hasattr(pitem, "getWidget")) else None
-            cur_val = gCarla.gui.host.get_internal_parameter_value(pid, PARAMETER_DRYWET)
-            new_val = 1.0 if cur_val == 0.0 else 0.0
-            gCarla.gui.host.set_drywet(pid, new_val)
-            if pwidget is not None:
-                pwidget.setParameterValue(PARAMETER_DRYWET, new_val, True)
-                if hasattr(pwidget, "_update_bypass_state"):
-                    pwidget._update_bypass_state(bool(new_val == 0.0))
-            node.update()
-            scene = self.graphicsView.scene()
-            if scene:
-                scene.update()
-        except Exception as e:
-            print("Error toggling node bypass:", e)
+        presets = [
+            ("Default Dark", "#1e1e2e"),
+            ("Crimson / Red", "#f38ba8"),
+            ("Synth / Green", "#a6e3a1"),
+            ("Audio / Blue", "#89b4fa"),
+            ("MIDI / Yellow", "#f9e2af"),
+            ("FX / Mauve", "#cba6f7"),
+            ("Dynamics / Peach", "#fab387"),
+            ("Teal / Mod", "#94e2d5"),
+            ("Sky / Light Blue", "#89dceb"),
+            ("Flamingo / Coral", "#f2cdcd"),
+        ]
 
-    def _slot_choose_color(self, node):
-        cur_color = getattr(node, "m_custom_color", None) or QColor("#1e1e2e")
-        color = QColorDialog.getColor(cur_color, self, "Choose Node Tint Color")
-        if color.isValid():
-            hex_str = color.name()
-            if hasattr(node, "setCustomColor"):
-                node.setCustomColor(hex_str)
-            pid = getattr(node, "m_plugin_id", -1)
+        def create_color_icon(hex_str):
+            pix = QPixmap(14, 14)
+            pix.fill(Qt.transparent)
+            p = QPainter(pix)
+            p.setRenderHint(QPainter.Antialiasing, True)
+            p.setBrush(QColor(hex_str))
+            p.setPen(QColor("#45475a"))
+            p.drawRoundedRect(1, 1, 12, 12, 3, 3)
+            p.end()
+            return QIcon(pix)
+
+        for name, hex_code in presets:
+            act = menu.addAction(create_color_icon(hex_code), name)
+            act.triggered.connect(lambda checked, h=hex_code: self._apply_color_to_nodes(nodes, h))
+
+        menu.addSeparator()
+        act_custom = menu.addAction("Custom Color Picker...")
+        act_custom.triggered.connect(lambda: self._open_custom_color_dialog(nodes))
+
+        act_reset = menu.addAction("Reset to Theme Default")
+        act_reset.triggered.connect(lambda: self._apply_color_to_nodes(nodes, ""))
+
+        btn_pos = source_button.mapToGlobal(QPoint(0, source_button.height() + 4))
+        menu.exec_(btn_pos)
+
+    def _apply_color_to_nodes(self, nodes, hex_str):
+        for n in nodes:
+            if hasattr(n, "setCustomColor"):
+                n.setCustomColor(hex_str)
+            pid = getattr(n, "m_plugin_id", -1)
             if 0 <= pid <= patchcanvas.MAX_PLUGIN_ID_ALLOWED:
                 patchcanvas.canvas.callback(patchcanvas.ACTION_PLUGIN_COLOR, pid, 0, hex_str)
 
-    def _slot_batch_color(self, nodes):
-        color = QColorDialog.getColor(QColor("#1e1e2e"), self, "Batch Color Selected Nodes")
+    def _open_custom_color_dialog(self, nodes):
+        initial = QColor("#1e1e2e")
+        if nodes and hasattr(nodes[0], "m_custom_color") and nodes[0].m_custom_color:
+            initial = QColor(nodes[0].m_custom_color)
+        color = QColorDialog.getColor(initial, self, "Choose Node Tint Color")
         if color.isValid():
-            hex_str = color.name()
-            for n in nodes:
-                if hasattr(n, "setCustomColor"):
-                    n.setCustomColor(hex_str)
-                pid = getattr(n, "m_plugin_id", -1)
-                if 0 <= pid <= patchcanvas.MAX_PLUGIN_ID_ALLOWED:
-                    patchcanvas.canvas.callback(patchcanvas.ACTION_PLUGIN_COLOR, pid, 0, hex_str)
+            self._apply_color_to_nodes(nodes, color.name())
 
     def _slot_batch_power(self, nodes):
         for n in nodes:
