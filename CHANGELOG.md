@@ -4,39 +4,83 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## Overview
+
+Recent developments enhance the Carla modular audio host across three primary pillars:
+1. **Patchbay Navigation & Modal Workflow**: Introduced Photoshop/Blender-style modal tools (`V`, `H`, `Space`, `Q`), directional marquee box selection, non-overlapping repelling node arrangements, and minimap zoom synchronization.
+2. **Session Lifecycle & Autosave Safety**: Implemented rotating autosaves, recursive `.autosaves/` directory prevention, automatic project dirty tracking on node moves/connections, and save-on-exit prompts (`Save`, `Discard`, `Cancel`) with live countdown timers.
+3. **Structured Rich Logging & Tag Filtering**: Added Python `rich` console formatting with categorical tag coloring (`APP`, `ENGINE`, `PATCHBAY`, `PLUGIN`, `SESSION`, `CANVAS`, `BACKEND`), low-level C++ backend `stderr` interception, CLI flags, and in-UI tag checklist filters.
+
+---
+
 ## [Unreleased] - 2026-10-12
 
-### Added
-- **Photoshop/Blender-Style Modal Tools**:
-  - `V`: Marquee selection mode (crosshair cursor; drag to box-select).
-  - `H` / `Space`: Hand / pan mode (hand cursor; drag to pan canvas).
-  - `Q` / `Escape`: Default pointer mode (drag nodes, patch cables, open menus).
-  - Floating modal tool pill widget (`CanvasToolBarOverlay`) with cached Nerd Font glyphs (with fallback to Unicode) and viewport repositioning.
-- **Canvas Context Menu Arrange Submenu**:
-  - Added "Arrange & Align" submenu to empty canvas background context menu (Auto-arrange All, Align/Distribute Horizontally & Vertically, Move Aside Non-Connected Nodes).
-- **Node-Wide Multi-Selection**:
-  - `Ctrl + Click` anywhere on a node body or port toggles selection without moving nodes or triggering cable patches.
-- **Rich Logging & Tag Checklist Filtering**:
-  - Structured `CarlaLogger` supporting Python Rich terminal formatting, log levels, timestamps, and categories (`APP`, `ENGINE`, `PATCHBAY`, `PLUGIN`, `SESSION`, `CANVAS`, `BACKEND`).
-  - Added CLI flags `--log-level`, `--log-whitelist`, `--log-blacklist`, and `--console-log` / `--no-console-log`.
-  - Added in-UI Log tab tag checklist filter to dynamically toggle visible categories without losing history, and a settings option to mirror logs to terminal.
-- **Session Safety & Autosave Status Indicators**:
-  - Save on exit prompt with `Save`, `Discard`, and `Cancel` options whenever a session has unsaved modifications.
-  - Visual dirty/saved indicator (`*` prefix in title bar, plus `● Unsaved` / `✓ Saved` badge in the status bar).
-  - Statusbar display showing last autosave timestamp and live countdown timer to the next autosave.
+### 2026-10-12 14:34:44 (`5cac2b881`)
+- **fix(session)**: Propagate dirty modifications on node moves, connects, and deletes
+  - Wired `markProjectModified()` into `ACTION_GROUP_POSITION` moves so node relocations flag unsaved edits.
+  - Linked cable connection / disconnection actions and backend plugin add / remove / rename callbacks to mark project state as modified.
+  - Fixed exit prompt bypassing by ensuring dirty state triggers the Save/Discard/Cancel dialog.
 
+### 2026-10-12 14:27:40 (`9e46f070a`)
+- **feat(session)**: Add save on exit prompt, dirty state indicator, and autosave countdown timer
+  - Implemented save-on-exit dialog with `Save`, `Discard`, and `Cancel` options when unsaved edits exist.
+  - Added visual dirty indicator (`*` prefix in title bar and `● Unsaved` / `✓ Saved` status bar badge).
+  - Added live statusbar timer displaying last autosave time and countdown to next autosave.
 
-### Fixed
-- **Autosave Path Normalization & Recursion Prevention**:
-  - Normalized project filenames to prevent `.autosaves/` recursion when recovering and re-saving sessions.
-  - Separated logical project filepath from autosave recovery source during load.
-- **Patchbay Interactions & Drag Propagation**:
-  - Fixed `DraggableGraphicsView` mouse event interception that swallowed scene port patches and node clicks.
-  - Implemented instant $\ge 4\text{px}$ right-drag directional marquee selection (left-to-right touches, right-to-left encloses) disambiguated from a stationary 150ms hold context menu.
-- **Minimap Zoom & Position Sync**:
-  - Corrected zoom-level coordinate mapping and clamping in `CanvasPreviewFrame` to prevent minimap cursor drift and offset distortion.
-  - Routed wheel-event zooming through `PatchScene.zoom_wheel` so minimap scale updates synchronously.
-- **Draggable Canvas Controls**:
-  - `PatchbayHelpOverlay` cheat-sheet is now open by default and freely draggable across the viewport.
-- **Qt 6 Compatibility**:
-  - Fixed `QFontDatabase` instantiation error on Qt 6 by invoking static method `QFontDatabase.families()`.
+### 2026-10-12 14:19:02 (`d58a34d15`)
+- **fix(logging)**: Capture C++ backend stderr into CarlaLogger
+  - Intercepted file descriptor 2 (POSIX `stderr`) using `os.dup2` to capture C++ backend assertion failures and plugin bridge messages directly into `CarlaLogger`.
+  - Started stderr capture at launcher startup in `source/frontend/carla`.
+
+### 2026-10-12 09:58:45 (`ac84a74e5`)
+- **fix(logging)**: Remove right padding on log levels, add per-tag colors, and handle backend assertion logs
+  - Removed fixed right-padding on log level badges (e.g. `[INFO]`).
+  - Added distinct color themes for all categories (`APP`, `ENGINE`, `PATCHBAY`, `PLUGIN`, `SESSION`, `CANVAS`, `BACKEND`).
+  - Classified incoming `[carla]` assertion failures into `[BACKEND]` error logs.
+
+### 2026-10-12 09:51:38 (`539c08c44`)
+- **fix(logging)**: Import QFrame, QCheckBox, QLabel, QVBoxLayout in carla_host
+  - Exported `QCheckBox` across PyQt5 and PyQt6 in `qt_compat.py`.
+  - Resolved `NameError: name 'QFrame' is not defined` during host window initialization.
+
+### 2026-10-12 09:45:02 (`621a4e998`)
+- **feat(logging)**: Rich terminal output, tag filtering checklist, and mirror settings
+  - Created centralized `CarlaLogger` supporting Python `rich` formatting, log levels, and categories.
+  - Added CLI flags (`--log-level`, `--log-whitelist`, `--log-blacklist`, `--console-log`, `--no-console-log`).
+  - Added in-UI Log tab tag checklist filter to dynamically toggle visible categories without losing log history.
+  - Added setting checkbox to mirror application logs to terminal.
+
+### 2026-10-12 04:01:07 (`5e318622a`)
+- **fix(autosave)**: Prevent recursive nested autosave directories on recovery
+  - Added `get_canonical_project_filepath` to normalize paths and strip `.autosaves/` segments when recovering.
+  - Separated canonical project file path from recovery source override in `loadProjectNow`.
+  - Pruned corrupted nested autosave directories and duplicate plugin folders.
+
+### 2026-10-12 03:53:18 (`2de8b65f0`)
+- **feat(patchbay)**: Add modal tools, floating toolbar, fix zoom minimap, and update interactions
+  - Implemented Photoshop/Blender-style modal tools (`V` for marquee, `H` / `Space` for hand/pan, `Q` / `Escape` for pointer).
+  - Added floating modal tool pill widget (`CanvasToolBarOverlay`) with cached Nerd Font glyphs.
+  - Fixed minimap viewport coordinate mapping and zoom scale synchronization.
+  - Made patchbay keyboard shortcut help overlay draggable across viewport.
+
+### 2026-10-12 03:11:08 (`8bec393b0`)
+- **fix(patchcanvas)**: Correct connection endpoint attribute names in moveAsideNonConnectedNodes
+  - Fixed `AttributeError: 'connection_dict_t' object has no attribute 'group_id_1'`.
+
+### 2026-10-12 03:06:24 (`e4c2b5be0`)
+- **feat(patchcanvas)**: Add 'Move Aside Non-Connected Nodes' arrange action
+  - Added background context menu option to shift unconnected nodes away from active graphs.
+
+### 2026-10-12 03:00:16 (`f8bc296df`)
+- **fix(patchcanvas)**: Fix mouse dragging for canvas panning, node movement, and right-drag marquee disambiguation
+  - Restored canvas panning and item dragging without event swallowed in `DraggableGraphicsView`.
+  - Added background click to deselect items.
+
+### 2026-10-12 02:53:19 (`fae78c8d2`)
+- **feat(patchcanvas)**: Fix right-drag marquee gesture, background deselect, and zoom-invariant line/selection widths
+  - Device-pixel-invariant stroke widths for connection lines and node borders when zooming.
+
+### 2026-10-12 02:40:54 (`60c3ac6a9`)
+- **feat(patchcanvas)**: Add directional right-drag marquee selection and non-overlapping node alignment
+  - Left-to-right drag selects all touched/intersected items; right-to-left drag selects enclosed items only.
+  - Added repel spacing in horizontal and vertical alignment to avoid node overlap.
