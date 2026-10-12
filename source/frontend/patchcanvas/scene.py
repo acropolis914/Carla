@@ -5,7 +5,7 @@
 # ------------------------------------------------------------------------------------------------------------
 # Imports (Global)
 
-from math import floor
+from math import floor, ceil
 
 from qt_compat import (
     QT_VERSION,
@@ -13,6 +13,8 @@ from qt_compat import (
     pyqtSlot,
     qFatal,
     Qt,
+    QColor,
+    QBrush,
     QPointF,
     QRectF,
     QTimer,
@@ -28,6 +30,7 @@ from qt_compat import (
 
 from . import (
     canvas,
+    options,
     CanvasBoxType,
     CanvasIconType,
     CanvasPortType,

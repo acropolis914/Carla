@@ -15,6 +15,10 @@ Recent developments enhance the Carla modular audio host across three primary pi
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 00:19:00
+- **fix(patchbay)**: Fix NameError for `options` in `PatchScene.drawBackground`
+  - Added missing `options`, `ceil`, `QColor`, and `QBrush` imports to `scene.py` preventing crashes during canvas background repaints.
+
 ### 2026-10-13 00:15:00
 - **fix(patchbay)**: Immediate cable gradient refresh on node color change
   - Force-repainted connected cable lines and scheduled an instant scene redraw inside `CanvasBox.setCustomColor()`, updating gradient endpoints immediately without requiring node repositioning.
