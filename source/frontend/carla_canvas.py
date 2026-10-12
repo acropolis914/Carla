@@ -295,7 +295,9 @@ class PatchbayHelpOverlay(QFrame):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("patchbay_help_overlay")
-        self.setAttribute(Qt.WA_AlwaysShowToolTips, True)
+        wa_tooltip = getattr(getattr(Qt, "WidgetAttribute", Qt), "WA_AlwaysShowToolTips", None)
+        if wa_tooltip is not None:
+            self.setAttribute(wa_tooltip, True)
 
         self._layout = QVBoxLayout(self)
         self._layout.setContentsMargins(6, 6, 6, 6)
