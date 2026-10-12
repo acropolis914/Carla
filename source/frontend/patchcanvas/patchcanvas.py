@@ -2025,6 +2025,75 @@ def alignSelected(mode="horizontal"):
     syncNodePositions(nodes)
 
 
+def repelNodes(target_nodes=None, iterations=25, padding=24):
+    """
+    Separates overlapping canvas nodes using iterative AABB repulsion forces.
+    If target_nodes is None, defaults to selected nodes (or all nodes if < 2 selected).
+    """
+    if target_nodes is None:
+        target_nodes = getSelectedNodes()
+        if len(target_nodes) < 2:
+            target_nodes = []
+            for group in canvas.group_list:
+                for w in group.widgets:
+                    if w is not None and w.isVisible():
+                        target_nodes.append(w)
+
+    if len(target_nodes) < 2:
+        return
+
+    node_list = list(target_nodes)
+
+    for _ in range(iterations):
+        moved_any = False
+        for i in range(len(node_list)):
+            for j in range(i + 1, len(node_list)):
+                n1 = node_list[i]
+                n2 = node_list[j]
+
+                r1 = QRectF(n1.x(), n1.y(), n1.boundingRect().width(), n1.boundingRect().height())
+                r2 = QRectF(n2.x(), n2.y(), n2.boundingRect().width(), n2.boundingRect().height())
+
+                # Expand r1 bounds by desired padding
+                r1_padded = r1.adjusted(-padding / 2, -padding / 2, padding / 2, padding / 2)
+                r2_padded = r2.adjusted(-padding / 2, -padding / 2, padding / 2, padding / 2)
+
+                intersect = r1_padded.intersected(r2_padded)
+                if not intersect.isEmpty() and intersect.width() > 0 and intersect.height() > 0:
+                    moved_any = True
+                    # Push along axis of least overlap
+                    overlap_x = intersect.width()
+                    overlap_y = intersect.height()
+
+                    dx = (r2.center().x() - r1.center().x()) or 1.0
+                    dy = (r2.center().y() - r1.center().y()) or 1.0
+
+                    if overlap_x < overlap_y:
+                        shift = (overlap_x / 2.0) + 1.0
+                        sgn = 1.0 if dx > 0 else -1.0
+                        n1.setPos(n1.x() - sgn * shift, n1.y())
+                        n2.setPos(n2.x() + sgn * shift, n2.y())
+                    else:
+                        shift = (overlap_y / 2.0) + 1.0
+                        sgn = 1.0 if dy > 0 else -1.0
+                        n1.setPos(n1.x(), n1.y() - sgn * shift)
+                        n2.setPos(n2.x(), n2.y() + sgn * shift)
+
+        if not moved_any:
+            break
+
+    # Snap to grid if active
+    if getattr(options, "grid_enabled", True):
+        gs = max(1, getattr(options, "grid_size", 20))
+        for n in node_list:
+            n.setPos(round(n.x() / gs) * gs, round(n.y() / gs) * gs)
+
+    for n in node_list:
+        n.checkItemPos()
+
+    syncNodePositions(node_list)
+
+
 def arrangeConnected(target_box=None, direction="both"):
     """
     Arranges nodes connected to target_box:

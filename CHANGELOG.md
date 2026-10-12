@@ -15,6 +15,11 @@ Recent developments enhance the Carla modular audio host across three primary pi
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 00:14:00
+- **feat(patchbay)**: Physics-based iterative auto-repel tools
+  - Added `repelNodes()` with AABB overlap resolution and configurable padding/iterations.
+  - Added "Auto-Repel (Selected)" and "Auto-Repel (All)" options to the canvas box "Arrange & Align" context menu.
+
 ### 2026-10-13 00:11:00
 - **feat(patchbay)**: Subtle canvas alignment dot grid and coordinate snapping
   - Added background alignment dot rendering in `PatchScene.drawBackground()` with adaptive contrast according to canvas theme luminance.

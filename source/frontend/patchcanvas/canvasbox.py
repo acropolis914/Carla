@@ -1307,6 +1307,9 @@ class CanvasBox(QGraphicsObject):
         act_dist_h = arrangeMenu.addAction("Distribute Horizontally")
         act_dist_v = arrangeMenu.addAction("Distribute Vertically")
         arrangeMenu.addSeparator()
+        act_repel_selected = arrangeMenu.addAction("Auto-Repel (Selected)")
+        act_repel_all = arrangeMenu.addAction("Auto-Repel (All)")
+        arrangeMenu.addSeparator()
         act_move_aside = arrangeMenu.addAction("Move Aside Non-Connected Nodes")
         act_x_arrange = arrangeMenu.addAction("Auto-arrange All")
         menu.addMenu(arrangeMenu)
@@ -1417,6 +1420,20 @@ class CanvasBox(QGraphicsObject):
         elif act_selected == act_dist_v:
             from .patchcanvas import alignSelected
             alignSelected("distribute_v")
+
+        elif act_selected == act_repel_selected:
+            from .patchcanvas import repelNodes, getSelectedNodes
+            selected = getSelectedNodes()
+            repelNodes(selected if len(selected) >= 2 else None)
+
+        elif act_selected == act_repel_all:
+            from .patchcanvas import repelNodes
+            all_n = []
+            for g in canvas.group_list:
+                for w in g.widgets:
+                    if w is not None and w.isVisible():
+                        all_n.append(w)
+            repelNodes(all_n)
 
         elif act_selected == act_move_aside:
             from .patchcanvas import moveAsideNonConnectedNodes
