@@ -1208,6 +1208,12 @@ class CanvasBox(QGraphicsObject):
         act_x_arrange = arrangeMenu.addAction("Auto-arrange All")
         menu.addMenu(arrangeMenu)
 
+        selectMenu = QMenu("Select", menu)
+        act_sel_all = selectMenu.addAction("Select All\tCtrl+A")
+        act_desel = selectMenu.addAction("Deselect\tCtrl+D")
+        act_inv = selectMenu.addAction("Invert Selection\tCtrl+Shift+I")
+        menu.addMenu(selectMenu)
+
         num_selected = len(canvas.scene.selectedItems()) if canvas.scene else 0
         if num_selected < 2:
             act_align_h.setEnabled(False)
@@ -1296,6 +1302,18 @@ class CanvasBox(QGraphicsObject):
         elif act_selected == act_move_aside:
             from .patchcanvas import moveAsideNonConnectedNodes
             moveAsideNonConnectedNodes(self)
+
+        elif act_selected == act_sel_all:
+            from .patchcanvas import selectAllNodes
+            selectAllNodes()
+
+        elif act_selected == act_desel:
+            from .patchcanvas import deselectAllNodes
+            deselectAllNodes()
+
+        elif act_selected == act_inv:
+            from .patchcanvas import invertNodeSelection
+            invertNodeSelection()
 
         elif act_selected == act_x_arrange:
             from .patchcanvas import arrange

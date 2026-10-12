@@ -15,7 +15,12 @@ Recent developments enhance the Carla modular audio host across three primary pi
 
 ## [Unreleased] - 2026-10-12
 
-### 2026-10-12 16:40:00 (`PENDING_COMMIT`)
+### 2026-10-12 16:47:00 (`PENDING_COMMIT`)
+- **fix(canvas)**: Preserve active selection on canvas right-click and add Select menu to node context menu
+  - Prevented right-click mouse press and release on canvas background from deselecting highlighted items in `scene.py`.
+  - Added "Select" submenu (`Select All`, `Deselect`, `Invert Selection`) to both canvas background and node item context menus in `canvasbox.py`.
+
+### 2026-10-12 16:40:00 (`86543b139`)
 - **feat(canvas)**: Add patchbay selection shortcuts and context menu actions
   - Implemented `Ctrl+A` (Select All), `Ctrl+D` (Deselect All), and `Ctrl+Shift+I` (Invert Selection) in `DraggableGraphicsView`.
   - Added dedicated "Select" submenu in the patchbay background context menu exposing all selection actions.

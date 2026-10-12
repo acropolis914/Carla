@@ -353,7 +353,8 @@ class PatchScene(QGraphicsScene):
                 if item and item.type() in (CanvasLineType, CanvasBezierLineType, CanvasPortType):
                     item.triggerDisconnect()
 
-        QGraphicsScene.mousePressEvent(self, event)
+        if event.button() != Qt.RightButton or on_item:
+            QGraphicsScene.mousePressEvent(self, event)
 
     def mouseMoveEvent(self, event):
         if self.m_mouse_down_init and self.m_right_press_pos is not None:
@@ -413,7 +414,7 @@ class PatchScene(QGraphicsScene):
             if needs_update:
                 canvas.scene.update()
 
-            if was_short_click and len(self.selectedItems()) == 0:
+            if was_short_click:
                 event.accept()
                 canvas.callback(ACTION_BG_RIGHT_CLICK, 0, 0, "")
                 return
@@ -460,7 +461,9 @@ class PatchScene(QGraphicsScene):
             self.triggerRubberbandScale()
             return
 
-        if len(self.selectedItems()) == 0:
+        items = self.items(event.scenePos())
+        on_item = any(item and item.type() in (CanvasBoxType, CanvasIconType, CanvasPortType) for item in items)
+        if not on_item:
             self.m_mouse_down_init = False
             event.accept()
             canvas.callback(ACTION_BG_RIGHT_CLICK, 0, 0, "")
