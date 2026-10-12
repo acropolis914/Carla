@@ -1,0 +1,83 @@
+name: Multi‑distro packaging
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  schedule:
+    - cron: '0 0 * * 0'  # weekly build
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        platform: [alpine, ubuntu, fedora, nix]
+    container:
+      image: ${{ matrix.platform }}:latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Install build dependencies
+        run: |
+          case "${{ matrix.platform }}" in
+            alpine)
+              apk add --no-cache git make gcc g++ qt6-qtbase-dev qt6-qtsvg-dev qt6-qttools-dev python3 py3-pyqt6 sdl2-dev glibc-dev
+              ;;
+            ubuntu)
+              apt-get update && apt-get install -y git make build-essential qt6-base-dev qt6-svg-dev qt6-tools-dev python3 python3-pyqt6 sdl2-dev debhelper dh-make
+              ;;
+            fedora)
+              dnf install -y git make gcc gcc-c++ qt6-qtbase-devel qt6-qtsvg-devel qt6-qttools-devel python3 python3-pyqt6 sdl2-devel rpm-build
+              ;;
+            nix)
+              nix-env -iA nixpkgs.nix nixpkgs.nixpkgs-unstable
+              ;;
+          esac
+
+      - name: Build project
+        run: |
+          make DEFAULT_QT=6
+
+      - name: Create tarball (Alpine only)
+        if: matrix.platform == 'alpine'
+        run: |
+          tar -cJf clara-git-${{ github.sha }}.tar.zst *
+          echo "TARFILE=clara-git-${{ github.sha }}.tar.zst" >> $GITHUB_ENV
+
+      - name: Build Debian package (Ubuntu only)
+        if: matrix.platform == 'ubuntu'
+        run: |
+          dh_make -s -y -p clara-git_${{ github.sha }} --createorig
+          debian/rules binary
+          dpkg-deb -b ../clara-git_${{ github.sha }} .
+          echo "DEBFILE=clara-git_${{ github.sha }}.deb" >> $GITHUB_ENV
+
+      - name: Build RPM package (Fedora only)
+        if: matrix.platform == 'fedora'
+        run: |
+          mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+          cp *.spec ~/rpmbuild/SPECS/ || true
+          rpmbuild -ba ~/rpmbuild/SPECS/*.spec
+          find ~/rpmbuild/RPMS -name "*.rpm" -exec cp {} . \;
+          echo "RPMFILE=$(ls *.rpm)" >> $GITHUB_ENV
+
+      - name: Build Nix package (Nix only)
+        if: matrix.platform == 'nix'
+        run: |
+          nix-build default.nix -o result
+          tar -cJf nix-clara-git-${{ github.sha }}.tar.zst -C result .
+          echo "NIXFILE=nix-clara-git-${{ github.sha }}.tar.zst" >> $GITHUB_ENV
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform }}-artifacts
+          path: |
+            ${{ env.TARFILE }}
+            ${{ env.DEBFILE }}
+            ${{ env.RPMFILE }}
+            ${{ env.NIXFILE }}
