@@ -137,10 +137,14 @@ class UpdateChangelogDialog(QDialog):
         layout.addWidget(text_edit)
 
         btn_row = QHBoxLayout()
-        download_btn = QPushButton("⬇ Download Packages")
-        download_btn.setStyleSheet("background-color: #A6E3A1; color: #11111B; font-weight: bold; padding: 4px 12px;")
-        download_btn.clicked.connect(self.open_download_page)
-        btn_row.addWidget(download_btn)
+        install_btn = QPushButton("⚡ Update Now")
+        install_btn.setStyleSheet("background-color: #A6E3A1; color: #11111B; font-weight: bold; padding: 4px 12px;")
+        install_btn.clicked.connect(self.run_terminal_installer)
+        btn_row.addWidget(install_btn)
+
+        releases_btn = QPushButton("🌐 Releases Page")
+        releases_btn.clicked.connect(self.open_download_page)
+        btn_row.addWidget(releases_btn)
 
         btn_row.addStretch()
 
@@ -149,6 +153,68 @@ class UpdateChangelogDialog(QDialog):
         btn_row.addWidget(close_btn)
 
         layout.addLayout(btn_row)
+
+    def run_terminal_installer(self):
+        import os, shutil, subprocess
+        script_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "scripts", "clara_self_updater.sh"))
+        if not os.path.exists(script_path):
+            system_paths = [
+                "/usr/share/clara/scripts/clara_self_updater.sh",
+                "/usr/lib/carla/scripts/clara_self_updater.sh",
+                "/usr/local/share/clara/scripts/clara_self_updater.sh"
+            ]
+            for sp in system_paths:
+                if os.path.exists(sp):
+                    script_path = sp
+                    break
+
+        ver = self.release_info.get("version", "")
+        cmd_str = f"bash '{script_path}' '{ver}'"
+
+        terminal = os.environ.get("TERMINAL")
+        term_candidates = [
+            terminal,
+            "x-terminal-emulator",
+            "kitty",
+            "alacritty",
+            "gnome-terminal",
+            "konsole",
+            "xfce4-terminal",
+            "foot",
+            "wezterm",
+            "tilix",
+            "terminator",
+            "xterm"
+        ]
+
+        found_term = None
+        for cand in term_candidates:
+            if cand and shutil.which(cand):
+                found_term = cand
+                break
+
+        if not found_term:
+            QMessageBox.warning(
+                self,
+                "Terminal Not Found",
+                f"Could not automatically locate a terminal emulator.\nPlease run the following command manually in your terminal:\n\n{cmd_str}"
+            )
+            return
+
+        try:
+            if found_term in ("gnome-terminal", "mate-terminal", "xfce4-terminal", "tilix"):
+                subprocess.Popen([found_term, "--", "bash", "-c", cmd_str])
+            elif found_term in ("konsole", "terminator"):
+                subprocess.Popen([found_term, "-e", f"bash -c \"{cmd_str}\""])
+            else:
+                subprocess.Popen([found_term, "-e", "bash", "-c", cmd_str])
+            self.accept()
+        except Exception as e:
+            QMessageBox.warning(
+                self,
+                "Error Launching Terminal",
+                f"Failed to launch {found_term}:\n{e}\n\nPlease run:\n{cmd_str}"
+            )
 
     def open_download_page(self):
         url = self.release_info.get("url") or f"https://github.com/acropolis914/Clara/releases/tag/v{self.release_info.get('version', '')}"
@@ -191,14 +257,21 @@ class UpdateNotificationBanner(QFrame):
             QPushButton:hover {{
                 background-color: #45475A;
             }}
-            QPushButton#DownloadBtn {{
+            QPushButton#InstallBtn {{
                 background-color: #A6E3A1;
                 color: #11111B;
                 font-weight: bold;
                 border: none;
             }}
-            QPushButton#DownloadBtn:hover {{
+            QPushButton#InstallBtn:hover {{
                 background-color: #94E2D5;
+            }}
+            QPushButton#ReleasesBtn {{
+                background-color: #313244;
+                color: #CDD6F4;
+            }}
+            QPushButton#ReleasesBtn:hover {{
+                background-color: #45475A;
             }}
             QPushButton#ChangelogBtn {{
                 background-color: #89B4FA;
@@ -223,11 +296,17 @@ class UpdateNotificationBanner(QFrame):
         layout.addStretch()
 
         # Buttons
-        download_btn = QPushButton("⬇ Download Now")
-        download_btn.setObjectName("DownloadBtn")
-        download_btn.setToolTip("Open GitHub Releases page to download packages")
-        download_btn.clicked.connect(self.open_download_page)
-        layout.addWidget(download_btn)
+        install_btn = QPushButton("⚡ Update Now")
+        install_btn.setObjectName("InstallBtn")
+        install_btn.setToolTip("Run automated interactive terminal installer")
+        install_btn.clicked.connect(self.run_terminal_installer)
+        layout.addWidget(install_btn)
+
+        releases_btn = QPushButton("🌐 Releases Page")
+        releases_btn.setObjectName("ReleasesBtn")
+        releases_btn.setToolTip("Open GitHub Releases page in web browser")
+        releases_btn.clicked.connect(self.open_releases_page)
+        layout.addWidget(releases_btn)
 
         changelog_btn = QPushButton("View Notes")
         changelog_btn.setObjectName("ChangelogBtn")
@@ -244,7 +323,69 @@ class UpdateNotificationBanner(QFrame):
         skip_btn.clicked.connect(self.confirm_skip)
         layout.addWidget(skip_btn)
 
-    def open_download_page(self):
+    def run_terminal_installer(self):
+        import os, shutil, subprocess
+        script_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "scripts", "clara_self_updater.sh"))
+        if not os.path.exists(script_path):
+            # Check installed location /usr/share/clara/scripts/clara_self_updater.sh or /usr/lib/carla/scripts/
+            system_paths = [
+                "/usr/share/clara/scripts/clara_self_updater.sh",
+                "/usr/lib/carla/scripts/clara_self_updater.sh",
+                "/usr/local/share/clara/scripts/clara_self_updater.sh"
+            ]
+            for sp in system_paths:
+                if os.path.exists(sp):
+                    script_path = sp
+                    break
+
+        cmd_str = f"bash '{script_path}' '{self.version}'"
+
+        # Detect terminal emulator
+        terminal = os.environ.get("TERMINAL")
+        term_candidates = [
+            terminal,
+            "x-terminal-emulator",
+            "kitty",
+            "alacritty",
+            "gnome-terminal",
+            "konsole",
+            "xfce4-terminal",
+            "foot",
+            "wezterm",
+            "tilix",
+            "terminator",
+            "xterm"
+        ]
+
+        found_term = None
+        for cand in term_candidates:
+            if cand and shutil.which(cand):
+                found_term = cand
+                break
+
+        if not found_term:
+            QMessageBox.warning(
+                self,
+                "Terminal Not Found",
+                f"Could not automatically locate a terminal emulator.\nPlease run the following updater command manually in your terminal:\n\n{cmd_str}"
+            )
+            return
+
+        try:
+            if found_term in ("gnome-terminal", "mate-terminal", "xfce4-terminal", "tilix"):
+                subprocess.Popen([found_term, "--", "bash", "-c", cmd_str])
+            elif found_term in ("konsole", "terminator"):
+                subprocess.Popen([found_term, "-e", f"bash -c \"{cmd_str}\""])
+            else:
+                subprocess.Popen([found_term, "-e", "bash", "-c", cmd_str])
+        except Exception as e:
+            QMessageBox.warning(
+                self,
+                "Error Launching Terminal",
+                f"Failed to launch {found_term}:\n{e}\n\nPlease run:\n{cmd_str}"
+            )
+
+    def open_releases_page(self):
         url = self.release_info.get("url") or f"https://github.com/acropolis914/Clara/releases/tag/v{self.version}"
         QDesktopServices.openUrl(QUrl(url))
 

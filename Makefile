@@ -692,6 +692,9 @@ endif
 	$(LINK) ../ui_inputdialog_value.py     $(DESTDIR)$(DATADIR)/carla/resources
 	$(LINK) ../ui_midipattern.py           $(DESTDIR)$(DATADIR)/carla/resources
 	$(LINK) ../ui_xycontroller.py          $(DESTDIR)$(DATADIR)/carla/resources
+	$(LINK) ../update_checker.py           $(DESTDIR)$(DATADIR)/carla/resources
+	install -d $(DESTDIR)$(DATADIR)/carla/scripts
+	install -m 755 scripts/clara_self_updater.sh $(DESTDIR)$(DATADIR)/carla/scripts/clara_self_updater.sh
 
 	# Install translations
 	$(foreach l,$(I18N_LANGUAGES),install -m 644 \

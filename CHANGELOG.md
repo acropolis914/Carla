@@ -20,6 +20,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 21:33:00
+- **feat(updates)**: Add interactive terminal updater and Open Releases Page action
+  - Created embedded `scripts/clara_self_updater.sh` featuring automatic distro family detection (`/etc/os-release`), fallback interactive picker, ANSI styling, and `pkexec`/`sudo` elevation.
+  - Replaced banner download button with **⚡ Update Now** (auto-detects and launches terminal emulator) and **🌐 Releases Page**.
+  - Configured `Makefile` to install `clara_self_updater.sh` into `$(DATADIR)/carla/scripts/` across all distribution packages.
+  - Terminates updates with `Installed. Press enter to exit, please restart Clara`.
+
 ### 2026-10-13 21:19:00
 - **fix(updates)**: Verify compiled distro binaries exist before prompting update
   - Added GitHub Releases API check in `UpdateCheckThread` to explicitly verify that compiled packages (`.deb`, `.rpm`, `.tar.zst`) have finished uploading, ignoring default auto-generated source zips.
