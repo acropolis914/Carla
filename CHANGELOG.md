@@ -20,6 +20,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 06:15:00
+- **fix(fedora)**: Correct SMP make flags syntax in RPM spec
+  - Fixed duplicate `-j` flag by using standard `%{?_smp_mflags}` macro in `clara.spec` to avoid make argument errors.
+
 ### 2026-10-13 06:09:00
 - **ci(matrix)**: Enable fail-fast to immediately abort entire build on any distro failure
   - Changed `fail-fast: true` on the packaging matrix.
