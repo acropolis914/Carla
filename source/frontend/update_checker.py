@@ -72,12 +72,18 @@ class UpdateCheckThread(QThread):
                                     rel_data = json.loads(api_resp.read().decode("utf-8"))
                                     rel_tag = rel_data.get("tag_name", "").lstrip("v")
                                     assets = rel_data.get("assets", [])
-                                    # If the latest release matches and has built packages uploaded
-                                    if parse_semver(rel_tag) >= parse_semver(latest_ver) and len(assets) > 0:
+                                    # Filter for compiled package assets (.deb, .rpm, .tar.zst)
+                                    pkg_assets = [
+                                        a for a in assets
+                                        if any(a.get("name", "").endswith(ext) for ext in (".deb", ".rpm", ".tar.zst"))
+                                    ]
+                                    # If the latest release matches and has compiled distro binaries uploaded
+                                    if parse_semver(rel_tag) >= parse_semver(latest_ver) and len(pkg_assets) >= 3:
                                         has_built_assets = True
                         except Exception:
                             # If GitHub API fails or is rate-limited, fall through to release info
                             has_built_assets = True
+
 
                         if has_built_assets:
                             rel_info = data.get("releases", {}).get(latest_ver, {})

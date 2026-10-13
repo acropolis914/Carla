@@ -21,9 +21,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased] - 2026-10-13
 
 ### 2026-10-13 21:19:00
-- **fix(updates)**: Verify uploaded release assets exist before prompting update
-  - Added GitHub API check in `UpdateCheckThread` to verify compiled packages and assets are uploaded before showing the update banner or dialog.
+- **fix(updates)**: Verify compiled distro binaries exist before prompting update
+  - Added GitHub Releases API check in `UpdateCheckThread` to explicitly verify that compiled packages (`.deb`, `.rpm`, `.tar.zst`) have finished uploading, ignoring default auto-generated source zips.
   - In manual checks while packages are building, notifies the user that the release is currently compiling.
+
 
 ### 2026-10-13 21:12:00
 
