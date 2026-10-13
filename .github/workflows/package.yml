@@ -2,10 +2,9 @@ name: Multi-distro packaging
 
 on:
   push:
-    branches: [main]
     tags: ['v*']
-  schedule:
-    - cron: '0 0 * * 0'  # weekly build
+  workflow_dispatch:
+
 
 jobs:
   build:

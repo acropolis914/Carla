@@ -20,7 +20,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 15:39:00
+- **ci(workflow)**: Restrict multi-distro packaging workflow strictly to tag pushes
+  - Removed standard `main` branch push and weekly cron triggers from `.github/workflows/package.yml`.
+  - Configured packaging pipeline to trigger exclusively on version tags (`v*`) and manual `workflow_dispatch`.
+
 ### 2026-10-13 15:35:00
+
 - **docs(suggestions)**: Add SUGGESTIONS.md and feature request issue template
   - Added `SUGGESTIONS.md` outlining GitHub Discussions channels and proposal guidelines.
   - Added `.github/ISSUE_TEMPLATE/feature_request.md` for structured feature requests.
