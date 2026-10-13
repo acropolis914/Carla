@@ -26,7 +26,9 @@
 [Building from Source](#building-from-source) &bull;
 [Roadmap](#roadmap) &bull;
 [Contributing](CONTRIBUTING.md) &bull;
+[Ideas & Suggestions](SUGGESTIONS.md) &bull;
 [Upstream Features](#upstream-features)
+
 
 <br/>
 

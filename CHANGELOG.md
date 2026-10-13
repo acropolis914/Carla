@@ -20,7 +20,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 15:35:00
+- **docs(suggestions)**: Add SUGGESTIONS.md and feature request issue template
+  - Added `SUGGESTIONS.md` outlining GitHub Discussions channels and proposal guidelines.
+  - Added `.github/ISSUE_TEMPLATE/feature_request.md` for structured feature requests.
+  - Linked Ideas & Suggestions into the primary `README.md` navigation bar.
+
 ### 2026-10-13 07:34:00
+
 - **feat(desktop)**: Add clara.desktop entry and clara binary symlink
   - Added `data/desktop/clara.desktop` system application launcher.
   - Added `clara` binary symlink in `` pointing to `carla` for direct command-line launch.
