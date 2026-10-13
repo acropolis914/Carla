@@ -3,6 +3,8 @@
 > **Clara is evolving rapidly.** While the audio engine, routing graph, and autosaving core are rock-solid, expect UI quirks and experimental behaviors in the patchbay toolbars.
 > - **Report Every Bug**: If you encounter crashes, graphical glitches, or broken controls, you **must [open a bug report](https://github.com/acropolis914/Clara/issues/new?template=bug_report.md)** with complete logs and system specs.
 > - **Help Build Clara**: We need developers, audio hackers, and maintainers. **[Read CONTRIBUTING.md](CONTRIBUTING.md) and start contributing today.**
+> - **Support the Developer**: A dollar goes a long way. I am a student working on my free hours to do this. My allowance doesn't really cut it and it is deeply appreciated if you would [**donate a bit via PayPal**](https://paypal.me/paulharveysuarnaba). Thank you so much!
+
 
 
 <div align="center">
