@@ -239,17 +239,14 @@ jobs:
       - name: Build with Nix
         id: compile
         run: |
-          nix build --extra-experimental-features 'nix-command flakes' 2>&1 | tee build.log || nix-build nix/default.nix 2>&1 | tee build.log
+          nix build --extra-experimental-features 'nix-command flakes' 2>&1 | tee build.log
 
       - name: Package artifacts
         id: pkg
         if: steps.compile.outcome == 'success'
         run: |
-          if [ -e "./result" ]; then
-            tar --zstd -cf clara-nix-${{ github.sha }}.tar.zst -C result .
-          else
-            tar --zstd -cf clara-nix-${{ github.sha }}.tar.zst bin/
-          fi
+          test -e ./result
+          tar --zstd -cf clara-nix-${{ github.sha }}.tar.zst -C result .
           echo "OUTFILE=clara-nix-${{ github.sha }}.tar.zst" >> "$GITHUB_ENV"
 
       - name: Record Status & Tail Log

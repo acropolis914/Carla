@@ -20,6 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 06:18:00
+- **fix(nix)**: Fix SDL2 casing in Nix derivation and strictly verify build result
+  - Corrected `sdl2` to `SDL2` in `nix/default.nix` to resolve nixpkgs evaluation error.
+  - Required valid `./result` derivation path before creating Nix tarball artifact.
+
 ### 2026-10-13 06:15:00
 - **fix(fedora)**: Correct SMP make flags syntax in RPM spec
   - Fixed duplicate `-j` flag by using standard `%{?_smp_mflags}` macro in `clara.spec` to avoid make argument errors.
