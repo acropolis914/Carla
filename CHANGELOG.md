@@ -20,6 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 18:00:00
+- **fix(patchbay)**: Resolve cable disconnect misalignment with hidden unconnected ports and reorder Settings menu
+  - Connected and re-connected ports now trigger immediate box recalculation (`updatePositions`) on nodes with hidden unconnected ports active, and deferred hiding re-syncs all cable geometries after backend connections finalize.
+  - Reorganized Settings menu with panels/toggles grouped first, followed by standalone logs, and `Configure Carla...` placed cleanly at the bottom.
+
 ### 2026-10-13 17:41:00
 - **feat(rack)**: Implement smooth pixel-based scrolling in Rack list
   - Configured `RackListWidget` with pixel scrolling mode (`ScrollPerPixel`) instead of discrete item stepping.

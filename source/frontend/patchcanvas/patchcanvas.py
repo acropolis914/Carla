@@ -935,7 +935,7 @@ def restoreGroupPositions(dataList):
             if group.split and group.widgets[1]:
                 group.widgets[1]._saved_hide_unconnected_ports = True
 
-    # Defer applying hide_unconnected_ports so nodes and connections spawn with normal bounds first
+    # Defer applying hide_unconnected_ports until all backend connections have finished linking
     def _apply_deferred_hide_ports():
         for grp in canvas.group_list:
             for w in grp.widgets:
@@ -947,10 +947,14 @@ def restoreGroupPositions(dataList):
                         w.m_hide_unconnected_ports = True
                         if hasattr(w, "updatePositions"):
                             w.updatePositions()
+        # Ensure all existing cables sync their geometries to newly shifted port positions
+        for conn in canvas.connection_list:
+            if hasattr(conn, "widget") and conn.widget:
+                conn.widget.updateLinePos()
         if hasattr(canvas, "scene") and canvas.scene:
             canvas.scene.update()
 
-    QTimer.singleShot(50, _apply_deferred_hide_ports)
+    QTimer.singleShot(150, _apply_deferred_hide_ports)
 
     if hasattr(canvas, "scene") and canvas.scene:
         canvas.scene.update()
@@ -1363,6 +1367,13 @@ def connectPorts(
     connection_dict.widget.setZValue(canvas.last_z_value)
 
     canvas.connection_list.append(connection_dict)
+
+    # When hide_unconnected_ports is active, connecting a port reveals it and reshapes the box
+    if getattr(port_out_parent, "m_hide_unconnected_ports", False):
+        port_out_parent.updatePositions()
+    if getattr(port_in_parent, "m_hide_unconnected_ports", False):
+        port_in_parent.updatePositions()
+
     connection_dict.widget.updateLinePos()
     log_carla(
         f"patchcanvas.connectPorts: id={connection_id}, {group_out_id}:{port_out_id} -> {group_in_id}:{port_in_id}",

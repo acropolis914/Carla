@@ -549,28 +549,39 @@ class HostWindow(QMainWindow):
         if shortcut_context is not None:
             self.act_settings_show_menubar.setShortcutContext(shortcut_context)
         self.act_settings_show_menubar.toggled.connect(self.slot_showMenubar)
-        self.addAction(self.act_settings_show_menubar)
-        self.ui.menu_Settings.addAction(self.act_settings_show_menubar)
 
         # Modern vs Classic UI mode toggle
         self.act_settings_modern_ui = QAction(self.tr("Modern UI Mode"), self)
         self.act_settings_modern_ui.setCheckable(True)
         self.act_settings_modern_ui.setChecked(True)
         self.act_settings_modern_ui.toggled.connect(self.slot_toggleModernUi)
-        self.ui.menu_Settings.addAction(self.act_settings_modern_ui)
 
         # Statusbar toggle action (Buffer, DSP, Sample Rate panel)
         self.act_settings_show_statusbar = QAction(self.tr("Show Statusbar"), self)
         self.act_settings_show_statusbar.setCheckable(True)
         self.act_settings_show_statusbar.setChecked(True)
         self.act_settings_show_statusbar.toggled.connect(self.slot_showStatusbar)
-        self.addAction(self.act_settings_show_statusbar)
-        self.ui.menu_Settings.addAction(self.act_settings_show_statusbar)
 
         # Standalone Logs Window action
         self.act_settings_show_logs = QAction(self.tr("Show Logs Window"), self)
         self.act_settings_show_logs.triggered.connect(self.slot_showLogsWindow)
+
+        # Cleanly reorder Settings menu: panels/toggles first, then standalone tools, then configure/preferences last
+        self.ui.menu_Settings.clear()
+        self.ui.menu_Settings.addAction(self.act_settings_modern_ui)
+        self.ui.menu_Settings.addAction(self.act_settings_show_menubar)
+        self.ui.menu_Settings.addAction(self.ui.act_settings_show_toolbar)
+        self.ui.menu_Settings.addAction(self.act_settings_show_statusbar)
+        self.ui.menu_Settings.addAction(self.ui.act_settings_show_side_panel)
+        self.ui.menu_Settings.addAction(self.ui.act_settings_show_meters)
+        self.ui.menu_Settings.addAction(self.ui.act_settings_show_keyboard)
+        self.ui.menu_Settings.addSeparator()
         self.ui.menu_Settings.addAction(self.act_settings_show_logs)
+        self.ui.menu_Settings.addSeparator()
+        self.ui.menu_Settings.addAction(self.ui.act_settings_configure)
+
+        self.addAction(self.act_settings_show_menubar)
+        self.addAction(self.act_settings_show_statusbar)
 
         # Hamburger Menu button for when menubar is hidden
         self.btn_hamburger_menu = QToolButton(self.ui.toolBar)
