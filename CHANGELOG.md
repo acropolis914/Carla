@@ -20,6 +20,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 17:28:00
+- **feat(ui)**: Modern / Classic UI mode switch, unified workspace, and native error loading dialog
+  - Refactored `ProjectLoadSummaryDialog` to use system Qt theme styling and native controls without hardcoded color themes.
+  - Introduced `Modern UI Mode` toggle in Settings (defaulting to enabled), unbarring Patchbay + Rack into a unified single workspace without tab bar clutter.
+  - Decoupled Logs tab into a standalone window via `Show Logs Window` action when in Modern unified view mode, while preserving Classic multi-tab view mode on toggle.
+
 ### 2026-10-13 17:11:00
 - **feat(ui)**: Default to side-by-side view, no toolbar, and floating menu button when menubar is hidden
   - Added hamburger menu button directly on the floating patchbay toolbar overlay so main menus remain accessible when top menubar and toolbar are both hidden.

@@ -1725,57 +1725,21 @@ class ProjectLoadSummaryDialog(QDialog):
     def __init__(self, parent, filename, issues=None, raw_log=None):
         super().__init__(parent)
         self.setWindowTitle(self.tr("Project Load Summary - Issues Detected"))
-        self.setMinimumSize(640, 440)
-        self.setStyleSheet("""
-            QDialog {
-                background-color: #1e1e2e;
-                color: #cdd6f4;
-            }
-            QLabel {
-                color: #cdd6f4;
-            }
-            QTextEdit {
-                background-color: #181825;
-                color: #cdd6f4;
-                border: 1px solid #313244;
-                border-radius: 6px;
-                font-family: monospace;
-                font-size: 11px;
-                padding: 6px;
-            }
-            QPushButton {
-                background-color: #313244;
-                color: #cdd6f4;
-                border: 1px solid #45475a;
-                border-radius: 4px;
-                padding: 6px 14px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #45475a;
-            }
-            QPushButton#copyBtn {
-                background-color: #89b4fa;
-                color: #11111b;
-            }
-            QPushButton#copyBtn:hover {
-                background-color: #b4befe;
-            }
-        """)
+        self.setMinimumSize(600, 420)
 
         layout = QVBoxLayout(self)
-        layout.setSpacing(10)
-        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(8)
+        layout.setContentsMargins(12, 12, 12, 12)
 
-        title = QLabel(f"<b>⚠️ Warnings / Issues occurred while loading:</b><br><span style='color: #a6adc8;'>{os.path.basename(filename)}</span>")
+        title = QLabel(f"<b>{self.tr('Warnings / Issues occurred while loading:')}</b><br>{os.path.basename(filename)}")
         layout.addWidget(title)
 
         if issues:
             issues_box = QTextEdit(self)
             issues_box.setReadOnly(True)
-            issues_box.setMaximumHeight(120)
-            issues_html = "<b>Skipped / Errored Items:</b><br>" + "<br>".join(f"• <span style='color:#f38ba8;'>{i}</span>" for i in issues)
-            issues_box.setHtml(issues_html)
+            issues_box.setMaximumHeight(110)
+            issues_text = self.tr("Skipped / Errored Items:\n") + "\n".join(f"• {i}" for i in issues)
+            issues_box.setPlainText(issues_text)
             layout.addWidget(issues_box)
 
         lbl_log = QLabel(self.tr("<b>Diagnostic Log:</b>"))
@@ -1788,14 +1752,13 @@ class ProjectLoadSummaryDialog(QDialog):
         layout.addWidget(self.log_text)
 
         btn_layout = QHBoxLayout()
-        copy_btn = QPushButton(self.tr("📋 Copy Log to Clipboard"), self)
-        copy_btn.setObjectName("copyBtn")
+        copy_btn = QPushButton(self.tr("Copy Log to Clipboard"), self)
         copy_btn.clicked.connect(self._copy_to_clipboard)
         btn_layout.addWidget(copy_btn)
 
         btn_layout.addStretch()
 
-        close_btn = QPushButton(self.tr("Dismiss"), self)
+        close_btn = QPushButton(self.tr("Close"), self)
         close_btn.clicked.connect(self.accept)
         btn_layout.addWidget(close_btn)
 

@@ -552,6 +552,18 @@ class HostWindow(QMainWindow):
         self.addAction(self.act_settings_show_menubar)
         self.ui.menu_Settings.addAction(self.act_settings_show_menubar)
 
+        # Modern vs Classic UI mode toggle
+        self.act_settings_modern_ui = QAction(self.tr("Modern UI Mode"), self)
+        self.act_settings_modern_ui.setCheckable(True)
+        self.act_settings_modern_ui.setChecked(True)
+        self.act_settings_modern_ui.toggled.connect(self.slot_toggleModernUi)
+        self.ui.menu_Settings.addAction(self.act_settings_modern_ui)
+
+        # Standalone Logs Window action
+        self.act_settings_show_logs = QAction(self.tr("Show Logs Window"), self)
+        self.act_settings_show_logs.triggered.connect(self.slot_showLogsWindow)
+        self.ui.menu_Settings.addAction(self.act_settings_show_logs)
+
         # Hamburger Menu button for when menubar is hidden
         self.btn_hamburger_menu = QToolButton(self.ui.toolBar)
         self.btn_hamburger_menu.setText("☰")
@@ -565,6 +577,7 @@ class HostWindow(QMainWindow):
         self._hamburger_popup.addAction(self.ui.menu_Plugin.menuAction())
         self._hamburger_popup.addAction(self.ui.menu_Canvas.menuAction())
         self._hamburger_popup.addAction(self.ui.menu_Settings.menuAction())
+        self._hamburger_popup.addAction(self.act_settings_show_logs)
         self._hamburger_popup.addAction(self.ui.menu_Help.menuAction())
         self.btn_hamburger_menu.setMenu(self._hamburger_popup)
         first_action = self.ui.toolBar.actions()[0] if self.ui.toolBar.actions() else None
@@ -3075,6 +3088,8 @@ class HostWindow(QMainWindow):
             self.splitter.setChildrenCollapsible(False)
             self.splitLayout.addWidget(self.splitter)
 
+        is_modern = getattr(self, "act_settings_modern_ui", None) is not None and self.act_settings_modern_ui.isChecked()
+
         if enabled:
             # Dynamically reparent patchbay and rack into the splitter
             self.splitter.addWidget(self.ui.patchbay)
@@ -3086,12 +3101,25 @@ class HostWindow(QMainWindow):
             w = max(self.width(), 1000)
             self.splitter.setSizes([int(w * 0.65), int(w * 0.35)])
 
+            # In Modern mode, remove the logs tab from central tabWidget
+            if is_modern:
+                logs_idx = self.ui.tabWidget.indexOf(self.ui.logs)
+                if logs_idx != -1:
+                    self.ui.tabWidget.removeTab(logs_idx)
+
             splitTabIndex = self.ui.tabWidget.indexOf(self.tabSplit)
             if splitTabIndex == -1:
                 self.ui.tabWidget.insertTab(2, self.tabSplit, self.tr("Patchbay + Rack"))
                 splitTabIndex = self.ui.tabWidget.indexOf(self.tabSplit)
 
             self.ui.tabWidget.setCurrentIndex(splitTabIndex)
+
+            # In Modern mode, patchbay+rack is the primary unified workspace; hide the tab bar
+            if is_modern:
+                self.ui.tabWidget.tabBar().hide()
+            else:
+                self.ui.tabWidget.tabBar().show()
+
             self.ui.graphicsView.setFocus()
             self.slot_canvasRefresh()
         else:
@@ -3103,6 +3131,15 @@ class HostWindow(QMainWindow):
             if splitTabIndex != -1:
                 self.ui.tabWidget.removeTab(splitTabIndex)
 
+            # Restore logs tab if missing
+            if self.ui.tabWidget.indexOf(self.ui.logs) == -1:
+                # If logs was moved to a dialog, reparent it back
+                if hasattr(self, "_logsDialog") and self._logsDialog is not None:
+                    self._logsDialog.hide()
+                    self.ui.logs.setParent(self.ui.tabWidget)
+                self.ui.tabWidget.addTab(self.ui.logs, self.tr("Log"))
+
+            self.ui.tabWidget.tabBar().show()
             self.ui.tabWidget.setCurrentIndex(1)
             self.ui.graphicsView.setFocus()
             self.slot_canvasRefresh()
@@ -3321,6 +3358,8 @@ class HostWindow(QMainWindow):
         # Persist side-by-side view state and splitter ratio
         is_split = hasattr(self, "tabSplit") and self.ui.tabWidget.indexOf(self.tabSplit) == self.ui.tabWidget.currentIndex()
         settings.setValue("SideBySideEnabled", bool(is_split))
+        if hasattr(self, "act_settings_modern_ui") and self.act_settings_modern_ui is not None:
+            settings.setValue("ModernUiMode", self.act_settings_modern_ui.isChecked())
         if hasattr(self, "splitter") and self.splitter is not None:
             settings.setValue("SideBySideSizes", self.splitter.sizes())
 
@@ -3385,8 +3424,16 @@ class HostWindow(QMainWindow):
                 self.ui.listWidget.setMinimumWidth(rackMinWidth)
                 self.ui.listWidget.setSpacing(rackSpacing)
 
-            # Restore side-by-side view state and splitter ratio (default True)
-            sideBySide = settings.value("SideBySideEnabled", True, bool)
+            # Restore Modern UI mode (default True)
+            modernUi = settings.value("ModernUiMode", True, bool)
+            if hasattr(self, "act_settings_modern_ui") and self.act_settings_modern_ui is not None:
+                self.act_settings_modern_ui.blockSignals(True)
+                self.act_settings_modern_ui.setChecked(modernUi)
+                self.act_settings_modern_ui.blockSignals(False)
+
+            # Restore side-by-side view state and splitter ratio (default True for modern)
+            default_split = True if modernUi else False
+            sideBySide = settings.value("SideBySideEnabled", default_split, bool)
             if sideBySide and self.fWithCanvas and hasattr(self, "act_canvas_side_by_side") and self.act_canvas_side_by_side is not None:
                 self.act_canvas_side_by_side.setChecked(True)
                 self.slot_toggleSideBySideView(True)
@@ -3398,6 +3445,9 @@ class HostWindow(QMainWindow):
                             self.splitter.setSizes(int_sizes)
                     except Exception:
                         pass
+            elif not sideBySide and self.fWithCanvas and hasattr(self, "act_canvas_side_by_side") and self.act_canvas_side_by_side is not None:
+                self.act_canvas_side_by_side.setChecked(False)
+                self.slot_toggleSideBySideView(False)
 
             # if settings.contains("SplitterState"):
             # self.ui.splitter.restoreState(settings.value("SplitterState", b""))
@@ -3788,6 +3838,53 @@ class HostWindow(QMainWindow):
     def slot_showCanvasKeyboard(self, yesNo):
         self.ui.scrollArea.setVisible(yesNo)
         QTimer.singleShot(0, self.slot_miniCanvasCheckAll)
+
+    @pyqtSlot(bool)
+    def slot_toggleModernUi(self, yesNo):
+        if hasattr(self, "act_settings_modern_ui") and self.act_settings_modern_ui is not None:
+            self.act_settings_modern_ui.blockSignals(True)
+            self.act_settings_modern_ui.setChecked(yesNo)
+            self.act_settings_modern_ui.blockSignals(False)
+
+        if self.fWithCanvas and hasattr(self, "act_canvas_side_by_side") and self.act_canvas_side_by_side is not None:
+            # Modern mode default is unified side-by-side view; Classic mode default is classic multi-tab view
+            self.act_canvas_side_by_side.setChecked(yesNo)
+            self.slot_toggleSideBySideView(yesNo)
+
+    @pyqtSlot()
+    def slot_showLogsWindow(self):
+        if not hasattr(self, "_logsDialog") or self._logsDialog is None:
+            self._logsDialog = QDialog(self)
+            self._logsDialog.setWindowTitle(self.tr("Carla Logs"))
+            self._logsDialog.resize(800, 500)
+            layout = QVBoxLayout(self._logsDialog)
+            layout.setContentsMargins(8, 8, 8, 8)
+            layout.setSpacing(6)
+            self._logsDialogLayout = layout
+
+            # When closed, reparent logs back if in classic mode
+            def _on_logs_dialog_close(event):
+                is_split = hasattr(self, "tabSplit") and self.ui.tabWidget.indexOf(self.tabSplit) == self.ui.tabWidget.currentIndex()
+                if not is_split:
+                    self.ui.logs.setParent(self.ui.tabWidget)
+                    if self.ui.tabWidget.indexOf(self.ui.logs) == -1:
+                        self.ui.tabWidget.addTab(self.ui.logs, self.tr("Log"))
+                event.accept()
+
+            self._logsDialog.closeEvent = _on_logs_dialog_close
+
+        # Move logs widget into the dialog if not already inside
+        if self.ui.logs.parent() != self._logsDialog:
+            logs_idx = self.ui.tabWidget.indexOf(self.ui.logs)
+            if logs_idx != -1:
+                self.ui.tabWidget.removeTab(logs_idx)
+            self.ui.logs.setParent(self._logsDialog)
+            self._logsDialogLayout.addWidget(self.ui.logs)
+
+        self.ui.logs.show()
+        self._logsDialog.show()
+        self._logsDialog.raise_()
+        self._logsDialog.activateWindow()
 
     @pyqtSlot()
     def slot_configureCarla(self):
