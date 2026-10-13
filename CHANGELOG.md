@@ -20,6 +20,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 05:41:00
+- **ci(void)**: Isolate void-musl build to host docker container
+  - Migrated `void-musl` build to a host runner job using `docker run` to prevent musl dynamic-linking incompatibilities with GitHub Actions Node.js runner.
+
 ### 2026-10-13 05:36:00
 - **fix(ci)**: Fix POSIX sh pipefail compatibility and container spec path
   - Removed unsupported `set -o pipefail` from Alpine/Void `/bin/sh` build scripts.

@@ -24,8 +24,6 @@ jobs:
             image: archlinux:latest
           - platform: void-glibc
             image: ghcr.io/void-linux/void-glibc-full:latest
-          - platform: void-musl
-            image: ghcr.io/void-linux/void-musl-full:latest
     container:
       image: ${{ matrix.image }}
     steps:
@@ -73,19 +71,12 @@ jobs:
                 qt6-base-devel qt6-svg-devel qt6-tools qt6-tools-devel \
                 python3-pyqt6 SDL2-devel zstd tar
               ;;
-            void-musl)
-              xbps-install -S -y ca-certificates xbps || true
-              xbps-install -Syu -y \
-                base-devel pkg-config git \
-                qt6-base-devel qt6-svg-devel qt6-tools qt6-tools-devel \
-                python3-pyqt6 SDL2-devel musl-fts-devel zstd tar
-              ;;
           esac
 
       - name: Build project
         id: compile
         run: |
-          if [ "${{ matrix.platform }}" = "alpine" ] || [ "${{ matrix.platform }}" = "void-musl" ]; then
+          if [ "${{ matrix.platform }}" = "alpine" ]; then
             export LDFLAGS="-lfts $LDFLAGS"
           fi
 
@@ -96,7 +87,7 @@ jobs:
         if: steps.compile.outcome == 'success'
         run: |
           case "${{ matrix.platform }}" in
-            alpine|void-glibc|void-musl)
+            alpine|void-glibc)
               mkdir -p /tmp/clara-pkg
               make install PREFIX=/usr DESTDIR=/tmp/clara-pkg DEFAULT_QT=6 || cp -r bin /tmp/clara-pkg/
               tar --zstd -cf clara-${{ matrix.platform }}-${{ github.sha }}.tar.zst -C /tmp/clara-pkg .
@@ -170,6 +161,61 @@ jobs:
           name: ${{ matrix.platform }}-package
           path: ${{ env.OUTFILE }}
 
+  build-void-musl:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Build & Package inside Void musl container
+        id: compile
+        run: |
+          docker run --rm -v "$PWD":/workspace -w /workspace ghcr.io/void-linux/void-musl-full:latest sh -c "
+            xbps-install -S -y ca-certificates xbps || true
+            xbps-install -Syu -y \
+              base-devel pkg-config git \
+              qt6-base-devel qt6-svg-devel qt6-tools qt6-tools-devel \
+              python3-pyqt6 SDL2-devel musl-fts-devel zstd tar
+            export LDFLAGS='-lfts \$LDFLAGS'
+            make DEFAULT_QT=6 2>&1 | tee build.log
+            mkdir -p /tmp/clara-pkg
+            make install PREFIX=/usr DESTDIR=/tmp/clara-pkg DEFAULT_QT=6 || cp -r bin /tmp/clara-pkg/
+            tar --zstd -cf clara-void-musl-${{ github.sha }}.tar.zst -C /tmp/clara-pkg .
+          "
+          echo "OUTFILE=clara-void-musl-${{ github.sha }}.tar.zst" >> "$GITHUB_ENV"
+
+      - name: Record Status & Tail Log
+        if: always()
+        run: |
+          mkdir -p status-reports
+          OUTCOME="${{ job.status }}"
+          DETAILS="All steps passed."
+          if [ "$OUTCOME" != "success" ]; then
+            if [ -f build.log ]; then
+              DETAILS=$(tail -n 20 build.log | tr '\n' ' ' | sed 's/"/\\"/g')
+            else
+              DETAILS="Failed during void-musl build."
+            fi
+          fi
+          echo "{\"platform\": \"void-musl\", \"status\": \"$OUTCOME\", \"file\": \"${OUTFILE:-none}\", \"error\": \"$DETAILS\"}" > status-reports/void-musl.json
+
+      - name: Upload void-musl status report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-void-musl
+          path: status-reports/*.json
+          retention-days: 1
+
+      - name: Upload void-musl artifact
+        if: steps.compile.outcome == 'success' && env.OUTFILE != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: void-musl-package
+          path: ${{ env.OUTFILE }}
+
   build-nix:
     runs-on: ubuntu-latest
     steps:
@@ -229,7 +275,7 @@ jobs:
 
   report:
     runs-on: ubuntu-latest
-    needs: [build, build-nix]
+    needs: [build, build-void-musl, build-nix]
     if: always()
     steps:
       - name: Download all status reports
