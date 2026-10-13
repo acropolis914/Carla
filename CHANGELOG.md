@@ -20,7 +20,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 21:12:00
+- **ci(packaging)**: Standardize release artifact filenames to use release tag version
+  - Replaced commit SHA hashes (`${{ github.sha }}`) with release tag versions (`${VERSION}`) across all distro packages (`clara-archlinux-${VERSION}.tar.zst`, `clara-ubuntu-${VERSION}.deb`, etc.).
+  - Resolves broken download URLs in AUR `clara-bin` PKGBUILD.
+
 ### 2026-10-13 21:07:00
+
 - **docs(sponsors)**: Prioritize acropolis914 GitHub Sponsors in funding & README
   - Added direct GitHub Sponsors badge (`https://github.com/sponsors/acropolis914`) to the `README.md` header.
   - Linked GitHub Sponsors alongside PayPal in the top announcement alert banner.
