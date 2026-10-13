@@ -5259,6 +5259,7 @@ def engineCallback(host, action, pluginId, value1, value2, value3, valuef, value
         host.SampleRateChangedCallback.emit(valuef)
     elif action == ENGINE_CALLBACK_CANCELABLE_ACTION:
         host.CancelableActionCallback.emit(pluginId, bool(value1 != 0), valueStr)
+        QApplication.processEvents()
     elif action == ENGINE_CALLBACK_PROJECT_LOAD_FINISHED:
         host.ProjectLoadFinishedCallback.emit()
     elif action == ENGINE_CALLBACK_NSM:

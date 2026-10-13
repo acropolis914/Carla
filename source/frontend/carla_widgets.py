@@ -1782,16 +1782,17 @@ class ProjectLoadingDialog(QDialog):
     def __init__(self, parent=None, filename=""):
         super().__init__(parent)
         self.setWindowTitle(self.tr("Loading Project..."))
-        self.setFixedSize(440, 160)
-        self.setWindowFlags(Qt.Dialog | Qt.CustomizeWindowHint | Qt.WindowTitleHint)
+        self.setFixedSize(460, 150)
+        self.setWindowModality(Qt.ApplicationModal)
+        self.setWindowFlags(Qt.Dialog | Qt.WindowTitleHint | Qt.CustomizeWindowHint)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(24, 20, 24, 20)
-        layout.setSpacing(10)
+        layout.setSpacing(12)
 
         basename = os.path.basename(filename) if filename else "Project"
         self.lbl_title = QLabel(f"<b>Loading:</b> {basename}", self)
-        self.lbl_title.setStyleSheet("font-size: 13px; font-weight: 700;")
+        self.lbl_title.setStyleSheet("font-size: 14px; font-weight: 700; color: #cdd6f4;")
         layout.addWidget(self.lbl_title)
 
         self.progressBar = QProgressBar(self)
