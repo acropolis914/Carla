@@ -127,10 +127,10 @@ jobs:
               if [ -n "$SPEC_FILE" ]; then
                 cp "$SPEC_FILE" ~/rpmbuild/SPECS/clara.spec
               else
-                cat << 'EOF' > ~/rpmbuild/SPECS/clara.spec
-Name:           clara
-Version:        0.1.0
-Release:        git_${{ github.sha }}%{?dist}
+                cp ${{ github.workspace }}/.github/workflows/specs/clara.spec ~/rpmbuild/SPECS/clara.spec
+
+
+
 Summary:        Clara audio application
 
 License:        GPL-3.0-or-later
