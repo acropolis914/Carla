@@ -1,10 +1,10 @@
 Name:           clara
 Version:        0.1.0
-Release:        git_${{ github.sha }}%{?dist}
+Release:        1%{?dist}
 Summary:        Clara audio application (Carla Improved)
 
 License:        GPL-3.0-or-later
-Source0:        clara-git-${{ github.sha }}.tar.gz
+Source0:        clara-source.tar.gz
 
 BuildRequires:  gcc-c++ make pkgconf
 BuildRequires:  qt6-qtbase-devel qt6-qtsvg-devel qt6-qttools-devel
@@ -15,7 +15,7 @@ Requires:       qt6-qtbase qt6-qtsvg SDL2 python3-pyqt6
 Clara is a modular audio plugin host and patchbay based on Carla, built with Qt6 and SDL2.
 
 %prep
-%autosetup -n clara-git-${{ github.sha }}
+%autosetup -n clara-source
 
 %build
 %make_build DEFAULT_QT=6
@@ -38,5 +38,5 @@ make install PREFIX=/usr DESTDIR=%{buildroot} DEFAULT_QT=6
 %optional %{_libdir}/vst/*
 
 %changelog
-* Tue Oct 13 2026 CI Builder <ci@build.local> - 0.1.0
+* Tue Oct 13 2026 CI Builder <ci@build.local> - 0.1.0-1
 - Automated CI package build

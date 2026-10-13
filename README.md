@@ -93,7 +93,7 @@ Official pre-built binaries for multiple Linux distributions are published with 
 | **Alpine Linux (musl)** | `.tar.zst` | Extract into `/usr` (`tar --zstd -xvf clara-alpine-*.tar.zst -C /`) |
 | **Nix / NixOS** | Flake | `nix run github:acropolis914/Clara` |
 
-👉 **[Download Latest Releases](https://github.com/acropolis914/Clara/releases)**
+👉 **[Browse Release Tags & Assets](https://github.com/acropolis914/Clara/tags)**
 
 ---
 

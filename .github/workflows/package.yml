@@ -116,8 +116,8 @@ jobs:
               ;;
             fedora)
               mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
-              tar -czf ~/rpmbuild/SOURCES/clara-git-${{ github.sha }}.tar.gz \
-                --transform 's,^,clara-git-${{ github.sha }}/,' \
+              tar -czf ~/rpmbuild/SOURCES/clara-source.tar.gz \
+                --transform 's,^,clara-source/,' \
                 --exclude='.git' *
               SPEC_FILE=$(find . -maxdepth 2 -name "*.spec" | head -n 1)
               if [ -n "$SPEC_FILE" ]; then
