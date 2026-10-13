@@ -1,6 +1,26 @@
 {
-  "latest": "0.1.3",
+  "latest": "0.1.4",
   "releases": {
+    "0.1.4": {
+      "version": "0.1.4",
+      "date": "2026-10-13",
+      "urgency": "critical",
+      "summary": "Fix Arch Linux Qt6 ABI crash, update window titles/labels to Clara, and bust stale CI build cache",
+      "changes": [
+        "Fixed Arch Linux package startup crash caused by stale ccache Qt6 QVariant ABI mismatch",
+        "Set main window title, logs dialog ('Clara Logs'), and About window title to Clara",
+        "Busted CI packaging cache key to v2 and ensured clean compiles across all distribution targets",
+        "Resolved missing SVG icon warning for canvas side-by-side view toggle"
+      ],
+      "installation": {
+        "arch": "Install via AUR / PKGBUILD: `paru -S clara-bin` (or `clara-git`)",
+        "ubuntu": "Download `.deb` and run: `sudo dpkg -i clara-ubuntu-*.deb && sudo apt-get install -f`",
+        "fedora": "Download `.rpm` and run: `sudo dnf install clara-*.rpm`",
+        "void": "Extract tarball: `tar --zstd -xvf clara-void-*.tar.zst -C /`",
+        "alpine": "Extract tarball: `tar --zstd -xvf clara-alpine-*.tar.zst -C /`",
+        "nix": "Run directly via Flake: `nix run github:acropolis914/Clara`"
+      }
+    },
     "0.1.3": {
       "version": "0.1.3",
       "date": "2026-10-13",

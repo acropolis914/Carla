@@ -54,7 +54,7 @@
 ## The Modern Modular Experience
 
 Carla's rock-solid audio backend, supercharged with modern creative-suite ergonomics, intelligent graph layouts, and clean visual polish:
-
+<img src="resources/screenshots/gradient_cables.png?raw=true&v=2" alt="Clara Patchbay & Rack Screenshot" width="880" style="border-radius: 8px;" />
 - **Real-Time Color Sync & Gradient Cables**
   - One-click Catppuccin palette or custom color wheel: changing a color on any node **instantly syncs** across the canvas box, its rack module, and all connected cables.
   - Connection cables render as **smooth directional linear gradients**, seamlessly interpolating from the source node's accent into the destination node's tone.

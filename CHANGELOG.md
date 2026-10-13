@@ -18,7 +18,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ---
 
 
-## [Unreleased] - 2026-10-13
+## [0.1.4] - 2026-10-13
+
+### 2026-10-13 22:10:00
+- **fix(packaging)**: Fix Arch Linux Qt6 ABI crash and invalidate stale CI cache
+  - Resolved `undefined symbol: _ZN8QVariantC1EO7QString` crash on Arch Linux by scoping CI `ccache` cache key to `ccache-v2-` and ensuring clean build targets.
+  - Standardized application window title, logs dialog (`Clara Logs`), and About dialog window title to **Clara**.
+  - Fixed missing SVG icon warning for canvas side-by-side view toggle.
+  - Bumped `CLARA_VERSION_STRING`, `releases.json`, and AUR `clara-bin` PKGBUILD to `0.1.4`.
 
 ### 2026-10-13 21:42:00
 - **feat(ui)**: Add timed support banner & purge all emoji from banners and dialogs

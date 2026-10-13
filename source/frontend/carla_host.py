@@ -259,7 +259,10 @@ class HostWindow(QMainWindow):
             self.fSessionManagerName = "Non Session Manager TMP"
             self.fWindowCloseHideGui = True
         else:
-            self.fClientName = CARLA_CLIENT_NAME or "Carla"
+            default_name = "Clara"
+            if gCarla.app_name and "carla" in gCarla.app_name.lower() and "clara" not in gCarla.app_name.lower():
+                default_name = "Carla"
+            self.fClientName = CARLA_CLIENT_NAME or default_name
             self.fSessionManagerName = ""
 
         # ----------------------------------------------------------------------------------------------------
@@ -590,6 +593,8 @@ class HostWindow(QMainWindow):
         self.addAction(self.act_settings_show_menubar)
         self.addAction(self.act_settings_show_statusbar)
 
+        self.ui.act_help_about.setText(self.tr("&About Clara"))
+
         self.act_help_check_updates = QAction(self.tr("Check for Updates..."), self)
         self.act_help_check_updates.triggered.connect(self.slot_checkForUpdates)
         self.ui.menu_Help.insertAction(self.ui.act_help_about, self.act_help_check_updates)
@@ -782,7 +787,7 @@ class HostWindow(QMainWindow):
             self.act_canvas_side_by_side.setCheckable(True)
             self.act_canvas_side_by_side.setChecked(False)
             self.act_canvas_side_by_side.setShortcut("Ctrl+Shift+R")
-            self.act_canvas_side_by_side.setIcon(getIcon("view-split-left-right", 16, "svgz") or getIcon("view-split-effect", 16, "svgz") or getIcon("view-refresh", 16, "svgz"))
+            self.act_canvas_side_by_side.setIcon(getIcon("view-split-top-bottom", 16, "svgz") or getIcon("view-split-effect", 16, "svgz") or getIcon("view-refresh", 16, "svgz"))
             self.act_canvas_side_by_side.toggled.connect(self.slot_toggleSideBySideView)
             self.ui.menu_Canvas.addAction(self.act_canvas_side_by_side)
             self.ui.toolBar.addAction(self.act_canvas_side_by_side)
@@ -3995,7 +4000,7 @@ class HostWindow(QMainWindow):
     def slot_showLogsWindow(self):
         if not hasattr(self, "_logsDialog") or self._logsDialog is None:
             self._logsDialog = QDialog(self)
-            self._logsDialog.setWindowTitle(self.tr("Carla Logs"))
+            self._logsDialog.setWindowTitle(self.tr("Clara Logs"))
             self._logsDialog.resize(800, 500)
             layout = QVBoxLayout(self._logsDialog)
             layout.setContentsMargins(8, 8, 8, 8)

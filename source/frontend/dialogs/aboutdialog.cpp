@@ -15,6 +15,7 @@ AboutDialog::AboutDialog(QWidget* const parent,
     : QDialog(parent)
 {
     ui.setupUi(this);
+    setWindowTitle(tr("About Clara"));
 
     QString extraInfo;
     if (isControl)
@@ -29,7 +30,7 @@ AboutDialog::AboutDialog(QWidget* const parent,
     ui.l_about->setText(tr(
         "<div style='text-align: center; font-family: sans-serif; line-height: 1.6;'>"
         "<h2 style='margin: 0; color: #89b4fa;'>Clara</h2>"
-        "<p style='margin: 4px 0 12px 0; color: #a6adc8; font-size: 11px;'>Modernized Audio Plugin Host & Patchbay (v0.1.2 &bull; Carla %1%2)</p>"
+        "<p style='margin: 4px 0 12px 0; color: #a6adc8; font-size: 11px;'>Modernized Audio Plugin Host & Patchbay (v0.1.4 &bull; Carla %1%2)</p>"
         "<p style='margin: 8px 0; font-size: 12px;'>"
         "Maintained & Modernized by <b>acropolis914</b><br>"
         "Original Carla core created by <b>falkTX</b>"

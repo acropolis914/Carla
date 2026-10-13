@@ -61,7 +61,7 @@ from carla_backend import (
     ENGINE_TRANSPORT_MODE_JACK,
 )
 
-CLARA_VERSION_STRING = "0.1.3"
+CLARA_VERSION_STRING = "0.1.4"
 
 # ------------------------------------------------------------------------------------------------------------
 # Config
@@ -638,6 +638,7 @@ class CarlaObject():
         self.log_file    = None     # Log file path
         self.autoload_lastsave = False # Autoload last saved project on startup without prompting
         self.hidden = False # Start minimized/hidden to system tray
+        self.app_name = None
 
 gCarla = CarlaObject()
 
@@ -879,6 +880,9 @@ def handleInitialCommandLineArguments(file):
     # Assign parsed parameters
     if parsed.with_appname:
         initName = os.path.basename(parsed.with_appname)
+        gCarla.app_name = initName
+    else:
+        gCarla.app_name = initName
     if parsed.with_libprefix:
         libPrefix = parsed.with_libprefix
     if parsed.osc_gui:

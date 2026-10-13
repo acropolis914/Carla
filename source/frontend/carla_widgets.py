@@ -1782,47 +1782,48 @@ class ProjectLoadingDialog(QDialog):
     def __init__(self, parent=None, filename=""):
         super().__init__(parent)
         self.setWindowTitle(self.tr("Loading Project..."))
-        self.setFixedSize(460, 150)
+        self.setFixedSize(450, 130)
         self.setWindowModality(Qt.ApplicationModal)
-        self.setWindowFlags(Qt.Dialog | Qt.WindowTitleHint | Qt.CustomizeWindowHint)
+        self._start_time = 0
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(24, 20, 24, 20)
-        layout.setSpacing(12)
+        layout.setContentsMargins(18, 14, 18, 14)
+        layout.setSpacing(8)
 
         basename = os.path.basename(filename) if filename else "Project"
-        self.lbl_title = QLabel(f"<b>Loading:</b> {basename}", self)
-        self.lbl_title.setStyleSheet("font-size: 14px; font-weight: 700; color: #cdd6f4;")
+        self.lbl_title = QLabel(f"<b>Loading Project:</b> {basename}", self)
         layout.addWidget(self.lbl_title)
 
         self.progressBar = QProgressBar(self)
         self.progressBar.setRange(0, 0)  # Animated indeterminate marquee
         self.progressBar.setTextVisible(False)
-        self.progressBar.setFixedHeight(6)
-        self.progressBar.setStyleSheet("""
-            QProgressBar {
-                background: rgba(255, 255, 255, 0.08);
-                border: none;
-                border-radius: 3px;
-            }
-            QProgressBar::chunk {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #89b4fa, stop:1 #b4befe);
-                border-radius: 3px;
-            }
-        """)
+        self.progressBar.setFixedHeight(8)
         layout.addWidget(self.progressBar)
 
-        self.lbl_detail = QLabel(self.tr("Initializing audio engine and restoring state..."), self)
-        self.lbl_detail.setStyleSheet("color: #a6adc8; font-size: 11px;")
+        self.lbl_detail = QLabel(self.tr("Initializing plugins, graph routing, and audio parameters..."), self)
         self.lbl_detail.setWordWrap(True)
         layout.addWidget(self.lbl_detail)
 
-        layout.addStretch()
+        self.lbl_subtext = QLabel(self.tr("Please wait while engine graph state is restored."), self)
+        self.lbl_subtext.setStyleSheet("font-size: 10px; opacity: 0.75;")
+        self.lbl_subtext.setWordWrap(True)
+        layout.addWidget(self.lbl_subtext)
+
+    def show(self):
+        import time
+        self._start_time = time.time()
+        super().show()
+        QApplication.processEvents()
 
     def setDetail(self, text):
         if text:
             self.lbl_detail.setText(str(text))
             QApplication.processEvents()
+
+    def dismiss(self, min_dwell_ms=0):
+        self.close()
+        self.deleteLater()
+        QApplication.processEvents()
 
 
 # ------------------------------------------------------------------------------------------------------------

@@ -64,7 +64,9 @@ if qt_config == 5:
         QPolygonF,
         QSurfaceFormat,
         QIcon,
+        QDesktopServices,
     )
+    from PyQt5.QtCore import QUrl
 
     # QtWidgets
     from PyQt5.QtWidgets import (
@@ -204,7 +206,9 @@ elif qt_config == 6:
         QShortcut,
         QSurfaceFormat,
         QIcon,
+        QDesktopServices,
     )
+    from PyQt6.QtCore import QUrl
 
     # QtWidgets
     from PyQt6.QtWidgets import (
@@ -978,6 +982,14 @@ elif qt_config == 6:
     Qt.LeftButton = Qt.MouseButton.LeftButton
     Qt.MiddleButton = Qt.MouseButton.MiddleButton
     Qt.RightButton = Qt.MouseButton.RightButton
+
+    # --------------------------------------------------------------------------------------------------------
+    # Qt.WindowModality
+    # --------------------------------------------------------------------------------------------------------
+
+    Qt.NonModal = Qt.WindowModality.NonModal
+    Qt.WindowModal = Qt.WindowModality.WindowModal
+    Qt.ApplicationModal = Qt.WindowModality.ApplicationModal
 
 # ------------------------------------------------------------------------------------------------------------
 # Version information
