@@ -20,6 +20,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 19:20:00
+- **fix(rack)**: Prevent access to replaced layout in `PluginSlot_Minimal`
+  - Replaced stale reference to `self.ui.horizontalLayout_3` with safe check on `self.w_knobs_left.layout()`, resolving RuntimeError on plugin instantiation.
+
 ### 2026-10-13 19:19:00
 - **fix(ui)**: Export and import `QSpacerItem` across Qt5/Qt6 compatibility layer
   - Added `QSpacerItem` to `qt_compat.py` QtWidgets exports and imported it into `carla_skin.py`, fixing plugin slot initialization failure.

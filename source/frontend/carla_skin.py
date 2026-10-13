@@ -2866,9 +2866,14 @@ class PluginSlot_Minimal(PluginSlot_Default):
                 paramWidget.setMinimumWidth(dial_col_width)
                 paramWidget.setMaximumWidth(dial_col_width)
 
-        if hasattr(self.ui, 'horizontalLayout_3') and self.ui.horizontalLayout_3 is not None:
-            self.ui.horizontalLayout_3.setSpacing(6)
-            self.ui.horizontalLayout_3.setContentsMargins(6, 4, 6, 4)
+        if self.w_knobs_left is not None:
+            leftLayout = self.w_knobs_left.layout()
+            if leftLayout is not None:
+                try:
+                    leftLayout.setSpacing(6)
+                    leftLayout.setContentsMargins(6, 4, 6, 4)
+                except Exception:
+                    pass
 
         if self.is_slider_mode:
             self.setSliderMode(True)
