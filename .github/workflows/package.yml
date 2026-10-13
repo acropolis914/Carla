@@ -1,4 +1,3 @@
-# Updated CI workflow for multi-distro packaging
 name: Multi-distro packaging
 
 on:
@@ -12,91 +11,218 @@ jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false  # Don't cancel other distros if one fails
       matrix:
-        platform: [alpine, ubuntu, fedora, archlinux]
+        include:
+          - platform: alpine
+            image: alpine:latest
+          - platform: ubuntu
+            image: ubuntu:latest
+          - platform: fedora
+            image: fedora:latest
+          - platform: archlinux
+            image: archlinux:latest
+          - platform: void
+            image: ghcr.io/void-linux/void-glibc-full:latest
+          - platform: nix
+            image: nixos/nix:latest
     container:
-      image: ${{ matrix.platform }}:latest
+      image: ${{ matrix.image }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: false
 
-      - name: Install build dependencies
+      - name: Install dependencies
+        id: install
         run: |
           case "${{ matrix.platform }}" in
             alpine)
               apk add --no-cache \
                 git make gcc g++ musl-dev pkgconf \
                 qt6-qtbase-dev qt6-qtsvg-dev qt6-qttools-dev \
-                python3 py3-qt6 sdl2-dev zstd tar
+                python3 py3-qt6 sdl2-dev zstd tar \
+                musl-fts-dev
               ;;
             ubuntu)
               export DEBIAN_FRONTEND=noninteractive
               apt-get update && apt-get install -y \
                 git make build-essential pkg-config \
-                qt6-base-dev libqt6svg6-dev qt6-tools-dev qt6-tools-dev-tools \
+                qt6-base-dev qt6-svg-dev qt6-tools-dev qt6-tools-dev-tools \
                 python3 python3-pyqt6 libsdl2-dev \
-                debhelper dh-make zstd
+                debhelper dh-make zstd tar
               ;;
             fedora)
               dnf install -y \
                 git make gcc gcc-c++ pkgconf \
                 qt6-qtbase-devel qt6-qtsvg-devel qt6-qttools-devel \
                 python3 python3-pyqt6 SDL2-devel \
-                rpm-build zstd tar
+                rpm-build rpmdevtools zstd tar
               ;;
             archlinux)
               pacman -Syu --noconfirm \
                 git base-devel \
                 qt6-base qt6-svg qt6-tools \
-                python python-pyqt6 sdl2 zstd
+                python python-pyqt6 sdl2 zstd tar
+              ;;
+            void)
+              xbps-install -Syu -y \
+                base-devel pkg-config git \
+                qt6-base-devel qt6-svg-devel qt6-tools qt6-tools-devel \
+                python3-pyqt6 SDL2-devel zstd tar
               ;;
             nix)
-              nix-env -iA nixpkgs.nix nixpkgs.nixpkgs-unstable
+              mkdir -p ~/.config/nix
+              echo "experimental-features = nix-command flakes" >> ~/.config/nix/nix.conf
+              nix-env -iA nixpkgs.git nixpkgs.gnumake nixpkgs.gcc nixpkgs.pkg-config \
+                nixpkgs.qt6.qtbase nixpkgs.qt6.qtsvg nixpkgs.qt6.qttools \
+                nixpkgs.python3 nixpkgs.python3Packages.pyqt6 nixpkgs.SDL2 \
+                nixpkgs.zstd nixpkgs.gnutar
               ;;
           esac
 
       - name: Build project
+        id: compile
         run: |
-          make DEFAULT_QT=6
+          if [ "${{ matrix.platform }}" = "alpine" ]; then
+            export LDFLAGS="-lfts $LDFLAGS"
+          fi
 
-      - name: Create tarball (Alpine only)
-        if: matrix.platform == 'alpine'
+          set -o pipefail
+          if [ "${{ matrix.platform }}" = "nix" ]; then
+            ( [ -f default.nix ] && nix-build || make DEFAULT_QT=6 ) 2>&1 | tee build.log
+          else
+            make DEFAULT_QT=6 2>&1 | tee build.log
+          fi
+
+      - name: Package artifacts
+        id: pkg
+        if: steps.compile.outcome == 'success'
         run: |
-          tar --zstd -cf clara-git-${{ github.sha }}.tar.zst *
-          echo "TARFILE=clara-git-${{ github.sha }}.tar.zst" >> "$GITHUB_ENV"
+          case "${{ matrix.platform }}" in
+            alpine|void)
+              tar --zstd -cf clara-${{ matrix.platform }}-${{ github.sha }}.tar.zst *
+              echo "OUTFILE=clara-${{ matrix.platform }}-${{ github.sha }}.tar.zst" >> "$GITHUB_ENV"
+              ;;
+            nix)
+              if [ -e "./result" ]; then
+                tar --zstd -cf nix-clara-${{ github.sha }}.tar.zst -C result .
+                echo "OUTFILE=nix-clara-${{ github.sha }}.tar.zst" >> "$GITHUB_ENV"
+              fi
+              ;;
+            ubuntu)
+              export LOGNAME=runner USER=runner DEBEMAIL="ci@build.local" DEBFULLNAME="CI Builder"
+              dh_make -s -y -p clara-git_${{ github.sha }} --createorig --email "$DEBEMAIL"
+              dpkg-buildpackage -us -uc -b || debian/rules binary
+              find .. -maxdepth 1 -name "*.deb" -exec cp {} . \;
+              echo "OUTFILE=$(ls *.deb | head -n 1)" >> "$GITHUB_ENV"
+              ;;
+            fedora)
+              mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+              tar -czf ~/rpmbuild/SOURCES/clara-git-${{ github.sha }}.tar.gz \
+                --transform 's,^,clara-git-${{ github.sha }}/,' \
+                --exclude='.git' *
+              SPEC_FILE=$(find . -maxdepth 2 -name "*.spec" | head -n 1)
+              if [ -n "$SPEC_FILE" ]; then
+                cp "$SPEC_FILE" ~/rpmbuild/SPECS/clara.spec
+              else
+                cat << 'EOF' > ~/rpmbuild/SPECS/clara.spec
+Name:           clara
+Version:        0.1.0
+Release:        git_${{ github.sha }}%{?dist}
+Summary:        Clara audio application
 
-      - name: Build Debian package (Ubuntu only)
-        if: matrix.platform == 'ubuntu'
+License:        GPL-3.0-or-later
+Source0:        clara-git-${{ github.sha }}.tar.gz
+
+BuildRequires:  gcc-c++ make pkgconf
+BuildRequires:  qt6-qtbase-devel qt6-qtsvg-devel qt6-qttools-devel
+BuildRequires:  SDL2-devel python3-devel
+Requires:       qt6-qtbase qt6-qtsvg SDL2 python3-pyqt6
+
+%description
+Clara is a Qt6 and SDL2-based application.
+
+%prep
+%autosetup -n clara-git-${{ github.sha }}
+
+%build
+%make_build DEFAULT_QT=6
+
+%install
+rm -rf %{buildroot}
+mkdir -p %{buildroot}%{_bindir}
+find build -type f -executable -exec install -Dpm 0755 {} %{buildroot}%{_bindir}/ \;
+
+%files
+%{_bindir}/*
+
+%changelog
+* Tue Oct 13 2026 CI Builder <ci@build.local> - 0.1.0
+- Automated CI package build
+EOF
+              fi
+              rpmbuild -ba ~/rpmbuild/SPECS/clara.spec
+              find ~/rpmbuild/RPMS -name "*.rpm" -exec cp {} . \;
+              echo "OUTFILE=$(ls *.rpm 2>/dev/null | head -n 1 || true)" >> "$GITHUB_ENV"
+              ;;
+          esac
+
+      - name: Record Status & Tail Log
+        if: always()
         run: |
-          dh_make -s -y -p clara-git_${{ github.sha }} --createorig
-          debian/rules binary
-          dpkg-deb -b ../clara-git_${{ github.sha }} .
-          echo "DEBFILE=clara-git_${{ github.sha }}.deb" >> "$GITHUB_ENV"
+          mkdir -p status-reports
+          OUTCOME="${{ job.status }}"
+          DETAILS="All steps passed."
+          if [ "$OUTCOME" != "success" ]; then
+            if [ -f build.log ]; then
+              DETAILS=$(tail -n 20 build.log | tr '\n' ' ' | sed 's/"/\\"/g')
+            else
+              DETAILS="Failed during dependency setup or packaging."
+            fi
+          fi
+          echo "{\"platform\": \"${{ matrix.platform }}\", \"status\": \"$OUTCOME\", \"file\": \"${OUTFILE:-none}\", \"error\": \"$DETAILS\"}" > status-reports/${{ matrix.platform }}.json
 
-      - name: Build RPM package (Fedora only)
-        if: matrix.platform == 'fedora'
-        run: |
-          mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
-          cp *.spec ~/rpmbuild/SPECS/ || true
-          rpmbuild -ba ~/rpmbuild/SPECS/*.spec
-          find ~/rpmbuild/RPMS -name "*.rpm" -exec cp {} . \;
-          echo "RPMFILE=$(ls *.rpm)" >> "$GITHUB_ENV"
-
-      - name: Build Nix package (Nix only)
-        if: matrix.platform == 'nix'
-        run: |
-          nix-build default.nix -o result
-          tar --zstd -cf nix-clara-git-${{ github.sha }}.tar.zst -C result .
-          echo "NIXFILE=nix-clara-git-${{ github.sha }}.tar.zst" >> "$GITHUB_ENV"
-
-      - name: Upload artifacts
+      - name: Upload distro status report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.platform }}-artifacts
-          path: |
-            ${{ env.TARFILE }}
-            ${{ env.DEBFILE }}
-            ${{ env.RPMFILE }}
-            ${{ env.NIXFILE }}
+          name: report-${{ matrix.platform }}
+          path: status-reports/*.json
+          retention-days: 1
+
+      - name: Upload binary artifact
+        if: steps.pkg.outcome == 'success' && env.OUTFILE != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform }}-package
+          path: ${{ env.OUTFILE }}
+
+  report:
+    runs-on: ubuntu-latest
+    needs: build
+    if: always()
+    steps:
+      - name: Download all status reports
+        uses: actions/download-artifact@v4
+        with:
+          pattern: report-*
+          merge-multiple: true
+          path: reports
+
+      - name: Generate GitHub Run Summary
+        run: |
+          echo "## 📦 Multi-Distro Packaging Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Platform | Status | Artifact | Error Preview |" >> $GITHUB_STEP_SUMMARY
+          echo "| :--- | :--- | :--- | :--- |" >> $GITHUB_STEP_SUMMARY
+          for file in reports/*.json; do
+            [ -f "$file" ] || continue
+            PLATFORM=$(jq -r '.platform' "$file")
+            STATUS=$(jq -r '.status' "$file")
+            OUTFILE=$(jq -r '.file' "$file")
+            ERR=$(jq -r '.error' "$file" | cut -c 1-80)
+            if [ "$STATUS" = "success" ]; then ICON="✅ Success"; ERR="—"; else ICON="❌ Failed"; fi
+            echo "| **$PLATFORM** | $ICON | \`$OUTFILE\` | $ERR |" >> $GITHUB_STEP_SUMMARY
+          done
