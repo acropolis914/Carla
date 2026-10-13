@@ -19,7 +19,7 @@ from ctypes import byref, pointer
 # Imports (Custom)
 # ------------------------------------------------------------------------------------------------------------
 import ui_carla_host
-from update_checker import UpdateCheckThread, UpdateNotificationBanner
+from update_checker import UpdateCheckThread, UpdateNotificationBanner, SupportNotificationBanner
 from carla_app import *
 from carla_backend import *
 from carla_backend_qt import CarlaHostQtDLL, CarlaHostQtNull
@@ -174,6 +174,13 @@ class HostWindow(QMainWindow):
         self.fUpdateThread = UpdateCheckThread(self)
         self.fUpdateThread.update_available.connect(self._on_update_available)
         self.fUpdateThread.start()
+
+        # Clara Support banner (triggers immediately with hidden arg --show-support-banner, otherwise after 10 mins: 600,000 ms)
+        self.fSupportBanner = None
+        if "--show-support-banner" in sys.argv:
+            QTimer.singleShot(100, lambda: self._check_and_show_support_banner(force=True))
+        else:
+            QTimer.singleShot(600000, self._check_and_show_support_banner)
 
         # Remove rack padding left and right
         self.ui.pad_left.hide()
@@ -586,6 +593,10 @@ class HostWindow(QMainWindow):
         self.act_help_check_updates = QAction(self.tr("Check for Updates..."), self)
         self.act_help_check_updates.triggered.connect(self.slot_checkForUpdates)
         self.ui.menu_Help.insertAction(self.ui.act_help_about, self.act_help_check_updates)
+
+        self.act_help_support = QAction(self.tr("Support Clara..."), self)
+        self.act_help_support.triggered.connect(lambda: self._check_and_show_support_banner(force=True))
+        self.ui.menu_Help.insertAction(self.ui.act_help_about, self.act_help_support)
         self.ui.menu_Help.insertSeparator(self.ui.act_help_about)
 
         # Hamburger Menu button for when menubar is hidden
@@ -1436,22 +1447,21 @@ class HostWindow(QMainWindow):
             if ("error" in msg.lower() or "failed" in msg.lower() or "cannot open" in msg.lower()) and msg not in issues:
                 issues.append(msg)
 
-        if not load_ok or issues or error_entries:
+        self.projectLoadingFinished(False)
+
+        if not load_ok and issues:
             raw_log_str = "\n".join(
                 f"[{e.timestamp.strftime('%H:%M:%S')}] [{LEVEL_NAMES.get(e.level, 'INFO')}] [{e.tag}] {e.message}"
                 for e in recent_entries
             ) or (last_backend_err or "No detailed log entries.")
-            if issues:
-                summary_dlg = ProjectLoadSummaryDialog(self, load_source, issues=issues, raw_log=raw_log_str)
-                summary_dlg.exec_()
+            summary_dlg = ProjectLoadSummaryDialog(self, load_source, issues=issues, raw_log=raw_log_str)
+            summary_dlg.exec_()
 
         if not load_ok and not self.fPluginList:
             self.fIsProjectLoading = False
-            self.projectLoadingFinished(True)
             return
 
         self.fIsProjectLoading = False
-        self.projectLoadingFinished(False)
         self.fHasUnsavedChanges = False
         self.setProperWindowTitle()
 
@@ -1533,8 +1543,11 @@ class HostWindow(QMainWindow):
     def projectLoadingFinished(self, refreshCanvas):
         if getattr(self, "fLoadingDialog", None) is not None:
             try:
-                self.fLoadingDialog.close()
-                self.fLoadingDialog.deleteLater()
+                if hasattr(self.fLoadingDialog, "dismiss"):
+                    self.fLoadingDialog.dismiss(500)
+                else:
+                    self.fLoadingDialog.close()
+                    self.fLoadingDialog.deleteLater()
             except Exception:
                 pass
             self.fLoadingDialog = None
@@ -2165,31 +2178,25 @@ class HostWindow(QMainWindow):
 
     @pyqtSlot(int, bool, str)
     def slot_handleCancelableActionCallback(self, pluginId, started, action):
-        if hasattr(self, "fLoadingDialog") and self.fLoadingDialog is not None:
-            if started and action:
-                self.fLoadingDialog.setDetail(action)
-            return
-
-        if self.fCancelableActionBox is not None:
-            self.fCancelableActionBox.close()
-
         if started:
-            self.fCancelableActionBox = QMessageBox(self)
-            self.fCancelableActionBox.setIcon(QMessageBox.Information)
-            self.fCancelableActionBox.setWindowTitle(self.tr("Action in progress"))
-            self.fCancelableActionBox.setText(action)
-            self.fCancelableActionBox.setInformativeText(
-                self.tr("An action is in progress, please wait...")
-            )
-            self.fCancelableActionBox.setStandardButtons(QMessageBox.Cancel)
-            self.fCancelableActionBox.setDefaultButton(QMessageBox.Cancel)
-            self.fCancelableActionBox.buttonClicked.connect(
-                self.slot_canlableActionBoxClicked
-            )
-            self.fCancelableActionBox.show()
-
+            if not hasattr(self, "fLoadingDialog") or self.fLoadingDialog is None:
+                fn = getattr(self, "fProjectFilename", "")
+                self.fLoadingDialog = ProjectLoadingDialog(self.fParentOrSelf, fn)
+                self.fLoadingDialog.show()
+            if action:
+                self.fLoadingDialog.setDetail(action)
+            QApplication.processEvents()
         else:
-            self.fCancelableActionBox = None
+            if hasattr(self, "fLoadingDialog") and self.fLoadingDialog is not None:
+                try:
+                    if hasattr(self.fLoadingDialog, "dismiss"):
+                        self.fLoadingDialog.dismiss(500)
+                    else:
+                        self.fLoadingDialog.close()
+                        self.fLoadingDialog.deleteLater()
+                except Exception:
+                    pass
+                self.fLoadingDialog = None
 
     @pyqtSlot()
     def slot_canlableActionBoxClicked(self):
@@ -5139,6 +5146,30 @@ class HostWindow(QMainWindow):
             if release_info.get("urgency", "").lower() in ("critical", "suggested"):
                 dlg = UpdateChangelogDialog(release_info, self)
                 dlg.exec_()
+        except Exception:
+            pass
+
+    def _check_and_show_support_banner(self, force=False):
+        try:
+            import time
+            settings = QSettings("falkTX", "Carla2")
+            if not force:
+                if settings.value("Clara/SupportBannerNeverShow", False, type=bool):
+                    return
+
+                snooze_until = settings.value("Clara/SupportBannerSnoozeUntil", 0, type=int)
+                if time.time() < snooze_until:
+                    return
+
+            if not self.fSupportBanner:
+                self.fSupportBanner = SupportNotificationBanner(self)
+                layout = self.ui.centralwidget.layout()
+                if layout:
+                    insert_idx = 1 if (self.fUpdateBanner and self.fUpdateBanner.isVisible()) else 0
+                    layout.insertWidget(insert_idx, self.fSupportBanner)
+            else:
+                self.fSupportBanner.show()
+                self.fSupportBanner.raise_()
         except Exception:
             pass
 

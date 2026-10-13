@@ -20,6 +20,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 21:42:00
+- **feat(ui)**: Add timed support banner & purge all emoji from banners and dialogs
+  - Added `SupportNotificationBanner` scheduled via a 10-minute timer (`QTimer.singleShot(600000)`) with sponsor links for maintainers (`acropolis914` and `falkTX` from `.github/FUNDING.yml`: GitHub Sponsors, Patreon, Liberapay, PayPal).
+  - Added "Support Clara..." menu action in Help menu and hidden CLI flag `--show-support-banner` to display banner immediately for verification.
+  - Provided snooze actions: "Hide for 1 Month" (persisted for 30 days via `QSettings`) and "Never Show Again".
+  - Cleaned all banner and dialog buttons/headers to be strictly emoji-free.
+
 ### 2026-10-13 21:33:00
 - **feat(updates)**: Add interactive terminal updater and Open Releases Page action
   - Created embedded `scripts/clara_self_updater.sh` featuring automatic distro family detection (`/etc/os-release`), fallback interactive picker, ANSI styling, and `pkexec`/`sudo` elevation.

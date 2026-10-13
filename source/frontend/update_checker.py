@@ -121,14 +121,14 @@ class UpdateChangelogDialog(QDialog):
         text_edit = QTextEdit()
         text_edit.setReadOnly(True)
 
-        content = "<h3>✨ What's Changed</h3><ul>"
+        content = "<h3>What's Changed</h3><ul>"
         for change in release_info.get("changes", []):
             content += f"<li>{change}</li>"
         content += "</ul>"
 
         inst = release_info.get("installation", {})
         if inst:
-            content += "<h3>📦 Installation Guide</h3><ul>"
+            content += "<h3>Installation Guide</h3><ul>"
             for distro, cmd in inst.items():
                 content += f"<li><b>{distro.title()}</b>: <code>{cmd}</code></li>"
             content += "</ul>"
@@ -137,12 +137,12 @@ class UpdateChangelogDialog(QDialog):
         layout.addWidget(text_edit)
 
         btn_row = QHBoxLayout()
-        install_btn = QPushButton("⚡ Update Now")
+        install_btn = QPushButton("Update Now")
         install_btn.setStyleSheet("background-color: #A6E3A1; color: #11111B; font-weight: bold; padding: 4px 12px;")
         install_btn.clicked.connect(self.run_terminal_installer)
         btn_row.addWidget(install_btn)
 
-        releases_btn = QPushButton("🌐 Releases Page")
+        releases_btn = QPushButton("Releases Page")
         releases_btn.clicked.connect(self.open_download_page)
         btn_row.addWidget(releases_btn)
 
@@ -296,13 +296,13 @@ class UpdateNotificationBanner(QFrame):
         layout.addStretch()
 
         # Buttons
-        install_btn = QPushButton("⚡ Update Now")
+        install_btn = QPushButton("Update Now")
         install_btn.setObjectName("InstallBtn")
         install_btn.setToolTip("Run automated interactive terminal installer")
         install_btn.clicked.connect(self.run_terminal_installer)
         layout.addWidget(install_btn)
 
-        releases_btn = QPushButton("🌐 Releases Page")
+        releases_btn = QPushButton("Releases Page")
         releases_btn.setObjectName("ReleasesBtn")
         releases_btn.setToolTip("Open GitHub Releases page in web browser")
         releases_btn.clicked.connect(self.open_releases_page)
@@ -408,3 +408,107 @@ class UpdateNotificationBanner(QFrame):
             settings = QSettings("falkTX", "Carla2")
             settings.setValue("Clara/SkippedUpdateVersion", self.version)
             self.setVisible(False)
+
+
+class SupportNotificationBanner(QFrame):
+    """Subtle support banner prompted after runtime duration with snooze / never options."""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setStyleSheet("""
+            QFrame#SupportNotificationBanner {
+                background-color: #181825;
+                border-bottom: 2px solid #F5C2E7;
+                padding: 4px 10px;
+            }
+            QLabel {
+                color: #CDD6F4;
+                font-size: 12px;
+            }
+            QPushButton {
+                background-color: #313244;
+                color: #CDD6F4;
+                border: 1px solid #45475A;
+                border-radius: 4px;
+                padding: 3px 8px;
+                font-size: 11px;
+            }
+            QPushButton:hover {
+                background-color: #45475A;
+            }
+            QPushButton#SponsorBtn {
+                background-color: #F5C2E7;
+                color: #11111B;
+                font-weight: bold;
+                border: none;
+            }
+            QPushButton#SponsorBtn:hover {
+                background-color: #F5E0DC;
+            }
+        """)
+        self.setObjectName("SupportNotificationBanner")
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(8, 4, 8, 4)
+        layout.setSpacing(8)
+
+        badge = QLabel(" SUPPORT ")
+        badge.setStyleSheet("background-color: #F5C2E7; color: #11111B; font-weight: bold; border-radius: 3px; padding: 2px 4px;")
+        layout.addWidget(badge)
+
+        msg = QLabel("Enjoying Clara? Consider supporting ongoing development and maintenance:")
+        layout.addWidget(msg)
+
+        # Sponsor Buttons from FUNDING.yml
+        btn_gh_acro = QPushButton("GitHub (acropolis914)")
+        btn_gh_acro.setObjectName("SponsorBtn")
+        btn_gh_acro.clicked.connect(lambda: QDesktopServices.openUrl(QUrl("https://github.com/sponsors/acropolis914")))
+        layout.addWidget(btn_gh_acro)
+
+        btn_gh_falk = QPushButton("GitHub (falkTX)")
+        btn_gh_falk.setObjectName("SponsorBtn")
+        btn_gh_falk.clicked.connect(lambda: QDesktopServices.openUrl(QUrl("https://github.com/sponsors/falkTX")))
+        layout.addWidget(btn_gh_falk)
+
+        btn_patreon = QPushButton("Patreon")
+        btn_patreon.clicked.connect(lambda: QDesktopServices.openUrl(QUrl("https://patreon.com/falkTX")))
+        layout.addWidget(btn_patreon)
+
+        btn_liberapay = QPushButton("Liberapay")
+        btn_liberapay.clicked.connect(lambda: QDesktopServices.openUrl(QUrl("https://liberapay.com/falkTX")))
+        layout.addWidget(btn_liberapay)
+
+        btn_paypal = QPushButton("PayPal")
+        btn_paypal.clicked.connect(lambda: QDesktopServices.openUrl(QUrl("https://paypal.me/paulharveysuarnaba")))
+        layout.addWidget(btn_paypal)
+
+        layout.addStretch()
+
+        btn_month = QPushButton("Hide for 1 Month")
+        btn_month.setToolTip("Do not prompt again for 30 days")
+        btn_month.clicked.connect(self.hide_for_month)
+        layout.addWidget(btn_month)
+
+        btn_never = QPushButton("Never Show Again")
+        btn_never.setToolTip("Never show this banner again")
+        btn_never.clicked.connect(self.hide_forever)
+        layout.addWidget(btn_never)
+
+        btn_close = QPushButton("Close")
+        btn_close.setToolTip("Dismiss for current session")
+        btn_close.clicked.connect(self.close_session)
+        layout.addWidget(btn_close)
+
+    def close_session(self):
+        self.setVisible(False)
+
+    def hide_for_month(self):
+        import time
+        settings = QSettings("falkTX", "Carla2")
+        # Hide for 30 days (seconds)
+        settings.setValue("Clara/SupportBannerSnoozeUntil", int(time.time() + (30 * 86400)))
+        self.setVisible(False)
+
+    def hide_forever(self):
+        settings = QSettings("falkTX", "Carla2")
+        settings.setValue("Clara/SupportBannerNeverShow", True)
+        self.setVisible(False)
