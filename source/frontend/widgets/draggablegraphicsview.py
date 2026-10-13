@@ -468,7 +468,7 @@ class DraggableGraphicsView(QGraphicsView):
         if item:
             self._selectAndCenter(item.data(Qt.UserRole))
 
-    def animateFocusOn(self, target_item, duration=420):
+    def animateFocusOn(self, target_item, duration=260):
         if not target_item or not self.scene():
             return
 
@@ -491,10 +491,6 @@ class DraggableGraphicsView(QGraphicsView):
         viewport_rect = self.viewport().rect()
         start_pt = self.mapToScene(viewport_rect.center())
 
-        # Base zoom factor
-        start_transform = self.transform()
-        base_scale = start_transform.m11()
-
         curve = QEasingCurve(QEasingCurve.Type.InOutCubic if hasattr(QEasingCurve, "Type") else QEasingCurve.InOutCubic)
 
         anim = QVariantAnimation(self)
@@ -502,36 +498,18 @@ class DraggableGraphicsView(QGraphicsView):
         anim.setStartValue(0.0)
         anim.setEndValue(1.0)
 
-        self._last_anim_scale = base_scale
-
         def _on_step(val):
             t = float(val)
             e = curve.valueForProgress(t)
 
-            # Smoothly interpolate scene center
+            # Smoothly interpolate position via cubic bezier curve
             curr_x = start_pt.x() + (target_pt.x() - start_pt.x()) * e
             curr_y = start_pt.y() + (target_pt.y() - start_pt.y()) * e
-
-            # Subtly dip zoom mid-flight (5% dip to keep it rock-solid and buttery smooth)
-            zoom_dip = 1.0 - (0.05 * 4.0 * t * (1.0 - t))
-            target_scale = base_scale * zoom_dip
-
-            # Apply incremental scaling to preserve view anchor alignment cleanly
-            factor = target_scale / self._last_anim_scale
-            self._last_anim_scale = target_scale
-            self.scale(factor, factor)
 
             self.centerOn(curr_x, curr_y)
 
         def _on_finish():
-            if self._last_anim_scale != base_scale:
-                factor = base_scale / self._last_anim_scale
-                self.scale(factor, factor)
-                self._last_anim_scale = base_scale
             self.centerOn(target_pt)
-            scene = self.scene()
-            if hasattr(scene, "scaleChanged"):
-                scene.scaleChanged.emit(base_scale)
 
         anim.valueChanged.connect(_on_step)
         anim.finished.connect(_on_finish)

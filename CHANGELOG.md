@@ -20,6 +20,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 20:03:00
+- **refactor(patchbay)**: Make camera autofocus pan-only and faster
+  - Removed zoom scaling in `animateFocusOn` to provide pure, crisp pan travel and shortened duration to 260ms for snappy response.
+
 ### 2026-10-13 20:00:00
 - **refactor(ui)**: Smooth patchbay camera animation and restyle floating add button
   - Replaced matrix reset scaling with incremental scaling in `animateFocusOn` to eliminate camera anchor jitter during flight.
