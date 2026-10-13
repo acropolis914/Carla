@@ -3,7 +3,8 @@
 > **Clara is evolving rapidly.** While the audio engine, routing graph, and autosaving core are rock-solid, expect UI quirks and experimental behaviors in the patchbay toolbars.
 > - **Report Every Bug**: If you encounter crashes, graphical glitches, or broken controls, you **must [open a bug report](https://github.com/acropolis914/Clara/issues/new?template=bug_report.md)** with complete logs and system specs.
 > - **Help Build Clara**: We need developers, audio hackers, and maintainers. **[Read CONTRIBUTING.md](CONTRIBUTING.md) and start contributing today.**
-> - **Support the Developer**: A dollar goes a long way. I am a student working on my free hours to do this. My allowance doesn't really cut it and it is deeply appreciated if you would [**donate a bit via PayPal**](https://paypal.me/paulharveysuarnaba). Thank you so much!
+> - **Support the Developer**: A dollar goes a long way. I am a student working on my free hours to do this. My allowance doesn't really cut it and it is deeply appreciated if you would support through [**GitHub Sponsors**](https://github.com/sponsors/acropolis914) or [**PayPal**](https://paypal.me/paulharveysuarnaba). Thank you so much!
+
 
 
 
@@ -16,7 +17,9 @@
 [![Platform](https://img.shields.io/badge/platform-Linux-313244.svg?style=flat-square&logo=linux&logoColor=cdd6f4)]()
 [![License](https://img.shields.io/badge/license-GPLv2%2B-a6e3a1.svg?style=flat-square&logoColor=11111b)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/acropolis914/Clara?style=flat-square&color=fab387)](https://github.com/acropolis914/Clara/releases)
+[![Sponsor](https://img.shields.io/badge/Sponsor-%E2%99%A5-f38ba8.svg?style=flat-square&logo=githubsponsors&logoColor=11111b)](https://github.com/sponsors/acropolis914)
 [![Upstream](https://img.shields.io/badge/upstream-falkTX%2FCarla-cba6f7.svg?style=flat-square)](https://github.com/falkTX/Carla)
+
 
 <br/>
 

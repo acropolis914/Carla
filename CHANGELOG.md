@@ -20,7 +20,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 21:07:00
+- **docs(sponsors)**: Prioritize acropolis914 GitHub Sponsors in funding & README
+  - Added direct GitHub Sponsors badge (`https://github.com/sponsors/acropolis914`) to the `README.md` header.
+  - Linked GitHub Sponsors alongside PayPal in the top announcement alert banner.
+
 ### 2026-10-13 20:46:00
+
 - **feat(updates)**: Separate Clara and Carla versioning & add manual update checks
   - Introduced `CLARA_VERSION_STRING` ("0.1.2") in `carla_shared.py` to prevent version comparison conflicts with upstream Carla `2.6.0-alpha1`.
   - Added "Check for Updates..." to the Help menu and toolbar menu with immediate feedback dialogs (up-to-date confirmation and error diagnostics).
