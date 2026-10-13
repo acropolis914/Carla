@@ -20,6 +20,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 19:27:00
+- **fix(rack)**: Ensure header buttons, badge, and title anchor to the far left
+  - Cleared fixed template spacers and inserted action buttons (index 0), type badge (index 1), and title (index 2) at the start of `layout_top`.
+
 ### 2026-10-13 19:24:00
 - **feat(patchbay)**: Trigger zoom to fit after applying deferred hidden ports on load
   - Added `canvas.scene.zoom_fit()` after hiding unconnected ports on session loading to frame all graph nodes neatly.

@@ -2482,34 +2482,31 @@ class PluginSlot_Minimal(PluginSlot_Default):
         self.label_name.setText(self.fFullTitle)
         self.label_name.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
 
-        # Clear legacy items and spacers from layout_top to construct clean flex layout:
+        # Clear legacy items and fixed spacers from layout_top to construct clean flex layout:
         # <buttons> <type badge> <title> <auto-expanding spacer> <right modules>
         if hasattr(self.ui, 'line_sep') and self.ui.line_sep is not None:
             self.ui.line_sep.hide()
             self.ui.layout_top.removeWidget(self.ui.line_sep)
 
-        # Remove existing items from layout_top temporarily
         for w in (self.ui.w_buttons, self.label_badge, self.label_name):
             self.ui.layout_top.removeWidget(w)
 
-        # Clear any stray fixed spacer items before title
-        while self.ui.layout_top.count() > 0:
-            item = self.ui.layout_top.itemAt(0)
-            if item.spacerItem():
-                self.ui.layout_top.removeItem(item)
-            else:
-                break
+        # Remove any fixed spacers from layout_top so items are never pushed towards the right/center
+        for i in range(self.ui.layout_top.count() - 1, -1, -1):
+            it = self.ui.layout_top.itemAt(i)
+            if it and it.spacerItem():
+                self.ui.layout_top.removeItem(it)
 
-        # 1. <buttons>
-        self.ui.layout_top.addWidget(self.ui.w_buttons)
-        # 2. <type badge>
-        self.ui.layout_top.addWidget(self.label_badge)
-        # 3. <title>
-        self.ui.layout_top.addWidget(self.label_name)
+        # 1. <buttons> at far-left (index 0)
+        self.ui.layout_top.insertWidget(0, self.ui.w_buttons)
+        # 2. <type badge> (index 1)
+        self.ui.layout_top.insertWidget(1, self.label_badge)
+        # 3. <title> (index 2)
+        self.ui.layout_top.insertWidget(2, self.label_name)
 
-        # 4. <auto-expanding spacer>
+        # 4. <auto-expanding spacer> (index 3) pushing right controls to the right
         self.spacer_flex = QSpacerItem(8, 1, QSizePolicy.Expanding, QSizePolicy.Minimum)
-        self.ui.layout_top.addItem(self.spacer_flex)
+        self.ui.layout_top.insertItem(3, self.spacer_flex)
 
         self.setMinimumWidth(200)
         self.ui.layout_top.setSpacing(4)
