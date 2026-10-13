@@ -20,6 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 07:34:00
+- **feat(desktop)**: Add clara.desktop entry and clara binary symlink
+  - Added `data/desktop/clara.desktop` system application launcher.
+  - Added `clara` binary symlink in `` pointing to `carla` for direct command-line launch.
+
 ### 2026-10-13 15:33:00
 - **docs(readme)**: Modernize README, add CONTRIBUTING guide, and GitHub issue template
   - Removed raw emoji clutter from README.md in favor of Catppuccin badges and clean typography.

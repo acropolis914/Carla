@@ -543,6 +543,7 @@ ifneq ($(CPPMODE),true)
 		data/carla-rack \
 		data/carla-settings \
 		$(DESTDIR)$(BINDIR)
+	ln -sf carla $(DESTDIR)$(BINDIR)/clara
 
 	# Adjust PREFIX value in script files (gui)
 	sed $(SED_ARGS) 's?X-PREFIX-X?$(PREFIX)?' \
@@ -617,6 +618,7 @@ endif
 
 	# Install desktop files
 	install -m 644 data/desktop/carla.desktop             $(DESTDIR)$(DATADIR)/applications
+	install -m 644 data/desktop/clara.desktop             $(DESTDIR)$(DATADIR)/applications
 	install -m 644 data/desktop/carla-rack.desktop        $(DESTDIR)$(DATADIR)/applications
 	install -m 644 data/desktop/carla-patchbay.desktop    $(DESTDIR)$(DATADIR)/applications
 	install -m 644 data/desktop/carla-jack-single.desktop $(DESTDIR)$(DATADIR)/applications
