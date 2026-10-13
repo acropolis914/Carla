@@ -982,3 +982,14 @@ if qt_config == 5:
 elif qt_config == 6:
     from PyQt6.QtCore import PYQT_VERSION
     from PyQt6.QtCore import QT_VERSION
+
+    # Ensure resources from resources_rc are registered in PyQt6's resource system
+    try:
+        import resources_rc
+        from PyQt6 import QtCore as _QtCore6
+        _qt_v = [int(_v) for _v in _QtCore6.qVersion().split('.')]
+        _rcc_v = 1 if _qt_v < [5, 8, 0] else 2
+        _struct = resources_rc.qt_resource_struct_v1 if _rcc_v == 1 else resources_rc.qt_resource_struct_v2
+        _QtCore6.qRegisterResourceData(_rcc_v, _struct, resources_rc.qt_resource_name, resources_rc.qt_resource_data)
+    except Exception:
+        pass
