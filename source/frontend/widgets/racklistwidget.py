@@ -22,6 +22,7 @@ from qt_compat import (
     QListWidget,
     QListWidgetItem,
     QMessageBox,
+    QTimer,
 )
 
 # ------------------------------------------------------------------------------------------------------------
@@ -245,6 +246,16 @@ class RackListWidget(QListWidget):
         self.setSelectionMode(QAbstractItemView.SingleSelection)
         self.setSortingEnabled(False)
 
+        # Smooth scrolling configuration
+        scroll_mode = getattr(QAbstractItemView.ScrollMode, "ScrollPerPixel", getattr(QAbstractItemView, "ScrollPerPixel", None))
+        if scroll_mode is not None:
+            self.setVerticalScrollMode(scroll_mode)
+
+        self._smooth_target_val = None
+        self._smooth_timer = QTimer(self)
+        self._smooth_timer.setInterval(16)
+        self._smooth_timer.timeout.connect(self._on_smooth_scroll_tick)
+
         self.setDragEnabled(True)
         self.setDragDropMode(QAbstractItemView.DropOnly)
         self.setDropIndicatorShown(True)
@@ -425,6 +436,50 @@ class RackListWidget(QListWidget):
                 return
 
         QListWidget.keyPressEvent(self, event)
+
+    def wheelEvent(self, event):
+        delta = 0
+        if hasattr(event, "angleDelta"):
+            delta = event.angleDelta().y()
+        elif hasattr(event, "delta"):
+            delta = event.delta()
+
+        if delta != 0:
+            vsb = self.verticalScrollBar()
+            if vsb and vsb.maximum() > vsb.minimum():
+                curr = vsb.value()
+                base_target = self._smooth_target_val if self._smooth_target_val is not None else curr
+                # Standard wheel step is 120 units; smooth scroll by ~80px per step
+                pixel_step = int((delta / 120.0) * -80)
+                new_target = max(vsb.minimum(), min(vsb.maximum(), base_target + pixel_step))
+                self._smooth_target_val = new_target
+                if not self._smooth_timer.isActive():
+                    self._smooth_timer.start()
+                event.accept()
+                return
+
+        QListWidget.wheelEvent(self, event)
+
+    def _on_smooth_scroll_tick(self):
+        vsb = self.verticalScrollBar()
+        if not vsb or self._smooth_target_val is None:
+            self._smooth_timer.stop()
+            self._smooth_target_val = None
+            return
+
+        curr = vsb.value()
+        diff = self._smooth_target_val - curr
+
+        if abs(diff) <= 1:
+            vsb.setValue(self._smooth_target_val)
+            self._smooth_timer.stop()
+            self._smooth_target_val = None
+        else:
+            # Ease out smoothly by interpolating 28% of remaining distance per tick
+            step = int(diff * 0.28)
+            if step == 0:
+                step = 1 if diff > 0 else -1
+            vsb.setValue(curr + step)
 
     def changeEvent(self, event):
         if event.type() in (QEvent.StyleChange, QEvent.PaletteChange):

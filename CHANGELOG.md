@@ -20,6 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 17:41:00
+- **feat(rack)**: Implement smooth pixel-based scrolling in Rack list
+  - Configured `RackListWidget` with pixel scrolling mode (`ScrollPerPixel`) instead of discrete item stepping.
+  - Implemented an animated easing timer (`_on_smooth_scroll_tick`) with fractional interpolation for fluid mouse-wheel navigation through plugin strips.
+
 ### 2026-10-13 17:35:00
 - **fix(ui)**: Unified flush look for Modern Patchbay+Rack workspace and functional Statusbar toggle
   - Removed container borders, frame shapes, and pane outlines between Rack and Patchbay in Modern side-by-side mode for a continuous flush aesthetic matching the canvas theme.
