@@ -20,6 +20,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 17:11:00
+- **feat(ui)**: Default to side-by-side view, no toolbar, and floating menu button when menubar is hidden
+  - Added hamburger menu button directly on the floating patchbay toolbar overlay so main menus remain accessible when top menubar and toolbar are both hidden.
+  - Set application defaults in `loadSettings`: side-by-side view enabled by default, main toolbar hidden by default, and menubar hidden by default.
+  - Safeguarded `gCarla.gui` access in `canvasCallback` during application teardown.
+
 ### 2026-10-13 17:10:00
 - **tools(aur)**: Add local release and AUR publishing helper script
   - Created `scripts/release_and_push_aur.sh` to update `releases.json`, bump `aur/clara-bin/PKGBUILD`, push the version tag to GitHub, generate `.SRCINFO`, and push directly to `ssh://aur@aur.archlinux.org/clara-bin.git`.

@@ -539,6 +539,14 @@ class CanvasToolBarOverlay(QFrame):
         self.icon_grid    = "\uf00a" if font_family else "#"   # nf-fa-th
         self.icon_snap    = "\uf076" if font_family else "🧲"  # nf-fa-magnet
         self.icon_help    = "\uf059" if font_family else "?"   # nf-fa-question-circle
+        # Main Application Menu Button (Accessible when Menubar is hidden)
+        self.btnMenu = QPushButton("☰", self)
+        self.btnMenu.setToolTip("Main Menu (Ctrl+M to toggle menubar)")
+        self.btnMenu.setFont(font)
+        self.btnMenu.setFixedSize(28, 28)
+        self.btnMenu.setStyleSheet("color: #89b4fa; font-weight: bold;")
+        self.btnMenu.clicked.connect(self._slot_openMainMenu)
+        layout.addWidget(self.btnMenu)
 
         # Mode Selection Buttons (Checkable, Mutually Exclusive)
         self.btnPointer = QPushButton(self.icon_pointer, self)
@@ -660,6 +668,18 @@ class CanvasToolBarOverlay(QFrame):
 
         self.updateActiveButton(0)
         self.adjustSize()
+
+    def _slot_openMainMenu(self):
+        gui = getattr(gCarla, "gui", None)
+        if gui is not None and hasattr(gui, "ui"):
+            menu = QMenu(self)
+            menu.addAction(gui.ui.menu_File.menuAction())
+            menu.addAction(gui.ui.menu_Engine.menuAction())
+            menu.addAction(gui.ui.menu_Plugin.menuAction())
+            menu.addAction(gui.ui.menu_Canvas.menuAction())
+            menu.addAction(gui.ui.menu_Settings.menuAction())
+            menu.addAction(gui.ui.menu_Help.menuAction())
+            menu.exec_(self.btnMenu.mapToGlobal(QPoint(self.btnMenu.width(), 0)))
 
     def _setMode(self, mode):
         if hasattr(self.graphicsView, "setToolMode"):
@@ -1269,6 +1289,8 @@ class CanvasViewportFilter(QObject):
 
         # Create floating mode toolbar, context toolbar & help overlay inside the viewport
         self.toolBar = CanvasToolBarOverlay(self.graphicsView, self.graphicsView.viewport())
+        if hasattr(self.hostWindow, "ui") and hasattr(self.hostWindow.ui, "menubar"):
+            self.toolBar.btnMenu.setVisible(not self.hostWindow.ui.menubar.isVisible())
         self.toolBar.show()
         QTimer.singleShot(100, self.toolBar.reposition)
 
@@ -2000,6 +2022,8 @@ class CanvasViewportFilter(QObject):
 
 
 def canvasCallback(action, value1, value2, valueStr):
+    if gCarla.gui is None:
+        return
     host = gCarla.gui.host
 
     if getattr(gCarla.gui, "fCustomStopAction", 0) == getattr(

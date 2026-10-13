@@ -3362,14 +3362,14 @@ class HostWindow(QMainWindow):
             if not geometry.isNull():
                 self.restoreGeometry(geometry)
 
-            showToolbar = settings.value("ShowToolbar", True, bool)
+            showToolbar = settings.value("ShowToolbar", False, bool)
             self.ui.act_settings_show_toolbar.setChecked(showToolbar)
             self.ui.toolBar.blockSignals(True)
             self.ui.toolBar.setEnabled(showToolbar)
             self.ui.toolBar.setVisible(showToolbar)
             self.ui.toolBar.blockSignals(False)
 
-            showMenubar = settings.value("ShowMenubar", True, bool)
+            showMenubar = settings.value("ShowMenubar", False, bool)
             self.slot_showMenubar(showMenubar)
 
             showStatusBar = settings.value("ShowStatusBar", True, bool)
@@ -3385,8 +3385,8 @@ class HostWindow(QMainWindow):
                 self.ui.listWidget.setMinimumWidth(rackMinWidth)
                 self.ui.listWidget.setSpacing(rackSpacing)
 
-            # Restore side-by-side view state and splitter ratio
-            sideBySide = settings.value("SideBySideEnabled", False, bool)
+            # Restore side-by-side view state and splitter ratio (default True)
+            sideBySide = settings.value("SideBySideEnabled", True, bool)
             if sideBySide and self.fWithCanvas and hasattr(self, "act_canvas_side_by_side") and self.act_canvas_side_by_side is not None:
                 self.act_canvas_side_by_side.setChecked(True)
                 self.slot_toggleSideBySideView(True)
@@ -3755,6 +3755,9 @@ class HostWindow(QMainWindow):
             self.act_hamburger_toolbutton.setVisible(not yesNo)
         if hasattr(self, "btn_hamburger_menu"):
             self.btn_hamburger_menu.setVisible(not yesNo)
+        # Update floating canvas menu button if canvas overlay exists
+        if hasattr(self, "canvasFilter") and hasattr(self.canvasFilter, "toolBar") and hasattr(self.canvasFilter.toolBar, "btnMenu"):
+            self.canvasFilter.toolBar.btnMenu.setVisible(not yesNo)
 
     def _slot_toolbarContextMenu(self, pos):
         menu = QMenu(self.ui.toolBar)
