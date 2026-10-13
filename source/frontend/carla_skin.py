@@ -2475,13 +2475,10 @@ class PluginSlot_Minimal(PluginSlot_Default):
         self.label_badge.setMaximumWidth(52)
         self.label_badge.setAlignment(Qt.AlignCenter)
 
-        # Truncate title to max 20 chars with ellipsis if needed, preserving full name in tooltip
-        full_title = self.fPluginInfo['name']
-        self.label_name.setToolTip(full_title)
-        if len(full_title) > 20:
-            self.label_name.setText(full_title[:19].rstrip() + "…")
-        else:
-            self.label_name.setText(full_title)
+        # Plugin Title: full name stored in tooltip, dynamically elided in resizeEvent
+        self.fFullTitle = self.fPluginInfo['name']
+        self.label_name.setToolTip(self.fFullTitle)
+        self.label_name.setText(self.fFullTitle)
         self.label_name.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
 
         # Clear legacy items and spacers from layout_top to construct clean flex layout:
@@ -2506,7 +2503,7 @@ class PluginSlot_Minimal(PluginSlot_Default):
         self.ui.layout_top.addWidget(self.ui.w_buttons)
         # 2. <type badge>
         self.ui.layout_top.addWidget(self.label_badge)
-        # 3. <title max-w: 20char ellipsis>
+        # 3. <title>
         self.ui.layout_top.addWidget(self.label_name)
 
         # 4. <auto-expanding spacer>
@@ -2855,14 +2852,21 @@ class PluginSlot_Minimal(PluginSlot_Default):
         """
         self.setStyleSheet(styleSheet)
 
-        colorEnabled = QColor(text_color)
-        colorDisabled = QColor(text_disabled)
+        # Unify knobs with distributed fixed column width grid
+        dial_col_width = 68
         for _, paramWidget in self.fParameterList:
             if hasattr(paramWidget, "setLabelColor"):
                 paramWidget.setLabelColor(colorEnabled, colorDisabled)
             if hasattr(paramWidget, "setCustomPaintColor"):
                 paramWidget.setCustomPaintColor(arcColor)
                 paramWidget.setCustomPaintMode(ScalableDial.CUSTOM_PAINT_MODE_FLAT)
+            if isinstance(paramWidget, ScalableDial):
+                paramWidget.setMinimumWidth(dial_col_width)
+                paramWidget.setMaximumWidth(dial_col_width)
+
+        if hasattr(self.ui, 'horizontalLayout_3') and self.ui.horizontalLayout_3 is not None:
+            self.ui.horizontalLayout_3.setSpacing(6)
+            self.ui.horizontalLayout_3.setContentsMargins(6, 4, 6, 4)
 
         if self.is_slider_mode:
             self.setSliderMode(True)
@@ -2875,6 +2879,25 @@ class PluginSlot_Minimal(PluginSlot_Default):
         if custom_slice is not None and custom_slice != "":
             self.is_modernized_slice = (custom_slice.lower() in ("1", "true"))
         self._apply_modernized_slice_layout(self.is_modernized_slice)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._updateTitleElision()
+
+    def _updateTitleElision(self):
+        if not hasattr(self, 'label_name') or not hasattr(self, 'fFullTitle'):
+            return
+        # Calculate available width between title position and right controls
+        fm = self.label_name.fontMetrics()
+        full_text = self.fFullTitle
+        # If total title fits comfortably, display full string
+        total_w = fm.horizontalAdvance(full_text) if hasattr(fm, 'horizontalAdvance') else fm.width(full_text)
+        max_allowed = max(80, self.width() - 320)
+        if total_w <= max_allowed:
+            self.label_name.setText(full_text)
+        else:
+            elided = fm.elidedText(full_text, Qt.ElideRight, max_allowed)
+            self.label_name.setText(elided)
 
     def setModernizedHeaderSlice(self, enabled):
         self.is_modernized_slice = bool(enabled)

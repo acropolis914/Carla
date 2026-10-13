@@ -20,6 +20,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 19:13:00
+- **fix(frontend)**: Resolve About Dialog `unwrapinstance` crash under PyQt6
+  - Added support for `PyQt6.sip.unwrapinstance` in `carla_frontend.py` to prevent TypeError on `HostWindow`.
+- **feat(rack)**: Dynamic title elision on resize and distributed grid width for knobs
+  - Switched title truncation to responsive font-metrics elision that only truncates when space is constrained.
+  - Standardized dial columns to a distributed 68px grid width to maintain aligned parameter rows without label clipping.
+
 ### 2026-10-13 19:11:00
 - **docs(readme)**: Add student developer donation note to top banner
   - Added personal student funding note with direct PayPal link to README announcement banner.

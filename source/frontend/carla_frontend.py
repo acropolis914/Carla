@@ -15,10 +15,20 @@ from ctypes import (
 )
 
 try:
-    from sip import unwrapinstance
+    from qt_config import qt as _qt_ver
+    if _qt_ver == 6:
+        from PyQt6.sip import unwrapinstance
+    else:
+        try:
+            from PyQt5.sip import unwrapinstance
+        except ImportError:
+            from sip import unwrapinstance
 except ImportError:
-    def unwrapinstance(_):
-        return None
+    try:
+        from sip import unwrapinstance
+    except ImportError:
+        def unwrapinstance(_):
+            return None
 
 # ------------------------------------------------------------------------------------------------------------
 # Imports (Custom)
