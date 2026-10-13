@@ -20,6 +20,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 19:19:00
+- **fix(ui)**: Export and import `QSpacerItem` across Qt5/Qt6 compatibility layer
+  - Added `QSpacerItem` to `qt_compat.py` QtWidgets exports and imported it into `carla_skin.py`, fixing plugin slot initialization failure.
+
 ### 2026-10-13 19:13:00
 - **fix(frontend)**: Resolve About Dialog `unwrapinstance` crash under PyQt6
   - Added support for `PyQt6.sip.unwrapinstance` in `carla_frontend.py` to prevent TypeError on `HostWindow`.

@@ -46,6 +46,7 @@ from qt_compat import (
     QSize,
     QSizePolicy,
     QSlider,
+    QSpacerItem,
     Qt,
     QTimer,
     QVBoxLayout,
