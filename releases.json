@@ -1,36 +1,28 @@
 {
-  "latest": "0.1.2",
+  "latest": "0.1.3",
   "releases": {
-    "0.1.0": {
-      "version": "0.1.0",
+    "0.1.3": {
+      "version": "0.1.3",
       "date": "2026-10-13",
       "urgency": "suggested",
-      "summary": "Initial multi-distro release with modern patchbay canvas, dynamic cable routing, and Catppuccin theme",
+      "summary": "Manual update checker, upstream falkTX sponsorship links, and version separation",
       "changes": [
-        "Modal navigation tools (V: Select, H/Space: Hand/Pan, Q: Marquee box)",
-        "Dynamic cable color gradients with Bezier, Straight, and Stepped routing formulas",
-        "Unified Catppuccin category colors and role badges (SOURCE, SINK, HW)",
-        "Synchronized dual-view Mini Rack & Patchbay with bidirectional scroll/focus",
-        "Session safety with rotating background autosaves and exit prompt protection",
-        "Pre-built multi-distro packages for Ubuntu, Fedora, Arch Linux, Void (glibc & musl), Alpine, and Nix"
+        "Introduced CLARA_VERSION_STRING decoupling Clara application releases from upstream engine versioning",
+        "Added manual 'Check for Updates...' option to the Help menu and toolbar menu with immediate feedback",
+        "Updated .github/FUNDING.yml including falkTX upstream sponsorship links alongside Clara maintainer",
+        "Modal ProjectLoadingDialog with animated marquee progress bar and real-time status updates",
+        "Modernized About screen: streamlined layout, removed legacy bitmap logos/fonts, and added repository & sponsor links",
+        "Patchbay camera autofocus: smooth 260ms pan-only navigation with InOutCubic easing curve",
+        "Fixed rack item delete confirmation modal across Delete/Backspace hotkeys and right-click context menu"
       ],
       "installation": {
-        "arch": "Install via AUR / PKGBUILD: `paru -S clara-git` (or extract `clara-archlinux-*.tar.zst` to `/usr`)",
+        "arch": "Install via AUR / PKGBUILD: `paru -S clara-bin` (or `clara-git`)",
         "ubuntu": "Download `.deb` and run: `sudo dpkg -i clara-ubuntu-*.deb && sudo apt-get install -f`",
         "fedora": "Download `.rpm` and run: `sudo dnf install clara-*.rpm`",
         "void": "Extract tarball: `tar --zstd -xvf clara-void-*.tar.zst -C /`",
         "alpine": "Extract tarball: `tar --zstd -xvf clara-alpine-*.tar.zst -C /`",
         "nix": "Run directly via Flake: `nix run github:acropolis914/Clara`"
       }
-    },
-    "0.0.2": {
-      "version": "0.0.2",
-      "date": "2026-10-13",
-      "urgency": "suggested",
-      "summary": "Release 0.0.2",
-      "changes": [
-        "Release 0.0.2"
-      ]
     },
     "0.1.2": {
       "version": "0.1.2",
