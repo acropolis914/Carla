@@ -1,6 +1,24 @@
 {
-  "latest": "0.1.4",
+  "latest": "0.1.5",
   "releases": {
+    "0.1.5": {
+      "version": "0.1.5",
+      "date": "2026-10-13",
+      "urgency": "critical",
+      "summary": "Fix undefined symbol crash by removing CI ccache and eliminating canvas icon warning",
+      "changes": [
+        "Removed CI ccache to guarantee 100% clean compiles matching target distribution toolchain ABI",
+        "Resolved missing SVG icon warning for canvas side-by-side view toggle"
+      ],
+      "installation": {
+        "arch": "Install via AUR / PKGBUILD: `paru -S clara-bin` (or `clara-git`)",
+        "ubuntu": "Download `.deb` and run: `sudo dpkg -i clara-ubuntu-*.deb && sudo apt-get install -f`",
+        "fedora": "Download `.rpm` and run: `sudo dnf install clara-*.rpm`",
+        "void": "Extract tarball: `tar --zstd -xvf clara-void-*.tar.zst -C /`",
+        "alpine": "Extract tarball: `tar --zstd -xvf clara-alpine-*.tar.zst -C /`",
+        "nix": "Run directly via Flake: `nix run github:acropolis914/Clara`"
+      }
+    },
     "0.1.4": {
       "version": "0.1.4",
       "date": "2026-10-13",

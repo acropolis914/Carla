@@ -787,7 +787,7 @@ class HostWindow(QMainWindow):
             self.act_canvas_side_by_side.setCheckable(True)
             self.act_canvas_side_by_side.setChecked(False)
             self.act_canvas_side_by_side.setShortcut("Ctrl+Shift+R")
-            self.act_canvas_side_by_side.setIcon(getIcon("view-split-top-bottom", 16, "svgz") or getIcon("view-split-effect", 16, "svgz") or getIcon("view-refresh", 16, "svgz"))
+            self.act_canvas_side_by_side.setIcon(getIcon("view-refresh", 16, "svgz"))
             self.act_canvas_side_by_side.toggled.connect(self.slot_toggleSideBySideView)
             self.ui.menu_Canvas.addAction(self.act_canvas_side_by_side)
             self.ui.toolBar.addAction(self.act_canvas_side_by_side)

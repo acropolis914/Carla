@@ -18,6 +18,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ---
 
 
+## [0.1.5] - 2026-10-13
+
+### 2026-10-13 23:05:00
+- **fix(ci)**: Purge ccache from packaging pipeline and fix canvas icon warning
+  - Completely removed `ccache` from packaging workflow jobs to prevent caching older Qt6 symbol ABIs (`_ZN8QVariantC1EO7QString`).
+  - Switched canvas side-by-side view icon fallback cleanly to `view-refresh` to prevent `Cannot open file ':/16x16/view-split-top-bottom.svgz'` Qt warnings.
+  - Bumped version to `0.1.5`.
+
 ## [0.1.4] - 2026-10-13
 
 ### 2026-10-13 22:10:00

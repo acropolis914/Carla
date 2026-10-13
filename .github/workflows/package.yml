@@ -72,26 +72,14 @@ jobs:
               ;;
           esac
 
-      - name: Setup ccache
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ccache
-          key: ccache-v2-${{ matrix.platform }}-${{ github.sha }}
-          restore-keys: |
-            ccache-v2-${{ matrix.platform }}-
-
       - name: Build project
         id: compile
         run: |
           if [ "${{ matrix.platform }}" = "alpine" ]; then
             export LDFLAGS="-lfts $LDFLAGS"
           fi
-          export PATH="/usr/lib/ccache:/usr/lib64/ccache:$PATH"
-          export CCACHE_DIR="$HOME/.cache/ccache"
-          ccache -s || true
           make clean || true
           make -j$(nproc) DEFAULT_QT=6 2>&1 | tee build.log
-          ccache -s || true
 
       - name: Package artifacts
         id: pkg
