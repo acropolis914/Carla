@@ -20,6 +20,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 06:42:00
+- **fix(fedora)**: Package pre-compiled binaries directly into RPM without redundant recompilation
+  - Updated `clara.spec` and packaging step to use `rpmbuild -bb` on the already-compiled tree, eliminating redundant build failures and slashing package creation time to seconds.
+
 ### 2026-10-13 06:18:00
 - **fix(nix)**: Fix SDL2 casing in Nix derivation and strictly verify build result
   - Corrected `sdl2` to `SDL2` in `nix/default.nix` to resolve nixpkgs evaluation error.

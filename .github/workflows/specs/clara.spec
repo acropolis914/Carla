@@ -18,7 +18,8 @@ Clara is a modular audio plugin host and patchbay based on Carla, built with Qt6
 %autosetup -n clara-source
 
 %build
-make %{?_smp_mflags} DEFAULT_QT=6
+# Built in prior step
+true
 
 %install
 rm -rf %{buildroot}
