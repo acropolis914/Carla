@@ -8,8 +8,9 @@ Thank you for your interest in contributing to **Clara** (*Carla Improved*)! We 
 
 Clara embraces modern agentic AI tooling while maintaining strict standards for code health and stability:
 
-1. **AI Usage is Welcomed**: You are fully encouraged to use AI tools (Google Antigravity, Gemini, Claude, Copilot, etc.) to brainstorm, scaffold, write boilerplate, and draft code.
+1. **AI Usage is Permitted**: You are allowed to use AI tools (Google Antigravity, Gemini, Claude, Copilot, etc.) to brainstorm, scaffold, write boilerplate, and draft code.
 2. **Mandatory Explicit Disclosure**: Whenever AI tools are utilized in formulating a pull request, you **must explicitly declare it in the PR description** (e.g., specifying the AI model/agent used and the scope of assistance).
+
 3. **Extensive Quality Review**:
    - AI-assisted code is **scrutinized just as strictly as human-written code**, with deep checks for memory leaks, Qt signal/slot race conditions, performance overheads, and design coherence.
    - Do not submit unreviewed raw AI output or speculative "hallucinated" API calls.

@@ -1,8 +1,9 @@
 > [!IMPORTANT]
-> ### Early Alpha — Bug Reports & Contributors Welcome
-> **Clara is actively evolving.** While the core audio engine, graph routing, and autosaving are rock-solid, you will encounter experimental buttons and UI quirks in the patchbay toolbars.
-> - **Found a bug?** Help us by [**opening a bug report**](https://github.com/acropolis914/Clara/issues/new?template=bug_report.md) with system info and logs.
-> - **Passionate about Linux audio?** We are **actively seeking contributors and co-maintainers**. Read [CONTRIBUTING.md](CONTRIBUTING.md) to get started.
+> ### Early Alpha — Action Required: Report Bugs & Join Development
+> **Clara is evolving rapidly.** While the audio engine, routing graph, and autosaving core are rock-solid, expect UI quirks and experimental behaviors in the patchbay toolbars.
+> - **Report Every Bug**: If you encounter crashes, graphical glitches, or broken controls, you **must [open a bug report](https://github.com/acropolis914/Clara/issues/new?template=bug_report.md)** with complete logs and system specs.
+> - **Help Build Clara**: We need developers, audio hackers, and maintainers. **[Read CONTRIBUTING.md](CONTRIBUTING.md) and start contributing today.**
+
 
 <div align="center">
 
@@ -164,10 +165,11 @@ Clara is evolving fast, and we are actively looking for:
 Check out our current backlog in [**TODO.md**](TODO.md) for open tasks rated by difficulty (`[Diff: 1]` to `[Diff: 3]`).
 
 ### AI-Assisted Development Policy
-- **Guided AI Usage is Welcomed**: You are fully welcome (and encouraged) to use AI coding agents and assistants&mdash;such as **Google Antigravity / Gemini**, Claude, or Copilot&mdash;to research, scaffold, refactor, and draft code.
+- **Guided AI Usage is Permitted**: Contributors are allowed to use AI coding agents and assistants&mdash;such as **Google Antigravity / Gemini**, Claude, or Copilot&mdash;to research, scaffold, refactor, and draft code.
 - **Explicit AI Disclosure Required**: If AI was used in any part of creating a PR, you **must explicitly state so in the PR description**, noting the tools used and the prompts/intent.
 - **Rigorous Quality Review**: AI-generated code will not be accepted without scrutiny. All PRs are **extensively reviewed for architectural sanity, clean code standards, Qt compatibility, and stability**. Contributors must test and take full ownership of their submitted code.
 - Read [**CONTRIBUTING.md**](CONTRIBUTING.md) for build guides, coding standards, and PR submission checklist.
+
 
 ---
 

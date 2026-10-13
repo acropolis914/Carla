@@ -20,7 +20,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 18:42:00
+- **docs(readme)**: Clarify AI policy and make alpha announcement imperative
+  - Rephrased top callout banner in `README.md` to be directly imperative about bug reporting and contributing.
+  - Removed "encouraged" phrasing from AI development policy in `README.md` and `CONTRIBUTING.md`, designating AI tools as strictly permitted under full contributor review.
+
 ### 2026-10-13 18:41:00
+
 - **feat(rack)**: Restructure header into flex layout and modernize preset selector
   - Reordered header into `<buttons> <type badge> <title> <auto-expanding spacer> <right modules>` with tightened spacing.
   - Limited title length to 20 characters with ellipsis while preserving the full name in tooltip.
