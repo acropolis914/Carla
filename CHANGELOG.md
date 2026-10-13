@@ -20,6 +20,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 05:25:00
+- **ci(packaging)**: Add void-musl build, fix deb/rpm/arch artifact packaging, and isolate Nix to host runner
+  - Split Void Linux packaging into `void-glibc` and `void-musl` with musl-fts support.
+  - Isolated Nix into a dedicated host runner job using `DeterminateSystems/nix-installer-action` to resolve container Node execution failures.
+  - Corrected Debian packaging via `dpkg-deb` and Fedora RPM spec install rules using `make install`.
+  - Added Arch Linux zstd tarball packaging target.
+
 ### 2026-10-13 05:03:00
 - **fix(ui)**: Fix Ctrl+M menubar double-press requirement and infinite canvas panning on right edge
   - Moved `act_settings_show_menubar` and hamburger button setup before `loadSettings(True)` so that restored menubar visibility state immediately syncs with the action state, eliminating the initial double-press bug.
