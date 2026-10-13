@@ -23,7 +23,7 @@ Clara is a Qt6 and SDL2-based application.
 %install
 rm -rf %{buildroot}
 mkdir -p %{buildroot}%{_bindir}
-find build -type f -executable -exec install -Dpm 0755 {} %{buildroot}%{_bindir}/ \
+find build -type f -executable -exec install -Dpm 0755 {} %{buildroot}%{_bindir}/ \;
 
 %files
 %{_bindir}/*
