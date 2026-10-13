@@ -20,6 +20,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 18:41:00
+- **feat(rack)**: Restructure header into flex layout and modernize preset selector
+  - Reordered header into `<buttons> <type badge> <title> <auto-expanding spacer> <right modules>` with tightened spacing.
+  - Limited title length to 20 characters with ellipsis while preserving the full name in tooltip.
+  - Modernized `cb_presets` with a translucent pill surface, subtle border, custom drop indicator, and themed popup menu.
+
 ### 2026-10-13 18:35:00
 - **fix(ui)**: Resolve missing `QRadialGradient` import in `LEDButton`
   - Cleaned up unused gradient import in `widgets/ledbutton.py` to restore clean frontend launch.

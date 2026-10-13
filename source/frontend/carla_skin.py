@@ -2458,7 +2458,9 @@ class PluginSlot_Minimal(PluginSlot_Default):
 
         self.ui.w_buttons.setMinimumSize(0, 24)
         self.ui.w_buttons.setMaximumSize(16777215, 24)
-        self.ui.horizontalLayout.setSpacing(2)
+        self.ui.w_buttons.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.ui.horizontalLayout.setContentsMargins(0, 0, 0, 0)
+        self.ui.horizontalLayout.setSpacing(1)
 
         self.ui.horizontalLayout.addWidget(self.b_enable)
         self.ui.horizontalLayout.addWidget(self.b_bypass)
@@ -2469,21 +2471,53 @@ class PluginSlot_Minimal(PluginSlot_Default):
         self.label_badge = QLabel(f" {plugin_type_str} ", parent=self)
         self.label_badge.setObjectName("label_badge")
         self.label_badge.setToolTip(f"Plugin Type: {plugin_type_str}")
-
-        self.label_badge.setMinimumWidth(44)
-        self.label_badge.setMaximumWidth(56)
+        self.label_badge.setMinimumWidth(38)
+        self.label_badge.setMaximumWidth(52)
         self.label_badge.setAlignment(Qt.AlignCenter)
 
-        # Place Type Badge BEFORE Plugin Title for uniform alignment
-        idx = self.ui.layout_top.indexOf(self.label_name)
-        if idx >= 0:
-            self.ui.layout_top.insertWidget(idx, self.label_badge)
+        # Truncate title to max 20 chars with ellipsis if needed, preserving full name in tooltip
+        full_title = self.fPluginInfo['name']
+        self.label_name.setToolTip(full_title)
+        if len(full_title) > 20:
+            self.label_name.setText(full_title[:19].rstrip() + "…")
         else:
-            self.ui.layout_top.addWidget(self.label_badge)
+            self.label_name.setText(full_title)
+        self.label_name.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+
+        # Clear legacy items and spacers from layout_top to construct clean flex layout:
+        # <buttons> <type badge> <title> <auto-expanding spacer> <right modules>
+        if hasattr(self.ui, 'line_sep') and self.ui.line_sep is not None:
+            self.ui.line_sep.hide()
+            self.ui.layout_top.removeWidget(self.ui.line_sep)
+
+        # Remove existing items from layout_top temporarily
+        for w in (self.ui.w_buttons, self.label_badge, self.label_name):
+            self.ui.layout_top.removeWidget(w)
+
+        # Clear any stray fixed spacer items before title
+        while self.ui.layout_top.count() > 0:
+            item = self.ui.layout_top.itemAt(0)
+            if item.spacerItem():
+                self.ui.layout_top.removeItem(item)
+            else:
+                break
+
+        # 1. <buttons>
+        self.ui.layout_top.addWidget(self.ui.w_buttons)
+        # 2. <type badge>
+        self.ui.layout_top.addWidget(self.label_badge)
+        # 3. <title max-w: 20char ellipsis>
+        self.ui.layout_top.addWidget(self.label_name)
+
+        # 4. <auto-expanding spacer>
+        self.spacer_flex = QSpacerItem(8, 1, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.ui.layout_top.addItem(self.spacer_flex)
 
         self.setMinimumWidth(200)
-        self.ui.layout_top.setSpacing(3)
+        self.ui.layout_top.setSpacing(4)
+        self.ui.layout_top.setContentsMargins(0, 0, 0, 0)
 
+        # 5. <right modules> (Presets, Slider mode toggle, Minimize)
         progCount = self.host.get_program_count(self.fPluginId)
         usingMidiPrograms = False
         if progCount == 0:
@@ -2492,9 +2526,9 @@ class PluginSlot_Minimal(PluginSlot_Default):
         if progCount > 0:
             self.cb_presets = QComboBox(parent=self)
             self.cb_presets.setObjectName("cb_presets")
-            self.cb_presets.setMinimumWidth(50)
-            self.cb_presets.setMaximumWidth(130)
-            self.cb_presets.setMaximumHeight(22)
+            self.cb_presets.setMinimumWidth(60)
+            self.cb_presets.setMaximumWidth(125)
+            self.cb_presets.setFixedHeight(22)
             self.cb_presets.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
             self.cb_presets.setToolTip("Preset Selector")
             curProg = self.host.get_current_midi_program_index(self.fPluginId) if usingMidiPrograms else self.host.get_current_program_index(self.fPluginId)
@@ -2529,9 +2563,7 @@ class PluginSlot_Minimal(PluginSlot_Default):
                 self.cb_presets.currentIndexChanged.connect(self.slot_midiProgramChanged)
             else:
                 self.cb_presets.currentIndexChanged.connect(self.slot_programChanged)
-            idx2 = self.ui.layout_top.indexOf(self.label_name)
-            if idx2 >= 0:
-                self.ui.layout_top.insertWidget(idx2 + 1, self.cb_presets)
+            self.ui.layout_top.addWidget(self.cb_presets)
 
         self.b_slider_mode = QPushButton("\uf0c9" if not self.is_slider_mode else "\uf1de", parent=self)
         self.b_slider_mode.setObjectName("btn_slider_mode")
@@ -2726,6 +2758,53 @@ class PluginSlot_Minimal(PluginSlot_Default):
                 font-size: 9px;
                 font-weight: bold;
                 color: {badge_text};
+            }}
+            QComboBox#cb_presets {{
+                background-color: rgba(255, 255, 255, 0.05);
+                border: 1px solid rgba(255, 255, 255, 0.12);
+                border-radius: 4px;
+                color: {p['subtext1']};
+                font-size: 10px;
+                font-weight: 600;
+                padding-left: 6px;
+                padding-right: 16px;
+                padding-top: 1px;
+                padding-bottom: 1px;
+            }}
+            QComboBox#cb_presets:hover {{
+                background-color: rgba(255, 255, 255, 0.09);
+                border: 1px solid {p['blue']};
+                color: {p['text']};
+            }}
+            QComboBox#cb_presets:focus, QComboBox#cb_presets:on {{
+                border: 1px solid {p['blue']};
+                color: {p['text']};
+            }}
+            QComboBox#cb_presets::drop-down {{
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 14px;
+                border: none;
+                background: transparent;
+            }}
+            QComboBox#cb_presets::down-arrow {{
+                image: none;
+                width: 0px;
+                height: 0px;
+                border-left: 3px solid transparent;
+                border-right: 3px solid transparent;
+                border-top: 4px solid {p['subtext0']};
+                margin-right: 4px;
+            }}
+            QComboBox#cb_presets QAbstractItemView {{
+                background-color: {p['base']};
+                border: 1px solid {p['surface1']};
+                border-radius: 4px;
+                color: {p['text']};
+                selection-background-color: {p['surface0']};
+                selection-color: {p['blue']};
+                outline: none;
+                padding: 2px;
             }}
             QComboBox {{
                 background: {p['surface0']};
