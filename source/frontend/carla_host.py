@@ -19,6 +19,7 @@ from ctypes import byref, pointer
 # Imports (Custom)
 # ------------------------------------------------------------------------------------------------------------
 import ui_carla_host
+from update_checker import UpdateCheckThread, UpdateNotificationBanner
 from carla_app import *
 from carla_backend import *
 from carla_backend_qt import CarlaHostQtDLL, CarlaHostQtNull
@@ -167,6 +168,12 @@ class HostWindow(QMainWindow):
         self.ui = ui_carla_host.Ui_CarlaHostW()
         self.ui.setupUi(self)
         gCarla.gui = self
+
+        # Clara update checker & top notification banner
+        self.fUpdateBanner = None
+        self.fUpdateThread = UpdateCheckThread(self)
+        self.fUpdateThread.update_available.connect(self._on_update_available)
+        self.fUpdateThread.start()
 
         # Remove rack padding left and right
         self.ui.pad_left.hide()
@@ -5628,3 +5635,16 @@ def runHostWithoutUI(host):
 
 
 # ------------------------------------------------------------------------------------------------------------
+
+    def _on_update_available(self, release_info):
+        try:
+            if not self.fUpdateBanner:
+                self.fUpdateBanner = UpdateNotificationBanner(release_info, self)
+                # Insert at top of central widget layout (index 0)
+                layout = self.ui.centralwidget.layout()
+                if layout:
+                    layout.insertWidget(0, self.fUpdateBanner)
+            else:
+                self.fUpdateBanner.show()
+        except Exception:
+            pass

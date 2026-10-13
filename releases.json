@@ -1,0 +1,27 @@
+{
+  "latest": "0.1.0",
+  "releases": {
+    "0.1.0": {
+      "version": "0.1.0",
+      "date": "2026-10-13",
+      "urgency": "suggested",
+      "summary": "Initial multi-distro release with modern patchbay canvas, dynamic cable routing, and Catppuccin theme",
+      "changes": [
+        "Modal navigation tools (V: Select, H/Space: Hand/Pan, Q: Marquee box)",
+        "Dynamic cable color gradients with Bezier, Straight, and Stepped routing formulas",
+        "Unified Catppuccin category colors and role badges (SOURCE, SINK, HW)",
+        "Synchronized dual-view Mini Rack & Patchbay with bidirectional scroll/focus",
+        "Session safety with rotating background autosaves and exit prompt protection",
+        "Pre-built multi-distro packages for Ubuntu, Fedora, Arch Linux, Void (glibc & musl), Alpine, and Nix"
+      ],
+      "installation": {
+        "arch": "Install via AUR / PKGBUILD: `paru -S clara-git` (or extract `clara-archlinux-*.tar.zst` to `/usr`)",
+        "ubuntu": "Download `.deb` and run: `sudo dpkg -i clara-ubuntu-*.deb && sudo apt-get install -f`",
+        "fedora": "Download `.rpm` and run: `sudo dnf install clara-*.rpm`",
+        "void": "Extract tarball: `tar --zstd -xvf clara-void-*.tar.zst -C /`",
+        "alpine": "Extract tarball: `tar --zstd -xvf clara-alpine-*.tar.zst -C /`",
+        "nix": "Run directly via Flake: `nix run github:acropolis914/Clara`"
+      }
+    }
+  }
+}

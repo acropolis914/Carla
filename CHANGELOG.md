@@ -20,6 +20,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 07:30:00
+- **feat(updates)**: Add non-blocking background update checker and dismissable top notification banner
+  - Added structured `releases.json` with urgency levels (`suggested`, `minor`, `critical`), changelogs, and installation instructions.
+  - Implemented `UpdateCheckThread` and `UpdateNotificationBanner` in `update_checker.py` with non-blocking 3s timeout.
+  - Added "Hide" and "Skip Version" actions with confirmation dialog and `QSettings` persistence.
+  - Updated `AGENTS.md` guidelines to mandate updating `releases.json` alongside `CHANGELOG.md`.
+  - Added `clara-bin` AUR packaging task to `TODO.md`.
+
 ### 2026-10-13 06:58:00
 - **fix(fedora)**: Disable RPM debuginfo package generation
   - Added `%global debug_package %{nil}` to `clara.spec` to prevent rpmbuild from failing on empty debugsource lists.

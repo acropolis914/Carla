@@ -324,24 +324,23 @@ jobs:
           merge-multiple: true
           path: release-assets
 
-      - name: Extract Changelog for Tag
+      - name: Extract Structured Notes from releases.json
         id: notes
         run: |
           python3 -c '
-          with open("CHANGELOG.md") as f:
-              lines = f.readlines()
-          in_sec, notes = False, []
-          for line in lines:
-              if line.startswith("## "):
-                  if not in_sec:
-                      in_sec = True
-                      continue
-                  else:
-                      break
-              if in_sec:
-                  notes.append(line)
+          import json, os
+          tag = os.environ.get("GITHUB_REF_NAME", "").lstrip("v")
+          with open("releases.json") as f:
+              data = json.load(f)
+          rel = data.get("releases", {}).get(tag, data.get("releases", {}).get(data.get("latest", ""), {}))
+          summary = rel.get("summary", "Automated release")
+          urgency = rel.get("urgency", "minor").upper()
+          changes = "\n".join(f"- {c}" for c in rel.get("changes", []))
+          inst = rel.get("installation", {})
+          inst_text = "\n".join(f"- **{k.title()}**: {v}" for k, v in inst.items())
+          md = f"## 🚀 Clara v{tag} [{urgency}]\n\n{summary}\n\n### ✨ What’s Changed\n{changes}\n\n### 📦 Installation Guide\n{inst_text}\n"
           with open("RELEASE_NOTES.md", "w") as f:
-              f.write("".join(notes).strip() or "Automated release build")
+              f.write(md)
           '
 
       - name: Create GitHub Release
