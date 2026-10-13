@@ -20,6 +20,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 07:52:00
+- **fix(frontend)**: Export QThread, QTextEdit, and QSettings in qt_compat and fix version import
+  - Exported `QThread`, `QTextEdit`, and `QSettings` across Qt5 and Qt6 sections of `qt_compat.py`.
+  - Updated `update_checker.py` to import `CARLA_VERSION_STRING` from `carla_shared`.
+  - Ensured `PKGBUILD` passes `DEFAULT_QT=6` during install stage.
+
 ### 2026-10-13 15:39:00
 - **ci(workflow)**: Restrict multi-distro packaging workflow strictly to tag pushes
   - Removed standard `main` branch push and weekly cron triggers from `.github/workflows/package.yml`.

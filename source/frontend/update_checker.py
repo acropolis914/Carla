@@ -10,7 +10,7 @@ from qt_compat import (
     QLabel, QPushButton, QFrame, QMessageBox, QDialog, QTextEdit,
     QSettings
 )
-from carla_shared import VERSION
+from carla_shared import CARLA_VERSION_STRING as VERSION
 
 GITHUB_RELEASES_URL = "https://raw.githubusercontent.com/acropolis914/Clara/main/releases.json"
 
