@@ -20,6 +20,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 19:58:00
+- **fix(rack)**: Resolve context menu remove and move action dispatch
+  - Fixed erroneous `elif actMoveUp:` check that swallowed subsequent menu actions, restoring the context menu `Remove` confirmation and execution.
+
 ### 2026-10-13 19:56:00
 - **fix(rack)**: Ensure delete confirmation dialog triggers reliably and add floating add button
   - Added keypress interception for `Delete`/`Backspace` directly on rack slot widgets with parent window anchoring for the confirmation dialog.

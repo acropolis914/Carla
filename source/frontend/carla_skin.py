@@ -1487,13 +1487,11 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
         elif actSel == actFindInPatchbay:
             gCarla.gui.findPluginInPatchbay(self.fPluginId)
 
-        elif actMoveUp:
-            if actSel == actMoveUp:
-                gCarla.gui.switchPlugins(self.fPluginId, self.fPluginId-1)
+        elif actSel == actMoveUp:
+            gCarla.gui.switchPlugins(self.fPluginId, self.fPluginId-1)
 
-        elif actMoveDown:
-            if actSel == actMoveDown:
-                gCarla.gui.switchPlugins(self.fPluginId, self.fPluginId+1)
+        elif actSel == actMoveDown:
+            gCarla.gui.switchPlugins(self.fPluginId, self.fPluginId+1)
 
         elif actSel == actBypass:
             value = 0.0 if actBypass.isChecked() else 1.0
