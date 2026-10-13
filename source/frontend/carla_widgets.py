@@ -25,6 +25,7 @@ if qt_config == 5:
         QLabel,
         QMenu,
         QMessageBox,
+        QProgressBar,
         QPushButton,
         QScrollArea,
         QTextEdit,
@@ -43,6 +44,7 @@ elif qt_config == 6:
         QLabel,
         QMenu,
         QMessageBox,
+        QProgressBar,
         QPushButton,
         QScrollArea,
         QTextEdit,
@@ -1771,6 +1773,55 @@ class ProjectLoadSummaryDialog(QDialog):
             orig_title = self.windowTitle()
             self.setWindowTitle(self.tr("✓ Log Copied to Clipboard!"))
             QTimer.singleShot(2000, lambda: self.setWindowTitle(orig_title))
+
+
+# ------------------------------------------------------------------------------------------------------------
+# Modern Project Loading Dialog with indeterminate animation and detailed status text
+
+class ProjectLoadingDialog(QDialog):
+    def __init__(self, parent=None, filename=""):
+        super().__init__(parent)
+        self.setWindowTitle(self.tr("Loading Project..."))
+        self.setFixedSize(440, 160)
+        self.setWindowFlags(Qt.Dialog | Qt.CustomizeWindowHint | Qt.WindowTitleHint)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(24, 20, 24, 20)
+        layout.setSpacing(10)
+
+        basename = os.path.basename(filename) if filename else "Project"
+        self.lbl_title = QLabel(f"<b>Loading:</b> {basename}", self)
+        self.lbl_title.setStyleSheet("font-size: 13px; font-weight: 700;")
+        layout.addWidget(self.lbl_title)
+
+        self.progressBar = QProgressBar(self)
+        self.progressBar.setRange(0, 0)  # Animated indeterminate marquee
+        self.progressBar.setTextVisible(False)
+        self.progressBar.setFixedHeight(6)
+        self.progressBar.setStyleSheet("""
+            QProgressBar {
+                background: rgba(255, 255, 255, 0.08);
+                border: none;
+                border-radius: 3px;
+            }
+            QProgressBar::chunk {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #89b4fa, stop:1 #b4befe);
+                border-radius: 3px;
+            }
+        """)
+        layout.addWidget(self.progressBar)
+
+        self.lbl_detail = QLabel(self.tr("Initializing audio engine and restoring state..."), self)
+        self.lbl_detail.setStyleSheet("color: #a6adc8; font-size: 11px;")
+        self.lbl_detail.setWordWrap(True)
+        layout.addWidget(self.lbl_detail)
+
+        layout.addStretch()
+
+    def setDetail(self, text):
+        if text:
+            self.lbl_detail.setText(str(text))
+            QApplication.processEvents()
 
 
 # ------------------------------------------------------------------------------------------------------------

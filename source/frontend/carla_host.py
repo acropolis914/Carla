@@ -1312,10 +1312,9 @@ class HostWindow(QMainWindow):
         if not (self.host.isControl or self.host.is_engine_running()):
             self.slot_engineStart()
 
-        self.projectLoadingStarted()
-        self.fIsProjectLoading = True
-
         load_source = source_override or self.fProjectFilename
+        self.projectLoadingStarted(load_source)
+        self.fIsProjectLoading = True
 
         # Check if project contains plugins prone to in-process JUCE UI thread collisions
         force_bridged = False
@@ -1510,14 +1509,31 @@ class HostWindow(QMainWindow):
         self.setProperWindowTitle()
         self.addRecentProject(self.fProjectFilename)
 
-    def projectLoadingStarted(self):
+    def projectLoadingStarted(self, filename=""):
         self.ui.rack.setEnabled(False)
         self.ui.graphicsView.setEnabled(False)
         if self.ui.listWidget is not None:
             self.ui.listWidget.setUpdatesEnabled(False)
             self.ui.listWidget.blockSignals(True)
 
+        if not hasattr(self, "fLoadingDialog") or self.fLoadingDialog is None:
+            try:
+                fn = filename or getattr(self, "fProjectFilename", "")
+                self.fLoadingDialog = ProjectLoadingDialog(self.fParentOrSelf, fn)
+                self.fLoadingDialog.show()
+                QApplication.processEvents()
+            except Exception:
+                self.fLoadingDialog = None
+
     def projectLoadingFinished(self, refreshCanvas):
+        if getattr(self, "fLoadingDialog", None) is not None:
+            try:
+                self.fLoadingDialog.close()
+                self.fLoadingDialog.deleteLater()
+            except Exception:
+                pass
+            self.fLoadingDialog = None
+
         if self.ui.listWidget is not None:
             self.ui.listWidget.setUpdatesEnabled(True)
             self.ui.listWidget.blockSignals(False)
@@ -2144,6 +2160,11 @@ class HostWindow(QMainWindow):
 
     @pyqtSlot(int, bool, str)
     def slot_handleCancelableActionCallback(self, pluginId, started, action):
+        if hasattr(self, "fLoadingDialog") and self.fLoadingDialog is not None:
+            if started and action:
+                self.fLoadingDialog.setDetail(action)
+            return
+
         if self.fCancelableActionBox is not None:
             self.fCancelableActionBox.close()
 

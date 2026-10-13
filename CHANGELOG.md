@@ -20,6 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 20:16:00
+- **feat(ui)**: Add animated loading dialog and modernize About screen
+  - Introduced `ProjectLoadingDialog` with an indeterminate marquee progress bar and real-time detailed status text for project restoration.
+  - Revamped About screen: removed legacy bitmap logos and outdated fonts, attributed project maintenance to `acropolis914`, and added direct links to the Clara repository and GitHub Sponsor page.
+
 ### 2026-10-13 20:03:00
 - **refactor(patchbay)**: Make camera autofocus pan-only and faster
   - Removed zoom scaling in `animateFocusOn` to provide pure, crisp pan travel and shortened duration to 260ms for snappy response.

@@ -22,19 +22,28 @@ AboutDialog::AboutDialog(QWidget* const parent,
     else if (isPlugin)
         extraInfo = QString(" - <b>%1</b>").arg(tr("Plugin Version"));
 
-    ui.l_about->setText(tr(""
-                           "<br>Version %1"
-                           "<br>Carla is a fully-featured audio plugin host%2.<br>"
-                           "<br>Copyright (C) 2011-2025 falkTX<br>"
-                           "").arg(CARLA_VERSION_STRING).arg(extraInfo));
+    ui.l_icons->hide();
 
-    if (ui.about->palette().color(QPalette::Window).blackF() < 0.5)
-    {
-        ui.l_icons->setPixmap(QPixmap(":/bitmaps/carla_about_black.png"));
-        ui.ico_example_edit->setPixmap(QPixmap(":/bitmaps/button_file-black.png"));
-        ui.ico_example_file->setPixmap(QPixmap(":/scalable/button_edit-black.svg"));
-        ui.ico_example_gui->setPixmap(QPixmap(":/bitmaps/button_gui-black.png"));
-    }
+    ui.l_about->setTextFormat(Qt::RichText);
+    ui.l_about->setOpenExternalLinks(true);
+    ui.l_about->setText(tr(
+        "<div style='text-align: center; font-family: sans-serif; line-height: 1.6;'>"
+        "<h2 style='margin: 0; color: #89b4fa;'>Clara</h2>"
+        "<p style='margin: 4px 0 12px 0; color: #a6adc8; font-size: 11px;'>Modernized Audio Plugin Host & Patchbay (v%1%2)</p>"
+        "<p style='margin: 8px 0; font-size: 12px;'>"
+        "Maintained & Modernized by <b>acropolis914</b><br>"
+        "Original Carla core created by <b>falkTX</b>"
+        "</p>"
+        "<p style='margin: 12px 0 4px 0;'>"
+        "<a style='color: #89b4fa; text-decoration: none; font-weight: bold;' href='https://github.com/acropolis914/Clara'>🌐 GitHub Project Page</a>"
+        "&nbsp;&nbsp;&bull;&nbsp;&nbsp;"
+        "<a style='color: #f38ba8; text-decoration: none; font-weight: bold;' href='https://github.com/sponsors/acropolis914'>💖 Sponsor Developer</a>"
+        "</p>"
+        "<p style='margin: 12px 0 0 0; font-size: 10px; color: #6c7086;'>"
+        "Copyright &copy; 2011-2026 falkTX &amp; acropolis914<br>Licensed under GPLv2+"
+        "</p>"
+        "</div>"
+    ).arg(CARLA_VERSION_STRING).arg(extraInfo));
 
     if (isControl || isPlugin)
     {
