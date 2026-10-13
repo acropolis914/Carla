@@ -20,6 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 16:57:00
+- **fix(backend)**: Add system library fallbacks for carla-bridge-native
+  - Added fallback search in `/usr/lib/carla` and `/usr/lib64/carla` when `carla-bridge-native` is not present in the local `bin/` folder.
+  - Prevents fatal crashes when in-process JUCE plugins (`KV-Element`) require bridge isolation.
+
 ### 2026-10-13 16:47:00
 - **fix(frontend)**: Resolve missing LEVEL_NAMES, QLabel, and os imports in ProjectLoadSummaryDialog
   - Imported `LEVEL_NAMES` in `carla_host.py` from `carla_logger`.

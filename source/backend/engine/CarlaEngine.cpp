@@ -575,7 +575,27 @@ bool CarlaEngine::addPlugin(const BinaryType btype,
         }
 
         if (! File(bridgeBinary.buffer()).existsAsFile())
+        {
+           #if !defined(CARLA_OS_WIN) && !defined(CARLA_OS_MAC)
+            const char* fallbackDirs[] = { "/usr/lib/carla", "/usr/lib64/carla", "/usr/local/lib/carla" };
+            bool found = false;
+            for (size_t i = 0; i < sizeof(fallbackDirs)/sizeof(fallbackDirs[0]); ++i)
+            {
+                String testBinary(fallbackDirs[i]);
+                testBinary += CARLA_OS_SEP_STR "carla-bridge-native";
+                if (File(testBinary.buffer()).existsAsFile())
+                {
+                    bridgeBinary = testBinary;
+                    found = true;
+                    break;
+                }
+            }
+            if (! found)
+                bridgeBinary.clear();
+           #else
             bridgeBinary.clear();
+           #endif
+        }
     }
 
     const bool canBeBridged = ptype != PLUGIN_INTERNAL
