@@ -89,7 +89,6 @@ jobs:
             export LDFLAGS="-lfts $LDFLAGS"
           fi
 
-          set -o pipefail
           make DEFAULT_QT=6 2>&1 | tee build.log
 
       - name: Package artifacts
@@ -133,7 +132,7 @@ jobs:
               if [ -n "$SPEC_FILE" ]; then
                 cp "$SPEC_FILE" ~/rpmbuild/SPECS/clara.spec
               else
-                cp ${{ github.workspace }}/.github/workflows/specs/clara.spec ~/rpmbuild/SPECS/clara.spec
+                cp .github/workflows/specs/clara.spec ~/rpmbuild/SPECS/clara.spec
               fi
               rpmbuild -ba ~/rpmbuild/SPECS/clara.spec
               find ~/rpmbuild/RPMS -name "*.rpm" -exec cp {} . \;
@@ -185,7 +184,6 @@ jobs:
       - name: Build with Nix
         id: compile
         run: |
-          set -o pipefail
           nix build --extra-experimental-features 'nix-command flakes' 2>&1 | tee build.log || nix-build nix/default.nix 2>&1 | tee build.log
 
       - name: Package artifacts

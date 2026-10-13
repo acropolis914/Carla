@@ -20,6 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 05:36:00
+- **fix(ci)**: Fix POSIX sh pipefail compatibility and container spec path
+  - Removed unsupported `set -o pipefail` from Alpine/Void `/bin/sh` build scripts.
+  - Corrected Fedora RPM spec lookup to use relative `.github/workflows/specs/clara.spec` inside the container workspace.
+
 ### 2026-10-13 05:32:00
 - **feat(nix)**: Add Nix derivation, devShell, and Flake configuration
   - Added `nix/default.nix` for packaging Clara using `stdenv.mkDerivation` and Qt6 build hooks.
