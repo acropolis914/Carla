@@ -20,6 +20,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 05:32:00
+- **feat(nix)**: Add Nix derivation, devShell, and Flake configuration
+  - Added `nix/default.nix` for packaging Clara using `stdenv.mkDerivation` and Qt6 build hooks.
+  - Added `nix/shell.nix` for developer environment and debugging tooling.
+  - Added root `flake.nix` with default package, app runner, and devShell outputs.
+  - Updated CI Nix workflow to invoke `nix build` with Flakes enabled.
+
 ### 2026-10-13 05:25:00
 - **ci(packaging)**: Add void-musl build, fix deb/rpm/arch artifact packaging, and isolate Nix to host runner
   - Split Void Linux packaging into `void-glibc` and `void-musl` with musl-fts support.
