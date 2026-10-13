@@ -20,6 +20,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 19:51:00
+- **feat(patchbay)**: Animate node autofocus with cubic bezier easing and zoom dip
+  - Implemented `animateFocusOn()` in `DraggableGraphicsView` featuring `QEasingCurve.InOutCubic` camera travel and a subtle mid-flight zoom-out/zoom-in parabolic arc on rack item selection and patchbay search.
+
 ### 2026-10-13 19:44:00
 - **feat(patchbay)**: Add configurable minimum node width
   - Introduced `Canvas/NodeMinWidth` setting with slider control in the Canvas settings tab, dynamic options propagation, and CanvasBox width enforcement (default 160px).

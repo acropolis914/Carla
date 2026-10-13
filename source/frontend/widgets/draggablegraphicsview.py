@@ -23,6 +23,9 @@ from qt_compat import (
     QListWidget,
     QListWidgetItem,
     QRectF,
+    QPointF,
+    QEasingCurve,
+    QVariantAnimation,
 )
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -465,12 +468,86 @@ class DraggableGraphicsView(QGraphicsView):
         if item:
             self._selectAndCenter(item.data(Qt.UserRole))
 
+    def animateFocusOn(self, target_item, duration=420):
+        if not target_item or not self.scene():
+            return
+
+        # Stop any existing animation
+        if hasattr(self, "_focusAnim") and self._focusAnim is not None:
+            self._focusAnim.stop()
+
+        # Target center point in scene coords
+        if hasattr(target_item, "sceneBoundingRect"):
+            target_pt = target_item.sceneBoundingRect().center()
+        elif hasattr(target_item, "scenePos"):
+            target_pt = target_item.scenePos()
+        elif isinstance(target_item, (QPointF,)):
+            target_pt = target_item
+        else:
+            self.centerOn(target_item)
+            return
+
+        # Start center point in scene coords
+        viewport_rect = self.viewport().rect()
+        start_pt = self.mapToScene(viewport_rect.center())
+
+        # Base zoom factor
+        start_transform = self.transform()
+        base_scale = start_transform.m11()
+
+        curve = QEasingCurve(QEasingCurve.Type.InOutCubic if hasattr(QEasingCurve, "Type") else QEasingCurve.InOutCubic)
+
+        anim = QVariantAnimation(self)
+        anim.setDuration(duration)
+        anim.setStartValue(0.0)
+        anim.setEndValue(1.0)
+
+        def _on_step(val):
+            t = float(val)
+            e = curve.valueForProgress(t)
+
+            # Interpolate position
+            curr_x = start_pt.x() + (target_pt.x() - start_pt.x()) * e
+            curr_y = start_pt.y() + (target_pt.y() - start_pt.y()) * e
+
+            # Parabolic zoom-out dipped arc: dips at mid-flight (up to 12% zoom out), then returns to base_scale
+            # 4 * t * (1 - t) is 1.0 at midpoint t=0.5
+            zoom_dip = 1.0 - (0.12 * 4.0 * t * (1.0 - t))
+            curr_scale = base_scale * zoom_dip
+
+            # Update transform scale
+            cur_t = self.transform()
+            cur_t.reset()
+            cur_t.scale(curr_scale, curr_scale)
+            self.setTransform(cur_t)
+
+            self.centerOn(curr_x, curr_y)
+
+            scene = self.scene()
+            if hasattr(scene, "scaleChanged"):
+                scene.scaleChanged.emit(curr_scale)
+
+        def _on_finish():
+            cur_t = self.transform()
+            cur_t.reset()
+            cur_t.scale(base_scale, base_scale)
+            self.setTransform(cur_t)
+            self.centerOn(target_pt)
+            scene = self.scene()
+            if hasattr(scene, "scaleChanged"):
+                scene.scaleChanged.emit(base_scale)
+
+        anim.valueChanged.connect(_on_step)
+        anim.finished.connect(_on_finish)
+        self._focusAnim = anim
+        anim.start()
+
     def _selectAndCenter(self, target_box):
         self.hideSearch()
         if not target_box or not self.scene():
             return
         self.scene().clearSelection()
-        self.centerOn(target_box)
+        self.animateFocusOn(target_box)
         target_box.setSelected(True)
 
     def eventFilter(self, obj, event):

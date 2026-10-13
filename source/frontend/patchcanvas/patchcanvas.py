@@ -1084,7 +1084,11 @@ def focusGroupUsingPluginId(plugin_id):
         if group.plugin_id == plugin_id:
             item = group.widgets[0]
             canvas.scene.clearSelection()
-            canvas.scene.getView().centerOn(item)
+            view = canvas.scene.getView()
+            if hasattr(view, "animateFocusOn"):
+                view.animateFocusOn(item)
+            else:
+                view.centerOn(item)
             item.setSelected(True)
             return True
 
@@ -1097,7 +1101,11 @@ def focusGroupUsingGroupName(group_name):
         if group.group_name == group_name:
             item = group.widgets[0]
             canvas.scene.clearSelection()
-            canvas.scene.getView().centerOn(item)
+            view = canvas.scene.getView()
+            if hasattr(view, "animateFocusOn"):
+                view.animateFocusOn(item)
+            else:
+                view.centerOn(item)
             item.setSelected(True)
             return True
 

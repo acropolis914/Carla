@@ -36,6 +36,8 @@ if qt_config == 5:
         pyqtSignal,
         pyqtSlot,
         QAbstractAnimation,
+        QEasingCurve,
+        QVariantAnimation,
     )
 
     # QtGui
@@ -171,6 +173,8 @@ elif qt_config == 6:
         pyqtSignal,
         pyqtSlot,
         QAbstractAnimation,
+        QEasingCurve,
+        QVariantAnimation,
     )
 
     # QtGui
