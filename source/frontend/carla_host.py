@@ -2769,6 +2769,9 @@ class HostWindow(QMainWindow):
         pOptions.node_radius = self.fSavedSettings.get(
             CARLA_KEY_CANVAS_NODE_RADIUS, CARLA_DEFAULT_CANVAS_NODE_RADIUS
         )
+        pOptions.node_min_width = self.fSavedSettings.get(
+            CARLA_KEY_CANVAS_NODE_MIN_WIDTH, CARLA_DEFAULT_CANVAS_NODE_MIN_WIDTH
+        )
         pOptions.line_style = self.fSavedSettings.get(
             CARLA_KEY_CANVAS_LINE_STYLE, CARLA_DEFAULT_CANVAS_LINE_STYLE
         )
@@ -3684,6 +3687,11 @@ class HostWindow(QMainWindow):
             CARLA_KEY_CANVAS_NODE_RADIUS: settings.value(
                 CARLA_KEY_CANVAS_NODE_RADIUS,
                 CARLA_DEFAULT_CANVAS_NODE_RADIUS,
+                int,
+            ),
+            CARLA_KEY_CANVAS_NODE_MIN_WIDTH: settings.value(
+                CARLA_KEY_CANVAS_NODE_MIN_WIDTH,
+                CARLA_DEFAULT_CANVAS_NODE_MIN_WIDTH,
                 int,
             ),
             CARLA_KEY_CANVAS_LINE_STYLE: settings.value(

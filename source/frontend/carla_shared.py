@@ -212,6 +212,7 @@ CARLA_KEY_CANVAS_NODE_RADIUS       = "Canvas/NodeRadius"      # int
 CARLA_KEY_CANVAS_LINE_STYLE         = "Canvas/LineStyle"       # str ("bezier", "straight", "stepped")
 CARLA_KEY_CANVAS_LINE_STROKE        = "Canvas/LineStroke"      # str ("solid", "dotted", "dashed")
 CARLA_KEY_CANVAS_LINE_OPACITY       = "Canvas/LineOpacity"     # int (20 - 100)
+CARLA_KEY_CANVAS_NODE_MIN_WIDTH     = "Canvas/NodeMinWidth"    # int (100 - 350)
 
 CARLA_KEY_ENGINE_DRIVER_PREFIX         = "Engine/Driver-"
 CARLA_KEY_ENGINE_AUDIO_DRIVER          = "Engine/AudioDriver"         # str
@@ -308,6 +309,7 @@ CARLA_DEFAULT_CANVAS_NODE_RADIUS       = 8
 CARLA_DEFAULT_CANVAS_LINE_STYLE        = "bezier"
 CARLA_DEFAULT_CANVAS_LINE_STROKE       = "solid"
 CARLA_DEFAULT_CANVAS_LINE_OPACITY      = 100
+CARLA_DEFAULT_CANVAS_NODE_MIN_WIDTH    = 160
 
 # Engine
 CARLA_DEFAULT_FORCE_STEREO          = False

@@ -988,9 +988,11 @@ class CanvasBox(QGraphicsObject):
         # Add 30px buffer for margins/icons
         app_name_size = fontHorizontalAdvance(self.m_font_name, self.m_group_name) + 30
 
-        # Apply minimum width and title maximum width
+        # Apply configurable minimum width and title maximum width
+        min_width = getattr(options, "node_min_width", self.MIN_BOX_WIDTH)
+        max_title_width = max(self.MAX_BOX_WIDTH_TITLE, min_width)
         self.p_width = max(
-            self.MIN_BOX_WIDTH, min(app_name_size, self.MAX_BOX_WIDTH_TITLE)
+            min_width, min(app_name_size, max_title_width)
         )
 
         # Get Port List

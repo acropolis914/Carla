@@ -99,6 +99,7 @@ class options_t(object):
         "inline_displays",
         "rounded_nodes",
         "node_radius",
+        "node_min_width",
         "line_style",
         "line_stroke",
         "line_opacity",
@@ -273,6 +274,7 @@ options.eyecandy = EYECANDY_SMALL
 options.inline_displays = False
 options.rounded_nodes = True
 options.node_radius = 8
+options.node_min_width = 160
 options.line_style = "bezier"
 options.line_stroke = "solid"
 options.line_opacity = 100
@@ -301,6 +303,7 @@ def setOptions(new_options):
     options.inline_displays = new_options.inline_displays
     options.rounded_nodes = getattr(new_options, "rounded_nodes", True)
     options.node_radius = getattr(new_options, "node_radius", 8)
+    options.node_min_width = getattr(new_options, "node_min_width", 160)
     options.line_style = getattr(new_options, "line_style", "bezier")
     options.line_stroke = getattr(new_options, "line_stroke", "solid")
     options.line_opacity = getattr(new_options, "line_opacity", 100)

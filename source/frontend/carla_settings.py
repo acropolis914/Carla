@@ -68,6 +68,7 @@ from carla_shared import (
     CARLA_DEFAULT_CANVAS_LINE_OPACITY,
     CARLA_DEFAULT_CANVAS_LINE_STROKE,
     CARLA_DEFAULT_CANVAS_LINE_STYLE,
+    CARLA_DEFAULT_CANVAS_NODE_MIN_WIDTH,
     CARLA_DEFAULT_CANVAS_NODE_RADIUS,
     CARLA_DEFAULT_CANVAS_ROUNDED_NODES,
     CARLA_DEFAULT_CANVAS_SIZE,
@@ -137,6 +138,7 @@ from carla_shared import (
     CARLA_KEY_CANVAS_LINE_OPACITY,
     CARLA_KEY_CANVAS_LINE_STROKE,
     CARLA_KEY_CANVAS_LINE_STYLE,
+    CARLA_KEY_CANVAS_NODE_MIN_WIDTH,
     CARLA_KEY_CANVAS_NODE_RADIUS,
     CARLA_KEY_CANVAS_ROUNDED_NODES,
     CARLA_KEY_CANVAS_SIZE,
@@ -811,6 +813,25 @@ class CarlaSettingsW(QDialog):
             self.ui.gridLayout_2.addWidget(self.ui.label_canvas_line_opacity, 4, 1, 1, 2)
             self.ui.gridLayout_2.addLayout(self.ui.layout_canvas_line_opacity, 4, 3, 1, 1)
 
+            # Node Minimum Width Control
+            self.ui.label_canvas_node_min_width = QLabel(self.tr("Node min width:"), self.ui.group_canvas_theme)
+            self.ui.label_canvas_node_min_width.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            self.ui.layout_canvas_node_min_width = QHBoxLayout()
+            self.ui.sl_canvas_node_min_width = QSlider(Qt.Horizontal, self.ui.group_canvas_theme)
+            self.ui.sl_canvas_node_min_width.setMinimum(100)
+            self.ui.sl_canvas_node_min_width.setMaximum(320)
+            self.ui.sl_canvas_node_min_width.setValue(CARLA_DEFAULT_CANVAS_NODE_MIN_WIDTH)
+            self.ui.label_canvas_node_min_width_val = QLabel(f"{CARLA_DEFAULT_CANVAS_NODE_MIN_WIDTH} px", self.ui.group_canvas_theme)
+            self.ui.label_canvas_node_min_width_val.setMinimumWidth(50)
+            self.ui.sl_canvas_node_min_width.valueChanged.connect(
+                lambda v: self.ui.label_canvas_node_min_width_val.setText(f"{v} px")
+            )
+            self.ui.layout_canvas_node_min_width.addWidget(self.ui.sl_canvas_node_min_width)
+            self.ui.layout_canvas_node_min_width.addWidget(self.ui.label_canvas_node_min_width_val)
+
+            self.ui.gridLayout_2.addWidget(self.ui.label_canvas_node_min_width, 5, 1, 1, 2)
+            self.ui.gridLayout_2.addLayout(self.ui.layout_canvas_node_min_width, 5, 3, 1, 1)
+
 
         if host.isPlugin:
             self.ui.cb_engine_audio_driver.setEnabled(False)
@@ -1310,6 +1331,15 @@ class CarlaSettingsW(QDialog):
             self.ui.sl_canvas_line_opacity.setValue(lineOpacity)
             self.ui.label_canvas_line_opacity_val.setText(f"{lineOpacity}%")
 
+        if hasattr(self.ui, "sl_canvas_node_min_width"):
+            nodeMinWidth = settings.value(
+                CARLA_KEY_CANVAS_NODE_MIN_WIDTH,
+                CARLA_DEFAULT_CANVAS_NODE_MIN_WIDTH,
+                int,
+            )
+            self.ui.sl_canvas_node_min_width.setValue(nodeMinWidth)
+            self.ui.label_canvas_node_min_width_val.setText(f"{nodeMinWidth} px")
+
         # -------------------------------------------------------------------------------------------------------------
 
         settings = QSafeSettings("falkTX", "Carla2")
@@ -1713,6 +1743,12 @@ class CarlaSettingsW(QDialog):
                 self.ui.sl_canvas_line_opacity.value(),
             )
 
+        if hasattr(self.ui, "sl_canvas_node_min_width"):
+            settings.setValue(
+                CARLA_KEY_CANVAS_NODE_MIN_WIDTH,
+                self.ui.sl_canvas_node_min_width.value(),
+            )
+
         # -------------------------------------------------------------------------------------------------------------
 
         settings = QSafeSettings("falkTX", "Carla2")
@@ -2020,6 +2056,9 @@ class CarlaSettingsW(QDialog):
                     self.ui.cb_canvas_line_stroke.setCurrentIndex(idxStroke)
                 self.ui.sl_canvas_line_opacity.setValue(CARLA_DEFAULT_CANVAS_LINE_OPACITY)
                 self.ui.label_canvas_line_opacity_val.setText(f"{CARLA_DEFAULT_CANVAS_LINE_OPACITY}%")
+            if hasattr(self.ui, "sl_canvas_node_min_width"):
+                self.ui.sl_canvas_node_min_width.setValue(CARLA_DEFAULT_CANVAS_NODE_MIN_WIDTH)
+                self.ui.label_canvas_node_min_width_val.setText(f"{CARLA_DEFAULT_CANVAS_NODE_MIN_WIDTH} px")
 
         # -------------------------------------------------------------------------------------------------------------
         # Engine
