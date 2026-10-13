@@ -40,7 +40,7 @@ from carla_canvas import (
 )
 from project_storage import storage_manager
 from project_session import ProjectSessionManager
-from carla_logger import logger, KNOWN_TAGS
+from carla_logger import logger, KNOWN_TAGS, LEVEL_NAMES
 
 # ------------------------------------------------------------------------------------------------------------
 # Imports (PyQt)

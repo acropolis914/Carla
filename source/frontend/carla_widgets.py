@@ -5,6 +5,7 @@
 # ------------------------------------------------------------------------------------------------------------
 # Imports (Global)
 
+import os
 from abc import abstractmethod
 
 # ------------------------------------------------------------------------------------------------------------
@@ -16,12 +17,17 @@ if qt_config == 5:
     from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QByteArray
     from PyQt5.QtGui import QCursor, QIcon, QPalette, QPixmap
     from PyQt5.QtWidgets import (
+        QApplication,
         QDialog,
         QFileDialog,
+        QHBoxLayout,
         QInputDialog,
+        QLabel,
         QMenu,
         QMessageBox,
+        QPushButton,
         QScrollArea,
+        QTextEdit,
         QVBoxLayout,
         QWidget,
     )
@@ -29,12 +35,17 @@ elif qt_config == 6:
     from PyQt6.QtCore import pyqtSignal, pyqtSlot, Qt, QByteArray
     from PyQt6.QtGui import QCursor, QIcon, QPalette, QPixmap
     from PyQt6.QtWidgets import (
+        QApplication,
         QDialog,
         QFileDialog,
+        QHBoxLayout,
         QInputDialog,
+        QLabel,
         QMenu,
         QMessageBox,
+        QPushButton,
         QScrollArea,
+        QTextEdit,
         QVBoxLayout,
         QWidget,
     )

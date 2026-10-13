@@ -20,6 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 16:47:00
+- **fix(frontend)**: Resolve missing LEVEL_NAMES, QLabel, and os imports in ProjectLoadSummaryDialog
+  - Imported `LEVEL_NAMES` in `carla_host.py` from `carla_logger`.
+  - Added missing `QLabel`, `QPushButton`, `QTextEdit`, `QHBoxLayout`, and `os` imports in `carla_widgets.py`.
+
 ### 2026-10-13 16:43:00
 - **feat(project)**: Add post-load summary dialog with skipped plugins and one-click log copy
   - Wrapped `load_project()` in try-catch and error callback monitoring to prevent aborted sessions when individual plugins fail.
