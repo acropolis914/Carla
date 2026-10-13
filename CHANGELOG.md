@@ -20,6 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 16:24:00
+- **fix(patchcanvas)**: Implement and export centerGraphInCanvas for project canvas positioning
+  - Implemented `centerGraphInCanvas()` in `source/frontend/patchcanvas/patchcanvas.py` filtering out None widgets and centering graph nodes when loading projects.
+  - Exported `centerGraphInCanvas` in `source/frontend/patchcanvas/__init__.py`.
+
 ### 2026-10-13 08:04:00
 - **fix(frontend)**: Fix _on_update_available method placement inside HostWindow class
   - Relocated `_on_update_available` callback inside the `HostWindow` class scope so Qt signal connection resolves correctly.

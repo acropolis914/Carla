@@ -334,4 +334,5 @@ from .patchcanvas import (
     selectNodesByType,
     arrangeConnected,
     getSelectedNodes,
+    centerGraphInCanvas,
 )

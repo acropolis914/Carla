@@ -1881,6 +1881,72 @@ def autoArrange():
     log_carla("PatchCanvas::autoArrange() finished")
 
 
+def centerGraphInCanvas():
+    if not canvas or not canvas.group_list:
+        return
+    nodes = []
+    for group in canvas.group_list:
+        nodes.extend(w for w in group.widgets if w is not None)
+    if not nodes:
+        return
+
+    min_x = min(n.x() for n in nodes)
+    min_y = min(n.y() for n in nodes)
+    max_x = max(n.x() + n.boundingRect().width() for n in nodes)
+    max_y = max(n.y() + n.boundingRect().height() for n in nodes)
+
+    bbox_w = max_x - min_x
+    bbox_h = max_y - min_y
+
+    canvas_w = (
+        canvas.size_rect.width()
+        if not canvas.size_rect.isNull()
+        else (canvas.scene.width() if canvas.scene else 0)
+    )
+    canvas_h = (
+        canvas.size_rect.height()
+        if not canvas.size_rect.isNull()
+        else (canvas.scene.height() if canvas.scene else 0)
+    )
+    canvas_x = canvas.size_rect.x() if not canvas.size_rect.isNull() else 0
+    canvas_y = canvas.size_rect.y() if not canvas.size_rect.isNull() else 0
+
+    if canvas_w > 0 and canvas_h > 0:
+        target_x = canvas_x + (canvas_w - bbox_w) / 2.0
+        target_y = canvas_y + (canvas_h - bbox_h) / 2.0
+        target_x = max(canvas_x, target_x)
+        target_y = max(canvas_y, target_y)
+        offset_x = target_x - min_x
+        offset_y = target_y - min_y
+    else:
+        offset_x = 40 - min_x
+        offset_y = 40 - min_y
+
+    for node in nodes:
+        node.blockSignals(True)
+        node.setPos(node.x() + offset_x, node.y() + offset_y)
+        node.checkItemPos()
+        node.blockSignals(False)
+
+    for group in canvas.group_list:
+        pos1 = group.widgets[0].pos()
+        pos2 = (
+            group.widgets[1].pos()
+            if group.split and group.widgets[1]
+            else QPointF(0, 0)
+        )
+        valueStr = "%i:%i:%i:%i" % (pos1.x(), pos1.y(), pos2.x(), pos2.y())
+        CanvasCallback(ACTION_GROUP_POSITION, group.group_id, 0, valueStr)
+
+    for node in nodes:
+        node.repaintLines(True)
+
+    if canvas.scene:
+        canvas.scene.update()
+
+
+
+
 def syncNodePositions(nodes_to_sync):
     if not nodes_to_sync:
         return
