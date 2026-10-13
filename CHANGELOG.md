@@ -20,6 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 16:43:00
+- **feat(project)**: Add post-load summary dialog with skipped plugins and one-click log copy
+  - Wrapped `load_project()` in try-catch and error callback monitoring to prevent aborted sessions when individual plugins fail.
+  - Implemented `ProjectLoadSummaryDialog` in `carla_widgets.py` showing failed/skipped items, raw diagnostic logs, and a "Copy Log to Clipboard" button.
+
 ### 2026-10-13 16:40:00
 - **docs(issues)**: Add GitHub issue template config.yml
   - Configured `.github/ISSUE_TEMPLATE/config.yml` disabling unstructured blank issues.

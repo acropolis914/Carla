@@ -1348,9 +1348,27 @@ class HostWindow(QMainWindow):
             logger.info("SESSION", "Engine not running; calling slot_engineStart()")
             self.slot_engineStart()
 
-        logger.info("SESSION", f"Calling self.host.load_project('{actual_load_filename}')")
-        load_ok = self.host.load_project(actual_load_filename)
-        logger.info("SESSION", f"load_project returned {load_ok}, last_error='{self.host.get_last_error()}'")
+        load_errors = []
+        def _on_load_error(err):
+            load_errors.append(str(err))
+        self.host.ErrorCallback.connect(_on_load_error)
+
+        load_ok = False
+        load_exception = None
+        log_history_start = len(logger.history)
+
+        try:
+            logger.info("SESSION", f"Calling self.host.load_project('{actual_load_filename}')")
+            load_ok = self.host.load_project(actual_load_filename)
+            logger.info("SESSION", f"load_project returned {load_ok}, last_error='{self.host.get_last_error()}'")
+        except Exception as e:
+            load_exception = str(e)
+            logger.error("SESSION", f"Exception during load_project: {e}")
+        finally:
+            try:
+                self.host.ErrorCallback.disconnect(_on_load_error)
+            except Exception:
+                pass
 
         if tmp_cleanup_file and os.path.exists(tmp_cleanup_file):
             try:
@@ -1358,21 +1376,42 @@ class HostWindow(QMainWindow):
             except Exception:
                 pass
 
-        if not load_ok:
+        # Collect issues and log entries
+        last_backend_err = self.host.get_last_error()
+        issues = []
+        if load_exception:
+            issues.append(f"Load Exception: {load_exception}")
+        if last_backend_err:
+            issues.append(f"Backend message: {last_backend_err}")
+        for err_msg in load_errors:
+            if err_msg not in issues:
+                issues.append(err_msg)
+
+        recent_entries = logger.history[log_history_start:]
+        error_entries = [
+            f"[{e.timestamp.strftime('%H:%M:%S')}] [{e.tag}] {e.message}"
+            for e in recent_entries
+            if e.level >= 30 or "error" in e.message.lower() or "failed" in e.message.lower() or "cannot" in e.message.lower()
+        ]
+
+        # Check for any plugin load failures in recent log entries
+        for e in recent_entries:
+            msg = e.message
+            if ("error" in msg.lower() or "failed" in msg.lower() or "cannot open" in msg.lower()) and msg not in issues:
+                issues.append(msg)
+
+        if not load_ok or issues or error_entries:
+            raw_log_str = "\n".join(
+                f"[{e.timestamp.strftime('%H:%M:%S')}] [{LEVEL_NAMES.get(e.level, 'INFO')}] [{e.tag}] {e.message}"
+                for e in recent_entries
+            ) or (last_backend_err or "No detailed log entries.")
+            if issues:
+                summary_dlg = ProjectLoadSummaryDialog(self, load_source, issues=issues, raw_log=raw_log_str)
+                summary_dlg.exec_()
+
+        if not load_ok and not self.fPluginList:
             self.fIsProjectLoading = False
             self.projectLoadingFinished(True)
-
-            last_err = self.host.get_last_error()
-            logger.error("SESSION", f"Failed to load project: {last_err} (file: {actual_load_filename})")
-            CustomMessageBox(
-                self,
-                QMessageBox.Critical,
-                self.tr("Error"),
-                self.tr("Failed to load project"),
-                f"{last_err}\n\nTried to load:\n{load_source}",
-                QMessageBox.Ok,
-                QMessageBox.Ok,
-            )
             return
 
         self.fIsProjectLoading = False
