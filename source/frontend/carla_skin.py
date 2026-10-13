@@ -2863,7 +2863,9 @@ class PluginSlot_Minimal(PluginSlot_Default):
 
             for led in (self.led_control, self.led_midi, self.led_audio_in, self.led_audio_out):
                 if led is not None:
-                    led.setFixedSize(8, 8)
+                    if hasattr(led, 'setMinimalMode'):
+                        led.setMinimalMode(True)
+                    led.setFixedSize(9, 9)
                     led.setStyleSheet("background: transparent; border: none; padding: 0px; margin: 0px;")
 
             # Place Peak Meters in modern vertical slice
@@ -2882,6 +2884,8 @@ class PluginSlot_Minimal(PluginSlot_Default):
             if hasattr(self.ui, 'layout_leds') and hasattr(self.ui, 'layout_peaks'):
                 for led in (self.led_control, self.led_midi, self.led_audio_in, self.led_audio_out):
                     if led is not None:
+                        if hasattr(led, 'setMinimalMode'):
+                            led.setMinimalMode(False)
                         led.setFixedSize(14, 14)
                         led.setStyleSheet("")
                 self.ui.layout_leds.addWidget(self.led_control)

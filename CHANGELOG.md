@@ -20,6 +20,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 18:34:00
+- **feat(ui)**: Reskin 2x2 LED status indicators for modernized header slice
+  - Added clean geometric vector rendering with vivid glow and distinct dark states in `LEDButton`, activated exclusively when Modernized Header Slice is enabled.
+
 ### 2026-10-13 18:28:00
 - **fix(ui)**: Register Qt resource bundle into PyQt6 runtime
   - Fixed missing button pixmaps and icons across classic and modern rack skins by registering `resources_rc` data into `PyQt6.QtCore.qRegisterResourceData`.
