@@ -1005,15 +1005,32 @@ class CanvasBox(QGraphicsObject):
         # Filter connected vs unconnected if hide_unconnected_ports is enabled
         connected_port_ids = set()
         if getattr(self, "m_hide_unconnected_ports", False):
+            # 1. Check globally tracked connections
             for conn in canvas.connection_list:
                 if conn.group_out_id == self.m_group_id:
                     connected_port_ids.add((PORT_MODE_OUTPUT, conn.port_out_id))
                 if conn.group_in_id == self.m_group_id:
                     connected_port_ids.add((PORT_MODE_INPUT, conn.port_in_id))
 
+            # 2. Check connections attached directly to this CanvasBox
+            for cbline in getattr(self, "m_connection_lines", []):
+                line_widget = getattr(cbline, "line", None)
+                if line_widget:
+                    item1 = getattr(line_widget, "item1", None)
+                    item2 = getattr(line_widget, "item2", None)
+                    if item1 and hasattr(item1, "getPortId") and hasattr(item1, "getPortMode"):
+                        if item1.parentItem() == self or getattr(item1, "m_group_id", None) == self.m_group_id:
+                            connected_port_ids.add((item1.getPortMode(), item1.getPortId()))
+                    if item2 and hasattr(item2, "getPortId") and hasattr(item2, "getPortMode"):
+                        if item2.parentItem() == self or getattr(item2, "m_group_id", None) == self.m_group_id:
+                            connected_port_ids.add((item2.getPortMode(), item2.getPortId()))
+
         visible_port_list = []
         for port in port_list:
-            is_connected = (port.port_mode, port.port_id) in connected_port_ids
+            is_connected = (
+                (port.port_mode, port.port_id) in connected_port_ids
+                or (hasattr(port, "widget") and (port.widget.getPortMode(), port.widget.getPortId()) in connected_port_ids)
+            )
             if getattr(self, "m_hide_unconnected_ports", False) and not is_connected:
                 port.widget.setVisible(False)
             else:

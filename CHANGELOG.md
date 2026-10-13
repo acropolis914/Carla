@@ -20,6 +20,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 18:03:00
+- **fix(patchbay)**: Fix connected port detection when hiding unused ports
+  - `CanvasBox.updatePositions` now inspects both global `canvas.connection_list` and node-local `m_connection_lines` to ensure all active wires (including split and re-routed node ports) are recognized as connected.
+
 ### 2026-10-13 18:00:00
 - **fix(patchbay)**: Resolve cable disconnect misalignment with hidden unconnected ports and reorder Settings menu
   - Connected and re-connected ports now trigger immediate box recalculation (`updatePositions`) on nodes with hidden unconnected ports active, and deferred hiding re-syncs all cable geometries after backend connections finalize.
