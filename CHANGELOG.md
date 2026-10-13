@@ -20,6 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 18:06:00
+- **feat(rack)**: Smooth scroll rack item into view when clicking corresponding node in patchbay
+  - Added `scrollToItemSmooth` to `RackListWidget` with viewport centering and easing interpolation.
+  - Linked `slot_canvasPluginSelected` to call `scrollToItemSmooth`, smoothly bringing the plugin slot into focus.
+
 ### 2026-10-13 18:03:00
 - **fix(patchbay)**: Fix connected port detection when hiding unused ports
   - `CanvasBox.updatePositions` now inspects both global `canvas.connection_list` and node-local `m_connection_lines` to ensure all active wires (including split and re-routed node ports) are recognized as connected.

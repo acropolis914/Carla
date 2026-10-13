@@ -3061,7 +3061,10 @@ class HostWindow(QMainWindow):
                         if not self._sync_guard:
                             self._sync_guard = True
                             self.ui.listWidget.setCurrentItem(pitem)
-                            self.ui.listWidget.scrollToItem(pitem)
+                            if hasattr(self.ui.listWidget, "scrollToItemSmooth"):
+                                self.ui.listWidget.scrollToItemSmooth(pitem)
+                            else:
+                                self.ui.listWidget.scrollToItem(pitem)
                     finally:
                         self._sync_guard = False
 

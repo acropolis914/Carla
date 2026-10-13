@@ -481,6 +481,29 @@ class RackListWidget(QListWidget):
                 step = 1 if diff > 0 else -1
             vsb.setValue(curr + step)
 
+    def scrollToItemSmooth(self, item):
+        if item is None:
+            return
+        rect = self.visualItemRect(item)
+        vsb = self.verticalScrollBar()
+        if not vsb or vsb.maximum() <= vsb.minimum():
+            return
+
+        curr = vsb.value()
+        viewport_h = self.viewport().height()
+
+        # If already completely visible inside the viewport, no scroll needed
+        if rect.top() >= 0 and rect.bottom() <= viewport_h:
+            return
+
+        # Target centering the rack item smoothly in the visible viewport
+        target = curr + rect.top() - int((viewport_h - rect.height()) / 2)
+        new_target = max(vsb.minimum(), min(vsb.maximum(), target))
+
+        self._smooth_target_val = new_target
+        if not self._smooth_timer.isActive():
+            self._smooth_timer.start()
+
     def changeEvent(self, event):
         if event.type() in (QEvent.StyleChange, QEvent.PaletteChange):
             self._updateStyle()
