@@ -20,6 +20,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 05:47:00
+- **ci(release)**: Add automated GitHub Releases on tag push with changelog extraction
+  - Configured `release` job triggered exclusively on `v*` tag pushes to attach all distro package artifacts.
+  - Automatically extracts latest changelog notes from `CHANGELOG.md` into the GitHub Release body.
+  - Added installation & download table in `README.md` covering all supported distributions.
+
 ### 2026-10-13 05:41:00
 - **ci(void)**: Isolate void-musl build to host docker container
   - Migrated `void-musl` build to a host runner job using `docker run` to prevent musl dynamic-linking incompatibilities with GitHub Actions Node.js runner.

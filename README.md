@@ -80,7 +80,24 @@ Track full development details and priorities in [TODO.md](TODO.md):
 
 ---
 
-## 📦 Installation & Packaging
+## 📦 Installation & Downloads
+
+Official pre-built binaries for multiple Linux distributions are published with each release:
+
+| Distribution | Format | Installation Command |
+| :--- | :--- | :--- |
+| **Ubuntu / Debian** | `.deb` | `sudo dpkg -i clara-ubuntu-*.deb && sudo apt-get install -f` |
+| **Fedora / RHEL** | `.rpm` | `sudo dnf install clara-*.rpm` |
+| **Arch Linux** | `.tar.zst` / PKGBUILD | Extract to `/usr` or use bundled [`PKGBUILD`](PKGBUILD) |
+| **Void Linux (glibc & musl)** | `.tar.zst` | Extract into `/usr` (`tar --zstd -xvf clara-void-*.tar.zst -C /`) |
+| **Alpine Linux (musl)** | `.tar.zst` | Extract into `/usr` (`tar --zstd -xvf clara-alpine-*.tar.zst -C /`) |
+| **Nix / NixOS** | Flake | `nix run github:acropolis914/Clara` |
+
+👉 **[Download Latest Releases](https://github.com/acropolis914/Clara/releases)**
+
+---
+
+## 🛠️ Building from Source & Local Packaging
 
 * **Arch Linux / AUR / Pacman**:
   * Bundled [`PKGBUILD`](PKGBUILD) package (`carla-improved`) targeting Qt6 for clean package management.
