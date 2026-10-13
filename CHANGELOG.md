@@ -20,6 +20,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 06:09:00
+- **ci(matrix)**: Enable fail-fast to immediately abort entire build on any distro failure
+  - Changed `fail-fast: true` on the packaging matrix.
+
+### 2026-10-13 06:08:00
+- **fix(fedora)**: Replace %make_build macro with direct make invocation
+  - Switched from Fedora `%make_build` macro to `make -j%{_smp_mflags} DEFAULT_QT=6` in `clara.spec` to prevent strict Red Hat compiler hardening flags from breaking bundled C dependencies (lilv/serd).
+
 ### 2026-10-13 06:00:00
 - **perf(ci)**: Accelerate CI compilation with parallel make and ccache caching
   - Enabled `make -j$(nproc)` to utilize all 4 runner CPU cores concurrently.
