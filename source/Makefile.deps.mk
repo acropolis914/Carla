@@ -349,6 +349,13 @@ PYUIC5 ?= $(shell which pyuic5 2>/dev/null)
 
 PYUIC6 ?= $(shell which pyuic6 2>/dev/null)
 
+ifneq (,$(findstring true,$(HAVE_QT5)$(HAVE_QT5PKG)$(HAVE_QT5BREW)))
+ifneq ($(PYUIC5)$(PYRCC5),)
+HAVE_FRONTEND = true
+HAVE_PYQT = true
+FRONTEND_TYPE = 5
+endif
+endif
 ifneq (,$(findstring true,$(HAVE_QT6)$(HAVE_QT6BREW)))
 ifneq ($(PYUIC6),)
 HAVE_FRONTEND = true
@@ -357,13 +364,6 @@ FRONTEND_TYPE = 6
 endif
 endif
 
-ifneq (,$(findstring true,$(HAVE_QT5)$(HAVE_QT5PKG)$(HAVE_QT5BREW)))
-ifneq ($(PYUIC5)$(PYRCC5),)
-HAVE_FRONTEND = true
-HAVE_PYQT = true
-FRONTEND_TYPE = 5
-endif
-endif
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Set Qt tools, part2

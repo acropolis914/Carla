@@ -20,6 +20,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 08:00:00
+- **fix(build)**: Prioritize Qt6 over Qt5 when pyuic6 is present
+  - Swapped Qt5/Qt6 detection ordering in `source/Makefile.deps.mk` so `pyuic6` is selected when building with `DEFAULT_QT=6`, resolving PyQt5/PyQt6 widget mismatch exceptions.
+
 ### 2026-10-13 07:52:00
 - **fix(frontend)**: Export QThread, QTextEdit, and QSettings in qt_compat and fix version import
   - Exported `QThread`, `QTextEdit`, and `QSettings` across Qt5 and Qt6 sections of `qt_compat.py`.
