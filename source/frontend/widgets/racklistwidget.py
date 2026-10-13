@@ -475,8 +475,16 @@ class RackListWidget(QListWidget):
             self._smooth_timer.stop()
             self._smooth_target_val = None
         else:
-            # Ease out smoothly by interpolating 28% of remaining distance per tick
-            step = int(diff * 0.28)
+            # Gentle easing interpolation (~10% per 16ms frame) with max speed cap for fluid visual glide
+            raw_step = diff * 0.10
+            # Cap maximum speed per tick to prevent jumping across long distances
+            max_step = 24
+            if raw_step > max_step:
+                raw_step = max_step
+            elif raw_step < -max_step:
+                raw_step = -max_step
+
+            step = int(raw_step)
             if step == 0:
                 step = 1 if diff > 0 else -1
             vsb.setValue(curr + step)

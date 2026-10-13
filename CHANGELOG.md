@@ -20,6 +20,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 18:21:00
+- **feat(rack)**: Calibrate smooth scroll easing rate for gentle visual glide
+  - Softened easing rate from 28% to 10% per frame and added a 24px/tick velocity limit in `RackListWidget`.
+
 ### 2026-10-13 18:06:00
 - **feat(rack)**: Smooth scroll rack item into view when clicking corresponding node in patchbay
   - Added `scrollToItemSmooth` to `RackListWidget` with viewport centering and easing interpolation.
