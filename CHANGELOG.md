@@ -20,6 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 20:00:00
+- **refactor(ui)**: Smooth patchbay camera animation and restyle floating add button
+  - Replaced matrix reset scaling with incremental scaling in `animateFocusOn` to eliminate camera anchor jitter during flight.
+  - Redesigned floating `+ Add Plugin` button to use cohesive dark glassmorphism palette matching Carla's Catppuccin theme.
+
 ### 2026-10-13 19:58:00
 - **fix(rack)**: Resolve context menu remove and move action dispatch
   - Fixed erroneous `elif actMoveUp:` check that swallowed subsequent menu actions, restoring the context menu `Remove` confirmation and execution.

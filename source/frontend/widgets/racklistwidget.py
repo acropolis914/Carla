@@ -267,26 +267,30 @@ class RackListWidget(QListWidget):
 
         # Floating "+ Add Plugin" Action Button
         self.btn_floating_add = QPushButton(self)
-        self.btn_floating_add.setText("＋ Add Plugin")
+        self.btn_floating_add.setText("+ Add Plugin")
         self.btn_floating_add.setToolTip("Add new plugin to rack")
         self.btn_floating_add.setCursor(Qt.PointingHandCursor)
         self.btn_floating_add.setStyleSheet("""
             QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #89b4fa, stop:1 #74c7ec);
-                color: #11111b;
-                font-weight: 700;
+                background: rgba(30, 30, 46, 0.88);
+                color: #cdd6f4;
+                font-family: inherit;
+                font-weight: 600;
                 font-size: 11px;
-                border-radius: 14px;
-                padding: 4px 12px;
-                border: 1px solid rgba(255, 255, 255, 0.25);
+                border-radius: 6px;
+                padding: 6px 14px;
+                border: 1px solid rgba(137, 180, 250, 0.35);
             }
             QPushButton:hover {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #b4befe, stop:1 #89b4fa);
-                border: 1px solid #cdd6f4;
+                background: rgba(49, 50, 68, 0.95);
+                color: #89b4fa;
+                border: 1px solid #89b4fa;
             }
             QPushButton:pressed {
-                background: #89b4fa;
-                padding-top: 5px;
+                background: rgba(69, 71, 90, 0.95);
+                color: #b4befe;
+                border: 1px solid #b4befe;
+                padding-top: 7px;
             }
         """)
         self.btn_floating_add.clicked.connect(self._onFloatingAddClicked)

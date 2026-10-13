@@ -502,36 +502,32 @@ class DraggableGraphicsView(QGraphicsView):
         anim.setStartValue(0.0)
         anim.setEndValue(1.0)
 
+        self._last_anim_scale = base_scale
+
         def _on_step(val):
             t = float(val)
             e = curve.valueForProgress(t)
 
-            # Interpolate position
+            # Smoothly interpolate scene center
             curr_x = start_pt.x() + (target_pt.x() - start_pt.x()) * e
             curr_y = start_pt.y() + (target_pt.y() - start_pt.y()) * e
 
-            # Parabolic zoom-out dipped arc: dips at mid-flight (up to 12% zoom out), then returns to base_scale
-            # 4 * t * (1 - t) is 1.0 at midpoint t=0.5
-            zoom_dip = 1.0 - (0.12 * 4.0 * t * (1.0 - t))
-            curr_scale = base_scale * zoom_dip
+            # Subtly dip zoom mid-flight (5% dip to keep it rock-solid and buttery smooth)
+            zoom_dip = 1.0 - (0.05 * 4.0 * t * (1.0 - t))
+            target_scale = base_scale * zoom_dip
 
-            # Update transform scale
-            cur_t = self.transform()
-            cur_t.reset()
-            cur_t.scale(curr_scale, curr_scale)
-            self.setTransform(cur_t)
+            # Apply incremental scaling to preserve view anchor alignment cleanly
+            factor = target_scale / self._last_anim_scale
+            self._last_anim_scale = target_scale
+            self.scale(factor, factor)
 
             self.centerOn(curr_x, curr_y)
 
-            scene = self.scene()
-            if hasattr(scene, "scaleChanged"):
-                scene.scaleChanged.emit(curr_scale)
-
         def _on_finish():
-            cur_t = self.transform()
-            cur_t.reset()
-            cur_t.scale(base_scale, base_scale)
-            self.setTransform(cur_t)
+            if self._last_anim_scale != base_scale:
+                factor = base_scale / self._last_anim_scale
+                self.scale(factor, factor)
+                self._last_anim_scale = base_scale
             self.centerOn(target_pt)
             scene = self.scene()
             if hasattr(scene, "scaleChanged"):
