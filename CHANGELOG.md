@@ -20,7 +20,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 18:43:00
+- **docs(funding)**: Add GitHub FUNDING.yml configuration
+  - Created `.github/FUNDING.yml` to display repository sponsorship button and funding links.
+
 ### 2026-10-13 18:42:00
+
 - **docs(readme)**: Clarify AI policy and make alpha announcement imperative
   - Rephrased top callout banner in `README.md` to be directly imperative about bug reporting and contributing.
   - Removed "encouraged" phrasing from AI development policy in `README.md` and `CONTRIBUTING.md`, designating AI tools as strictly permitted under full contributor review.
