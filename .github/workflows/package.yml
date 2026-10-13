@@ -55,7 +55,7 @@ jobs:
               dnf install -y \
                 git make gcc gcc-c++ pkgconf \
                 qt6-qtbase-devel qt6-qtsvg-devel qt6-qttools-devel \
-                python3 python3-pyqt6 SDL2-devel \
+                python3 python3-devel python3-pyqt6 SDL2-devel \
                 rpm-build rpmdevtools zstd tar
               ;;
             archlinux)

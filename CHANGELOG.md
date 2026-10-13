@@ -20,6 +20,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 05:56:00
+- **fix(fedora)**: Add python3-devel to build dependencies
+  - Added missing `python3-devel` package to Fedora DNF installation to satisfy RPM build dependencies.
+
 ### 2026-10-13 05:49:00
 - **fix(rpm)**: Fix RPM spec release tag token syntax and align source archive name
   - Changed `Release` in `clara.spec` to standard `1%{?dist}` to avoid unexpanded GitHub Actions expression syntax errors in rpmbuild.
