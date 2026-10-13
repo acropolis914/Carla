@@ -2853,6 +2853,7 @@ class PluginSlot_Minimal(PluginSlot_Default):
         colorEnabled = QColor(text_color)
         colorDisabled = QColor(text_disabled)
         dial_col_width = 68
+        dial_col_height = 54
         for _, paramWidget in self.fParameterList:
             if hasattr(paramWidget, "setLabelColor"):
                 paramWidget.setLabelColor(colorEnabled, colorDisabled)
@@ -2860,8 +2861,7 @@ class PluginSlot_Minimal(PluginSlot_Default):
                 paramWidget.setCustomPaintColor(arcColor)
                 paramWidget.setCustomPaintMode(ScalableDial.CUSTOM_PAINT_MODE_FLAT)
             if isinstance(paramWidget, ScalableDial):
-                paramWidget.setMinimumWidth(dial_col_width)
-                paramWidget.setMaximumWidth(dial_col_width)
+                paramWidget.setFixedSize(dial_col_width, dial_col_height)
 
         if self.w_knobs_left is not None:
             leftLayout = self.w_knobs_left.layout()

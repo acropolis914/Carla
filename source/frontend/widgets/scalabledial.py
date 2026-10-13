@@ -47,6 +47,14 @@ class ScalableDial(CommonDial):
     def getBaseSize(self):
         return self.fImageBaseSize
 
+    def setFixedSize(self, *args):
+        self.fCustomSize = True
+        super().setFixedSize(*args)
+
+    def setFixedWidth(self, w):
+        self.fCustomSize = True
+        super().setFixedWidth(w)
+
     def updateSizes(self):
         if isinstance(self.fImage, QPixmap):
             self.fImageWidth  = self.fImage.width()
@@ -68,33 +76,35 @@ class ScalableDial(CommonDial):
             self.fImageBaseSize    = self.fImageWidth
             self.fImageLayersCount = self.fImageHeight / self.fImageWidth
 
-        dialWidth = max(self.fImageBaseSize, self.fLabelWidth + 8)
-        self.setMinimumSize(dialWidth, self.fImageBaseSize + self.fLabelHeight + 5)
-        self.setMaximumSize(dialWidth, self.fImageBaseSize + self.fLabelHeight + 5)
-
         if not self.fLabel:
             self.fLabelHeight = 0
             self.fLabelWidth  = 0
+        else:
+            metrics = QFontMetrics(self.fLabelFont)
+            self.fLabelWidth  = fontMetricsHorizontalAdvance(metrics, self.fLabel)
+            self.fLabelHeight = metrics.height()
+
+            self.fLabelPos.setX(float(self.fImageBaseSize)/2.0 - float(self.fLabelWidth)/2.0)
+
+            if self.fImageNum in ("01", "02", "07", "08", "09", "10"):
+                self.fLabelPos.setY(self.fImageBaseSize + self.fLabelHeight)
+            elif self.fImageNum in ("11",):
+                self.fLabelPos.setY(self.fImageBaseSize + self.fLabelHeight*2/3)
+            else:
+                self.fLabelPos.setY(self.fImageBaseSize + self.fLabelHeight/2)
+
+            self.fLabelGradient.setStart(0, float(self.fImageBaseSize)/2.0)
+            self.fLabelGradient.setFinalStop(0, self.fImageBaseSize + self.fLabelHeight + 5)
+
+            self.fLabelGradientRect = QRectF(float(self.fImageBaseSize)/8.0, float(self.fImageBaseSize)/2.0,
+                                             float(self.fImageBaseSize*3)/4.0, self.fImageBaseSize+self.fLabelHeight+5)
+
+        if getattr(self, 'fCustomSize', False):
             return
 
-        metrics = QFontMetrics(self.fLabelFont)
-        self.fLabelWidth  = fontMetricsHorizontalAdvance(metrics, self.fLabel)
-        self.fLabelHeight = metrics.height()
-
-        self.fLabelPos.setX(float(self.fImageBaseSize)/2.0 - float(self.fLabelWidth)/2.0)
-
-        if self.fImageNum in ("01", "02", "07", "08", "09", "10"):
-            self.fLabelPos.setY(self.fImageBaseSize + self.fLabelHeight)
-        elif self.fImageNum in ("11",):
-            self.fLabelPos.setY(self.fImageBaseSize + self.fLabelHeight*2/3)
-        else:
-            self.fLabelPos.setY(self.fImageBaseSize + self.fLabelHeight/2)
-
-        self.fLabelGradient.setStart(0, float(self.fImageBaseSize)/2.0)
-        self.fLabelGradient.setFinalStop(0, self.fImageBaseSize + self.fLabelHeight + 5)
-
-        self.fLabelGradientRect = QRectF(float(self.fImageBaseSize)/8.0, float(self.fImageBaseSize)/2.0,
-                                         float(self.fImageBaseSize*3)/4.0, self.fImageBaseSize+self.fLabelHeight+5)
+        dialWidth = max(self.fImageBaseSize, self.fLabelWidth + 8)
+        self.setMinimumSize(dialWidth, self.fImageBaseSize + self.fLabelHeight + 5)
+        self.setMaximumSize(dialWidth, self.fImageBaseSize + self.fLabelHeight + 5)
 
     def setImage(self, imageId):
         self.fImageNum = "%02i" % imageId

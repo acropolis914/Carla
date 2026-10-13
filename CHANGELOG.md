@@ -20,6 +20,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 19:34:00
+- **feat(rack)**: Enforce uniform fixed grid dimensions for parameter dials in minimal skin
+  - Configured `setFixedSize(68, 54)` and aligned flow layout spacing on `w_knobs_left` so rack dials arrange into a uniform grid with unclipped labels.
+
 ### 2026-10-13 19:27:00
 - **fix(rack)**: Ensure header buttons, badge, and title anchor to the far left
   - Cleared fixed template spacers and inserted action buttons (index 0), type badge (index 1), and title (index 2) at the start of `layout_top`.
