@@ -1,4 +1,5 @@
-name: Multi‑distro packaging
+# Updated CI workflow for multi-distro packaging
+name: Multi-distro packaging
 
 on:
   push:
@@ -25,16 +26,31 @@ jobs:
         run: |
           case "${{ matrix.platform }}" in
             alpine)
-              apk add --no-cache git make gcc g++ qt6-qtbase-dev qt6-qtsvg-dev qt6-qttools-dev python3 py3-pyqt6 sdl2-dev musl-dev pkgconf
+              apk add --no-cache \
+                git make gcc g++ musl-dev pkgconf \
+                qt6-qtbase-dev qt6-qtsvg-dev qt6-qttools-dev \
+                python3 py3-qt6 sdl2-dev zstd tar
               ;;
             ubuntu)
-                              apt-get update && apt-get install -y git make build-essential qt6-base-dev qt6-svg-dev qt6-tools-dev python3 python3-pyqt6 libsdl2-dev debhelper dh-make pkg-config
+              export DEBIAN_FRONTEND=noninteractive
+              apt-get update && apt-get install -y \
+                git make build-essential pkg-config \
+                qt6-base-dev libqt6svg6-dev qt6-tools-dev qt6-tools-dev-tools \
+                python3 python3-pyqt6 libsdl2-dev \
+                debhelper dh-make zstd
               ;;
             fedora)
-              dnf install -y git make gcc gcc-c++ qt6-qtbase-devel qt6-qtsvg-devel qt6-qttools-devel python3 python3-pyqt6 SDL2-devel rpm-build pkgconf
+              dnf install -y \
+                git make gcc gcc-c++ pkgconf \
+                qt6-qtbase-devel qt6-qtsvg-devel qt6-qttools-devel \
+                python3 python3-pyqt6 SDL2-devel \
+                rpm-build zstd tar
               ;;
             archlinux)
-              pacman -Syu --noconfirm && pacman -S --noconfirm git make gcc qt6-base qt6-svg qt6-tools python python-pyqt6 sdl2
+              pacman -Syu --noconfirm \
+                git base-devel \
+                qt6-base qt6-svg qt6-tools \
+                python python-pyqt6 sdl2 zstd
               ;;
             nix)
               nix-env -iA nixpkgs.nix nixpkgs.nixpkgs-unstable
@@ -48,8 +64,8 @@ jobs:
       - name: Create tarball (Alpine only)
         if: matrix.platform == 'alpine'
         run: |
-          tar -cJf clara-git-${{ github.sha }}.tar.zst *
-          echo "TARFILE=clara-git-${{ github.sha }}.tar.zst" >> $GITHUB_ENV
+          tar --zstd -cf clara-git-${{ github.sha }}.tar.zst *
+          echo "TARFILE=clara-git-${{ github.sha }}.tar.zst" >> "$GITHUB_ENV"
 
       - name: Build Debian package (Ubuntu only)
         if: matrix.platform == 'ubuntu'
@@ -57,7 +73,7 @@ jobs:
           dh_make -s -y -p clara-git_${{ github.sha }} --createorig
           debian/rules binary
           dpkg-deb -b ../clara-git_${{ github.sha }} .
-          echo "DEBFILE=clara-git_${{ github.sha }}.deb" >> $GITHUB_ENV
+          echo "DEBFILE=clara-git_${{ github.sha }}.deb" >> "$GITHUB_ENV"
 
       - name: Build RPM package (Fedora only)
         if: matrix.platform == 'fedora'
@@ -66,14 +82,14 @@ jobs:
           cp *.spec ~/rpmbuild/SPECS/ || true
           rpmbuild -ba ~/rpmbuild/SPECS/*.spec
           find ~/rpmbuild/RPMS -name "*.rpm" -exec cp {} . \;
-          echo "RPMFILE=$(ls *.rpm)" >> $GITHUB_ENV
+          echo "RPMFILE=$(ls *.rpm)" >> "$GITHUB_ENV"
 
       - name: Build Nix package (Nix only)
         if: matrix.platform == 'nix'
         run: |
           nix-build default.nix -o result
-          tar -cJf nix-clara-git-${{ github.sha }}.tar.zst -C result .
-          echo "NIXFILE=nix-clara-git-${{ github.sha }}.tar.zst" >> $GITHUB_ENV
+          tar --zstd -cf nix-clara-git-${{ github.sha }}.tar.zst -C result .
+          echo "NIXFILE=nix-clara-git-${{ github.sha }}.tar.zst" >> "$GITHUB_ENV"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
