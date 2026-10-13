@@ -64,9 +64,10 @@ git add "$ROOT_DIR/aur/clara-bin/PKGBUILD"
 # 4. Commit and push bump if changed
 if ! git diff --cached --quiet; then
     echo "💾 Committing version bump to main..."
-    git commit -m "chore(release): bump version to ${CLEAN_VER} [skip ci]"
+    git commit -m "chore(release): bump version to ${CLEAN_VER}"
     git push origin main
 fi
+
 
 # 5. Create and push Git tag to GitHub (triggers GitHub Actions release build)
 echo "🏷️ Tagging ${TAG} and pushing to GitHub..."

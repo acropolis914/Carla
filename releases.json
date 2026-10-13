@@ -36,10 +36,24 @@
       "version": "0.1.2",
       "date": "2026-10-13",
       "urgency": "suggested",
-      "summary": "Release 0.1.2",
+      "summary": "Rack & Patchbay UI enhancements, animated camera pan, loading dialog, and modernized About dialog",
       "changes": [
-        "Release 0.1.2"
-      ]
+        "Modal ProjectLoadingDialog with animated marquee progress bar and real-time status updates",
+        "Modernized About screen: streamlined layout, removed legacy bitmap logos/fonts, and added repository & sponsor links",
+        "Patchbay camera autofocus: smooth 260ms pan-only navigation with InOutCubic easing curve",
+        "Configurable minimum node width in Canvas settings (Canvas/NodeMinWidth slider, 100-320px)",
+        "Fixed rack item delete confirmation modal across Delete/Backspace hotkeys and right-click context menu",
+        "Floating glassmorphism '+ Add Plugin' action button in rack view",
+        "Rack parameter dials: enforced uniform 68x54 grid dimensions and unclipped parameter labels"
+      ],
+      "installation": {
+        "arch": "Install via AUR / PKGBUILD: `paru -S clara-git` (or extract `clara-archlinux-*.tar.zst` to `/usr`)",
+        "ubuntu": "Download `.deb` and run: `sudo dpkg -i clara-ubuntu-*.deb && sudo apt-get install -f`",
+        "fedora": "Download `.rpm` and run: `sudo dnf install clara-*.rpm`",
+        "void": "Extract tarball: `tar --zstd -xvf clara-void-*.tar.zst -C /`",
+        "alpine": "Extract tarball: `tar --zstd -xvf clara-alpine-*.tar.zst -C /`",
+        "nix": "Run directly via Flake: `nix run github:acropolis914/Clara`"
+      }
     }
   }
 }
