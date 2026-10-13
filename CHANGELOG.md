@@ -20,7 +20,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 15:33:00
+- **docs(readme)**: Modernize README, add CONTRIBUTING guide, and GitHub issue template
+  - Removed raw emoji clutter from README.md in favor of Catppuccin badges and clean typography.
+  - Added early-alpha contributor and bug-reporting callout banner.
+  - Added `CONTRIBUTING.md` detailing setup, Conventional Commits, and explicit AI disclosure requirements.
+  - Added `.github/ISSUE_TEMPLATE/bug_report.md` for structured bug reporting.
+
 ### 2026-10-13 07:30:00
+
 - **feat(updates)**: Add non-blocking background update checker and dismissable top notification banner
   - Added structured `releases.json` with urgency levels (`suggested`, `minor`, `critical`), changelogs, and installation instructions.
   - Implemented `UpdateCheckThread` and `UpdateNotificationBanner` in `update_checker.py` with non-blocking 3s timeout.
