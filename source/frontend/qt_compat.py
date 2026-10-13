@@ -473,6 +473,15 @@ elif qt_config == 6:
     Qt.RightButton = Qt.MouseButton.RightButton
 
     # --------------------------------------------------------------------------------------------------------
+    # Qt.TextElideMode
+    # --------------------------------------------------------------------------------------------------------
+
+    Qt.ElideLeft = Qt.TextElideMode.ElideLeft
+    Qt.ElideRight = Qt.TextElideMode.ElideRight
+    Qt.ElideMiddle = Qt.TextElideMode.ElideMiddle
+    Qt.ElideNone = Qt.TextElideMode.ElideNone
+
+    # --------------------------------------------------------------------------------------------------------
     # Qt.MouseEventSource
     # --------------------------------------------------------------------------------------------------------
 

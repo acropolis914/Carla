@@ -20,6 +20,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 19:22:00
+- **fix(ui)**: Add `Qt.TextElideMode` compatibility aliases in `qt_compat.py`
+  - Added `Qt.ElideRight`, `Qt.ElideLeft`, and `Qt.ElideMiddle` aliases for PyQt6, resolving AttributeError during dynamic title elision in `resizeEvent`.
+
 ### 2026-10-13 19:20:00
 - **fix(rack)**: Prevent access to replaced layout in `PluginSlot_Minimal`
   - Replaced stale reference to `self.ui.horizontalLayout_3` with safe check on `self.w_knobs_left.layout()`, resolving RuntimeError on plugin instantiation.
