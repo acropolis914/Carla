@@ -20,6 +20,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 08:04:00
+- **fix(frontend)**: Fix _on_update_available method placement inside HostWindow class
+  - Relocated `_on_update_available` callback inside the `HostWindow` class scope so Qt signal connection resolves correctly.
+
 ### 2026-10-13 08:00:00
 - **fix(build)**: Prioritize Qt6 over Qt5 when pyuic6 is present
   - Swapped Qt5/Qt6 detection ordering in `source/Makefile.deps.mk` so `pyuic6` is selected when building with `DEFAULT_QT=6`, resolving PyQt5/PyQt6 widget mismatch exceptions.

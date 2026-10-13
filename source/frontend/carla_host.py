@@ -4828,6 +4828,18 @@ class HostWindow(QMainWindow):
         gCarla.gui = None
         QApplication.instance().quit()
 
+    def _on_update_available(self, release_info):
+        try:
+            if not self.fUpdateBanner:
+                self.fUpdateBanner = UpdateNotificationBanner(release_info, self)
+                layout = self.ui.centralwidget.layout()
+                if layout:
+                    layout.insertWidget(0, self.fUpdateBanner)
+            else:
+                self.fUpdateBanner.show()
+        except Exception:
+            pass
+
 
 # ------------------------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------------------------------------
@@ -5634,17 +5646,3 @@ def runHostWithoutUI(host):
     sys.exit(0)
 
 
-# ------------------------------------------------------------------------------------------------------------
-
-    def _on_update_available(self, release_info):
-        try:
-            if not self.fUpdateBanner:
-                self.fUpdateBanner = UpdateNotificationBanner(release_info, self)
-                # Insert at top of central widget layout (index 0)
-                layout = self.ui.centralwidget.layout()
-                if layout:
-                    layout.insertWidget(0, self.fUpdateBanner)
-            else:
-                self.fUpdateBanner.show()
-        except Exception:
-            pass
