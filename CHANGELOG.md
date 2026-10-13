@@ -20,7 +20,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 21:19:00
+- **fix(updates)**: Verify uploaded release assets exist before prompting update
+  - Added GitHub API check in `UpdateCheckThread` to verify compiled packages and assets are uploaded before showing the update banner or dialog.
+  - In manual checks while packages are building, notifies the user that the release is currently compiling.
+
 ### 2026-10-13 21:12:00
+
 - **ci(packaging)**: Standardize release artifact filenames to use release tag version
   - Replaced commit SHA hashes (`${{ github.sha }}`) with release tag versions (`${VERSION}`) across all distro packages (`clara-archlinux-${VERSION}.tar.zst`, `clara-ubuntu-${VERSION}.deb`, etc.).
   - Resolves broken download URLs in AUR `clara-bin` PKGBUILD.

@@ -8,11 +8,12 @@ import urllib.request
 from qt_compat import (
     QThread, pyqtSignal, QWidget, QHBoxLayout, QVBoxLayout,
     QLabel, QPushButton, QFrame, QMessageBox, QDialog, QTextEdit,
-    QSettings
+    QSettings, QDesktopServices, QUrl
 )
 from carla_shared import CLARA_VERSION_STRING as VERSION, CARLA_VERSION_STRING
 
 GITHUB_RELEASES_URL = "https://raw.githubusercontent.com/acropolis914/Clara/main/releases.json"
+GITHUB_API_LATEST = "https://api.github.com/repos/acropolis914/Clara/releases/latest"
 
 def parse_semver(ver_str):
     """Normalize version string into comparable tuple of ints."""
@@ -59,9 +60,33 @@ class UpdateCheckThread(QThread):
                             return
 
                     if parse_semver(latest_ver) > parse_semver(VERSION):
-                        rel_info = data.get("releases", {}).get(latest_ver, {})
-                        rel_info["version"] = latest_ver
-                        self.update_available.emit(rel_info)
+                        # Verify that the GitHub release and its built assets actually exist
+                        has_built_assets = False
+                        try:
+                            api_req = urllib.request.Request(
+                                GITHUB_API_LATEST,
+                                headers={"User-Agent": f"Clara/{VERSION}", "Accept": "application/vnd.github.v3+json"}
+                            )
+                            with urllib.request.urlopen(api_req, timeout=5) as api_resp:
+                                if api_resp.status == 200:
+                                    rel_data = json.loads(api_resp.read().decode("utf-8"))
+                                    rel_tag = rel_data.get("tag_name", "").lstrip("v")
+                                    assets = rel_data.get("assets", [])
+                                    # If the latest release matches and has built packages uploaded
+                                    if parse_semver(rel_tag) >= parse_semver(latest_ver) and len(assets) > 0:
+                                        has_built_assets = True
+                        except Exception:
+                            # If GitHub API fails or is rate-limited, fall through to release info
+                            has_built_assets = True
+
+                        if has_built_assets:
+                            rel_info = data.get("releases", {}).get(latest_ver, {})
+                            rel_info["version"] = latest_ver
+                            self.update_available.emit(rel_info)
+                        else:
+                            # Update was tagged but packaging workflow is still compiling/uploading
+                            if self.is_manual:
+                                self.check_failed.emit(f"Clara v{latest_ver} is currently being built and packaged on GitHub. Please check back in a few minutes!")
                     else:
                         if self.is_manual:
                             self.no_update_found.emit(VERSION)
@@ -71,6 +96,7 @@ class UpdateCheckThread(QThread):
         except Exception as e:
             if self.is_manual:
                 self.check_failed.emit(str(e))
+
 
 class UpdateChangelogDialog(QDialog):
     """Changelog & Installation guide viewer dialog."""
@@ -104,9 +130,23 @@ class UpdateChangelogDialog(QDialog):
         text_edit.setHtml(content)
         layout.addWidget(text_edit)
 
+        btn_row = QHBoxLayout()
+        download_btn = QPushButton("⬇ Download Packages")
+        download_btn.setStyleSheet("background-color: #A6E3A1; color: #11111B; font-weight: bold; padding: 4px 12px;")
+        download_btn.clicked.connect(self.open_download_page)
+        btn_row.addWidget(download_btn)
+
+        btn_row.addStretch()
+
         close_btn = QPushButton("Close")
         close_btn.clicked.connect(self.accept)
-        layout.addWidget(close_btn)
+        btn_row.addWidget(close_btn)
+
+        layout.addLayout(btn_row)
+
+    def open_download_page(self):
+        url = self.release_info.get("url") or f"https://github.com/acropolis914/Clara/releases/tag/v{self.release_info.get('version', '')}"
+        QDesktopServices.openUrl(QUrl(url))
 
 class UpdateNotificationBanner(QFrame):
     """Sleek top banner displayed when an update is available."""
@@ -145,6 +185,15 @@ class UpdateNotificationBanner(QFrame):
             QPushButton:hover {{
                 background-color: #45475A;
             }}
+            QPushButton#DownloadBtn {{
+                background-color: #A6E3A1;
+                color: #11111B;
+                font-weight: bold;
+                border: none;
+            }}
+            QPushButton#DownloadBtn:hover {{
+                background-color: #94E2D5;
+            }}
             QPushButton#ChangelogBtn {{
                 background-color: #89B4FA;
                 color: #11111B;
@@ -168,6 +217,12 @@ class UpdateNotificationBanner(QFrame):
         layout.addStretch()
 
         # Buttons
+        download_btn = QPushButton("⬇ Download Now")
+        download_btn.setObjectName("DownloadBtn")
+        download_btn.setToolTip("Open GitHub Releases page to download packages")
+        download_btn.clicked.connect(self.open_download_page)
+        layout.addWidget(download_btn)
+
         changelog_btn = QPushButton("View Notes")
         changelog_btn.setObjectName("ChangelogBtn")
         changelog_btn.clicked.connect(self.show_changelog)
@@ -182,6 +237,10 @@ class UpdateNotificationBanner(QFrame):
         skip_btn.setToolTip("Do not prompt again for this version")
         skip_btn.clicked.connect(self.confirm_skip)
         layout.addWidget(skip_btn)
+
+    def open_download_page(self):
+        url = self.release_info.get("url") or f"https://github.com/acropolis914/Clara/releases/tag/v{self.version}"
+        QDesktopServices.openUrl(QUrl(url))
 
     def show_changelog(self):
         dlg = UpdateChangelogDialog(self.release_info, self)
