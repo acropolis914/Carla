@@ -20,6 +20,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 18:35:00
+- **fix(ui)**: Resolve missing `QRadialGradient` import in `LEDButton`
+  - Cleaned up unused gradient import in `widgets/ledbutton.py` to restore clean frontend launch.
+
 ### 2026-10-13 18:34:00
 - **feat(ui)**: Reskin 2x2 LED status indicators for modernized header slice
   - Added clean geometric vector rendering with vivid glow and distinct dark states in `LEDButton`, activated exclusively when Modernized Header Slice is enabled.

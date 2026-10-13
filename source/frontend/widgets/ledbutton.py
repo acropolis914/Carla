@@ -9,12 +9,11 @@ from qt_compat import (
     QRectF,
     QColor,
     QPainter,
-    QPainterPath,
     QPen,
-    QRadialGradient,
     QPixmap,
     QSvgWidget,
     QPushButton,
+    Qt,
 )
 
 # ---------------------------------------------------------------------------------------------------------------------
