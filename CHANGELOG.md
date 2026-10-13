@@ -20,6 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 06:00:00
+- **perf(ci)**: Accelerate CI compilation with parallel make and ccache caching
+  - Enabled `make -j$(nproc)` to utilize all 4 runner CPU cores concurrently.
+  - Configured `actions/cache@v4` with `ccache` across distros to reuse compiled object files across builds.
+
 ### 2026-10-13 05:56:00
 - **fix(fedora)**: Add python3-devel to build dependencies
   - Added missing `python3-devel` package to Fedora DNF installation to satisfy RPM build dependencies.

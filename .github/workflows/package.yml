@@ -41,7 +41,7 @@ jobs:
                 git make gcc g++ musl-dev pkgconf \
                 qt6-qtbase-dev qt6-qtsvg-dev qt6-qttools-dev \
                 python3 py3-qt6 sdl2-dev zstd tar \
-                musl-fts-dev
+                musl-fts-dev ccache
               ;;
             ubuntu)
               export DEBIAN_FRONTEND=noninteractive
@@ -49,29 +49,37 @@ jobs:
                 git make build-essential pkg-config \
                 qt6-base-dev qt6-svg-dev qt6-tools-dev qt6-tools-dev-tools \
                 python3 python3-pyqt6 libsdl2-dev \
-                debhelper dh-make zstd tar
+                debhelper dh-make zstd tar ccache
               ;;
             fedora)
               dnf install -y \
                 git make gcc gcc-c++ pkgconf \
                 qt6-qtbase-devel qt6-qtsvg-devel qt6-qttools-devel \
                 python3 python3-devel python3-pyqt6 SDL2-devel \
-                rpm-build rpmdevtools zstd tar
+                rpm-build rpmdevtools zstd tar ccache
               ;;
             archlinux)
               pacman -Syu --noconfirm \
                 git base-devel \
                 qt6-base qt6-svg qt6-tools \
-                python python-pyqt6 sdl2 zstd tar
+                python python-pyqt6 sdl2 zstd tar ccache
               ;;
             void-glibc)
               xbps-install -S -y ca-certificates xbps || true
               xbps-install -Syu -y \
                 base-devel pkg-config git \
                 qt6-base-devel qt6-svg-devel qt6-tools qt6-tools-devel \
-                python3-pyqt6 SDL2-devel zstd tar
+                python3-pyqt6 SDL2-devel zstd tar ccache
               ;;
           esac
+
+      - name: Setup ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-${{ matrix.platform }}-${{ github.sha }}
+          restore-keys: |
+            ccache-${{ matrix.platform }}-
 
       - name: Build project
         id: compile
@@ -79,8 +87,9 @@ jobs:
           if [ "${{ matrix.platform }}" = "alpine" ]; then
             export LDFLAGS="-lfts $LDFLAGS"
           fi
-
-          make DEFAULT_QT=6 2>&1 | tee build.log
+          export PATH="/usr/lib/ccache:/usr/lib64/ccache:$PATH"
+          export CCACHE_DIR="$HOME/.cache/ccache"
+          make -j$(nproc) DEFAULT_QT=6 2>&1 | tee build.log
 
       - name: Package artifacts
         id: pkg
@@ -177,9 +186,9 @@ jobs:
             xbps-install -Syu -y \
               base-devel pkg-config git \
               qt6-base-devel qt6-svg-devel qt6-tools qt6-tools-devel \
-              python3-pyqt6 SDL2-devel musl-fts-devel zstd tar
+              python3-pyqt6 SDL2-devel musl-fts-devel ccache zstd tar
             export LDFLAGS='-lfts \$LDFLAGS'
-            make DEFAULT_QT=6 2>&1 | tee build.log
+            make -j$(nproc) DEFAULT_QT=6 2>&1 | tee build.log
             mkdir -p /tmp/clara-pkg
             make install PREFIX=/usr DESTDIR=/tmp/clara-pkg DEFAULT_QT=6 || cp -r bin /tmp/clara-pkg/
             tar --zstd -cf clara-void-musl-${{ github.sha }}.tar.zst -C /tmp/clara-pkg .
