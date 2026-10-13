@@ -20,7 +20,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 17:10:00
+- **tools(aur)**: Add local release and AUR publishing helper script
+  - Created `scripts/release_and_push_aur.sh` to update `releases.json`, bump `aur/clara-bin/PKGBUILD`, push the version tag to GitHub, generate `.SRCINFO`, and push directly to `ssh://aur@aur.archlinux.org/clara-bin.git`.
+
 ### 2026-10-13 17:05:00
+
 - **packaging(aur)**: Add clara-bin PKGBUILD and automated version bump step
   - Created `aur/clara-bin/PKGBUILD` packaging the pre-compiled GitHub release archive for Arch Linux users without build overhead.
   - Added automated GitHub Actions step in `.github/workflows/package.yml` to bump `pkgver` in `aur/clara-bin/PKGBUILD` and push to main upon tag releases.
