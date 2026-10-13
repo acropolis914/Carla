@@ -20,7 +20,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 16:40:00
+- **docs(issues)**: Add GitHub issue template config.yml
+  - Configured `.github/ISSUE_TEMPLATE/config.yml` disabling unstructured blank issues.
+  - Linked GitHub Discussions and upstream documentation directly in the issue chooser.
+
 ### 2026-10-13 16:24:00
+
 - **fix(patchcanvas)**: Implement and export centerGraphInCanvas for project canvas positioning
   - Implemented `centerGraphInCanvas()` in `source/frontend/patchcanvas/patchcanvas.py` filtering out None widgets and centering graph nodes when loading projects.
   - Exported `centerGraphInCanvas` in `source/frontend/patchcanvas/__init__.py`.

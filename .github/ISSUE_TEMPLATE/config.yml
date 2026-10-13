@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 GitHub Discussions
+    url: https://github.com/acropolis914/Clara/discussions
+    about: Ask questions, share your modular setup, or discuss general ideas and workflows.
+  - name: 💡 Feature Requests & Ideas
+    url: https://github.com/acropolis914/Clara/discussions/new?category=ideas
+    about: Propose new routing features or UI concepts before filing a structured issue.
+  - name: 📖 Upstream Carla Documentation
+    url: https://kx.studio/Applications:Carla
+    about: Official upstream documentation for base engine functionality.
