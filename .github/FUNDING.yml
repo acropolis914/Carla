@@ -1,5 +1,8 @@
 # GitHub Funding Configuration
 # https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/displaying-a-sponsor-button-in-your-repository
 
-github: [acropolis914]
-custom: ['https://paypal.me/paulharveysuarnaba']
+# Project maintainer & upstream creator (falkTX)
+github: [acropolis914, falkTX]
+patreon: falkTX
+liberapay: falkTX
+custom: ['https://paypal.me/paulharveysuarnaba', 'https://paypal.me/falkTX']

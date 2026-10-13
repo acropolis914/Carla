@@ -20,7 +20,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 20:40:00
+- **docs(funding)**: Add upstream creator falkTX funding channels to FUNDING.yml
+  - Included falkTX's GitHub Sponsors, Patreon, Liberapay, and PayPal alongside Clara maintainer sponsorship links.
+
 ### 2026-10-13 20:16:00
+
 - **feat(ui)**: Add animated loading dialog and modernize About screen
   - Introduced modal `ProjectLoadingDialog` with an indeterminate marquee progress bar and real-time detailed status text pumped via engine event callbacks for project restoration.
   - Revamped About screen: removed legacy bitmap logos and outdated fonts, attributed project maintenance to `acropolis914`, and added direct links to the Clara repository and GitHub Sponsor page.
