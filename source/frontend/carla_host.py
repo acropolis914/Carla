@@ -559,6 +559,14 @@ class HostWindow(QMainWindow):
         self.act_settings_modern_ui.toggled.connect(self.slot_toggleModernUi)
         self.ui.menu_Settings.addAction(self.act_settings_modern_ui)
 
+        # Statusbar toggle action (Buffer, DSP, Sample Rate panel)
+        self.act_settings_show_statusbar = QAction(self.tr("Show Statusbar"), self)
+        self.act_settings_show_statusbar.setCheckable(True)
+        self.act_settings_show_statusbar.setChecked(True)
+        self.act_settings_show_statusbar.toggled.connect(self.slot_showStatusbar)
+        self.addAction(self.act_settings_show_statusbar)
+        self.ui.menu_Settings.addAction(self.act_settings_show_statusbar)
+
         # Standalone Logs Window action
         self.act_settings_show_logs = QAction(self.tr("Show Logs Window"), self)
         self.act_settings_show_logs.triggered.connect(self.slot_showLogsWindow)
@@ -3107,6 +3115,63 @@ class HostWindow(QMainWindow):
                 if logs_idx != -1:
                     self.ui.tabWidget.removeTab(logs_idx)
 
+                # Modern flush styling: seamless flow between patchbay and rack without borders
+                bg_hex = "#181825"
+                if hasattr(patchcanvas, "theme") and hasattr(patchcanvas.theme, "canvas_bg"):
+                    bg_hex = patchcanvas.theme.canvas_bg.name()
+
+                self.splitter.setStyleSheet(f"""
+                    QSplitter {{
+                        background: {bg_hex};
+                    }}
+                    QSplitter::handle {{
+                        background-color: #313244;
+                        width: 1px;
+                    }}
+                    QSplitter::handle:hover {{
+                        background-color: #89b4fa;
+                        width: 3px;
+                    }}
+                """)
+                self.ui.tabWidget.setStyleSheet("""
+                    QTabWidget::pane {
+                        border: none;
+                        background: transparent;
+                        margin: 0px;
+                        padding: 0px;
+                    }
+                """)
+                self.ui.frame.setFrameShape(QFrame.NoFrame)
+                self.ui.frame.setStyleSheet(f"QFrame#frame {{ background-color: {bg_hex}; border: none; }}")
+                self.ui.rack.setStyleSheet(f"QWidget#rack {{ background-color: {bg_hex}; border: none; }}")
+                self.ui.patchbay.setStyleSheet(f"QWidget#patchbay {{ background-color: {bg_hex}; border: none; }}")
+                self.ui.graphicsView.setStyleSheet("QGraphicsView { border: none; outline: none; }")
+                self.ui.listWidget.setStyleSheet(f"""
+                    QListWidget {{
+                        background-color: {bg_hex};
+                        border: none;
+                        outline: none;
+                        padding: 4px;
+                    }}
+                    QListWidget::item {{
+                        background: transparent;
+                        border: none;
+                        margin-bottom: 5px;
+                    }}
+                    QListWidget::item:selected {{
+                        background: transparent;
+                        border: none;
+                    }}
+                """)
+            else:
+                self.splitter.setStyleSheet("")
+                self.ui.tabWidget.setStyleSheet("")
+                self.ui.frame.setFrameShape(QFrame.StyledPanel)
+                self.ui.frame.setStyleSheet("")
+                self.ui.rack.setStyleSheet("")
+                self.ui.patchbay.setStyleSheet("")
+                self.ui.graphicsView.setStyleSheet("")
+
             splitTabIndex = self.ui.tabWidget.indexOf(self.tabSplit)
             if splitTabIndex == -1:
                 self.ui.tabWidget.insertTab(2, self.tabSplit, self.tr("Patchbay + Rack"))
@@ -3123,6 +3188,14 @@ class HostWindow(QMainWindow):
             self.ui.graphicsView.setFocus()
             self.slot_canvasRefresh()
         else:
+            self.splitter.setStyleSheet("")
+            self.ui.tabWidget.setStyleSheet("")
+            self.ui.frame.setFrameShape(QFrame.StyledPanel)
+            self.ui.frame.setStyleSheet("")
+            self.ui.rack.setStyleSheet("")
+            self.ui.patchbay.setStyleSheet("")
+            self.ui.graphicsView.setStyleSheet("")
+
             # Restore patchbay and rack into their standalone tab positions
             self.ui.tabWidget.insertTab(0, self.ui.rack, self.tr("Rack"))
             self.ui.tabWidget.insertTab(1, self.ui.patchbay, self.tr("Patchbay"))
@@ -3353,6 +3426,8 @@ class HostWindow(QMainWindow):
         settings.setValue("Geometry", self.saveGeometry())
         settings.setValue("ShowToolbar", self.ui.toolBar.isEnabled())
         settings.setValue("ShowMenubar", self.ui.menubar.isVisible())
+        show_sb = self.act_settings_show_statusbar.isChecked() if hasattr(self, "act_settings_show_statusbar") else True
+        settings.setValue("ShowStatusBar", show_sb)
         settings.setValue("ShowSidePanel", self.ui.dockWidget.isEnabled())
 
         # Persist side-by-side view state and splitter ratio
@@ -3412,8 +3487,7 @@ class HostWindow(QMainWindow):
             self.slot_showMenubar(showMenubar)
 
             showStatusBar = settings.value("ShowStatusBar", True, bool)
-            if hasattr(self.ui, "statusbar") and self.ui.statusbar is not None:
-                self.ui.statusbar.setVisible(showStatusBar)
+            self.slot_showStatusbar(showStatusBar)
 
             # Apply rack spacing & padding from settings
             rackSpacing = settings.value("RackItemSpacing", 4, int)
@@ -3827,6 +3901,17 @@ class HostWindow(QMainWindow):
         self.ui.toolBar.setEnabled(yesNo)
         self.ui.toolBar.setVisible(yesNo)
         self.ui.toolBar.blockSignals(False)
+
+    @pyqtSlot(bool)
+    def slot_showStatusbar(self, yesNo):
+        if hasattr(self, "act_settings_show_statusbar"):
+            self.act_settings_show_statusbar.blockSignals(True)
+            self.act_settings_show_statusbar.setChecked(yesNo)
+            self.act_settings_show_statusbar.blockSignals(False)
+        if hasattr(self.ui, "tw_statusbar") and self.ui.tw_statusbar is not None:
+            self.ui.tw_statusbar.setVisible(yesNo)
+        if hasattr(self.ui, "statusbar") and self.ui.statusbar is not None:
+            self.ui.statusbar.setVisible(yesNo)
 
     @pyqtSlot(bool)
     def slot_showCanvasMeters(self, yesNo):

@@ -20,6 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 17:35:00
+- **fix(ui)**: Unified flush look for Modern Patchbay+Rack workspace and functional Statusbar toggle
+  - Removed container borders, frame shapes, and pane outlines between Rack and Patchbay in Modern side-by-side mode for a continuous flush aesthetic matching the canvas theme.
+  - Implemented `Show Statusbar` toggle in Settings and menus, connecting directly to the bottom engine statusbar (`tw_statusbar`) displaying buffer size, sample rate, and DSP load.
+
 ### 2026-10-13 17:28:00
 - **feat(ui)**: Modern / Classic UI mode switch, unified workspace, and native error loading dialog
   - Refactored `ProjectLoadSummaryDialog` to use system Qt theme styling and native controls without hardcoded color themes.
