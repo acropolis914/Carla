@@ -20,6 +20,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 06:49:00
+- **fix(fedora)**: Package all installed files under /usr/* in RPM spec
+  - Simplified `%files` in `clara.spec` to include `/usr/*`, resolving missing lib64 path errors and invalid `%optional` spec macro directives.
+
 ### 2026-10-13 06:42:00
 - **fix(fedora)**: Package pre-compiled binaries directly into RPM without redundant recompilation
   - Updated `clara.spec` and packaging step to use `rpmbuild -bb` on the already-compiled tree, eliminating redundant build failures and slashing package creation time to seconds.

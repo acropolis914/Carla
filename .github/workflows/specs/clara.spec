@@ -26,17 +26,7 @@ rm -rf %{buildroot}
 make install PREFIX=/usr DESTDIR=%{buildroot} DEFAULT_QT=6
 
 %files
-%{_bindir}/*
-%{_libdir}/carla
-%{_datadir}/carla
-%{_datadir}/applications/*
-%{_datadir}/icons/hicolor/*/*/*
-%{_datadir}/mime/packages/*
-%{_datadir}/appdata/*
-%{_includedir}/carla
-%{_libdir}/pkgconfig/*
-%optional %{_libdir}/lv2/*
-%optional %{_libdir}/vst/*
+/usr/*
 
 %changelog
 * Tue Oct 13 2026 CI Builder <ci@build.local> - 0.1.0-1
