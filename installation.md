@@ -1,38 +1,47 @@
 # Installation & Build Guide
 
-This guide covers installing **Carla Improved** via AUR / Arch package (`PKGBUILD`) and building directly from source on Linux.
+This guide covers installing **Clara** (*Carla Improved*) via Arch Linux / AUR packages (`clara-bin`, `clara-git`) and building directly from source on Linux.
 
 ---
 
 ## 1. Arch Linux / AUR Installation
 
-### Option A: Using the included PKGBUILD (Recommended)
+Clara provides two AUR packaging options in the `aur/` directory:
 
-Clone the repository and build the package locally using `makepkg`:
+### Option A: Binary Package (`clara-bin`) — Fastest (No compilation required)
+
+Downloads and installs the official pre-compiled multi-distro release archive for Arch Linux:
 
 ```bash
-git clone https://github.com/acropolis914/Carla.git carla-improved
-cd carla-improved
+# Using an AUR helper (paru or yay)
+paru -S clara-bin
+# or
+yay -S clara-bin
 
-# Build and install package and dependencies via pacman
+# Or build manually using makepkg
+cd aur/clara-bin
 makepkg -si
 ```
 
-> **Note:** The package installs as `carla-improved`, conflicts with and cleanly replaces upstream `carla` and `carla-git`, and provides all standard Carla capabilities (`clap-host`, `lv2-host`, `vst-host`, etc.).
+### Option B: Source Package (`clara-git`) — Compile from latest git main
 
-### Option B: Using an AUR Helper (e.g. `paru` / `yay`)
-
-If published to AUR as `carla-improved` (or using local PKGBUILD directory):
+Clones and compiles the latest source directly against Qt6:
 
 ```bash
-# Using yay
-yay -S carla-improved
+# Using an AUR helper
+paru -S clara-git
+# or
+yay -S clara-git
 
-# Using paru
-paru -S carla-improved
+# Or build manually using makepkg
+cd aur/clara-git
+makepkg -si
 ```
 
+> **Note:** Both packages provide and conflict with `carla`, `carla-git`, and provide all standard host capabilities (`clap-host`, `lv2-host`, `vst-host`, `vst3-host`, etc.).
+
 ---
+
 
 ## 2. Building From Source
 

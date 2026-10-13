@@ -107,7 +107,8 @@ Pre-built binaries are provided for major Linux distributions:
 
 | Distribution | Format | Quick Installation |
 | :--- | :--- | :--- |
-| **Arch Linux** | Pacman / AUR | [`PKGBUILD`](PKGBUILD) or pre-built `.pkg.tar.zst` |
+| **Arch Linux** | AUR / Pacman | `paru -S clara-bin` or `clara-git` (see [`aur/`](aur/)) |
+
 | **Ubuntu / Debian** | `.deb` | `sudo dpkg -i clara-ubuntu-*.deb && sudo apt-get install -f` |
 | **Fedora / RHEL** | `.rpm` | `sudo dnf install clara-*.rpm` |
 | **Void Linux** | `.tar.zst` | Extract to `/` (`tar --zstd -xvf clara-void-*.tar.zst -C /`) |

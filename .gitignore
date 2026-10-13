@@ -194,4 +194,7 @@ Makefile.user.mk
 /pkg/
 /Carla/
 *.pkg.tar.*
-aur/
+aur/*/src/
+aur/*/pkg/
+aur/*/*.pkg.tar.*
+

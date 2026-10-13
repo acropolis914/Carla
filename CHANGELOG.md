@@ -20,7 +20,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 17:05:00
+- **packaging(aur)**: Add clara-bin PKGBUILD and automated version bump step
+  - Created `aur/clara-bin/PKGBUILD` packaging the pre-compiled GitHub release archive for Arch Linux users without build overhead.
+  - Added automated GitHub Actions step in `.github/workflows/package.yml` to bump `pkgver` in `aur/clara-bin/PKGBUILD` and push to main upon tag releases.
+  - Updated `installation.md` and `README.md` to document `clara-bin` and `clara-git` options.
+
 ### 2026-10-13 16:57:00
+
 - **fix(backend)**: Add system library fallbacks for carla-bridge-native
   - Added fallback search in `/usr/lib/carla` and `/usr/lib64/carla` when `carla-bridge-native` is not present in the local `bin/` folder.
   - Prevents fatal crashes when in-process JUCE plugins (`KV-Element`) require bridge isolation.
