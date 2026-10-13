@@ -20,6 +20,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 20:46:00
+- **feat(updates)**: Separate Clara and Carla versioning & add manual update checks
+  - Introduced `CLARA_VERSION_STRING` ("0.1.2") in `carla_shared.py` to prevent version comparison conflicts with upstream Carla `2.6.0-alpha1`.
+  - Added "Check for Updates..." to the Help menu and toolbar menu with immediate feedback dialogs (up-to-date confirmation and error diagnostics).
+  - Enhanced update notification banner to slide into the top layout on update detection and display changelog modal dialog on critical or suggested releases.
+  - Updated About dialog to distinguish Clara application version from underlying Carla core engine version and added a direct link to GitHub Releases.
+
 ### 2026-10-13 20:40:00
 - **docs(funding)**: Add upstream creator falkTX funding channels to FUNDING.yml
   - Included falkTX's GitHub Sponsors, Patreon, Liberapay, and PayPal alongside Clara maintainer sponsorship links.

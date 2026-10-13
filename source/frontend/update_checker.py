@@ -10,7 +10,7 @@ from qt_compat import (
     QLabel, QPushButton, QFrame, QMessageBox, QDialog, QTextEdit,
     QSettings
 )
-from carla_shared import CARLA_VERSION_STRING as VERSION
+from carla_shared import CLARA_VERSION_STRING as VERSION, CARLA_VERSION_STRING
 
 GITHUB_RELEASES_URL = "https://raw.githubusercontent.com/acropolis914/Clara/main/releases.json"
 
@@ -29,6 +29,12 @@ def parse_semver(ver_str):
 
 class UpdateCheckThread(QThread):
     update_available = pyqtSignal(dict)  # emits release dict
+    no_update_found = pyqtSignal(str)    # emits current version
+    check_failed = pyqtSignal(str)       # emits error message
+
+    def __init__(self, parent=None, is_manual=False):
+        super().__init__(parent)
+        self.is_manual = is_manual
 
     def run(self):
         try:
@@ -36,26 +42,35 @@ class UpdateCheckThread(QThread):
                 GITHUB_RELEASES_URL,
                 headers={"User-Agent": f"Clara/{VERSION}"}
             )
-            with urllib.request.urlopen(req, timeout=3) as resp:
+            with urllib.request.urlopen(req, timeout=5) as resp:
                 if resp.status == 200:
                     data = json.loads(resp.read().decode("utf-8"))
                     latest_ver = data.get("latest", "")
                     if not latest_ver:
+                        if self.is_manual:
+                            self.check_failed.emit("Invalid release response received.")
                         return
 
-                    # Check against skipped version in settings
-                    settings = QSettings("falkTX", "Carla2")
-                    skipped = settings.value("Clara/SkippedUpdateVersion", "")
-                    if skipped == latest_ver:
-                        return
+                    # Check against skipped version in settings (only for background check)
+                    if not self.is_manual:
+                        settings = QSettings("falkTX", "Carla2")
+                        skipped = settings.value("Clara/SkippedUpdateVersion", "")
+                        if skipped == latest_ver:
+                            return
 
                     if parse_semver(latest_ver) > parse_semver(VERSION):
                         rel_info = data.get("releases", {}).get(latest_ver, {})
                         rel_info["version"] = latest_ver
                         self.update_available.emit(rel_info)
-        except Exception:
-            # Silent fallback: offline, timeout, or network error
-            pass
+                    else:
+                        if self.is_manual:
+                            self.no_update_found.emit(VERSION)
+                else:
+                    if self.is_manual:
+                        self.check_failed.emit(f"Server returned status {resp.status}")
+        except Exception as e:
+            if self.is_manual:
+                self.check_failed.emit(str(e))
 
 class UpdateChangelogDialog(QDialog):
     """Changelog & Installation guide viewer dialog."""

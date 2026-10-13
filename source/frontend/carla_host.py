@@ -583,6 +583,11 @@ class HostWindow(QMainWindow):
         self.addAction(self.act_settings_show_menubar)
         self.addAction(self.act_settings_show_statusbar)
 
+        self.act_help_check_updates = QAction(self.tr("Check for Updates..."), self)
+        self.act_help_check_updates.triggered.connect(self.slot_checkForUpdates)
+        self.ui.menu_Help.insertAction(self.ui.act_help_about, self.act_help_check_updates)
+        self.ui.menu_Help.insertSeparator(self.ui.act_help_about)
+
         # Hamburger Menu button for when menubar is hidden
         self.btn_hamburger_menu = QToolButton(self.ui.toolBar)
         self.btn_hamburger_menu.setText("☰")
@@ -5095,6 +5100,28 @@ class HostWindow(QMainWindow):
         gCarla.gui = None
         QApplication.instance().quit()
 
+    @pyqtSlot()
+    def slot_checkForUpdates(self):
+        self._manualUpdateThread = UpdateCheckThread(self, is_manual=True)
+        self._manualUpdateThread.update_available.connect(self._on_update_available)
+        self._manualUpdateThread.no_update_found.connect(self._on_manual_check_uptodate)
+        self._manualUpdateThread.check_failed.connect(self._on_manual_check_failed)
+        self._manualUpdateThread.start()
+
+    def _on_manual_check_uptodate(self, current_ver):
+        QMessageBox.information(
+            self,
+            self.tr("Up to Date"),
+            self.tr("You are running the latest version of Clara (v%s).") % current_ver
+        )
+
+    def _on_manual_check_failed(self, err_msg):
+        QMessageBox.warning(
+            self,
+            self.tr("Update Check Failed"),
+            self.tr("Could not check for updates:\n%s") % err_msg
+        )
+
     def _on_update_available(self, release_info):
         try:
             if not self.fUpdateBanner:
@@ -5103,7 +5130,15 @@ class HostWindow(QMainWindow):
                 if layout:
                     layout.insertWidget(0, self.fUpdateBanner)
             else:
+                self.fUpdateBanner.release_info = release_info
+                self.fUpdateBanner.version = release_info.get("version", "")
                 self.fUpdateBanner.show()
+                self.fUpdateBanner.raise_()
+
+            # For critical or suggested updates, also prompt modal changelog dialog immediately
+            if release_info.get("urgency", "").lower() in ("critical", "suggested"):
+                dlg = UpdateChangelogDialog(release_info, self)
+                dlg.exec_()
         except Exception:
             pass
 

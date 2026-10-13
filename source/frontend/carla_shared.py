@@ -61,6 +61,8 @@ from carla_backend import (
     ENGINE_TRANSPORT_MODE_JACK,
 )
 
+CLARA_VERSION_STRING = "0.1.2"
+
 # ------------------------------------------------------------------------------------------------------------
 # Config
 
