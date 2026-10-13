@@ -20,6 +20,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 06:58:00
+- **fix(fedora)**: Disable RPM debuginfo package generation
+  - Added `%global debug_package %{nil}` to `clara.spec` to prevent rpmbuild from failing on empty debugsource lists.
+
 ### 2026-10-13 06:49:00
 - **fix(fedora)**: Package all installed files under /usr/* in RPM spec
   - Simplified `%files` in `clara.spec` to include `/usr/*`, resolving missing lib64 path errors and invalid `%optional` spec macro directives.
