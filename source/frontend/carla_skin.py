@@ -2852,7 +2852,8 @@ class PluginSlot_Minimal(PluginSlot_Default):
         """
         self.setStyleSheet(styleSheet)
 
-        # Unify knobs with distributed fixed column width grid
+        colorEnabled = QColor(text_color)
+        colorDisabled = QColor(text_disabled)
         dial_col_width = 68
         for _, paramWidget in self.fParameterList:
             if hasattr(paramWidget, "setLabelColor"):
