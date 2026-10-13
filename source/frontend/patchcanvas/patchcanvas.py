@@ -952,6 +952,7 @@ def restoreGroupPositions(dataList):
             if hasattr(conn, "widget") and conn.widget:
                 conn.widget.updateLinePos()
         if hasattr(canvas, "scene") and canvas.scene:
+            canvas.scene.zoom_fit()
             canvas.scene.update()
 
     QTimer.singleShot(150, _apply_deferred_hide_ports)

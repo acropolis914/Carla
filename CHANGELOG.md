@@ -20,6 +20,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 19:24:00
+- **feat(patchbay)**: Trigger zoom to fit after applying deferred hidden ports on load
+  - Added `canvas.scene.zoom_fit()` after hiding unconnected ports on session loading to frame all graph nodes neatly.
+
 ### 2026-10-13 19:22:00
 - **fix(ui)**: Add `Qt.TextElideMode` compatibility aliases in `qt_compat.py`
   - Added `Qt.ElideRight`, `Qt.ElideLeft`, and `Qt.ElideMiddle` aliases for PyQt6, resolving AttributeError during dynamic title elision in `resizeEvent`.
