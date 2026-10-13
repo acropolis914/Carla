@@ -22,6 +22,7 @@ from qt_compat import (
     QListWidget,
     QListWidgetItem,
     QMessageBox,
+    QPushButton,
     QTimer,
 )
 
@@ -263,6 +264,52 @@ class RackListWidget(QListWidget):
         self.viewport().setAcceptDrops(True)
 
         self._updateStyle()
+
+        # Floating "+ Add Plugin" Action Button
+        self.btn_floating_add = QPushButton(self)
+        self.btn_floating_add.setText("＋ Add Plugin")
+        self.btn_floating_add.setToolTip("Add new plugin to rack")
+        self.btn_floating_add.setCursor(Qt.PointingHandCursor)
+        self.btn_floating_add.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #89b4fa, stop:1 #74c7ec);
+                color: #11111b;
+                font-weight: 700;
+                font-size: 11px;
+                border-radius: 14px;
+                padding: 4px 12px;
+                border: 1px solid rgba(255, 255, 255, 0.25);
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #b4befe, stop:1 #89b4fa);
+                border: 1px solid #cdd6f4;
+            }
+            QPushButton:pressed {
+                background: #89b4fa;
+                padding-top: 5px;
+            }
+        """)
+        self.btn_floating_add.clicked.connect(self._onFloatingAddClicked)
+        self.btn_floating_add.adjustSize()
+        self.btn_floating_add.show()
+
+    def _onFloatingAddClicked(self):
+        if hasattr(gCarla, "gui") and gCarla.gui is not None:
+            if hasattr(gCarla.gui, "slot_pluginAdd"):
+                gCarla.gui.slot_pluginAdd()
+            elif hasattr(gCarla.gui.ui, "act_plugin_add"):
+                gCarla.gui.ui.act_plugin_add.trigger()
+
+    def resizeEvent(self, event):
+        QListWidget.resizeEvent(self, event)
+        if hasattr(self, "btn_floating_add") and self.btn_floating_add is not None:
+            btn_w = self.btn_floating_add.width()
+            btn_h = self.btn_floating_add.height()
+            vsb = self.verticalScrollBar()
+            vsb_w = vsb.width() if (vsb and vsb.isVisible()) else 0
+            # Position at bottom-right of viewport with 16px margins
+            self.btn_floating_add.move(self.width() - btn_w - vsb_w - 16, self.height() - btn_h - 16)
+            self.btn_floating_add.raise_()
 
     # --------------------------------------------------------------------------------------------------------
 

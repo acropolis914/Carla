@@ -1654,11 +1654,19 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
     def slot_showEditDialog(self, show):
         self.fEditDialog.setVisible(show)
 
+    def keyPressEvent(self, event):
+        if event.key() in (Qt.Key_Delete, Qt.Key_Backspace):
+            event.accept()
+            self.slot_removePlugin()
+            return
+        super().keyPressEvent(event)
+
     @pyqtSlot()
     def slot_removePlugin(self):
-        name = self.fPluginInfo.get("name", self.tr("this plugin"))
+        name = self.fPluginInfo.get("name", self.tr("this plugin")) if isinstance(self.fPluginInfo, dict) else self.tr("this plugin")
+        top_window = self.window() or gCarla.gui or self
         ask = QMessageBox.question(
-            self,
+            top_window,
             self.tr("Remove Plugin"),
             self.tr(f"Are you sure you want to remove '{name}'?"),
             QMessageBox.Yes | QMessageBox.No,
@@ -1668,7 +1676,7 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
             return
 
         if not self.host.remove_plugin(self.fPluginId):
-            CustomMessageBox(self, QMessageBox.Warning, self.tr("Error"), self.tr("Operation failed"),
+            CustomMessageBox(top_window, QMessageBox.Warning, self.tr("Error"), self.tr("Operation failed"),
                                     self.host.get_last_error(), QMessageBox.Ok, QMessageBox.Ok)
 
     @pyqtSlot(bool)

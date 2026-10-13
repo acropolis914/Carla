@@ -20,6 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-10-13
 
+### 2026-10-13 19:56:00
+- **fix(rack)**: Ensure delete confirmation dialog triggers reliably and add floating add button
+  - Added keypress interception for `Delete`/`Backspace` directly on rack slot widgets with parent window anchoring for the confirmation dialog.
+  - Added a floating `＋ Add Plugin` action button anchored to the bottom-right corner of the rack list view.
+
 ### 2026-10-13 19:51:00
 - **feat(patchbay)**: Animate node autofocus with cubic bezier easing and zoom dip
   - Implemented `animateFocusOn()` in `DraggableGraphicsView` featuring `QEasingCurve.InOutCubic` camera travel and a subtle mid-flight zoom-out/zoom-in parabolic arc on rack item selection and patchbay search.
