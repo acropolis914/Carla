@@ -70,7 +70,9 @@ from qt_compat import (
     QMouseEvent,
     QPainter,
     QPalette,
+    QPoint,
     QPointF,
+    QRectF,
     QSplitter,
     QSurfaceFormat,
     QSystemTrayIcon,
@@ -2934,6 +2936,7 @@ class HostWindow(QMainWindow):
 
     def updateMiniCanvasLater(self):
         if self._isModernMiniCanvasMode():
+            self._expandSceneRectForMinimap()
             if hasattr(self.ui, "modernMiniCanvas") and self.ui.modernMiniCanvas is not None:
                 QTimer.singleShot(self.fMiniCanvasUpdateTimeout, self.ui.modernMiniCanvas.update)
             return
@@ -3103,6 +3106,9 @@ class HostWindow(QMainWindow):
     @pyqtSlot(float)
     def slot_canvasScaleChanged(self, scale):
         self.ui.miniCanvasPreview.setViewScale(scale)
+        widget = self._miniCanvasViewWidget()
+        if widget is not None and widget is not self.ui.miniCanvasPreview:
+            widget.setViewScale(scale)
 
     @pyqtSlot(list)
     def slot_canvasPluginSelected(self, pluginList):
@@ -3536,6 +3542,8 @@ class HostWindow(QMainWindow):
         settings.setValue(CARLA_KEY_ENGINE_TRANSPORT_MODE, self.host.transportMode)
         settings.setValue(CARLA_KEY_ENGINE_TRANSPORT_EXTRA, self.host.transportExtra)
         settings.setValue(CARLA_KEY_MAIN_RECENT_PROJECTS, self.fRecentProjects)
+
+        self._saveMiniCanvasState()
 
         return settings
 
@@ -4343,6 +4351,9 @@ class HostWindow(QMainWindow):
         else:
             xp = float(value) / maximum
         self.ui.miniCanvasPreview.setViewPosX(xp)
+        widget = self._miniCanvasViewWidget()
+        if widget is not None and widget is not self.ui.miniCanvasPreview:
+            widget.setViewPosX(xp)
         self.updateCanvasInitialPos()
 
     @pyqtSlot(int)
@@ -4353,6 +4364,9 @@ class HostWindow(QMainWindow):
         else:
             yp = float(value) / maximum
         self.ui.miniCanvasPreview.setViewPosY(yp)
+        widget = self._miniCanvasViewWidget()
+        if widget is not None and widget is not self.ui.miniCanvasPreview:
+            widget.setViewPosY(yp)
         self.updateCanvasInitialPos()
 
     # --------------------------------------------------------------------------------------------------------
@@ -4489,6 +4503,9 @@ class HostWindow(QMainWindow):
         self.ui.miniCanvasPreview.setViewSize(
             float(width) / scene_w, float(height) / scene_h
         )
+        widget = self._miniCanvasViewWidget()
+        if widget is not None and widget is not self.ui.miniCanvasPreview:
+            widget.setViewSize(float(width) / scene_w, float(height) / scene_h)
         self._repositionMiniCanvasFloat()
 
     def _isModernMiniCanvasMode(self):
@@ -4499,67 +4516,59 @@ class HostWindow(QMainWindow):
                 return True
         return True
 
-    def _ensureMiniCanvasFloatFrame(self):
-        if hasattr(self.ui, "miniCanvasFloatFrame") and self.ui.miniCanvasFloatFrame is not None:
-            return self.ui.miniCanvasFloatFrame
+    def _miniCanvasViewWidget(self):
+        if self._isModernMiniCanvasMode():
+            widget = getattr(self.ui, "modernMiniCanvas", None)
+            if widget is not None:
+                return widget
+        return getattr(self.ui, "miniCanvasPreview", None)
 
+    def _ensureMiniCanvasOverlay(self):
+        if getattr(self.ui, "miniCanvasOverlay", None) is not None:
+            return self.ui.miniCanvasOverlay
         try:
-            self.ui.miniCanvasFloatFrame = QFrame(self.ui.graphicsView.viewport())
-            self.ui.miniCanvasFloatFrame.setObjectName("miniCanvasFloatFrame")
-            self.ui.miniCanvasFloatFrame.setFrameShape(QFrame.StyledPanel)
-            self.ui.miniCanvasFloatFrame.setStyleSheet(
-                "QFrame#miniCanvasFloatFrame { background-color: rgba(24,24,37,0.82); "
-                "border: 1px solid rgba(137,180,250,0.35); border-radius: 6px; }"
-            )
-
-            self.ui.miniCanvasFloatLayout = QVBoxLayout(self.ui.miniCanvasFloatFrame)
-            self.ui.miniCanvasFloatLayout.setContentsMargins(4, 4, 4, 4)
-            self.ui.miniCanvasFloatLayout.setSpacing(2)
-
-            self.ui.miniCanvasFloatHeader = QHBoxLayout()
-            self.ui.miniCanvasFloatHeader.addStretch()
-            self.ui.btnHideMiniCanvas = QToolButton(self.ui.miniCanvasFloatFrame)
-            self.ui.btnHideMiniCanvas.setText("\u2715")
-            self.ui.btnHideMiniCanvas.setToolTip("Hide minimap")
-            self.ui.btnHideMiniCanvas.setAutoRaise(True)
-            self.ui.btnHideMiniCanvas.clicked.connect(self._hideMiniCanvasFloat)
-            self.ui.miniCanvasFloatHeader.addWidget(self.ui.btnHideMiniCanvas)
-            self.ui.miniCanvasFloatLayout.addLayout(self.ui.miniCanvasFloatHeader)
-
-            self.ui.btnShowMiniCanvas = QToolButton(self.ui.graphicsView.viewport())
-            self.ui.btnShowMiniCanvas.setObjectName("btnShowMiniCanvas")
-            self.ui.btnShowMiniCanvas.setText("Map")
-            self.ui.btnShowMiniCanvas.setToolTip("Show minimap")
-            self.ui.btnShowMiniCanvas.setToolButtonStyle(Qt.ToolButtonTextOnly)
-            self.ui.btnShowMiniCanvas.setAutoRaise(False)
-            self.ui.btnShowMiniCanvas.setStyleSheet(
-                "QToolButton { background-color: rgba(24,24,37,0.82); "
-                "border: 1px solid rgba(137,180,250,0.35); border-radius: 6px; "
-                "padding: 2px 6px; }"
-            )
-            self.ui.btnShowMiniCanvas.clicked.connect(self._showMiniCanvasFloat)
-            self.ui.btnShowMiniCanvas.hide()
-            return self.ui.miniCanvasFloatFrame
-        except Exception as ex:
-            logger.warning(f"Could not create floating minimap overlay: {ex}")
-            return None
-
-    def _ensureModernMiniCanvas(self):
-        if hasattr(self.ui, "modernMiniCanvas") and self.ui.modernMiniCanvas is not None:
-            return self.ui.modernMiniCanvas
-        try:
-            from widgets.canvasminimapframe import CanvasMinimapFrame
-            widget = CanvasMinimapFrame(
+            from widgets.canvasminimapframe import CanvasMinimapOverlay
+            overlay = CanvasMinimapOverlay(
                 self.ui.graphicsView.viewport(),
                 self.ui.graphicsView,
                 self.scene,
                 self,
             )
-            self.ui.modernMiniCanvas = widget
-            return widget
+            self.ui.miniCanvasOverlay = overlay
+            self.ui.miniCanvasFloatFrame = overlay
+            self.ui.modernMiniCanvas = overlay.map
+            overlay.visibilityChanged.connect(self._onMiniCanvasVisibilityRequested)
+            overlay.geometryChanged.connect(self._onMiniCanvasGeometryChanged)
+            overlay.collapsedChanged.connect(lambda *_: self._saveMiniCanvasState())
+            overlay.zoomChanged.connect(lambda *_: self._saveMiniCanvasState())
+            return overlay
         except Exception as ex:
-            logger.warning(f"Could not create modern minimap: {ex}")
+            logger.warning(f"Could not create floating minimap overlay: {ex}")
             return None
+
+    def _ensureMiniCanvasRestoreButton(self):
+        if getattr(self.ui, "btnShowMiniCanvas", None) is not None:
+            return self.ui.btnShowMiniCanvas
+        try:
+            btn = QToolButton(self.ui.graphicsView.viewport())
+            btn.setObjectName("btnShowMiniCanvas")
+            btn.setText("\U0001F5FA  Map")
+            btn.setToolTip("Show minimap")
+            btn.setToolButtonStyle(Qt.ToolButtonTextOnly)
+            btn.setAutoRaise(False)
+            btn.setStyleSheet(
+                "QToolButton { background-color: rgba(24,24,37,0.86); "
+                "border: 1px solid rgba(137,180,250,0.35); border-radius: 6px; "
+                "padding: 2px 8px; }"
+            )
+            btn.clicked.connect(self._showMiniCanvasFloat)
+            btn.hide()
+            self.ui.btnShowMiniCanvas = btn
+            return btn
+        except Exception as ex:
+            logger.warning(f"Could not create minimap restore button: {ex}")
+            return None
+
 
     def _updateMiniCanvasPlacement(self):
         if not hasattr(self.ui, "miniCanvasPreview"):
@@ -4568,42 +4577,27 @@ class HostWindow(QMainWindow):
         modern = self._isModernMiniCanvasMode()
 
         if modern:
-            float_frame = self._ensureMiniCanvasFloatFrame()
-            modern_widget = self._ensureModernMiniCanvas()
-            if float_frame is None or modern_widget is None:
+            overlay = self._ensureMiniCanvasOverlay()
+            self._ensureMiniCanvasRestoreButton()
+            if overlay is None:
                 return
 
-            # Keep the classic preview out of the modern float container.
+            # Classic preview is inactive in modern mode.
             try:
-                if hasattr(self.ui, "miniCanvasFloatLayout") and self.ui.miniCanvasFloatLayout is not None:
-                    self.ui.miniCanvasFloatLayout.removeWidget(self.ui.miniCanvasPreview)
-            except Exception:
-                pass
-            try:
-                self.ui.miniCanvasPreview.setParent(self.ui.tab_3)
                 self.ui.miniCanvasPreview.hide()
             except Exception:
                 pass
 
-            if modern_widget.parentWidget() is not float_frame:
-                try:
-                    old_layout = modern_widget.parentWidget().layout() if modern_widget.parentWidget() is not None else None
-                    if old_layout is not None:
-                        old_layout.removeWidget(modern_widget)
-                except Exception:
-                    pass
-                modern_widget.setParent(float_frame)
-                if hasattr(self.ui, "miniCanvasFloatLayout") and self.ui.miniCanvasFloatLayout is not None:
-                    self.ui.miniCanvasFloatLayout.addWidget(modern_widget)
-
-            # Theme sync for the modern widget.
+            # Theme sync + (re)bind the scene for the modern widget.
+            # Guard so init()'s resetView() does not clobber the saved zoom.
+            self._miniCanvasRestoring = True
             try:
-                self.ui.modernMiniCanvas.setViewTheme(
+                overlay.map.setViewTheme(
                     patchcanvas.canvas.theme.canvas_bg,
                     patchcanvas.canvas.theme.rubberband_brush.color(),
                     patchcanvas.canvas.theme.rubberband_pen.color(),
                 )
-                self.ui.modernMiniCanvas.init(
+                overlay.map.init(
                     self.scene,
                     self.fCanvasWidth,
                     self.fCanvasHeight,
@@ -4611,6 +4605,8 @@ class HostWindow(QMainWindow):
                 )
             except Exception:
                 pass
+            finally:
+                self._miniCanvasRestoring = False
 
             if hasattr(self.ui, "tw_miniCanvas"):
                 try:
@@ -4618,80 +4614,188 @@ class HostWindow(QMainWindow):
                 except Exception:
                     pass
 
-            float_frame.show()
-            modern_widget.show()
-            self._showMiniCanvasFloat()
+            self._expandSceneRectForMinimap()
+            self._restoreMiniCanvasState()
             self._repositionMiniCanvasFloat()
             QTimer.singleShot(100, self._repositionMiniCanvasFloat)
             QTimer.singleShot(400, self._repositionMiniCanvasFloat)
         else:
             # Restore the classic sidebar placement.
-            if hasattr(self.ui, "miniCanvasFloatFrame") and self.ui.miniCanvasFloatFrame is not None:
-                if hasattr(self.ui, "miniCanvasFloatLayout") and self.ui.miniCanvasFloatLayout is not None:
-                    try:
-                        self.ui.miniCanvasFloatLayout.removeWidget(self.ui.miniCanvasPreview)
-                    except Exception:
-                        pass
-                self.ui.miniCanvasPreview.setParent(self.ui.tab_3)
-                if hasattr(self.ui, "verticalLayout_7"):
-                    try:
+            if getattr(self.ui, "miniCanvasFloatFrame", None) is not None:
+                try:
+                    self.ui.miniCanvasPreview.setParent(self.ui.tab_3)
+                    if hasattr(self.ui, "verticalLayout_7"):
                         self.ui.verticalLayout_7.addWidget(self.ui.miniCanvasPreview)
-                    except Exception:
-                        pass
-                if hasattr(self.ui, "miniCanvasFloatFrame"):
                     self.ui.miniCanvasFloatFrame.hide()
-                if hasattr(self.ui, "btnShowMiniCanvas"):
-                    try:
-                        self.ui.btnShowMiniCanvas.hide()
-                    except Exception:
-                        pass
-
-            if hasattr(self.ui, "modernMiniCanvas") and self.ui.modernMiniCanvas is not None:
+                except Exception:
+                    pass
+            if getattr(self.ui, "btnShowMiniCanvas", None) is not None:
+                try:
+                    self.ui.btnShowMiniCanvas.hide()
+                except Exception:
+                    pass
+            if getattr(self.ui, "modernMiniCanvas", None) is not None:
                 try:
                     self.ui.modernMiniCanvas.hide()
                 except Exception:
                     pass
-
             if hasattr(self.ui, "tw_miniCanvas"):
                 try:
                     self.ui.tw_miniCanvas.show()
                 except Exception:
                     pass
+
+    def _onMiniCanvasVisibilityRequested(self, visible):
+        if visible:
+            self._showMiniCanvasFloat()
+        else:
+            self._hideMiniCanvasFloat()
+
+    def _onMiniCanvasGeometryChanged(self):
+        self._miniCanvasUserPositioned = True
+        self._saveMiniCanvasState()
+
     def _hideMiniCanvasFloat(self):
-        if hasattr(self.ui, "miniCanvasFloatFrame"):
-            self.ui.miniCanvasFloatFrame.hide()
-        if hasattr(self.ui, "btnShowMiniCanvas"):
-            self.ui.btnShowMiniCanvas.show()
+        overlay = getattr(self.ui, "miniCanvasFloatFrame", None)
+        if overlay is not None:
+            overlay.hide()
+        self._miniCanvasUserVisible = False
         self._repositionMiniCanvasFloat()
+        self._saveMiniCanvasState()
 
     def _showMiniCanvasFloat(self):
-        if hasattr(self.ui, "miniCanvasFloatFrame"):
-            self.ui.miniCanvasFloatFrame.show()
-        if hasattr(self.ui, "btnShowMiniCanvas"):
-            self.ui.btnShowMiniCanvas.hide()
+        overlay = getattr(self.ui, "miniCanvasFloatFrame", None)
+        if overlay is not None:
+            overlay.show()
+            overlay.raise_()
+        self._miniCanvasUserVisible = True
+        self._expandSceneRectForMinimap()
         self._repositionMiniCanvasFloat()
+        self._saveMiniCanvasState()
+
+    def _restoreMiniCanvasState(self):
+        overlay = getattr(self.ui, "miniCanvasFloatFrame", None)
+        if overlay is None:
+            return
+        self._miniCanvasRestoring = True
+        try:
+            settings = QSafeSettings()
+            zoom = settings.value("Minimap/Zoom", 1.0, float)
+            collapsed = settings.value("Minimap/Collapsed", False, bool)
+            visible = settings.value("Minimap/Visible", True, bool)
+            pos_x = settings.value("Minimap/X", -1, int)
+            pos_y = settings.value("Minimap/Y", -1, int)
+
+            overlay.map.setZoom(zoom)
+            overlay.toggleCollapsed(collapsed)
+
+            if pos_x >= 0 and pos_y >= 0:
+                overlay.move(int(pos_x), int(pos_y))
+                self._miniCanvasUserPositioned = True
+            else:
+                self._miniCanvasUserPositioned = False
+
+            self._miniCanvasUserVisible = bool(visible)
+            if visible:
+                overlay.show()
+            else:
+                overlay.hide()
+        except Exception as ex:
+            logger.warning(f"Could not restore minimap state: {ex}")
+        finally:
+            self._miniCanvasRestoring = False
+        self._saveMiniCanvasState()
+
+    def _saveMiniCanvasState(self):
+        if getattr(self, "_miniCanvasRestoring", False):
+            return
+        overlay = getattr(self.ui, "miniCanvasFloatFrame", None)
+        if overlay is None:
+            return
+        try:
+            settings = QSafeSettings()
+            if getattr(self, "_miniCanvasUserPositioned", False):
+                settings.setValue("Minimap/X", int(overlay.x()))
+                settings.setValue("Minimap/Y", int(overlay.y()))
+            else:
+                settings.setValue("Minimap/X", -1)
+                settings.setValue("Minimap/Y", -1)
+            settings.setValue("Minimap/Zoom", float(overlay.map.getZoom()))
+            settings.setValue("Minimap/Collapsed", bool(overlay.isCollapsed()))
+            settings.setValue(
+                "Minimap/Visible", bool(getattr(self, "_miniCanvasUserVisible", True))
+            )
+        except Exception as ex:
+            logger.warning(f"Could not save minimap state: {ex}")
+
+    def _expandSceneRectForMinimap(self):
+        try:
+            scene = self.scene
+            if scene is None:
+                return
+            bounds = None
+            for item in scene.items():
+                if not (hasattr(item, "m_group_id") and hasattr(item, "p_height")):
+                    continue
+                try:
+                    if not item.isVisible():
+                        continue
+                except Exception:
+                    pass
+                r = item.sceneBoundingRect()
+                bounds = QRectF(r) if bounds is None else bounds.united(r)
+            if bounds is None or bounds.isNull():
+                return
+            margin = 500.0
+            needed = bounds.adjusted(-margin, -margin, margin, margin)
+            current = scene.sceneRect()
+            if not current.isNull() and current.contains(needed):
+                return
+            expanded = needed if current.isNull() else current.united(needed)
+            try:
+                patchcanvas.canvas.size_rect = expanded
+            except Exception:
+                pass
+            scene.setSceneRect(expanded)
+            try:
+                self.ui.graphicsView.setSceneRect(expanded)
+            except Exception:
+                pass
+            if hasattr(scene, "updateLimits"):
+                scene.updateLimits()
+        except Exception as ex:
+            logger.warning(f"Could not expand scene rect for minimap: {ex}")
 
     def _repositionMiniCanvasFloat(self):
+        overlay = getattr(self.ui, "miniCanvasFloatFrame", None)
+        if overlay is None:
+            return
         try:
-            if hasattr(self.ui, "miniCanvasFloatFrame") and self.ui.miniCanvasFloatFrame.isVisible():
-                vp = self.ui.graphicsView.viewport()
-                frame = self.ui.miniCanvasFloatFrame
-                margin = 10
-                frame.move(
-                    max(margin, vp.width() - frame.width() - margin),
-                    max(margin, vp.height() - frame.height() - margin),
-                )
-                frame.raise_()
-            if hasattr(self.ui, "btnShowMiniCanvas"):
-                btn = self.ui.btnShowMiniCanvas
-                if btn is not None:
-                    if hasattr(self.ui, "miniCanvasFloatFrame") and not self.ui.miniCanvasFloatFrame.isVisible():
-                        vp = self.ui.graphicsView.viewport()
-                        btn.move(vp.width() - btn.width() - 12, vp.height() - btn.height() - 12)
-                        btn.raise_()
-                        btn.show()
-                    else:
-                        btn.hide()
+            vp = self.ui.graphicsView.viewport()
+            if overlay.isVisible():
+                overlay.adjustSize()
+                if getattr(self, "_miniCanvasUserPositioned", False):
+                    pos = overlay.pos()
+                else:
+                    pos = QPoint(
+                        vp.width() - overlay.width() - 10,
+                        vp.height() - overlay.height() - 10,
+                    )
+                max_x = max(0, vp.width() - overlay.width())
+                max_y = max(0, vp.height() - overlay.height())
+                pos.setX(max(0, min(pos.x(), max_x)))
+                pos.setY(max(0, min(pos.y(), max_y)))
+                overlay.move(pos)
+                overlay.raise_()
+
+            btn = getattr(self.ui, "btnShowMiniCanvas", None)
+            if btn is not None:
+                if not overlay.isVisible():
+                    btn.move(vp.width() - btn.width() - 12, vp.height() - btn.height() - 12)
+                    btn.raise_()
+                    btn.show()
+                else:
+                    btn.hide()
         except Exception:
             pass
 

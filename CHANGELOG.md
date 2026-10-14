@@ -20,6 +20,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-15 04:52:16
+- **feat(ui)**: Edge auto-scroll when dragging the minimap view scope
+  - Left-dragging the view scope to (or beyond) a minimap edge now continuously pans the minimap and the main patchbay canvas, ramping speed with how far past the edge the cursor is.
+  - Auto-scroll stops automatically when the cursor returns inside the map or the view reaches the edge of the node bounds.
+
+### 2026-10-15 04:46:41
+- **fix(ui)**: Minimap phantom node, bottom-scope clamping and collapse button
+  - Phantom node: hidden / not-yet-portable group boxes (created at `(0,0)`) were being outlined because `scene.items()` includes invisible items; the minimap and scene-rect expansion now skip invisible items.
+  - View scope could not be panned to the bottom until manually scrolling: scene/view rect expansion only ran once at setup (before plugins loaded). It now also runs from `updateMiniCanvasLater()` (client add/remove/rename) and updates both the scene and the view scene rect.
+  - Collapse button did nothing: `QToolButton.clicked` passes a bool check-state into `toggleCollapsed(collapsed)`, making every click evaluate as "no change"; the connection is now wrapped so it toggles.
+
+### 2026-10-15 04:31:06
+- **feat(ui)**: Blender-style minimap overlay, discoverability and persistence
+  - Replaced the top `✕` bar with a compact grip (drag to move) and a corner collapse tab; hide/expand and zoom-reset moved into a right-click context menu.
+  - Added a zoom-level badge (`FIT` / percentage) and an on-map control hint so wheel-zoom, middle-drag pan and double-click reset are discoverable.
+  - Minimap now expands the patchbay scene rect to the union of node bounds (+margin) so the bottom of the canvas can actually be panned to at startup.
+  - Reduced early misplacement: placement now waits for valid geometry and re-clamps via deferred repositioning.
+  - Persisted `Minimap/X`, `Minimap/Y`, `Minimap/Zoom`, `Minimap/Collapsed` and `Minimap/Visible` in `QSafeSettings` (app-wide), restored at startup and saved on drag/collapse/zoom/hide and on settings save.
+
+### 2026-10-15 04:14:49
+- **fix(ui)**: Render modern minimap from the live scene with contrast-corrected node outlines
+  - Replaced the hand-drawn bounding-box fill with a real `QGraphicsScene` render, matching the classic minimap so node bodies, headers, ports and cables keep their true appearance.
+  - Outlined every node using its own custom color (theme color when uncolored), passing it through a WCAG luminance/contrast check that lightens or darkens the color against the background so all nodes stay visible.
+  - Added minimap-internal zoom (mouse wheel, cursor-anchored), middle-drag panning, and double-click reset so large patches stay readable.
+
 ### 2026-10-15 03:09:23
 - **feat(ui)**: Float minimap into hideable patchbay viewport overlay
   - Reparented `miniCanvasPreview` out of the side dock into a rounded overlay anchored at the bottom-right of the patchbay viewport.
