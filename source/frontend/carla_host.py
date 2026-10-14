@@ -5063,17 +5063,19 @@ class HostWindow(QMainWindow):
         self.activateWindow()
 
     def _onSystemTrayActivated(self, reason):
-        if reason == QSystemTrayIcon.ActivationReason.DoubleClick:
-            self._restoreFromSystemTray()
+        # Right-click is handled natively by the context menu.
+        if reason == QSystemTrayIcon.ActivationReason.Context:
             return
 
-        if reason == QSystemTrayIcon.ActivationReason.Trigger:
-            # Left click: pop up a summary/menu with DSP load and controls
-            if self.fSystemTrayIcon is not None:
-                self._updateTrayMenuInfo()
-                menu = self.fSystemTrayIcon.contextMenu()
-                if menu is not None:
-                    menu.popup(QCursor.pos())
+        # Any other click (left click, middle click, double click) shows an
+        # interactive summary instead of silently doing nothing.
+        if self.fSystemTrayIcon is None:
+            return
+
+        self._updateTrayMenuInfo()
+        menu = self.fSystemTrayIcon.contextMenu()
+        if menu is not None:
+            menu.popup(QCursor.pos())
 
     def _updateTrayMenuInfo(self):
         running = False
