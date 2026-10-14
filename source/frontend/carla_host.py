@@ -5036,10 +5036,10 @@ class HostWindow(QMainWindow):
 
         tray_menu.aboutToShow.connect(self._updateTrayMenuInfo)
 
-        # Keep the menu ourselves and show it on both left and right clicks so both
-        # sides have the same styling and contents.
+        # Show a native context menu on right click and also let the activated
+        # signal handle left-click popups.
         self.fSystemTrayMenu = tray_menu
-        self.fSystemTrayIcon.setContextMenu(None)
+        self.fSystemTrayIcon.setContextMenu(tray_menu)
         self.fSystemTrayIcon.activated.connect(self._onSystemTrayActivated)
 
         # Show the tray icon as soon as the application starts so it can be
