@@ -198,3 +198,10 @@ aur/*/src/
 aur/*/pkg/
 aur/*/*.pkg.tar.*
 
+# Local dev / build tooling & runtime artifacts
+/builder/
+/run_distrobox_test.sh
+/debug.log
+/logs/
+/aur/clara-git/
+
