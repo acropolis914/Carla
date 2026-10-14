@@ -1011,7 +1011,18 @@ def getPaths(libPrefix = None):
 # TODO move to carla_host.py or something
 
 def signalHandler(sig, frame):
-    if sig in (SIGINT, SIGTERM):
+    if sig == SIGINT:
+        # Ctrl+C from a terminal. When the GUI supports it, let it decide
+        # between quitting and minimising to the tray, so we do not set the
+        # global term flag here (the app may keep running).
+        if gCarla.gui is not None and hasattr(gCarla.gui, "SIGINT"):
+            gCarla.gui.SIGINT.emit()
+            return
+        gCarla.term = True
+        if gCarla.gui is not None:
+            gCarla.gui.SIGTERM.emit()
+
+    elif sig == SIGTERM:
         gCarla.term = True
         if gCarla.gui is not None:
             gCarla.gui.SIGTERM.emit()

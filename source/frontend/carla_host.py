@@ -158,6 +158,7 @@ class HostWindow(QMainWindow):
     # signals
     SIGTERM = pyqtSignal()
     SIGUSR1 = pyqtSignal()
+    SIGINT = pyqtSignal()
 
     # CustomActions
     CUSTOM_ACTION_NONE = 0
@@ -837,6 +838,7 @@ class HostWindow(QMainWindow):
 
         self.SIGUSR1.connect(self.slot_handleSIGUSR1)
         self.SIGTERM.connect(self.slot_handleSIGTERM)
+        self.SIGINT.connect(self.slot_handleSIGINT)
 
         host.EngineStartedCallback.connect(self.slot_handleEngineStartedCallback)
         host.EngineStoppedCallback.connect(self.slot_handleEngineStoppedCallback)
@@ -5060,6 +5062,90 @@ class HostWindow(QMainWindow):
         print("Got SIGTERM -> Closing now")
         self.fCustomStopAction = self.CUSTOM_ACTION_APP_CLOSE
         self.close()
+
+    @pyqtSlot()
+    def slot_handleSIGINT(self):
+        # Ctrl+C from a terminal. There is nothing to do (and no UI to prompt
+        # with) when launched outside a terminal or without a system tray, so
+        # keep the old immediate-close behaviour for those cases.
+        is_tty = False
+        try:
+            is_tty = os.isatty(0)
+        except Exception:
+            is_tty = False
+        if not is_tty or getattr(self, "fSystemTrayIcon", None) is None:
+            print("Got SIGINT -> Closing now")
+            self.fCustomStopAction = self.CUSTOM_ACTION_APP_CLOSE
+            self.fForceQuit = True
+            self.close()
+            return
+        # Defer so the dialog runs from the event loop, not the signal frame.
+        QTimer.singleShot(0, self._promptSIGINT)
+
+    def _promptSIGINT(self):
+        try:
+            box = QMessageBox(self)
+            box.setWindowTitle(self.tr("Carla"))
+            box.setIcon(QMessageBox.Question)
+            box.setText(self.tr("Received Ctrl+C (SIGINT) from the terminal."))
+            box.setInformativeText(
+                self.tr(
+                    "Kill Carla, or keep it running in the system tray and "
+                    "detach from the terminal?"
+                )
+            )
+            kill_btn = box.addButton(self.tr("Kill Carla (Y)"), QMessageBox.YesRole)
+            detach_btn = box.addButton(
+                self.tr("Tray + Detach (N)"), QMessageBox.NoRole
+            )
+            try:
+                kill_btn.setShortcut("Y")
+                detach_btn.setShortcut("N")
+            except Exception:
+                pass
+            box.setDefaultButton(kill_btn)
+            box.setEscapeButton(detach_btn)
+            box.exec()
+
+            if box.clickedButton() is detach_btn:
+                self._minimizeToSystemTray()
+                self._detachFromTerminal()
+            else:
+                self.fCustomStopAction = self.CUSTOM_ACTION_APP_CLOSE
+                self.fForceQuit = True
+                self.close()
+        except Exception as ex:
+            logger.warning(f"SIGINT prompt failed: {ex}")
+            self.fCustomStopAction = self.CUSTOM_ACTION_APP_CLOSE
+            self.fForceQuit = True
+            self.close()
+
+    def _detachFromTerminal(self):
+        # Detach from the controlling terminal so the application keeps running
+        # after the terminal/shell is closed, then silence the standard streams.
+        try:
+            if os.name == "posix":
+                try:
+                    os.setsid()
+                except OSError:
+                    pass
+                try:
+                    from signal import SIGHUP, SIG_IGN, signal as _signal
+
+                    _signal(SIGHUP, SIG_IGN)
+                except Exception:
+                    pass
+                try:
+                    devnull = os.open(os.devnull, os.O_RDWR)
+                    for fd in (0, 1, 2):
+                        try:
+                            os.dup2(devnull, fd)
+                        except OSError:
+                            pass
+                except Exception:
+                    pass
+        except Exception as ex:
+            logger.warning(f"Could not detach from terminal: {ex}")
 
     # --------------------------------------------------------------------------------------------------------
     # Internal stuff

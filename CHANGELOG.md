@@ -20,6 +20,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-15 05:01:41
+- **feat(ui)**: Prompt on Ctrl+C (SIGINT) instead of quitting immediately
+  - SIGINT is now routed separately from SIGTERM: SIGTERM still closes immediately (needed by session managers/systemd), while SIGINT pops a dialog.
+  - Dialog offers "Kill Carla" (default, `Y`/Enter) or "Tray + Detach" (default-less `N`), the latter minimising to the system tray and detaching from the controlling terminal (`setsid`, `SIGHUP` ignored, stdio redirected) so the app survives the terminal closing.
+  - Only prompts when launched from a TTY with a system tray available; otherwise it closes as before.
+
 ### 2026-10-15 04:52:16
 - **feat(ui)**: Edge auto-scroll when dragging the minimap view scope
   - Left-dragging the view scope to (or beyond) a minimap edge now continuously pans the minimap and the main patchbay canvas, ramping speed with how far past the edge the cursor is.
