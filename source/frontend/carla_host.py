@@ -5064,6 +5064,53 @@ class HostWindow(QMainWindow):
         self.show()
         self.raise_()
         self.activateWindow()
+        QTimer.singleShot(0, self._requestWindowFocus)
+
+    def _requestWindowFocus(self):
+        # Ask Qt/the compositor to activate the window (best effort).
+        try:
+            handle = self.windowHandle()
+            if handle is not None:
+                handle.requestActivate()
+        except Exception:
+            pass
+        self.raise_()
+        self.activateWindow()
+
+        # Hyprland/Wayland often ignores plain activateWindow(); fall back to its
+        # IPC so the existing window reliably gets focused when restored.
+        try:
+            import json
+            import os
+            import shutil
+            import subprocess
+
+            if (
+                QApplication.instance() is not None
+                and QApplication.instance().platformName() == "wayland"
+                and shutil.which("hyprctl")
+            ):
+                result = subprocess.run(
+                    ["hyprctl", "clients", "-j"],
+                    capture_output=True,
+                    text=True,
+                    timeout=2,
+                )
+                if result.returncode == 0:
+                    clients = json.loads(result.stdout or "[]")
+                    for client in clients:
+                        if int(client.get("pid", -1)) == os.getpid():
+                            addr = client.get("address")
+                            if addr:
+                                subprocess.run(
+                                    ["hyprctl", "dispatch", "focuswindow", "address:%s" % addr],
+                                    timeout=2,
+                                    stdout=subprocess.DEVNULL,
+                                    stderr=subprocess.DEVNULL,
+                                )
+                            return
+        except Exception:
+            pass
 
     def _onSystemTrayActivated(self, reason):
         # Right-click is handled natively by the context menu.
