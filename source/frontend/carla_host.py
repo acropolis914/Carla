@@ -246,6 +246,9 @@ class HostWindow(QMainWindow):
         # system tray icon when minimized to tray
         self.fSystemTrayIcon = None
 
+        # whether the application is quitting explicitly
+        self.fForceQuit = False
+
         # true if NSM server handles our window management
         self.fWindowCloseHideGui = False
 
@@ -4956,15 +4959,15 @@ class HostWindow(QMainWindow):
         if event.type() in (QEvent.PaletteChange, QEvent.StyleChange):
             self.updateStyle()
 
-        if (
-            event.type() == QEvent.WindowStateChange
-            and self.isMinimized()
-            and self.fSavedSettings.get(
-                CARLA_KEY_MAIN_MINIMIZE_TO_TRAY, CARLA_DEFAULT_MAIN_MINIMIZE_TO_TRAY
-            )
-            and self.fSystemTrayIcon is not None
-        ):
-            QTimer.singleShot(0, self._minimizeToSystemTray)
+        if event.type() == QEvent.WindowStateChange:
+            if (
+                self.isMinimized()
+                and self.fSavedSettings.get(
+                    CARLA_KEY_MAIN_MINIMIZE_TO_TRAY, CARLA_DEFAULT_MAIN_MINIMIZE_TO_TRAY
+                )
+                and self.fSystemTrayIcon is not None
+            ):
+                self._minimizeToSystemTray()
 
         QMainWindow.changeEvent(self, event)
 
@@ -4972,6 +4975,13 @@ class HostWindow(QMainWindow):
     # system tray
 
     def _setupSystemTray(self):
+        # Make the standard Quit action perform a real quit instead of hiding to tray
+        try:
+            self.ui.act_file_quit.triggered.disconnect()
+        except (TypeError, RuntimeError):
+            pass
+        self.ui.act_file_quit.triggered.connect(self._requestQuit)
+
         if not QSystemTrayIcon.isSystemTrayAvailable():
             self.fSystemTrayIcon = None
             return
@@ -4987,16 +4997,56 @@ class HostWindow(QMainWindow):
         self.fSystemTrayIcon.setToolTip(self.windowTitle())
 
         tray_menu = QMenu(self)
+
+        # Summary / status items (kept up to date when the menu is shown)
+        title_action = QAction(self.tr("Clara"), self)
+        title_action.setEnabled(False)
+        tray_menu.addAction(title_action)
+        tray_menu.addSeparator()
+
+        self.fTrayInfoEngine = QAction("", self)
+        self.fTrayInfoEngine.setEnabled(False)
+        tray_menu.addAction(self.fTrayInfoEngine)
+
+        self.fTrayInfoLoad = QAction("", self)
+        self.fTrayInfoLoad.setEnabled(False)
+        tray_menu.addAction(self.fTrayInfoLoad)
+
+        self.fTrayInfoBuffer = QAction("", self)
+        self.fTrayInfoBuffer.setEnabled(False)
+        tray_menu.addAction(self.fTrayInfoBuffer)
+
+        self.fTrayInfoSampleRate = QAction("", self)
+        self.fTrayInfoSampleRate.setEnabled(False)
+        tray_menu.addAction(self.fTrayInfoSampleRate)
+
+        tray_menu.addSeparator()
+
         show_action = QAction(self.tr("Show"), self)
         show_action.triggered.connect(self._restoreFromSystemTray)
-        quit_action = QAction(self.tr("Quit"), self)
-        quit_action.triggered.connect(self.close)
         tray_menu.addAction(show_action)
-        tray_menu.addSeparator()
+
+        hide_action = QAction(self.tr("Hide"), self)
+        hide_action.triggered.connect(self._minimizeToSystemTray)
+        tray_menu.addAction(hide_action)
+
+        quit_action = QAction(self.tr("Quit"), self)
+        quit_action.triggered.connect(self._requestQuit)
         tray_menu.addAction(quit_action)
+
+        tray_menu.aboutToShow.connect(self._updateTrayMenuInfo)
 
         self.fSystemTrayIcon.setContextMenu(tray_menu)
         self.fSystemTrayIcon.activated.connect(self._onSystemTrayActivated)
+
+        # Show the tray icon as soon as the application starts so it can be
+        # reopened/restored from Hyprland/tiling WMs that lack minimize buttons.
+        self.fSystemTrayIcon.show()
+        QApplication.instance().setQuitOnLastWindowClosed(False)
+
+    def _requestQuit(self):
+        self.fForceQuit = True
+        self.close()
 
     def _minimizeToSystemTray(self):
         if self.fSystemTrayIcon is None:
@@ -5015,11 +5065,44 @@ class HostWindow(QMainWindow):
         self.activateWindow()
 
     def _onSystemTrayActivated(self, reason):
-        if reason in (
-            QSystemTrayIcon.Trigger,
-            QSystemTrayIcon.DoubleClick,
-        ):
+        if reason == QSystemTrayIcon.ActivationReason.DoubleClick:
             self._restoreFromSystemTray()
+            return
+
+        if reason == QSystemTrayIcon.ActivationReason.Trigger:
+            # Left click: pop up a summary/menu with DSP load and controls
+            if self.fSystemTrayIcon is not None:
+                self._updateTrayMenuInfo()
+                menu = self.fSystemTrayIcon.contextMenu()
+                if menu is not None:
+                    menu.popup(QCursor.pos())
+
+    def _updateTrayMenuInfo(self):
+        running = False
+        try:
+            running = self.host.is_engine_running()
+        except Exception:
+            running = False
+
+        load = "--"
+        try:
+            info = self.host.get_runtime_engine_info()
+            if isinstance(info, dict):
+                load = info.get("load", "--")
+        except Exception:
+            pass
+
+        self.fTrayInfoEngine.setText(
+            self.tr("Engine: Running") if running else self.tr("Engine: Stopped")
+        )
+        self.fTrayInfoLoad.setText(self.tr("DSP Load: %s%%") % load)
+        self.fTrayInfoBuffer.setText(
+            self.tr("Buffer: %s") % (self.fBufferSize if self.fBufferSize not in (0, None) else "--")
+        )
+        sr = self.fSampleRate
+        self.fTrayInfoSampleRate.setText(
+            self.tr("Sample Rate: %s") % (sr if sr not in (0, None, 0.0) else "--")
+        )
 
     def updateStyle(self):
         self.ui.pad_left.hide()
@@ -5140,6 +5223,20 @@ class HostWindow(QMainWindow):
     def closeEvent(self, event):
         if self.shouldIgnoreClose():
             event.ignore()
+            return
+
+        # When "minimize to system tray" is enabled, window close hides into the tray
+        # instead of terminating the application. Use the tray menu's "Quit" (or Ctrl+Q
+        # when forced) to quit for real.
+        if (
+            not getattr(self, "fForceQuit", False)
+            and self.fSystemTrayIcon is not None
+            and self.fSavedSettings.get(
+                CARLA_KEY_MAIN_MINIMIZE_TO_TRAY, CARLA_DEFAULT_MAIN_MINIMIZE_TO_TRAY
+            )
+        ):
+            event.ignore()
+            QTimer.singleShot(0, self._minimizeToSystemTray)
             return
 
         # Pre-emptively hide the main window immediately so the UI disappears without stutter
