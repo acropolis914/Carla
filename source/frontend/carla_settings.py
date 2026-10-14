@@ -96,6 +96,7 @@ from carla_shared import (
     CARLA_DEFAULT_MAIN_LOG_TO_CONSOLE,
     CARLA_DEFAULT_MAIN_CLASSIC_SKIN,
     CARLA_DEFAULT_MAIN_CONFIRM_EXIT,
+    CARLA_DEFAULT_MAIN_MINIMIZE_TO_TRAY,
     CARLA_DEFAULT_MAIN_PRO_THEME_COLOR,
     CARLA_DEFAULT_MAIN_PROJECT_FOLDER,
     CARLA_DEFAULT_MAIN_REFRESH_INTERVAL,
@@ -174,6 +175,7 @@ from carla_shared import (
     CARLA_KEY_MAIN_REFRESH_INTERVAL,
     CARLA_KEY_MAIN_SHOW_LOGS,
     CARLA_KEY_MAIN_SYSTEM_ICONS,
+    CARLA_KEY_MAIN_MINIMIZE_TO_TRAY,
     CARLA_KEY_MAIN_USE_PRO_THEME,
     CARLA_KEY_OSC_ENABLED,
     CARLA_KEY_OSC_TCP_PORT_ENABLED,
@@ -910,6 +912,11 @@ class CarlaSettingsW(QDialog):
         self.ch_main_show_statusbar.setObjectName("ch_main_show_statusbar")
         self.ui.gridLayout_4.addWidget(self.ch_main_show_statusbar, 5, 0, 1, 3)
 
+        # Minimize to system tray toggle
+        self.ch_main_minimize_to_tray = QCheckBox(self.tr("Minimize to system tray instead of taskbar"), self.ui.group_main_misc)
+        self.ch_main_minimize_to_tray.setObjectName("ch_main_minimize_to_tray")
+        self.ui.gridLayout_4.addWidget(self.ch_main_minimize_to_tray, 6, 0, 1, 3)
+
         # Rack Appearance & Geometry Live Tweakables Group
         self.group_rack_geometry = QGroupBox(self.tr("Rack Layout & Spacing"), self.ui.page_main)
         self.layout_rack_geo = QFormLayout(self.group_rack_geometry)
@@ -1179,6 +1186,14 @@ class CarlaSettingsW(QDialog):
 
         self.ch_main_show_statusbar.setChecked(
             settings.value("ShowStatusBar", True, bool)
+        )
+
+        self.ch_main_minimize_to_tray.setChecked(
+            settings.value(
+                CARLA_KEY_MAIN_MINIMIZE_TO_TRAY,
+                CARLA_DEFAULT_MAIN_MINIMIZE_TO_TRAY,
+                bool,
+            )
         )
         self.sl_rack_spacing.setValue(
             settings.value("RackItemSpacing", 4, int)
@@ -1675,6 +1690,9 @@ class CarlaSettingsW(QDialog):
             CARLA_KEY_MAIN_LOG_TO_CONSOLE, self.ch_main_log_to_console.isChecked()
         )
         settings.setValue("ShowStatusBar", self.ch_main_show_statusbar.isChecked())
+        settings.setValue(
+            CARLA_KEY_MAIN_MINIMIZE_TO_TRAY, self.ch_main_minimize_to_tray.isChecked()
+        )
         settings.setValue("RackItemSpacing", self.sl_rack_spacing.value())
         settings.setValue("RackItemPadding", self.sl_rack_padding.value())
         settings.setValue("RackItemMinWidth", self.sl_rack_min_width.value())
@@ -2009,6 +2027,7 @@ class CarlaSettingsW(QDialog):
             self.ui.cb_main_classic_skin_default(CARLA_DEFAULT_MAIN_CLASSIC_SKIN)
             self.ui.ch_main_show_logs.setChecked(CARLA_DEFAULT_MAIN_SHOW_LOGS)
             self.ch_main_show_statusbar.setChecked(True)
+            self.ch_main_minimize_to_tray.setChecked(CARLA_DEFAULT_MAIN_MINIMIZE_TO_TRAY)
             self.sl_rack_spacing.setValue(4)
             self.sl_rack_padding.setValue(6)
             self.sl_rack_min_width.setValue(200)

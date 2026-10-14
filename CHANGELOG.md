@@ -18,6 +18,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ---
 
 
+## [Unreleased]
+
+### 2026-10-15 00:00:00
+- **feat(ui)**: Add "Minimize to system tray" option
+  - Added `Main/MinimizeToTray` setting (default off) in Settings with load/save/reset.
+  - Main window minimizes to a system tray icon with Show/Quit menu and restores on activation.
+
 ## [0.1.5] - 2026-10-13
 
 ### 2026-10-13 23:05:00

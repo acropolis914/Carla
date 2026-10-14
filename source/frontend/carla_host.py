@@ -73,6 +73,7 @@ from qt_compat import (
     QPointF,
     QSplitter,
     QSurfaceFormat,
+    QSystemTrayIcon,
     QTimer,
     QToolButton,
     QVBoxLayout,
@@ -241,6 +242,9 @@ class HostWindow(QMainWindow):
 
         # to be filled with key-value pairs of current settings
         self.fSavedSettings = {}
+
+        # system tray icon when minimized to tray
+        self.fSystemTrayIcon = None
 
         # true if NSM server handles our window management
         self.fWindowCloseHideGui = False
@@ -629,6 +633,11 @@ class HostWindow(QMainWindow):
         # Load Settings
 
         self.loadSettings(True)
+
+        # ----------------------------------------------------------------------------------------------------
+        # Set-up System Tray
+
+        self._setupSystemTray()
 
         # ----------------------------------------------------------------------------------------------------
         # Set-up Canvas
@@ -3653,6 +3662,9 @@ class HostWindow(QMainWindow):
             CARLA_KEY_MAIN_SYSTEM_ICONS: settings.value(
                 CARLA_KEY_MAIN_SYSTEM_ICONS, CARLA_DEFAULT_MAIN_SYSTEM_ICONS, bool
             ),
+            CARLA_KEY_MAIN_MINIMIZE_TO_TRAY: settings.value(
+                CARLA_KEY_MAIN_MINIMIZE_TO_TRAY, CARLA_DEFAULT_MAIN_MINIMIZE_TO_TRAY, bool
+            ),
             CARLA_KEY_MAIN_EXPERIMENTAL: settings.value(
                 CARLA_KEY_MAIN_EXPERIMENTAL, CARLA_DEFAULT_MAIN_EXPERIMENTAL, bool
             ),
@@ -4943,7 +4955,71 @@ class HostWindow(QMainWindow):
     def changeEvent(self, event):
         if event.type() in (QEvent.PaletteChange, QEvent.StyleChange):
             self.updateStyle()
+
+        if (
+            event.type() == QEvent.WindowStateChange
+            and self.isMinimized()
+            and self.fSavedSettings.get(
+                CARLA_KEY_MAIN_MINIMIZE_TO_TRAY, CARLA_DEFAULT_MAIN_MINIMIZE_TO_TRAY
+            )
+            and self.fSystemTrayIcon is not None
+        ):
+            QTimer.singleShot(0, self._minimizeToSystemTray)
+
         QMainWindow.changeEvent(self, event)
+
+    # --------------------------------------------------------------------------------------------------------
+    # system tray
+
+    def _setupSystemTray(self):
+        if not QSystemTrayIcon.isSystemTrayAvailable():
+            self.fSystemTrayIcon = None
+            return
+
+        try:
+            icon = self.windowIcon()
+            if icon is None or icon.isNull():
+                icon = QApplication.instance().windowIcon()
+        except Exception:
+            icon = QApplication.instance().windowIcon()
+
+        self.fSystemTrayIcon = QSystemTrayIcon(icon, self)
+        self.fSystemTrayIcon.setToolTip(self.windowTitle())
+
+        tray_menu = QMenu(self)
+        show_action = QAction(self.tr("Show"), self)
+        show_action.triggered.connect(self._restoreFromSystemTray)
+        quit_action = QAction(self.tr("Quit"), self)
+        quit_action.triggered.connect(self.close)
+        tray_menu.addAction(show_action)
+        tray_menu.addSeparator()
+        tray_menu.addAction(quit_action)
+
+        self.fSystemTrayIcon.setContextMenu(tray_menu)
+        self.fSystemTrayIcon.activated.connect(self._onSystemTrayActivated)
+
+    def _minimizeToSystemTray(self):
+        if self.fSystemTrayIcon is None:
+            return
+        QApplication.instance().setQuitOnLastWindowClosed(False)
+        self.hide()
+        self.fSystemTrayIcon.show()
+        self.fSystemTrayIcon.setToolTip(self.windowTitle())
+
+    def _restoreFromSystemTray(self):
+        if self.fSystemTrayIcon is not None:
+            self.fSystemTrayIcon.hide()
+        self.showNormal()
+        self.show()
+        self.raise_()
+        self.activateWindow()
+
+    def _onSystemTrayActivated(self, reason):
+        if reason in (
+            QSystemTrayIcon.Trigger,
+            QSystemTrayIcon.DoubleClick,
+        ):
+            self._restoreFromSystemTray()
 
     def updateStyle(self):
         self.ui.pad_left.hide()
