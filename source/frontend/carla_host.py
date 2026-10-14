@@ -5221,13 +5221,9 @@ class HostWindow(QMainWindow):
         return False
 
     def closeEvent(self, event):
-        if self.shouldIgnoreClose():
-            event.ignore()
-            return
-
-        # When "minimize to system tray" is enabled, window close hides into the tray
-        # instead of terminating the application. Use the tray menu's "Quit" (or Ctrl+Q
-        # when forced) to quit for real.
+        # When "minimize to system tray" is enabled, closing the window simply
+        # hides the application into the tray instead of quitting. The save/discard
+        # prompt is therefore reserved for an explicit quit (Tray -> Quit / Ctrl+Q).
         if (
             not getattr(self, "fForceQuit", False)
             and self.fSystemTrayIcon is not None
@@ -5237,6 +5233,10 @@ class HostWindow(QMainWindow):
         ):
             event.ignore()
             QTimer.singleShot(0, self._minimizeToSystemTray)
+            return
+
+        if self.shouldIgnoreClose():
+            event.ignore()
             return
 
         # Pre-emptively hide the main window immediately so the UI disappears without stutter
