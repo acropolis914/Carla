@@ -5036,7 +5036,10 @@ class HostWindow(QMainWindow):
 
         tray_menu.aboutToShow.connect(self._updateTrayMenuInfo)
 
-        self.fSystemTrayIcon.setContextMenu(tray_menu)
+        # Keep the menu ourselves and show it on both left and right clicks so both
+        # sides have the same styling and contents.
+        self.fSystemTrayMenu = tray_menu
+        self.fSystemTrayIcon.setContextMenu(None)
         self.fSystemTrayIcon.activated.connect(self._onSystemTrayActivated)
 
         # Show the tray icon as soon as the application starts so it can be
@@ -5073,7 +5076,7 @@ class HostWindow(QMainWindow):
             return
 
         self._updateTrayMenuInfo()
-        menu = self.fSystemTrayIcon.contextMenu()
+        menu = getattr(self, "fSystemTrayMenu", None)
         if menu is not None:
             menu.popup(QCursor.pos())
 
