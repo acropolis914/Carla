@@ -5057,8 +5057,6 @@ class HostWindow(QMainWindow):
         self.fSystemTrayIcon.setToolTip(self.windowTitle())
 
     def _restoreFromSystemTray(self):
-        if self.fSystemTrayIcon is not None:
-            self.fSystemTrayIcon.hide()
         self.showNormal()
         self.show()
         self.raise_()
