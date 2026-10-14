@@ -20,6 +20,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-15 03:09:23
+- **feat(ui)**: Float minimap into hideable patchbay viewport overlay
+  - Reparented `miniCanvasPreview` out of the side dock into a rounded overlay anchored at the bottom-right of the patchbay viewport.
+  - Placement is mode-aware: Modern UI mode uses the floating overlay, while Classic mode restores the original sidebar minimap.
+  - Added hide (`✕`) and restore (`Map`) controls so the minimap can be dismissed and brought back on demand.
+  - Kept existing canvas navigation and theming behavior intact while repositioning on viewport resize.
+
 ### 2026-10-15 00:00:00
 - **feat(ui)**: Add "Minimize to system tray" option
   - Added `Main/MinimizeToTray` setting (default off) in Settings with load/save/reset.
