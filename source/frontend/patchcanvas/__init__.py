@@ -142,6 +142,8 @@ class Canvas(object):
         self.debug = False
         self.scene = None
         self.last_z_value = 0
+        self.dragging = False
+        self.minimap_rendering = False
         self.last_connection_id = 0
         self.initial_pos = QPointF(0, 0)
         self.size_rect = QRectF()

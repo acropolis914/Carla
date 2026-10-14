@@ -20,6 +20,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-15 06:11:30
+- **fix(ui)**: Restore `Qt.Key_Backspace` (Qt6 compat)
+  - `qt_compat` aliased most `Qt.Key_*` names to their Qt6 `Qt.Key.*` enum for bindings compatibility, but `Key_Backspace` was missing, so deleting a plugin with Backspace crashed with `AttributeError: type object 'Qt' has no attribute 'Key_Backspace'` (`carla_skin.py:1656`). Added the alias.
+
+### 2026-10-15 06:02:45
+- **chore(ui)**: Log the active patchbay viewport at startup
+  - The canvas startup now logs whether the patchbay is `OpenGL` or `Software raster`, the viewport update mode, and the `Canvas/UseOpenGL` setting, so it is obvious from the terminal whether GPU rendering is actually active.
+
+### 2026-10-15 05:41:20
+- **perf(ui)**: Smoother canvas panning and further drag/repaint savings
+  - Box drop-shadows are now also skipped while panning the canvas (not just during a node drag), so the strips exposed by scrolling are cheap to redraw.
+  - The canvas view no longer adjusts update rects for antialiasing (`DontAdjustForAntialiasing`) and the viewport is marked opaque (`WA_OpaquePaintEvent`), keeping repaints smaller and skipping Qt's background erase.
+  - The grid dots are now drawn in a single `drawPoints` call with a round-capped pen instead of thousands of individual `drawRect` calls.
+  - The minimap no longer draws the canvas grid while rendering the scene to its cache (invisible at that scale), making minimap refreshes noticeably cheaper.
+
+### 2026-10-15 05:26:10
+- **fix(ui)**: Ask about Ctrl+C in the terminal, not with a GUI dialog
+  - Pressing Ctrl+C now prints a plain prompt (`[K]ill` / `[T]ray + detach`) in the terminal where the key was pressed, instead of popping a `QMessageBox`.
+  - Fixed the previous implementation crashing: `QMessageBox.YesRole`/`NoRole` don't exist on the class in this Qt build, and the failure fallback called `logger.warning()` with a single argument (the logger requires a tag plus message), so the prompt died with an `AttributeError`/`TypeError`.
+  - The prompt is shown whenever Carla runs from a TTY; the tray/detach option is only offered when a system tray is available.
+
+### 2026-10-15 05:24:03
+- **perf(ui)**: Smoother patchbay node dragging
+  - Box drop-shadows no longer recompute their blur on every drag frame: while a box is being dragged the shadow is skipped (the box is painted directly) and restored on release, removing the main source of drag lag.
+  - Position changes are no longer written to settings and pushed to the engine on every drag frame; they are flushed once when the drag ends, avoiding a synchronous settings write plus engine callback per frame.
+  - The grid background is now cached by the canvas view (`CacheBackground`) and painter state is not saved (`DontSavePainterState`), so the dotted grid is not repainted for every dot on each drag/pan frame.
+
 ### 2026-10-15 05:01:41
 - **feat(ui)**: Prompt on Ctrl+C (SIGINT) instead of quitting immediately
   - SIGINT is now routed separately from SIGTERM: SIGTERM still closes immediately (needed by session managers/systemd), while SIGINT pops a dialog.

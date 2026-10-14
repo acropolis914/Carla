@@ -1158,6 +1158,11 @@ class CanvasBox(QGraphicsObject):
 
     @pyqtSlot()
     def slot_signalPositionChangedLater(self):
+        # While dragging, defer engine/settings position updates until the drag
+        # finishes. Emitting on every move causes a synchronous settings write
+        # plus an engine callback per frame, which makes dragging feel laggy.
+        if getattr(canvas, "dragging", False):
+            return
         if self.m_will_signal_pos_change:
             return
         self.m_will_signal_pos_change = True
@@ -1656,6 +1661,8 @@ class CanvasBox(QGraphicsObject):
 
             if self.sceneBoundingRect().contains(event.scenePos()):
                 self.m_mouse_down = True
+                # Drop the expensive box shadows for the duration of the drag
+                canvas.dragging = True
             else:
                 self.m_mouse_down = False
                 event.ignore()
@@ -1708,11 +1715,16 @@ class CanvasBox(QGraphicsObject):
         if self.m_pressed_btn_id is not None:
             self.m_pressed_btn_id = None
             self.update()
-        if self.m_cursor_moving:
+        moved = self.m_cursor_moving
+        if moved:
             self.unsetCursor()
             QTimer.singleShot(0, self.fixPos)
         self.m_mouse_down = False
         self.m_cursor_moving = False
+        canvas.dragging = False
+        if moved:
+            # Flush the final position now that the drag is over.
+            self.slot_signalPositionChangedLater()
         QGraphicsObject.mouseReleaseEvent(self, event)
 
     def fixPos(self):

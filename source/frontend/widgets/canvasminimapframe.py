@@ -78,6 +78,14 @@ class CanvasMinimapFrame(QFrame):
         self._edge_timer.setInterval(16)
         self._edge_timer.timeout.connect(self._edge_tick)
 
+        # Coalesce scene-change repaints. During a node drag the scene emits
+        # changed on every frame; re-rendering the whole scene into the minimap
+        # cache each frame is expensive and makes dragging laggy.
+        self._scene_timer = QTimer(self)
+        self._scene_timer.setSingleShot(True)
+        self._scene_timer.setInterval(33)
+        self._scene_timer.timeout.connect(self._flush_scene_change)
+
         self._bounds = QRectF()
         self._src = QRectF()
         self._eff = 1.0
@@ -137,6 +145,10 @@ class CanvasMinimapFrame(QFrame):
     # ---------------------------------------------------------------- API
 
     def _on_scene_changed(self, *args):
+        if not self._scene_timer.isActive():
+            self._scene_timer.start()
+
+    def _flush_scene_change(self):
         self._cache = None
         self.update()
 
@@ -291,7 +303,19 @@ class CanvasMinimapFrame(QFrame):
         painter.fillRect(pix.rect(), bg)
         try:
             target = QRectF(0.0, 0.0, float(self.width()), float(self.height()))
-            self.fScene.render(painter, target, src, Qt.KeepAspectRatio)
+            # The grid is meaningless at minimap scale and expensive to draw,
+            # so tell the scene to skip it for this off-screen render.
+            try:
+                patchcanvas.canvas.minimap_rendering = True
+            except Exception:
+                pass
+            try:
+                self.fScene.render(painter, target, src, Qt.KeepAspectRatio)
+            finally:
+                try:
+                    patchcanvas.canvas.minimap_rendering = False
+                except Exception:
+                    pass
         except Exception:
             pass
         painter.end()

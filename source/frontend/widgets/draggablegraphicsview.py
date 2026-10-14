@@ -234,6 +234,14 @@ class DraggableGraphicsView(QGraphicsView):
                 self.verticalScrollBar().value() if self.verticalScrollBar() else 0
             )
             self.setCursor(QCursor(Qt.ClosedHandCursor))
+            # Shadows are only recomputed while repainting; skipping them during
+            # a pan keeps the exposed strips cheap to redraw.
+            try:
+                import patchcanvas.patchcanvas as pc
+                if hasattr(pc, "canvas"):
+                    pc.canvas.dragging = True
+            except Exception:
+                pass
             event.accept()
             return
 
@@ -302,6 +310,12 @@ class DraggableGraphicsView(QGraphicsView):
             event.button() == Qt.MiddleButton or event.button() == Qt.LeftButton
         ):
             self.fPanning = False
+            try:
+                import patchcanvas.patchcanvas as pc
+                if hasattr(pc, "canvas"):
+                    pc.canvas.dragging = False
+            except Exception:
+                pass
             if getattr(self, "fSpacePanning", False):
                 self.setCursor(QCursor(Qt.OpenHandCursor))
             else:

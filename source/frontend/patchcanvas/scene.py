@@ -149,6 +149,11 @@ class PatchScene(QGraphicsScene):
         # Draw solid background color from theme
         painter.fillRect(rect, canvas.theme.canvas_bg)
 
+        # The minimap re-renders the whole scene at a tiny scale; the grid is
+        # invisible there and expensive to build, so skip it.
+        if getattr(canvas, "minimap_rendering", False):
+            return
+
         if not getattr(options, "grid_enabled", True):
             return
 
@@ -201,13 +206,16 @@ class PatchScene(QGraphicsScene):
                 painter.drawLine(QPointF(rect.left(), y), QPointF(rect.right(), y))
 
         # 2. Dynamic zoom-scaled intersection dots (guaranteed visible and crisp)
-        dot_radius = max(0.6, 1.0 / scale)
-        painter.setPen(Qt.NoPen)
-        painter.setBrush(QBrush(dot_color))
-
+        dot_size = max(1.2, 2.0 / scale)
+        points = QPolygonF()
         for x in range(left, right + grid_step, grid_step):
             for y in range(top, bottom + grid_step, grid_step):
-                painter.drawRect(QRectF(x - dot_radius, y - dot_radius, dot_radius * 2.0, dot_radius * 2.0))
+                points.append(QPointF(x, y))
+        dot_pen = QPen(dot_color)
+        dot_pen.setWidthF(dot_size)
+        dot_pen.setCapStyle(Qt.RoundCap)
+        painter.setPen(dot_pen)
+        painter.drawPoints(points)
 
     def zoom_fit(self):
         min_x = min_y = max_x = max_y = None

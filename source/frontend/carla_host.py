@@ -7,6 +7,8 @@
 # ------------------------------------------------------------------------------------------------------------
 
 import json
+import os
+import sys
 import xml.etree.ElementTree as ET
 from datetime import datetime
 
@@ -2931,6 +2933,58 @@ class HostWindow(QMainWindow):
                     QGraphicsView.MinimalViewportUpdate
                 )
 
+        # Store painter state is not needed here and costs us fairly big, so skip it.
+        try:
+            self.ui.graphicsView.setOptimizationFlag(
+                QGraphicsView.DontSavePainterState, True
+            )
+        except Exception:
+            pass
+
+        # Do not inflate update rects for antialiasing; keeps scroll repaints small.
+        try:
+            self.ui.graphicsView.setOptimizationFlag(
+                QGraphicsView.DontAdjustForAntialiasing, True
+            )
+        except Exception:
+            pass
+
+        # The scene paints an opaque background, so tell Qt not to erase first.
+        try:
+            self.ui.graphicsView.viewport().setAttribute(Qt.WA_OpaquePaintEvent, True)
+        except Exception:
+            pass
+
+        # Report which viewport we ended up with, so it is obvious from the log
+        # whether the patchbay is GPU-accelerated or software-rendered.
+        try:
+            vp = self.ui.graphicsView.viewport()
+            is_gl = "GL" in type(vp).__name__.upper()
+            logger.info(
+                "CANVAS",
+                "Patchbay viewport: %s (%s), update mode %s, UseOpenGL setting=%s, GL available=%s"
+                % (
+                    "OpenGL" if is_gl else "Software raster",
+                    type(vp).__name__,
+                    self.ui.graphicsView.viewportUpdateMode(),
+                    self.fSavedSettings.get(CARLA_KEY_CANVAS_USE_OPENGL),
+                    hasGL,
+                ),
+            )
+        except Exception:
+            pass
+
+        # The grid background is static between zoom changes, so let Qt cache it
+        # instead of repainting every dot on each drag/pan frame.
+        try:
+            cache_bg = getattr(QGraphicsView, "CacheBackground", None)
+            if cache_bg is None and hasattr(QGraphicsView, "CacheModeFlag"):
+                cache_bg = getattr(QGraphicsView.CacheModeFlag, "CacheBackground", None)
+            if cache_bg is not None:
+                self.ui.graphicsView.setCacheMode(cache_bg)
+        except Exception:
+            pass
+
     def updateCanvasInitialPos(self):
         x = self.ui.graphicsView.horizontalScrollBar().value() + self.width() / 4
         y = self.ui.graphicsView.verticalScrollBar().value() + self.height() / 4
@@ -4545,7 +4599,7 @@ class HostWindow(QMainWindow):
             overlay.zoomChanged.connect(lambda *_: self._saveMiniCanvasState())
             return overlay
         except Exception as ex:
-            logger.warning(f"Could not create floating minimap overlay: {ex}")
+            logger.warning("CANVAS", f"Could not create floating minimap overlay: {ex}")
             return None
 
     def _ensureMiniCanvasRestoreButton(self):
@@ -4568,7 +4622,7 @@ class HostWindow(QMainWindow):
             self.ui.btnShowMiniCanvas = btn
             return btn
         except Exception as ex:
-            logger.warning(f"Could not create minimap restore button: {ex}")
+            logger.warning("CANVAS", f"Could not create minimap restore button: {ex}")
             return None
 
 
@@ -4703,7 +4757,7 @@ class HostWindow(QMainWindow):
             else:
                 overlay.hide()
         except Exception as ex:
-            logger.warning(f"Could not restore minimap state: {ex}")
+            logger.warning("CANVAS", f"Could not restore minimap state: {ex}")
         finally:
             self._miniCanvasRestoring = False
         self._saveMiniCanvasState()
@@ -4728,7 +4782,7 @@ class HostWindow(QMainWindow):
                 "Minimap/Visible", bool(getattr(self, "_miniCanvasUserVisible", True))
             )
         except Exception as ex:
-            logger.warning(f"Could not save minimap state: {ex}")
+            logger.warning("CANVAS", f"Could not save minimap state: {ex}")
 
     def _expandSceneRectForMinimap(self):
         try:
@@ -4766,7 +4820,7 @@ class HostWindow(QMainWindow):
             if hasattr(scene, "updateLimits"):
                 scene.updateLimits()
         except Exception as ex:
-            logger.warning(f"Could not expand scene rect for minimap: {ex}")
+            logger.warning("CANVAS", f"Could not expand scene rect for minimap: {ex}")
 
     def _repositionMiniCanvasFloat(self):
         overlay = getattr(self.ui, "miniCanvasFloatFrame", None)
@@ -5073,49 +5127,44 @@ class HostWindow(QMainWindow):
             is_tty = os.isatty(0)
         except Exception:
             is_tty = False
-        if not is_tty or getattr(self, "fSystemTrayIcon", None) is None:
+        if not is_tty:
             print("Got SIGINT -> Closing now")
             self.fCustomStopAction = self.CUSTOM_ACTION_APP_CLOSE
             self.fForceQuit = True
             self.close()
             return
-        # Defer so the dialog runs from the event loop, not the signal frame.
+        # Defer so the prompt runs from the event loop, not the signal frame.
         QTimer.singleShot(0, self._promptSIGINT)
 
     def _promptSIGINT(self):
+        # Ctrl+C came from a terminal, so ask right there instead of popping up
+        # a GUI dialog. This blocks the UI while waiting for an answer, which is
+        # fine because the user is interacting with the terminal anyway.
         try:
-            box = QMessageBox(self)
-            box.setWindowTitle(self.tr("Carla"))
-            box.setIcon(QMessageBox.Question)
-            box.setText(self.tr("Received Ctrl+C (SIGINT) from the terminal."))
-            box.setInformativeText(
-                self.tr(
-                    "Kill Carla, or keep it running in the system tray and "
-                    "detach from the terminal?"
-                )
-            )
-            kill_btn = box.addButton(self.tr("Kill Carla (Y)"), QMessageBox.YesRole)
-            detach_btn = box.addButton(
-                self.tr("Tray + Detach (N)"), QMessageBox.NoRole
-            )
-            try:
-                kill_btn.setShortcut("Y")
-                detach_btn.setShortcut("N")
-            except Exception:
-                pass
-            box.setDefaultButton(kill_btn)
-            box.setEscapeButton(detach_btn)
-            box.exec()
+            print("")
+            print("Received Ctrl+C (SIGINT) from the terminal.")
+            print("  [K] Kill Carla now (default)")
+            if getattr(self, "fSystemTrayIcon", None) is not None:
+                print("  [T] Keep running in the system tray and detach from the terminal")
+            sys.stdout.write("Choice [K/T]: " if getattr(self, "fSystemTrayIcon", None) is not None else "Choice [K]: ")
+            sys.stdout.flush()
+        except Exception:
+            pass
 
-            if box.clickedButton() is detach_btn:
-                self._minimizeToSystemTray()
-                self._detachFromTerminal()
-            else:
-                self.fCustomStopAction = self.CUSTOM_ACTION_APP_CLOSE
-                self.fForceQuit = True
-                self.close()
-        except Exception as ex:
-            logger.warning(f"SIGINT prompt failed: {ex}")
+        try:
+            answer = input().strip().lower()
+        except Exception:
+            answer = ""
+
+        if (
+            getattr(self, "fSystemTrayIcon", None) is not None
+            and (answer.startswith("t") or answer.startswith("d") or answer == "n")
+        ):
+            print("Keeping Carla running in the system tray; detached from terminal.")
+            self._minimizeToSystemTray()
+            self._detachFromTerminal()
+        else:
+            print("Killing Carla now.")
             self.fCustomStopAction = self.CUSTOM_ACTION_APP_CLOSE
             self.fForceQuit = True
             self.close()
@@ -5145,7 +5194,7 @@ class HostWindow(QMainWindow):
                 except Exception:
                     pass
         except Exception as ex:
-            logger.warning(f"Could not detach from terminal: {ex}")
+            logger.warning("APP", f"Could not detach from terminal: {ex}")
 
     # --------------------------------------------------------------------------------------------------------
     # Internal stuff

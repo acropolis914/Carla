@@ -38,6 +38,13 @@ class CanvasBoxShadow(QGraphicsDropShadowEffect):
         # paint event, cascading into expensive line updates for every box on
         # each frame with many connections. Lines are already updated in
         # CanvasBox.mouseMoveEvent() and repaintLines(forced=True) where needed.
+        #
+        # While a box is being dragged the blur is recomputed every frame for
+        # every moved box, which is the main source of drag lag. Skip the blur
+        # and paint the source directly for a smooth drag.
+        if getattr(canvas, "dragging", False):
+            self.drawSource(painter)
+            return
         QGraphicsDropShadowEffect.draw(self, painter)
 
 # ------------------------------------------------------------------------------------------------------------

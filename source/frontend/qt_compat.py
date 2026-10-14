@@ -438,6 +438,7 @@ elif qt_config == 6:
         "Key_Y",
         "Key_Z",
         "Key_Agrave",
+        "Key_Backspace",
         "Key_Ccedilla",
         "Key_Comma",
         "Key_Delete",
