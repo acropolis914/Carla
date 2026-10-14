@@ -1,0 +1,19 @@
+/* Minimal scrollbar styling without borders or outlines */
+QScrollBar {
+    background: transparent;
+    width: 8px;
+    margin: 0px;
+}
+QScrollBar::handle {
+    background: #8f8f8f;
+    border-radius: 4px;
+    min-height: 20px;
+}
+QScrollBar::add-line, QScrollBar::sub-line {
+    height: 0px;
+    width: 0px;
+    subcontrol-origin: margin;
+}
+QScrollBar::add-page, QScrollBar::sub-page {
+    background: none;
+}

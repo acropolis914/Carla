@@ -168,7 +168,11 @@ class CarlaApplication():
 
         if self.fAppTranslator is not None:
             self.fApp.installTranslator(self.fAppTranslator)
-            self.fApp.installTranslator(self.fSysTranslator)
+        # Load custom stylesheet if present
+        custom_css_path = os.path.join(os.path.dirname(__file__), "resources", "styles", "custom.css")
+        if os.path.isfile(custom_css_path):
+            with open(custom_css_path, "r", encoding="utf-8") as f:
+                self.fApp.setStyleSheet(f.read())
 
         if gCarla.nogui:
             return
