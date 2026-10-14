@@ -5,6 +5,11 @@
 # ----------------------------------------------------------------------------------------------------------------------
 # Imports (Custom Stuff)
 
+import os
+import socket
+import sys
+import tempfile
+
 from carla_app import (
     CarlaApplication,
 )
@@ -19,6 +24,99 @@ from carla_shared import (
     handleInitialCommandLineArguments,
     setUpSignals,
 )
+
+from qt_compat import (
+    QObject,
+    pyqtSignal,
+)
+
+try:
+    from PyQt6.QtCore import QSocketNotifier
+except ImportError:
+    from PyQt5.QtCore import QSocketNotifier
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Single-instance helpers (standalone Carla only)
+
+def _carla_instance_socket_path():
+    base = os.environ.get("XDG_RUNTIME_DIR") or tempfile.gettempdir()
+    return os.path.join(base, "carla-standalone.sock")
+
+class CarlaSingleInstance(QObject):
+    showRequested = pyqtSignal()
+
+    def __init__(self, path, parent=None):
+        super(CarlaSingleInstance, self).__init__(parent)
+        self.path = path
+        self.server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self.server.setblocking(False)
+
+        try:
+            self.server.bind(path)
+        except OSError:
+            # Stale socket from a crashed previous run: remove it and bind again.
+            try:
+                os.unlink(path)
+            except OSError:
+                pass
+            self.server.bind(path)
+
+        self.server.listen(8)
+        self.notifier = QSocketNotifier(self.server.fileno(), QSocketNotifier.Type.Read, self)
+        self.notifier.activated.connect(self._onReady)
+
+    def _onReady(self, _fd=None):
+        while True:
+            try:
+                conn, _ = self.server.accept()
+            except (BlockingIOError, OSError):
+                break
+            try:
+                try:
+                    conn.recv(1024)
+                except OSError:
+                    pass
+                try:
+                    conn.sendall(b"OK")
+                except OSError:
+                    pass
+            finally:
+                conn.close()
+            self.showRequested.emit()
+
+    def close(self):
+        try:
+            self.notifier.setEnabled(False)
+        except Exception:
+            pass
+        try:
+            self.server.close()
+        except Exception:
+            pass
+        try:
+            os.unlink(self.path)
+        except OSError:
+            pass
+
+def _notify_running_carla_instance(path):
+    try:
+        client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        client.settimeout(1.0)
+        client.connect(path)
+        client.sendall(b"SHOW")
+        try:
+            client.recv(1024)
+        except OSError:
+            pass
+        client.close()
+        return True
+    except (OSError, socket.error):
+        # No live instance: remove a stale socket if present.
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
+        return False
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Main
@@ -35,9 +133,61 @@ if __name__ == '__main__':
     initName, libPrefix = handleInitialCommandLineArguments(__file__ if "__file__" in dir() else None)
 
     # ------------------------------------------------------------------------------------------------------------------
+    # Single-instance handling (standalone Carla only): if another instance is
+    # already running, ask it to show itself and exit instead of starting another.
+    _socket_path = _carla_instance_socket_path()
+    if _notify_running_carla_instance(_socket_path):
+        print("Carla is already running; activating the existing instance.")
+        sys.exit(0)
+
+    # ------------------------------------------------------------------------------------------------------------------
     # App initialization
 
     app = CarlaApplication("Carla2", libPrefix)
+
+    # ------------------------------------------------------------------------------------------------------------------
+    # Set-up custom signal handling
+
+    setUpSignals()
+
+    # ------------------------------------------------------------------------------------------------------------------
+    # Init host backend
+
+    host = initHost(initName, libPrefix, False, False, True)
+    loadHostSettings(host)
+
+    # ------------------------------------------------------------------------------------------------------------------
+    # Create GUI
+
+    gui = HostWindow(host, True)
+
+    # ------------------------------------------------------------------------------------------------------------------
+    # Single instance socket server
+
+    _single_instance = CarlaSingleInstance(_socket_path, gui)
+    if hasattr(gui, "_restoreFromSystemTray"):
+        _single_instance.showRequested.connect(gui._restoreFromSystemTray)
+    else:
+        _single_instance.showRequested.connect(gui.showIfNeeded)
+    gui.fSingleInstance = _single_instance
+
+    # ------------------------------------------------------------------------------------------------------------------
+    # Show GUI
+
+    gui.showIfNeeded()
+
+    # ------------------------------------------------------------------------------------------------------------------
+    # App-Loop
+
+    app.exit_exec()
+
+    # ------------------------------------------------------------------------------------------------------------------
+    # Cleanup
+
+    try:
+        _single_instance.close()
+    except Exception:
+        pass
 
     # ------------------------------------------------------------------------------------------------------------------
     # Set-up custom signal handling
