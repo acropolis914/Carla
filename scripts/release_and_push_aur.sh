@@ -102,4 +102,18 @@ else
     git push origin master
 fi
 
-echo "✅ Done! Release ${TAG} pushed to GitHub and published to AUR (clara-bin)."
+# 7. Publish to AUR (clara-git)
+echo "🚀 Publishing clara-git to AUR..."
+GIT_AUR_DIR="$ROOT_DIR/aur/clara-git"
+if [ -d "$GIT_AUR_DIR/.git" ]; then
+    cd "$GIT_AUR_DIR"
+    makepkg --printsrcinfo > .SRCINFO
+    git add PKGBUILD .SRCINFO
+    git commit -m "chore: sync to ${CLEAN_VER}" || echo "No changes to commit for AUR clara-git."
+    git push origin master
+else
+    echo "⚠️  Warning: $GIT_AUR_DIR is not a git clone; skipping clara-git AUR publish."
+    echo "    Clone it with: git clone ssh://aur@aur.archlinux.org/clara-git.git $GIT_AUR_DIR"
+fi
+
+echo "✅ Done! Release ${TAG} pushed to GitHub and published to AUR (clara-bin, clara-git)."
