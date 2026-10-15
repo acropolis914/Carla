@@ -453,6 +453,9 @@ endif
 		bin/libcarla_*.* \
 		$(DESTDIR)$(LIBDIR)/carla
 
+	# The Qt-linked native frontend dialogs are no longer used (UI is pure PyQt6)
+	rm -f $(DESTDIR)$(LIBDIR)/carla/libcarla_frontend.*
+
 	# Install other binaries
 	install -m 755 \
 		bin/*bridge-* \
@@ -594,6 +597,16 @@ endif
 		source/frontend/widgets/*.py \
 		$(DESTDIR)$(DATADIR)/carla/widgets/
 
+	install -d $(DESTDIR)$(DATADIR)/carla/dialogs
+	install -m 644 \
+		source/frontend/dialogs/*.py \
+		$(DESTDIR)$(DATADIR)/carla/dialogs/
+
+	install -d $(DESTDIR)$(DATADIR)/carla/pluginlist
+	install -m 644 \
+		source/frontend/pluginlist/*.py \
+		$(DESTDIR)$(DATADIR)/carla/pluginlist/
+
 	# Adjust LIBDIR and DATADIR value in python code
 	sed $(SED_ARGS) 's?X_LIBDIR_X = None?X_LIBDIR_X = "$(LIBDIR)"?' \
 		$(DESTDIR)$(DATADIR)/carla/carla_shared.py
@@ -663,6 +676,8 @@ endif
 	$(LINK) ../patchcanvas                 $(DESTDIR)$(DATADIR)/carla/resources
 	$(LINK) ../utils                       $(DESTDIR)$(DATADIR)/carla/resources
 	$(LINK) ../widgets                     $(DESTDIR)$(DATADIR)/carla/resources
+	$(LINK) ../dialogs                     $(DESTDIR)$(DATADIR)/carla/resources
+	$(LINK) ../pluginlist                  $(DESTDIR)$(DATADIR)/carla/resources
 	$(LINK) ../carla_app.py                $(DESTDIR)$(DATADIR)/carla/resources
 	$(LINK) ../carla_backend.py            $(DESTDIR)$(DATADIR)/carla/resources
 	$(LINK) ../carla_backend_qt.py         $(DESTDIR)$(DATADIR)/carla/resources

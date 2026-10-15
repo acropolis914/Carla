@@ -57,11 +57,19 @@ fi
 VERSION="$(sed -n 's/^VERSION[[:space:]]*:=[[:space:]]*//p' Makefile | head -n1)"
 [ -n "$VERSION" ] || VERSION="0.0.0"
 
+# Clara application version - drives the output file name and AppImage metadata.
+# CI overrides this with CLARA_VERSION (derived from the release tag); otherwise
+# read CLARA_VERSION_STRING from the frontend, falling back to the engine VERSION.
+if [ -z "${CLARA_VERSION:-}" ] || ! printf '%s' "$CLARA_VERSION" | grep -qE '^[0-9]'; then
+    CLARA_VERSION="$(sed -n 's/^CLARA_VERSION_STRING[[:space:]]*=[[:space:]]*"\(.*\)"/\1/p' source/frontend/carla_shared.py | head -n1)"
+fi
+[ -n "$CLARA_VERSION" ] || CLARA_VERSION="$VERSION"
+
 OUTPUT_DIR="${OUTPUT_DIR:-$REPO_ROOT/dist}"
 BUILD_DIR="${BUILD_DIR:-$REPO_ROOT/build/appimage}"
 TOOLS_DIR="${TOOLS_DIR:-$REPO_ROOT/build/appimage-tools}"
 APPDIR="$BUILD_DIR/Clara.AppDir"
-OUTPUT_NAME="Clara-${VERSION}-${ARCH}.AppImage"
+OUTPUT_NAME="Clara-${CLARA_VERSION}-${ARCH}.AppImage"
 
 mkdir -p "$OUTPUT_DIR" "$TOOLS_DIR"
 
@@ -215,23 +223,36 @@ install -m 644 resources/256x256/carla.png "$APPDIR/carla.png" 2>/dev/null \
 # AppRun
 
 log "Writing AppRun"
-cat > "$APPDIR/AppRun" <<APPRUN
+cat > "$APPDIR/AppRun" <<'APPRUN'
 #!/bin/sh
 # Clara AppRun - runs the bundled CPython against the Clara frontend using the
 # AppImage-local prefix, and points Qt at the PyQt6-bundled Qt6 plugins/libs.
-HERE="\$(dirname "\$(readlink -f "\$0")")"
-export PATH="\$HERE/usr/python/bin:\$HERE/usr/bin:\$PATH"
-export LD_LIBRARY_PATH="\$HERE/usr/lib/carla:\$HERE/usr/lib:$QT6_DIR/lib:\$LD_LIBRARY_PATH"
+HERE="$(dirname "$(readlink -f "$0")")"
+export PATH="$HERE/usr/python/bin:$HERE/usr/bin:$PATH"
+
+# PyQt6 ships its own Qt6. Resolve it at runtime relative to the bundled
+# Python; never bake the build-machine path into the image.
+QT6_DIR="$("$HERE/usr/python/bin/python3" -c 'import PyQt6, os; print(os.path.join(os.path.dirname(PyQt6.__file__), "Qt6"))' 2>/dev/null)"
+
+# Put PyQt6's Qt6 first so a stray system Qt copied by linuxdeploy can never
+# shadow it (a version mismatch breaks symbol resolution).
+export LD_LIBRARY_PATH="$QT6_DIR/lib:$HERE/usr/lib/carla:$HERE/usr/lib:$LD_LIBRARY_PATH"
 export QT_PLUGIN_PATH="$QT6_DIR/plugins"
 export QT_QPA_PLATFORM_PLUGIN_PATH="$QT6_DIR/plugins/platforms"
 
-exec "\$HERE/usr/python/bin/python3" "\$HERE/usr/share/carla/carla" \
-    --with-appname="\$HERE/usr/bin/clara" \
-    --with-libprefix="\$HERE/usr" \
-    "\$@"
+exec "$HERE/usr/python/bin/python3" "$HERE/usr/share/carla/carla" \
+    --with-appname="$HERE/usr/bin/clara" \
+    --with-libprefix="$HERE/usr" \
+    "$@"
 APPRUN
 chmod +x "$APPDIR/AppRun"
-printf '#!/bin/sh\nexec "%s/AppRun" "$@"\n' "$APPDIR" > "$APPDIR/usr/bin/clara"
+
+# In-image launcher; resolve AppRun relative to this script (never the host path).
+cat > "$APPDIR/usr/bin/clara" <<'CLARAWRAP'
+#!/bin/sh
+HERE="$(dirname "$(readlink -f "$0")")"
+exec "$HERE/../../AppRun" "$@"
+CLARAWRAP
 chmod +x "$APPDIR/usr/bin/clara"
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -243,12 +264,19 @@ ensure_appimagetool
 log "Deploying shared-library dependencies"
 # Point linuxdeploy at the bundled python and the Carla native libs. Qt is
 # intentionally not handled by linuxdeploy-plugin-qt: PyQt6 already ships it.
-export LINUXDEPLOY_OUTPUT_VERSION="$VERSION"
+export LINUXDEPLOY_OUTPUT_VERSION="$CLARA_VERSION"
 "$LINUXDEPLOY_BIN" --appdir "$APPDIR" \
     --executable "$APPDIR/usr/python/bin/python3" \
     --desktop-file "$APPDIR/clara.desktop" \
     --icon-file "$APPDIR/carla.png" \
     2>&1 | sed 's/^/    /' || log "linuxdeploy reported issues; continuing"
+
+# Qt6 is provided by PyQt6 (matching version). The Qt-linked native frontend
+# (libcarla_frontend) is no longer built or shipped, so linuxdeploy should not
+# pull a system Qt anymore; the line below is just a safety net against a stray
+# build-host copy.
+find "$APPDIR/usr/lib" -maxdepth 1 -name 'libQt6*.so*' -delete 2>/dev/null || true
+find "$APPDIR/usr/lib" -maxdepth 1 -name 'libQt5*.so*' -delete 2>/dev/null || true
 
 # ---------------------------------------------------------------------------------------------------------------------
 # shrink, then build the AppImage
@@ -256,7 +284,8 @@ export LINUXDEPLOY_OUTPUT_VERSION="$VERSION"
 trim_appdir
 
 log "Building $OUTPUT_NAME"
-export ARCH VERSION
+export ARCH CLARA_VERSION
+export VERSION="$CLARA_VERSION"
 "$APPIMAGETOOL_BIN" "$APPDIR" "$OUTPUT_DIR/$OUTPUT_NAME" \
     --comp zstd \
     --mksquashfs-opt -Xcompression-level --mksquashfs-opt "${APPIMAGE_ZSTD_LEVEL:-19}"

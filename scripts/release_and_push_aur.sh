@@ -8,16 +8,23 @@ set -e
 # ==============================================================================
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-VERSION="$1"
+RAW_VERSION="$1"
 
-if [ -z "$VERSION" ]; then
+if [ -z "$RAW_VERSION" ]; then
     echo "❌ Error: Missing version argument."
     echo "Usage: $0 <version> (e.g. 0.1.1)"
     exit 1
 fi
 
-# Strip any leading 'v' for pkgver
-CLEAN_VER="${VERSION#v}"
+# Normalize: strip surrounding whitespace, any leading 'v'/'V' and leading dots,
+# so 'v1.0.1', '1.0.1', 'v.1.0.1' and '.1.0.1' all resolve to '1.0.1'.
+CLEAN_VER="$(printf '%s' "$RAW_VERSION" | tr -d '[:space:]' | sed -E 's/^[vV]+//; s/^\.+//')"
+
+if ! printf '%s' "$CLEAN_VER" | grep -qE '^[0-9]+(\.[0-9]+)+$'; then
+    echo "❌ Error: '$RAW_VERSION' is not a valid version (expected e.g. 1.0.1)."
+    exit 1
+fi
+
 TAG="v${CLEAN_VER}"
 
 echo "🚀 Preparing release for Clara ${TAG}..."

@@ -68,7 +68,6 @@ _CARLA_HOST_FILES = \
 	carla-bridge-lv2-gtk3$(APP_EXT) \
 	carla-bridge-native$(APP_EXT) \
 	carla-discovery-native$(APP_EXT) \
-	libcarla_frontend$(LIB_EXT) \
 	libcarla_utils$(LIB_EXT) \
 	$(_PLUGIN_UIS:%=resources/%$(APP_EXT))
 
@@ -108,7 +107,6 @@ _CARLA_APP_FILES += \
 
 _CARLA_CONTROL_APP_FILES = \
 	Carla-Control$(APP_EXT) \
-	libcarla_frontend$(LIB_EXT) \
 	libcarla_utils$(LIB_EXT) \
 	$(_PYTHON_FILES) \
 	$(_QT5_DLLS) \

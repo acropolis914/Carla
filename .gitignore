@@ -200,6 +200,7 @@ aur/*/*.pkg.tar.*
 
 # Local dev / build tooling & runtime artifacts
 /builder/
+/dist/
 /run_distrobox_test.sh
 /debug.log
 /logs/

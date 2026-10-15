@@ -87,7 +87,7 @@ jobs:
               apt-get update && apt-get install -y \
                 git make build-essential pkg-config \
                 qt6-base-dev qt6-svg-dev qt6-tools-dev qt6-tools-dev-tools \
-                python3 python3-pyqt6 libsdl2-dev \
+                python3 python3-pyqt6 pyqt6-dev-tools libsdl2-dev \
                 debhelper dh-make zstd tar ccache
               ;;
             fedora)
@@ -108,7 +108,7 @@ jobs:
               xbps-install -Syu -y \
                 base-devel pkg-config git \
                 qt6-base-devel qt6-svg-devel qt6-tools qt6-tools-devel \
-                python3-pyqt6 SDL2-devel zstd tar ccache
+                python3-pyqt6 python3-pyqt6-devel-tools SDL2-devel zstd tar ccache
               ;;
           esac
 
@@ -129,7 +129,7 @@ jobs:
           case "${{ matrix.platform }}" in
             alpine|void-glibc|archlinux)
               mkdir -p /tmp/clara-pkg
-              make install PREFIX=/usr DESTDIR=/tmp/clara-pkg DEFAULT_QT=6 || cp -r bin /tmp/clara-pkg/
+              make install PREFIX=/usr DESTDIR=/tmp/clara-pkg DEFAULT_QT=6
               tar --zstd -cf clara-${{ matrix.platform }}-${VERSION}-aarch64.tar.zst -C /tmp/clara-pkg .
               echo "OUTFILE=clara-${{ matrix.platform }}-${VERSION}-aarch64.tar.zst" >> "$GITHUB_ENV"
               ;;
@@ -203,7 +203,7 @@ jobs:
               export LDFLAGS='-lfts \$LDFLAGS'
               make -j$(nproc) DEFAULT_QT=6 2>&1 | tee build.log
               mkdir -p /tmp/clara-pkg
-              make install PREFIX=/usr DESTDIR=/tmp/clara-pkg DEFAULT_QT=6 || cp -r bin /tmp/clara-pkg/
+              make install PREFIX=/usr DESTDIR=/tmp/clara-pkg DEFAULT_QT=6
               tar --zstd -cf clara-void-musl-${VERSION}-aarch64.tar.zst -C /tmp/clara-pkg .
             "
           echo "OUTFILE=clara-void-musl-${VERSION}-aarch64.tar.zst" >> "$GITHUB_ENV"
@@ -267,14 +267,14 @@ jobs:
           sudo apt-get install -y \
             git make build-essential pkg-config \
             qt6-base-dev qt6-svg-dev qt6-tools-dev qt6-tools-dev-tools \
-            python3 python3-pyqt6 libsdl2-dev \
+            python3 python3-pyqt6 pyqt6-dev-tools libsdl2-dev \
             file patchelf binutils zsync zstd tar
 
       - name: Build AppImage
         id: compile
         run: |
           chmod +x scripts/build_appimage.sh
-          ARCH=aarch64 scripts/build_appimage.sh 2>&1 | tee build.log
+          CLARA_VERSION="${{ needs.resolve.outputs.version }}" ARCH=aarch64 scripts/build_appimage.sh 2>&1 | tee build.log
           echo "OUTFILE=$(ls dist/*.AppImage 2>/dev/null | head -n1)" >> "$GITHUB_ENV"
 
       - name: Upload appimage artifact
