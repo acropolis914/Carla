@@ -21,11 +21,7 @@ on:
         type: choice
         options:
           - all
-          - ubuntu
-          - alpine
-          - fedora
-          - archlinux
-          - void-glibc
+          - distros
           - void-musl
           - nix
           - appimage
@@ -38,7 +34,7 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
-    if: ${{ inputs.only == 'all' || inputs.only == matrix.platform }}
+    if: ${{ inputs.only == 'all' || inputs.only == 'distros' }}
     strategy:
       fail-fast: false
       matrix:
