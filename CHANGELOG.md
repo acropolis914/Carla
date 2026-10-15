@@ -20,6 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-16 00:45:00
+- **fix(ci)**: build VST frontend stubs on every distro and make the rpm version legal
+  - alpine/archlinux/fedora jobs now install the OpenGL + X11 development packages (`mesa-dev libx11-dev libxcursor-dev libxext-dev libxrandr-dev`, `mesa libglvnd libx11 libxcursor libxext libxrandr`, `mesa-libGL-devel libX11-devel libXcursor-devel libXext-devel libXrandr-devel`). `HAVE_DGL` requires `pkg-config --exists gl x11 xcursor xext xrandr`; without it the VST2 plugin stubs (`bin/CarlaRack*`, `bin/CarlaPatchbay*`) are never built and `make install` fails at `install_main`.
+  - The test workflow's default version is now rpm-legal (`0.0.0`, no `-`), and the fedora job rewrites `-` to `.` before writing `Version:` in the spec (rpmbuild rejects `Version: 0.0.0-test`).
+
 ### 2026-10-16 01:00:00
 - **ci(test)**: add `build-test.yml` workflow for downloadable test builds
   - New `workflow_dispatch`-only workflow that builds every platform (alpine, ubuntu, fedora, archlinux, void-glibc, void-musl, nix, appimage, flatpak) and uploads the resulting packages as run artifacts. It never publishes, tags, or attaches anything to a release, so builds can be verified and downloaded locally (`gh run download`) without touching release assets.

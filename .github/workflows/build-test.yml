@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version string used in artifact filenames"
+        description: "Version string used in artifact filenames (no '-', rpm-legal)"
         required: false
-        default: "0.0.0-test"
+        default: "0.0.0"
       retention_days:
         description: "Artifact retention in days"
         required: false
@@ -53,6 +53,7 @@ jobs:
                 git make gcc g++ musl-dev pkgconf \
                 qt6-qtbase-dev qt6-qtsvg-dev qt6-qttools-dev \
                 python3 py3-qt6 sdl2-dev zstd tar \
+                mesa-dev libx11-dev libxcursor-dev libxext-dev libxrandr-dev \
                 musl-fts-dev ccache
               ;;
             ubuntu)
@@ -68,13 +69,15 @@ jobs:
                 git make gcc gcc-c++ pkgconf \
                 qt6-qtbase-devel qt6-qtsvg-devel qt6-qttools-devel \
                 python3 python3-devel python3-pyqt6 SDL2-devel \
+                mesa-libGL-devel libX11-devel libXcursor-devel libXext-devel libXrandr-devel \
                 rpm-build rpmdevtools zstd tar ccache
               ;;
             archlinux)
               pacman -Syu --noconfirm \
                 git base-devel \
                 qt6-base qt6-svg qt6-tools \
-                python python-pyqt6 sdl2 zstd tar ccache
+                python python-pyqt6 sdl2 zstd tar ccache \
+                mesa libglvnd libx11 libxcursor libxext libxrandr
               ;;
             void-glibc)
               xbps-install -S -y ca-certificates xbps || true
@@ -148,7 +151,9 @@ jobs:
               else
                 cp .github/workflows/specs/clara.spec ~/rpmbuild/SPECS/clara.spec
               fi
-              sed -i "s/^Version:.*/Version: ${VERSION}/" ~/rpmbuild/SPECS/clara.spec
+              # RPM forbids '-' in Version; substitute dots
+              RPMVER=$(printf '%s' "$VERSION" | tr '-' '.')
+              sed -i "s/^Version:.*/Version: ${RPMVER}/" ~/rpmbuild/SPECS/clara.spec
               rpmbuild -bb ~/rpmbuild/SPECS/clara.spec
               find ~/rpmbuild/RPMS -name "*.rpm" -exec cp {} . \;
               echo "OUTFILE=$(ls *.rpm 2>/dev/null | head -n 1 || true)" >> "$GITHUB_ENV"
