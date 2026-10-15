@@ -268,7 +268,7 @@ jobs:
             git make build-essential pkg-config \
             qt6-base-dev qt6-svg-dev qt6-tools-dev qt6-tools-dev-tools \
             python3 python3-pyqt6 libsdl2-dev \
-            file patchelf zsync zstd tar
+            file patchelf binutils zsync zstd tar
 
       - name: Build AppImage
         id: compile

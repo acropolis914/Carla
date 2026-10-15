@@ -2,14 +2,15 @@
 # ---------------------------------------------------------------------------------------------------------------------
 # Clara - portable AppImage builder
 #
-# Builds a self-contained .AppImage into dist/. The image bundles:
+# Builds a self-contained .AppImage into dist/ for the current ARCH
+# (x86_64 or aarch64, selectable with --arch=). The image bundles:
 #   * a relocatable CPython (python-build-standalone)
 #   * PyQt6 - whose "PyQt6-Qt6" wheel already ships the matching Qt6 libraries
 #     and platform plugins, so the AppImage does not depend on the system Qt
 #   * the Clara native libs + Python frontend (make install)
 #   * remaining non-Qt system libs gathered with linuxdeploy
 #
-# Only x86_64 is produced for now (see TODO for aarch64 / cross-compilation).
+# Only x86_64 and aarch64 asset names are produced; see TODO for other arches.
 #
 # Everything the script needs that is not already installed is downloaded into
 # build/appimage-tools. Network access is required on the first run.
@@ -97,7 +98,7 @@ ensure_appimagetool() {
         APPIMAGETOOL_BIN="$(command -v appimagetool)"
     else
         APPIMAGETOOL_BIN="$TOOLS_DIR/appimagetool-${ARCH}.AppImage"
-        download "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-${ARCH}.AppImage" "$APPIMAGETOOL_BIN"
+        download "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-${ARCH}.AppImage" "$APPIMAGETOOL_BIN"
         chmod +x "$APPIMAGETOOL_BIN"
     fi
 }
@@ -113,6 +114,46 @@ ensure_python() {
     log "Extracting relocatable CPython ${PYTHON_PBS_VERSION} (${ARCH})"
     mkdir -p "$PYTHON_DIR"
     tar -xzf "$tarball" -C "$PYTHON_DIR" --strip-components=1
+}
+
+# ---------------------------------------------------------------------------------------------------------------------
+# shrink the AppDir
+#
+# Most of the weight comes from the PyQt6-Qt6 wheel (Qt6 libs) plus the
+# relocatable CPython. We drop files that are never used at runtime (dev
+# headers, static libs, type stubs, caches, translations, QML, CMake metadata
+# and the bundled pip) and strip every ELF we can.
+
+trim_appdir() {
+    log "Trimming AppDir (removing dev/doc/cache files, stripping binaries)"
+
+    local pydefs
+    pydefs=("$APPDIR"/usr/python/lib/python3.*)
+
+    find "$APPDIR" -type d -name '__pycache__' -prune -exec rm -rf {} + 2>/dev/null || true
+    find "$APPDIR" -type f \( -name '*.pyc' -o -name '*.pyo' -o -name '*.pyi' \) -delete 2>/dev/null || true
+    find "$APPDIR" -type f \( -name '*.a' -o -name '*.la' -o -name '*.prl' \) -delete 2>/dev/null || true
+
+    for d in "${pydefs[@]}"; do
+        rm -rf \
+            "$d/test" "$d/idlelib" "$d/tkinter" "$d/turtledemo" "$d/ensurepip" \
+            "$d/lib2to3" "$d/pydoc_data" "$d/site-packages/pip" \
+            "$d/site-packages/pip-"*.dist-info 2>/dev/null || true
+    done
+
+    local pysite
+    pysite=( "$APPDIR"/usr/python/lib/python3.*/site-packages/PyQt6/Qt6 )
+    for q in "${pysite[@]}"; do
+        rm -rf \
+            "$q/translations" "$q/qml" \
+            "$q/lib/cmake" "$q/lib/pkgconfig" "$q/lib/metatypes" 2>/dev/null || true
+    done
+
+    rm -rf "$APPDIR"/usr/include "$APPDIR"/usr/lib/pkgconfig \
+           "$APPDIR"/usr/share/man "$APPDIR"/usr/share/doc 2>/dev/null || true
+
+    find "$APPDIR" -type f \( -name '*.so' -o -name '*.so.*' -o -perm -u+x \) \
+        -exec sh -c 'file -b "$1" | grep -q ELF' _ {} \; -exec strip --strip-unneeded {} + 2>/dev/null || true
 }
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -210,10 +251,14 @@ export LINUXDEPLOY_OUTPUT_VERSION="$VERSION"
     2>&1 | sed 's/^/    /' || log "linuxdeploy reported issues; continuing"
 
 # ---------------------------------------------------------------------------------------------------------------------
-# build the AppImage
+# shrink, then build the AppImage
+
+trim_appdir
 
 log "Building $OUTPUT_NAME"
 export ARCH VERSION
-"$APPIMAGETOOL_BIN" "$APPDIR" "$OUTPUT_DIR/$OUTPUT_NAME"
+"$APPIMAGETOOL_BIN" "$APPDIR" "$OUTPUT_DIR/$OUTPUT_NAME" \
+    --comp zstd \
+    --mksquashfs-opt -Xcompression-level --mksquashfs-opt "${APPIMAGE_ZSTD_LEVEL:-19}"
 
 log "Done: $OUTPUT_DIR/$OUTPUT_NAME"

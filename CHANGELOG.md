@@ -20,6 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-15 22:40:00
+- **perf(packaging)**: shrink the AppImage significantly
+  - Switched the bundled `appimagetool` from AppImageKit (gzip squashfs) to the maintained `AppImage/appimagetool`, which defaults to **zstd**, and pinned `--comp zstd --mksquashfs-opt -Xcompression-level 19` (override with `APPIMAGE_ZSTD_LEVEL`).
+  - Added a `trim_appdir` pass before packaging: deletes Python test/idlelib/tkinter/`ensurepip`/pip, `__pycache__`/`*.pyc`/`*.pyo`, PyQt6 `*.pyi` stubs, Qt `translations`/`qml`/`lib/cmake`/`lib/pkgconfig`/`lib/metatypes`, `*.a`/`*.la`/`*.prl`, and `include`/`man`/`doc`, then strips every ELF with `strip --strip-unneeded`.
+
 ### 2026-10-15 22:15:00
 - **ci(packaging)**: Experimental aarch64 packaging workflow
   - New manual-only `.github/workflows/package-aarch64.yml` (`workflow_dispatch`). It builds the same target set as the release workflow (alpine/ubuntu/fedora/archlinux/void archives, AppImage, Flatpak, Nix) on `ubuntu-24.04-arm` runners and attaches the results — suffixed `-aarch64` so they never clobber the x86_64 assets — to the **same** versioned GitHub Release. Targets without an aarch64 image/build fail soft (`continue-on-error`).
