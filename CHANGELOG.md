@@ -20,6 +20,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-16 01:30:00
+- **fix(ci)**: make the void-musl build actually link and fail loudly
+  - The musl jobs set `LDFLAGS='-lfts $LDFLAGS'` with single quotes, so the literal `$LDFLAGS` was stored; make then expanded it as `$L` + `DFLAGS`, producing `ld: cannot find DFLAGS`. Changed to `LDFLAGS="-lfts $LDFLAGS"` in `build-test.yml`, `package.yml` and `package-aarch64.yml`.
+  - The musl build hid failures (`docker ... sh -c` with no `set -e`, and `make | tee` masking make's exit code), so a broken build still uploaded a near-empty tarball as success. Added `set -e` and made `make`'s exit status propagate.
+  - Added a `only` dispatch input to `build-test.yml` so a single component (e.g. `void-musl`) can be built and re-tested without running every job.
+
 ### 2026-10-16 00:45:00
 - **fix(ci)**: build VST frontend stubs on every distro and make the rpm version legal
   - alpine/archlinux/fedora jobs now install the OpenGL + X11 development packages (`mesa-dev libx11-dev libxcursor-dev libxext-dev libxrandr-dev`, `mesa libglvnd libx11 libxcursor libxext libxrandr`, `mesa-libGL-devel libX11-devel libXcursor-devel libXext-devel libXrandr-devel`). `HAVE_DGL` requires `pkg-config --exists gl x11 xcursor xext xrandr`; without it the VST2 plugin stubs (`bin/CarlaRack*`, `bin/CarlaPatchbay*`) are never built and `make install` fails at `install_main`.

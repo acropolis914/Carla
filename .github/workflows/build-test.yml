@@ -14,6 +14,22 @@ on:
         description: "Artifact retention in days"
         required: false
         default: "7"
+      only:
+        description: "Build only this component (all = run every job)"
+        required: false
+        default: "all"
+        type: choice
+        options:
+          - all
+          - ubuntu
+          - alpine
+          - fedora
+          - archlinux
+          - void-glibc
+          - void-musl
+          - nix
+          - appimage
+          - flatpak
 
 env:
   TEST_VERSION: ${{ github.event.inputs.version }}
@@ -22,6 +38,7 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    if: ${{ inputs.only == 'all' || inputs.only == matrix.platform }}
     strategy:
       fail-fast: false
       matrix:
@@ -193,6 +210,7 @@ jobs:
 
   build-void-musl:
     runs-on: ubuntu-latest
+    if: ${{ inputs.only == 'all' || inputs.only == 'void-musl' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -204,13 +222,14 @@ jobs:
         run: |
           VERSION="${TEST_VERSION}"
           docker run --rm -v "$PWD":/workspace -w /workspace ghcr.io/void-linux/void-musl-full:latest sh -c "
+            set -e
             xbps-install -S -y ca-certificates xbps || true
             xbps-install -Syu -y \
               base-devel pkg-config git \
               qt6-base-devel qt6-svg-devel qt6-tools qt6-tools-devel \
               python3-pyqt6 python3-pyqt6-devel-tools SDL2-devel musl-fts-devel ccache zstd tar
-            export LDFLAGS='-lfts \$LDFLAGS'
-            make -j$(nproc) DEFAULT_QT=6 2>&1 | tee build.log
+            export LDFLAGS=\"-lfts \$LDFLAGS\"
+            make -j\$(nproc) DEFAULT_QT=6 > build.log 2>&1 || { echo '=== build failed ==='; tail -n 60 build.log; exit 1; }
             mkdir -p /tmp/clara-pkg
             make install PREFIX=/usr DESTDIR=/tmp/clara-pkg DEFAULT_QT=6
             tar --zstd -cf clara-void-musl-${VERSION}.tar.zst -C /tmp/clara-pkg .
@@ -251,6 +270,7 @@ jobs:
   build-nix:
     runs-on: ubuntu-latest
     continue-on-error: true
+    if: ${{ inputs.only == 'all' || inputs.only == 'nix' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -308,6 +328,7 @@ jobs:
   build-appimage:
     runs-on: ubuntu-latest
     continue-on-error: true
+    if: ${{ inputs.only == 'all' || inputs.only == 'appimage' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -365,6 +386,7 @@ jobs:
   build-flatpak:
     runs-on: ubuntu-latest
     continue-on-error: true
+    if: ${{ inputs.only == 'all' || inputs.only == 'flatpak' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
