@@ -67,5 +67,19 @@
 - [x] `[Diff: 1]` Fix/feat: Full `.carjp` project file integration across autosave manager, recent files list, dirty tracking, and startup autoload
 ---
 
+## 🧠 Graph Introspection & Layout
+- [ ] `[Diff: 2]` feat: Graph introspection model (`collect_graph`) returning JSON-able nodes + ports + connections + derived topology, shared by arrange/control layers
+
+---
+
+## 🕹️ Control Interface (claractl / scripting)
+- [ ] `[Diff: 3]` IPC core: `QLocalServer` (UNIX socket) started by the GUI (`--control-socket`), newline-delimited JSON request/response protocol
+- [ ] `[Diff: 2]` Single command/ops layer shared by CLI + server + scripting (`getallnodes`, `getnode`, `getallconnections`, `movenode`, `connect src aport dst bport`, `disconnect`, `arrange`, `setlinestyle`, `getgraph`, `nodesinfo`)
+- [ ] `[Diff: 2]` `claractl` CLI + `carla --getnodeinfo` alias — connect to a running instance, print JSON or tables
+- [ ] `[Diff: 3]` In-UI scripting tab — `exec` user code with a `Clara` facade injected into globals (no imports), e.g. `Clara.getAllNodes() -> dict`
+- [ ] `[Diff: 2]` MCP/lib wrapper exposing the same ops layer for external agents
+
+---
+
 ## 📦 Packaging & Distribution
 - [ ] `[Diff: 1]` Create and maintain `clara-bin` package on AUR for rapid binary installations alongside `clara-git`

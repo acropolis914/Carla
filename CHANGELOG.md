@@ -20,6 +20,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-15 15:00:00
+- **feat(canvas)**: Graph introspection model
+  - New `patchcanvas/graph_info.py`: a single JSON-serialisable view of the patchbay (`collect_graph`) — nodes (id, name, split, pos/size/rect, ports with mode/type), connections (out/in group+port+node index) and derived topology (edges, incoming, degree, connected components, longest-path layers). Foundation for the layout plugins and the future claractl / scripting layer.
+
+### 2026-10-15 14:00:00
+- **feat(canvas)**: Pattern-aware heuristic auto-arrange
+  - New `heuristic` arrange algorithm (`patchcanvas/arrange_heuristic.py`), labelled "Heuristic (pattern-aware)", registered after `sugiyama` and selectable from the Arrange Tools menu.
+  - It detects connection topology instead of applying a single rule: splits the graph into connected components (islands), then per component recognises exclusive pairs (side by side), fan-out (source beside a vertical stack of destinations), merges (sources aligned before the sink), fully connected cliques (compact grid), stars / hub-and-spoke (sources left, hub centre, sinks right), and plain chains (following signal flow). Anything unrecognised falls back to a layered pass with barycenter crossing reduction.
+  - Deterministic (ties broken by node name), reuses `_nodeGraph`/`syncNodePositions`, honours snap/grid, and leaves island separation gaps so unrelated groups do not overlap.
+
+### 2026-10-15 13:00:00
+- **perf(canvas)**: Fix multi-second freeze when applying canvas settings (pressing OK) while a pure-Python router (`router`/`orthogonal`) is the active line style.
+  - `slot_configureCarla` tears down and rebuilds the whole patchbay, so every cable re-routes once; at ~50-80 ms per long cable that meant several seconds of UI block.
+  - `linealgo_ortho.py`: rewrote `_astar` to a flat array-indexed state space (`index = (cell*4)|dir`, list-based `dist`/`prev`, no per-node dict/tuple allocation) and capped grid resolution (`_MAX_CELLS=72`) so cable length no longer dictates A* work. ~50-80 ms/line → ~5-10 ms/line.
+  - `linealgo_router.py`: same resolution cap (`_MAX_CELLS=72`) in `plan_waypoints`. ~11-15 ms/line → ~6-8 ms/line.
+  - Net effect: a ~50-cable patch drops from ~3-4 s to a few hundred ms on settings apply.
+
+### 2026-10-15 12:00:00
+- **feat(canvas)**: Orthogonal router, Sugiyama arrange
+  - New `orthogonal` line algorithm (`patchcanvas/linealgo_ortho.py`): self-contained Manhattan router, a direction-aware A* over an occupancy grid with a bend-aware cost (`length + bend_penalty·turns + soft cable-proximity cost`), node boxes as hard obstacles, neighbouring cables as soft obstacles, and rounded corners. Registered after `router`.
+  - New `sugiyama` arrange algorithm (`patchcanvas/arrange_sugiyama.py`): classic layered layout — cycle breaking, longest-path layering, barycenter crossing reduction (down/up sweeps), even column placement. It appears in the Arrange Tools "Auto arrange" submenu automatically via the arrange registry.
+  - Settings "Line style" combo picks up `orthogonal` with no extra code.
+
+### 2026-10-15 11:15:00
+- **refactor(canvas)**: Pluggable arrange algorithms, self-contained router plugin, router fix
+  - New `patchcanvas/arrangealgos.py` registry mirroring `linealgos.py`: a `LayoutAlgorithm` interface (`arrange(nodes)`), `register_layout_algorithm`/`get_layout_algorithm`/`layout_algorithms`/`resolve_layout_algorithm`. Two built-ins: `classic` (the original signal-flow `autoArrange()`, still used by the context menus) and `flow` (the newer columnar, selection-aware layout; the default). `patchcanvas.autoArrangeNodes(nodes, algorithm=None)` now dispatches through the registry.
+  - Arrange choice is selectable from the **Arrange Tools** popover ("Auto arrange" submenu) and persisted as `Canvas/ArrangeStyle` (`CARLA_KEY_CANVAS_ARRANGE_STYLE`, read in `carla_host`, stored on the Python-side `options_t.arrange_style`).
+  - The `router` A* + flocking implementation moved out of the shared `patchcanvas/routing/` package into a single self-contained plugin module `patchcanvas/linealgo_router.py` (grid + A* + string-pulling + flocking + `RouterLineAlgorithm`). It still consumes only the public `LineContext` API; the `routing/` package was removed.
+- **fix(canvas)**: Smart router no longer draws straight through node boxes
+  - The A* search produced a correct detour, but flocking relaxation then pulled the waypoints back through the obstacle (the unit test was too lenient). Relaxation now (a) only applies the smoothing force when both neighbours can see each other (line-of-sight via the occupancy grid), (b) hard-projects any waypoint out of an inflated node box, and (c) validates the final polyline and falls back to the raw A* path if it ever tunnels. Added a real-`QGraphicsScene` integration test asserting no waypoint or segment enters an inflated node rect.
+
 ### 2026-10-15 10:30:00
 - **feat(canvas)**: Obstacle-aware routing API (A* + flocking) and smart arrange/wire tools
   - New `patchcanvas/routing/` package: `grid.py` (scene-space occupancy grid), `astar.py` (A* search + string-pulling simplify), `flock.py` (force-based waypoint relaxation for cable spacing), and a single public entry point `plan_waypoints(ctx, ...)`. It consumes only a `LineContext` (endpoints, `nodes()`, `siblings()`), never patchcanvas internals.
@@ -28,9 +59,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Canvas context toolbar now exposes a grouped **Arrange Tools** popover (auto arrange / auto wire / arrange + wire / auto repel), replacing the separate arrange/repel buttons so the bar stays uncluttered. Wire/both are disabled with no selection.
 
 ### 2026-10-15 09:05:00
-- **refactor(canvas)**: Retire adaptive, default to bézier, label deprecated styles
+- **refactor(canvas)**: Retire adaptive, default to bézier
   - `adaptive` hybrid dispatcher removed from the registry; `bezier` is the default again (`CARLA_DEFAULT_CANVAS_LINE_STYLE`, `patchcanvas.options.line_style`). A future A* + flocking router will replace it.
-  - Added a `deprecated` flag to `LineAlgorithm`; `serpentine`, `meander`, `sine`, `zigzag`, `staircase` and `arcloop` are kept but now labelled "` (to be removed)`" in the settings combo.
 
 ### 2026-10-15 08:40:00
 - **fix(canvas)**: Line styles collapsed to straight; tune adaptive hybrid
@@ -38,10 +68,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### 2026-10-15 08:20:00
 - **feat(canvas)**: New cable shapes + adaptive hybrid routing
-  - Added registered line algorithms: `sine`, `zigzag`, `staircase`, `serpentine`, `meander`, `arcloop`, `circuit` (H/V trace with rounded corners and sibling-based lane offsets), and `adaptive`, a hybrid dispatcher.
-  - `adaptive` picks per cable: selected → arc/loop, crowded corridor → circuit trace, short → straight, medium → serpentine, long → rounded meander. It is now the **default** line style (`CARLA_DEFAULT_CANVAS_LINE_STYLE`, `options.line_style`).
+  - Added a registered `circuit` line algorithm (H/V trace with rounded corners and sibling-based lane offsets).
   - Renderer flags renamed/clarified: `dynamic` (re-route all cables on node moves; `tracks_others` kept as a read alias) and `selection_sensitive` (re-route on selection change, coalesced per event-loop tick). Dynamic re-routes are coalesced in `CanvasBox.repaintLines` to at most once per event-loop tick.
-  - New geometry helper `rounded_polyline` shared by the circuit/meander/staircase shapes.
+  - New geometry helper `rounded_polyline` used by the circuit shape.
 
 ### 2026-10-15 07:05:00
 - **refactor(canvas)**: Pluggable line-algorithm registry for patchbay cables

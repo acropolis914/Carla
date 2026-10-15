@@ -48,7 +48,7 @@ from . import (
 #
 # LineContext.start / .end are QPointF in the item's local space, .direction is
 # DIRECTION_OUTPUT (+1) when the cable leaves an output port (to the right) or
-# DIRECTION_INPUT (-1) when it leaves an input port. For avoidance routing,
+# DIRECTION_INPUT (-1) when it leaves an input port. For obstacle-aware routing,
 # ctx.nodes() yields (group_id, QRectF) for every node and ctx.siblings() yields the
 # other cables' endpoints.
 # ------------------------------------------------------------------------------------------------------------
@@ -91,7 +91,7 @@ class LineContext(object):
 
 
     def nodes(self, exclude=()):
-        """Yield (group_id, QRectF) scene bounds for every node, for avoidance routing."""
+        """Yield (group_id, QRectF) scene bounds for every node, for obstacle-aware routing."""
         if self.canvas is None:
             return
         scene = getattr(self.canvas, "scene", None)
@@ -122,8 +122,6 @@ class LineAlgorithm(object):
     dynamic = False
     #: True when the path depends on selection state and needs a re-route on select
     selection_sensitive = False
-    #: True when this algorithm is kept only for compatibility and is slated for removal
-    deprecated = False
 
     @property
     def tracks_others(self):
@@ -145,9 +143,7 @@ class LineAlgorithm(object):
         return {}
 
     def display_label(self):
-        """Label shown in the settings UI; deprecated algorithms are marked for removal."""
-        if self.deprecated:
-            return "{} (to be removed)".format(self.label)
+        """Label shown in the settings UI."""
         return self.label
 
 
@@ -174,13 +170,6 @@ def rounded_polyline(points, radius):
 
     path.lineTo(QPointF(points[-1]))
     return path
-
-
-def _vertical_amplitude(start, end, factor):
-    """Vertical wiggle amount: honor a large vertical delta, else scale off the horizontal span."""
-    dy = abs(end.y() - start.y())
-    dx = abs(end.x() - start.x())
-    return dy if dy > dx * 0.4 else max(6.0, dx * factor)
 
 
 # ------------------------------------------------------------------------------------------------------------
@@ -241,166 +230,6 @@ class SteppedLineAlgorithm(LineAlgorithm):
         return path
 
 
-class SineLineAlgorithm(LineAlgorithm):
-    name = "sine"
-    label = "Sine wave"
-    deprecated = True
-    amplitude = 0.22
-    periods = 1.5
-
-    def build_path(self, ctx):
-        start, end = ctx.start, ctx.end
-        dx = end.x() - start.x()
-        dy = end.y() - start.y()
-        amp = _vertical_amplitude(start, end, self.amplitude)
-        steps = max(8, int(abs(dx) // 6))
-        path = QPainterPath(QPointF(start))
-        for i in range(1, steps + 1):
-            t = i / float(steps)
-            x = start.x() + dx * t
-            y = start.y() + dy * t + amp * math.sin(2.0 * math.pi * self.periods * t)
-            path.lineTo(x, y)
-        return path
-
-    def params(self):
-        return {"amplitude": self.amplitude, "periods": self.periods}
-
-
-class ZigzagLineAlgorithm(LineAlgorithm):
-    name = "zigzag"
-    label = "Zigzag"
-    deprecated = True
-    teeth = 6
-    amplitude = 0.18
-
-    def build_path(self, ctx):
-        start, end = ctx.start, ctx.end
-        dx = end.x() - start.x()
-        dy = end.y() - start.y()
-        amp = _vertical_amplitude(start, end, self.amplitude)
-        n = max(2, self.teeth)
-        path = QPainterPath(QPointF(start))
-        for i in range(1, n + 1):
-            t = i / float(n)
-            x = start.x() + dx * t
-            y = start.y() + dy * t
-            if i < n:
-                y += amp if i % 2 else -amp
-            path.lineTo(x, y)
-        return path
-
-    def params(self):
-        return {"teeth": self.teeth, "amplitude": self.amplitude}
-
-
-class StaircaseLineAlgorithm(LineAlgorithm):
-    name = "staircase"
-    label = "Staircase"
-    deprecated = True
-    steps = 5
-    corner_radius = 0.0
-
-    def build_path(self, ctx):
-        start, end = ctx.start, ctx.end
-        dx = end.x() - start.x()
-        dy = end.y() - start.y()
-        n = max(1, self.steps)
-        points = [QPointF(start)]
-        for i in range(1, n + 1):
-            t = i / float(n)
-            points.append(QPointF(start.x() + dx * t, start.y() + dy * (i - 1) / float(n)))
-            points.append(QPointF(start.x() + dx * t, start.y() + dy * t))
-        return rounded_polyline(points, self.corner_radius)
-
-    def params(self):
-        return {"steps": self.steps}
-
-
-class SerpentineLineAlgorithm(LineAlgorithm):
-    name = "serpentine"
-    label = "Serpentine"
-    deprecated = True
-    bends = 3
-    amplitude = 0.3
-
-    def build_path(self, ctx):
-        start, end = ctx.start, ctx.end
-        dx = end.x() - start.x()
-        dy = end.y() - start.y()
-        amp = _vertical_amplitude(start, end, self.amplitude)
-        n = max(1, self.bends)
-        path = QPainterPath(QPointF(start))
-        for i in range(n):
-            x0 = start.x() + dx * i / float(n)
-            x1 = start.x() + dx * (i + 1) / float(n)
-            y0 = start.y() + dy * i / float(n)
-            y1 = start.y() + dy * (i + 1) / float(n)
-            cx = (x0 + x1) / 2.0
-            off = (amp if i % 2 == 0 else -amp) / 2.0
-            path.cubicTo(cx, y0 + off, cx, y1 - off, x1, y1)
-        return path
-
-    def params(self):
-        return {"bends": self.bends, "amplitude": self.amplitude}
-
-
-class MeanderLineAlgorithm(LineAlgorithm):
-    name = "meander"
-    label = "Rounded meander"
-    deprecated = True
-    turns = 3
-    amplitude = 0.22
-    corner_radius = 12.0
-
-    def build_path(self, ctx):
-        start, end = ctx.start, ctx.end
-        dx = end.x() - start.x()
-        dy = end.y() - start.y()
-        amp = _vertical_amplitude(start, end, self.amplitude)
-        n = max(1, self.turns)
-        run = dx / float(n)
-        points = [QPointF(start)]
-        for i in range(n):
-            x0 = start.x() + run * i
-            x1 = start.x() + run * (i + 1)
-            rail = start.y() + (amp if i % 2 == 0 else -amp)
-            points.append(QPointF(x0, rail))
-            points.append(QPointF(x1, rail))
-        points.append(QPointF(end))
-        return rounded_polyline(points, self.corner_radius)
-
-    def params(self):
-        return {"turns": self.turns, "amplitude": self.amplitude, "corner_radius": self.corner_radius}
-
-
-class ArcLoopLineAlgorithm(LineAlgorithm):
-    name = "arcloop"
-    label = "Arc / loop"
-    deprecated = True
-    bulge = 0.6
-    loop = True
-
-    def build_path(self, ctx):
-        start, end = ctx.start, ctx.end
-        dx = end.x() - start.x()
-        dy = end.y() - start.y()
-        span = max(abs(dx), 40.0)
-        lift = max(30.0, span * self.bulge) * (1.0 if dy >= 0 else -1.0)
-        path = QPainterPath(QPointF(start))
-        if self.loop:
-            r = min(span * 0.22, 56.0)
-            path.cubicTo(start.x() + r, start.y() - 2.0 * r,
-                         start.x() - r, start.y() - 2.0 * r,
-                         start.x(), start.y() - r)
-        c1 = QPointF(start.x() + span * 0.12, start.y() - lift)
-        c2 = QPointF(end.x() - span * 0.12, end.y() - lift)
-        path.cubicTo(c1, c2, QPointF(end))
-        return path
-
-    def params(self):
-        return {"bulge": self.bulge, "loop": self.loop}
-
-
 # ------------------------------------------------------------------------------------------------------------
 # Phase B — circuit traces and the adaptive hybrid
 
@@ -455,48 +284,12 @@ class CircuitLineAlgorithm(LineAlgorithm):
         return {"lane_spacing": self.lane_spacing, "corner_radius": self.corner_radius}
 
 
-class RouterLineAlgorithm(LineAlgorithm):
-    """Obstacle-aware router: A* around node boxes, then flocking relaxation.
-
-    Consumes only the LineContext (endpoints, node bounds, sibling cables) through
-    the public patchcanvas.routing API, so it stays a drop-in LineAlgorithm.
-    """
-
-    name = "router"
-    label = "Smart router (A* + flocking)"
-    dynamic = True
-
-    #: occupancy grid resolution in scene units (smaller = finer but slower)
-    cell_size = 26.0
-    #: how far cables keep clear of node boxes
-    clearance = 16.0
-    #: corner rounding radius
-    corner_radius = 10.0
-
-    def build_path(self, ctx):
-        from .routing import plan_waypoints
-
-        try:
-            points = plan_waypoints(
-                ctx, cell=self.cell_size, clearance=self.clearance
-            )
-        except Exception:
-            points = None
-
-        if not points or len(points) < 2:
-            return BezierLineAlgorithm().build_path(ctx)
-        return rounded_polyline(points, self.corner_radius)
-
-    def params(self):
-        return {
-            "cell": self.cell_size,
-            "clearance": self.clearance,
-            "corner_radius": self.corner_radius,
-        }
-
+# The `router` LineAlgorithm lives in its own self-contained plugin module
+# (linealgo_router.py) together with its A* + flocking implementation. It is
+# imported and registered at the bottom of this file.
 
 # NOTE: the adaptive/hybrid dispatcher was removed; its role is now covered by the
-# A* + flocking `router` above. Bézier stays the default line style.
+# A* + flocking `router`. Bézier stays the default line style.
 
 
 # ------------------------------------------------------------------------------------------------------------
@@ -548,11 +341,13 @@ def active_line_algorithm_tracks_others():
 register_line_algorithm(BezierLineAlgorithm)
 register_line_algorithm(StraightLineAlgorithm)
 register_line_algorithm(CircuitLineAlgorithm)
+
+# self-contained A* + flocking router plugin
+from .linealgo_router import RouterLineAlgorithm  # noqa: E402
 register_line_algorithm(RouterLineAlgorithm)
+
+# self-contained Manhattan router plugin
+from .linealgo_ortho import OrthogonalLineAlgorithm  # noqa: E402
+register_line_algorithm(OrthogonalLineAlgorithm)
+
 register_line_algorithm(SteppedLineAlgorithm)
-register_line_algorithm(SerpentineLineAlgorithm)
-register_line_algorithm(MeanderLineAlgorithm)
-register_line_algorithm(SineLineAlgorithm)
-register_line_algorithm(ZigzagLineAlgorithm)
-register_line_algorithm(StaircaseLineAlgorithm)
-register_line_algorithm(ArcLoopLineAlgorithm)

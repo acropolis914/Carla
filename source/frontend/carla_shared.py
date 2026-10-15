@@ -215,6 +215,7 @@ CARLA_KEY_CANVAS_NODE_RADIUS       = "Canvas/NodeRadius"      # int
 CARLA_KEY_CANVAS_LINE_STYLE         = "Canvas/LineStyle"       # str (registered line algorithm name)
 CARLA_KEY_CANVAS_LINE_STROKE        = "Canvas/LineStroke"      # str ("solid", "dotted", "dashed")
 CARLA_KEY_CANVAS_LINE_OPACITY       = "Canvas/LineOpacity"     # int (20 - 100)
+CARLA_KEY_CANVAS_ARRANGE_STYLE      = "Canvas/ArrangeStyle"    # str (registered arrange algorithm name)
 CARLA_KEY_CANVAS_NODE_MIN_WIDTH     = "Canvas/NodeMinWidth"    # int (100 - 350)
 
 CARLA_KEY_ENGINE_DRIVER_PREFIX         = "Engine/Driver-"
@@ -313,6 +314,7 @@ CARLA_DEFAULT_CANVAS_NODE_RADIUS       = 8
 CARLA_DEFAULT_CANVAS_LINE_STYLE        = "bezier"
 CARLA_DEFAULT_CANVAS_LINE_STROKE       = "solid"
 CARLA_DEFAULT_CANVAS_LINE_OPACITY      = 100
+CARLA_DEFAULT_CANVAS_ARRANGE_STYLE     = "flow"
 CARLA_DEFAULT_CANVAS_NODE_MIN_WIDTH    = 160
 
 # Engine

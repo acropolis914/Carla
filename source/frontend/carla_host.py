@@ -2838,6 +2838,9 @@ class HostWindow(QMainWindow):
         pOptions.line_opacity = self.fSavedSettings.get(
             CARLA_KEY_CANVAS_LINE_OPACITY, CARLA_DEFAULT_CANVAS_LINE_OPACITY
         )
+        pOptions.arrange_style = self.fSavedSettings.get(
+            CARLA_KEY_CANVAS_ARRANGE_STYLE, CARLA_DEFAULT_CANVAS_ARRANGE_STYLE
+        )
 
         if self.fSavedSettings[CARLA_KEY_CANVAS_FANCY_EYE_CANDY]:
             pOptions.eyecandy = patchcanvas.EYECANDY_FULL

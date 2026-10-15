@@ -51,6 +51,7 @@ from .canvasbox import CanvasBox
 from .canvasbezierline import CanvasBezierLine
 from .canvasline import CanvasLine
 from .linealgos import resolve_line_algorithm
+from .arrangealgos import layout_algorithms, resolve_layout_algorithm
 from .theme import Theme, getDefaultTheme, getThemeName
 from .utils import (
     CanvasCallback,
@@ -2476,64 +2477,14 @@ def _nodeGraph(nodes):
     return edges, incoming, group_name
 
 
-def autoArrangeNodes(nodes=None):
-    """Lay out the given (or selected / all) nodes into signal-flow columns."""
+def autoArrangeNodes(nodes=None, algorithm=None):
+    """Arrange nodes using the selected arrange-algorithm plugin.
+
+    `algorithm` selects a registered LayoutAlgorithm by name; when None the last
+    choice from settings (``options.arrange_style``) is used.
+    """
     nodes = _workingNodes(nodes)
-    if len(nodes) < 2:
-        return
-
-    edges, incoming, group_name = _nodeGraph(nodes)
-
-    # Longest-path layering (nodes inside a cycle settle at layer 0)
-    layer = {n: 0 for n in nodes}
-    for _ in range(len(nodes)):
-        changed = False
-        for src, targets in edges.items():
-            for dst in targets:
-                if layer[dst] < layer[src] + 1:
-                    layer[dst] = layer[src] + 1
-                    changed = True
-        if not changed:
-            break
-
-    columns = {}
-    for n in nodes:
-        columns.setdefault(layer[n], []).append(n)
-    sorted_layers = sorted(columns.keys())
-
-    node_gap = 64
-    vertical_gap = 40
-    origin_x = min(n.x() for n in nodes)
-    center_y = sum(n.y() + n.boundingRect().height() / 2.0 for n in nodes) / float(len(nodes))
-
-    col_widths = {
-        lay: max(n.boundingRect().width() for n in columns[lay])
-        for lay in sorted_layers
-    }
-    col_x = {}
-    curr_x = origin_x
-    for lay in sorted_layers:
-        col_x[lay] = curr_x
-        curr_x += col_widths[lay] + node_gap
-
-    for lay in sorted_layers:
-        col = columns[lay]
-        col.sort(key=lambda n: group_name.get(n, "").lower())
-        total_h = (
-            sum(n.boundingRect().height() for n in col)
-            + (len(col) - 1) * vertical_gap
-        )
-        cy = center_y - total_h / 2.0
-        for n in col:
-            n.setPos(col_x[lay], cy)
-            cy += n.boundingRect().height() + vertical_gap
-
-    if getattr(options, "snap_enabled", True):
-        gs = max(1, getattr(options, "grid_size", 20))
-        for n in nodes:
-            n.setPos(round(n.x() / gs) * gs, round(n.y() / gs) * gs)
-
-    syncNodePositions(nodes)
+    resolve_layout_algorithm(algorithm).arrange(nodes)
 
 
 def autoRepelNodes(nodes=None):

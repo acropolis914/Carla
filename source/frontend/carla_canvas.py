@@ -1102,8 +1102,10 @@ class CanvasContextToolBarOverlay(QFrame):
 
         has_selection = count > 0
 
-        act_arrange = menu.addAction("Auto arrange")
-        act_arrange.triggered.connect(lambda: patchcanvas.autoArrangeNodes())
+        arrange_menu = menu.addMenu("Auto arrange")
+        for algo_name, algo_label in patchcanvas.layout_algorithms():
+            act = arrange_menu.addAction(algo_label)
+            act.triggered.connect(lambda checked=False, a=algo_name: self._slot_run_arrange(a))
 
         act_wire = menu.addAction("Auto wire")
         act_wire.triggered.connect(lambda: patchcanvas.autoWire())
@@ -1119,6 +1121,16 @@ class CanvasContextToolBarOverlay(QFrame):
 
         btn_pos = source_button.mapToGlobal(QPoint(0, source_button.height() + 4))
         menu.exec_(btn_pos)
+
+    def _slot_run_arrange(self, algorithm):
+        patchcanvas.options.arrange_style = algorithm
+        try:
+            from utils import QSafeSettings
+            from carla_shared import CARLA_KEY_CANVAS_ARRANGE_STYLE
+            QSafeSettings("falkTX", "Carla2").setValue(CARLA_KEY_CANVAS_ARRANGE_STYLE, algorithm)
+        except Exception:
+            pass
+        patchcanvas.autoArrangeNodes(algorithm=algorithm)
 
     def _slot_show_color_menu(self, source_button, nodes):
         for n in nodes:

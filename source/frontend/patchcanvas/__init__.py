@@ -103,6 +103,7 @@ class options_t(object):
         "line_style",
         "line_stroke",
         "line_opacity",
+        "arrange_style",
         "grid_enabled",
         "grid_size",
         "snap_enabled",
@@ -280,6 +281,7 @@ options.node_min_width = 160
 options.line_style = "bezier"
 options.line_stroke = "solid"
 options.line_opacity = 100
+options.arrange_style = "flow"
 options.grid_enabled = True
 options.grid_size = 20
 options.snap_enabled = True
@@ -309,6 +311,7 @@ def setOptions(new_options):
     options.line_style = getattr(new_options, "line_style", "bezier")
     options.line_stroke = getattr(new_options, "line_stroke", "solid")
     options.line_opacity = getattr(new_options, "line_opacity", 100)
+    options.arrange_style = getattr(new_options, "arrange_style", "flow")
     options.grid_enabled = getattr(new_options, "grid_enabled", True)
     options.grid_size = getattr(new_options, "grid_size", 20)
     options.snap_enabled = getattr(new_options, "snap_enabled", True)
@@ -344,4 +347,13 @@ from .patchcanvas import (
     autoWire,
     autoArrangeAndWire,
     autoRepelNodes,
+)
+
+# Arrange algorithm plugin registry
+from .arrangealgos import (
+    register_layout_algorithm,
+    get_layout_algorithm,
+    layout_algorithm_names,
+    layout_algorithms,
+    resolve_layout_algorithm,
 )
