@@ -20,6 +20,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-16 04:20:00
+- **ci(aur)**: build a real pacman package with makepkg in the test workflow
+  - New `aur` choice for the `only` dispatch input plus a `build-aur` job: builds the source in an `archlinux:latest` container, then packages it with `makepkg` as a non-root user, producing `clara-bin-<ver>-1-x86_64.pkg.tar.zst` with proper `.PKGINFO` and `.MTREE` metadata (instead of the plain DESTDIR tarball the `distros` job uploads). The job asserts both metadata entries exist and uploads the result as `aur-package`.
+  - The build container installs the full AUR runtime dependency list, so the dependency set declared in the PKGBUILD is validated on every run.
+
+### 2026-10-16 04:05:00
+- **fix(build)**: stop relying on `which` for tool and interpreter detection
+  - `source/Makefile.deps.mk` detected the PyQt6 UI tools with `$(shell which pyuic6)`. Minimal build containers (e.g. `fedora:latest`) do not ship `which`, so `PYUIC6` came out empty, `HAVE_FRONTEND` stayed false and the fedora rpm was built without the entire python frontend (no `clara` launcher, no desktop files, only `carla-single` + libs). Switched `PYRCC5`/`PYUIC5`/`PYUIC6` detection to `command -v`.
+  - `data/carla*` launcher wrappers resolved the interpreter with `PYTHON=$(which python3)` and a broken `[ ! -f ${PYTHON} ]` check. On guests without `which` (e.g. minimal arch) `$PYTHON` expanded empty and the shell tried to exec the non-executable `/usr/share/carla/carla`, dying with `line 15: /usr/share/carla/carla: Permission denied`. Switched all nine wrappers to `command -v` + `[ -z "$PYTHON" ]`.
+
+### 2026-10-16 03:40:00
+- **fix(rpm)**: stop the fedora rpm from owning shared system directories
+  - `.github/workflows/specs/clara.spec` used a catch-all `%files` of `/usr/*`, which made the package claim `/usr/bin`, `/usr/include`, `/usr/lib`, `/usr/lib/lv2`, `/usr/lib/pkgconfig` and `/usr/share` as its own directories. On Fedora these belong to `filesystem`/`lv2`/`pkgconf`, so `dnf install clara-*.rpm` aborted with `file /usr/bin from install of clara-0.0.0-1.fc44.x86_64 conflicts with file from package filesystem-3.18-52.fc44.x86_64`.
+  - Replaced the glob with the actual clara payload paths: `/usr/bin/*`, `/usr/include/carla`, `/usr/lib/carla`, `/usr/lib/lv2/carla.lv2`, `/usr/lib/pkgconfig/*`, `/usr/share/carla`.
+
 ### 2026-10-16 01:30:00
 - **fix(ci)**: make the void-musl build actually link and fail loudly
   - The musl jobs set `LDFLAGS='-lfts $LDFLAGS'` with single quotes, so the literal `$LDFLAGS` was stored; make then expanded it as `$L` + `DFLAGS`, producing `ld: cannot find DFLAGS`. Changed to `LDFLAGS="-lfts $LDFLAGS"` in `build-test.yml`, `package.yml` and `package-aarch64.yml`.

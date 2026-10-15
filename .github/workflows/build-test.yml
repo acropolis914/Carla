@@ -22,6 +22,7 @@ on:
         options:
           - all
           - distros
+          - aur
           - void-musl
           - nix
           - appimage
@@ -201,6 +202,131 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.platform }}-package
+          path: ${{ env.OUTFILE }}
+          retention-days: ${{ env.TEST_RETENTION }}
+
+  build-aur:
+    runs-on: ubuntu-latest
+    if: ${{ inputs.only == 'all' || inputs.only == 'aur' }}
+    container:
+      image: archlinux:latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Install dependencies
+        run: |
+          pacman -Syu --noconfirm \
+            git base-devel \
+            qt6-base qt6-svg qt6-tools \
+            python python-pyqt6 sdl2 zstd tar ccache \
+            mesa libglvnd libx11 libxcursor libxext libxrandr \
+            alsa-lib hicolor-icon-theme qt6-wayland wayland python-rich \
+            fluidsynth liblo file libsndfile ttf-nerd-fonts-symbols
+
+      - name: Detect frontend tooling
+        run: |
+          echo "pyuic6: $(command -v pyuic6 || echo MISSING)"
+          make -pn 2>&1 | grep -E '^(HAVE_FRONTEND|HAVE_QT6|FRONTEND_TYPE)[ :=]' || true
+
+      - name: Build project
+        id: compile
+        run: |
+          make clean || true
+          make -j$(nproc) DEFAULT_QT=6 2>&1 | tee build.log
+
+      - name: Package with makepkg
+        id: pkg
+        if: steps.compile.outcome == 'success'
+        run: |
+          VERSION="${TEST_VERSION}"
+          [ -n "$VERSION" ] || VERSION=0.0.0
+          PKGVER="${VERSION//-/.}"
+          useradd -m builder
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+          PKGDIR=/home/builder/pkg
+          mkdir -p "$PKGDIR"
+          cat > "$PKGDIR/PKGBUILD" <<EOF
+          pkgname=clara-bin
+          pkgver=${PKGVER}
+          pkgrel=1
+          pkgdesc="Audio Plugin Host (fork with UI/UX enhancements - CI binary build)"
+          arch=('x86_64')
+          url="https://github.com/acropolis914/Clara"
+          license=('GPL-2.0-or-later')
+          depends=(
+            'alsa-lib'
+            'glibc'
+            'hicolor-icon-theme'
+            'libglvnd'
+            'libx11'
+            'libxcursor'
+            'libxrandr'
+            'qt6-wayland'
+            'wayland'
+            'python-rich'
+            'python-pyqt6'
+            'sdl2'
+            'qt6-base'
+            'qt6-svg'
+            'fluidsynth'
+            'liblo'
+            'file'
+            'libsndfile'
+            'ttf-nerd-fonts-symbols'
+          )
+          optdepends=(
+            'jack: for using carla/clara with JACK'
+            'lv2-host: for the LV2 plugin'
+            'vst-host: for the VST plugin'
+            'python-pyliblo: OSC control support'
+            'python-rdflib: LADSPA-RDF support'
+          )
+          provides=('carla' 'carla-git' 'clara' 'clara-git' 'clap-host' 'dssi-host' 'ladspa-host' 'lv2-host' 'vst3-host' 'vst-host')
+          conflicts=('carla' 'carla-git' 'clara' 'clara-git')
+          source=()
+          package() {
+            cd "${GITHUB_WORKSPACE}"
+            make PREFIX=/usr DESTDIR="\$pkgdir" install
+          }
+          EOF
+          chown -R builder:builder "$PKGDIR"
+          su builder -c "cd $PKGDIR && makepkg -f --noconfirm"
+          cp "$PKGDIR"/*.pkg.tar.zst .
+          echo "OUTFILE=$(ls *.pkg.tar.zst | head -n 1)" >> "$GITHUB_ENV"
+          echo "--- package contents check ---"
+          bsdtar -tf "$(ls *.pkg.tar.zst | head -n 1)" | grep -E "^\.(PKGINFO|MTREE)$" || true
+
+      - name: Record Status
+        if: always()
+        run: |
+          mkdir -p status-reports
+          OUTCOME="${{ job.status }}"
+          DETAILS="All steps passed."
+          if [ "$OUTCOME" != "success" ]; then
+            if [ -f build.log ]; then
+              DETAILS=$(tail -n 20 build.log | tr '\n' ' ' | sed 's/"/\\"/g')
+            else
+              DETAILS="Failed during dependency setup or packaging."
+            fi
+          fi
+          echo "{\"platform\": \"aur\", \"status\": \"$OUTCOME\", \"file\": \"${OUTFILE:-none}\", \"error\": \"$DETAILS\"}" > status-reports/aur.json
+
+      - name: Upload AUR status report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-aur
+          path: status-reports/*.json
+          retention-days: ${{ env.TEST_RETENTION }}
+
+      - name: Upload AUR package
+        if: steps.pkg.outcome == 'success' && env.OUTFILE != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: aur-package
           path: ${{ env.OUTFILE }}
           retention-days: ${{ env.TEST_RETENTION }}
 

@@ -1,8 +1,8 @@
 #!/bin/sh
 
-PYTHON=$(which python3 2>/dev/null)
+PYTHON=$(command -v python3 2>/dev/null)
 
-if [ ! -f ${PYTHON} ]; then
+if [ -z "$PYTHON" ]; then
   PYTHON=python
 fi
 
