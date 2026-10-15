@@ -20,6 +20,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-15 21:30:00
+- **ci(packaging)**: AppImage & Flatpak release jobs + docs
+  - `.github/workflows/package.yml` now builds a standalone x86_64 **AppImage** and a **Flatpak** bundle on every `v*` tag and ships them as release assets alongside the deb/rpm/tar.zst/nix packages. Both jobs are non-blocking (`continue-on-error`) so a bundle problem cannot block the rest of the release.
+  - README + `installation.md` document the AppImage/Flatpak installs and the `clara` primary / `carla` backwards-compatible symlink naming.
+  - Bumped Clara to **1.0.1**.
+
 ### 2026-10-15 20:30:00
 - **chore(release)**: Clara 1.0.0 + portable packaging
   - Bumped the Clara application version to **1.0.0** (`CLARA_VERSION_STRING`, `aur/clara-bin/PKGBUILD`, `releases.json`).

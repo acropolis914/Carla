@@ -277,9 +277,120 @@ jobs:
           name: nix-package
           path: ${{ env.OUTFILE }}
 
+  build-appimage:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            git make build-essential pkg-config \
+            qt6-base-dev qt6-svg-dev qt6-tools-dev qt6-tools-dev-tools \
+            python3 python3-pyqt6 libsdl2-dev \
+            file patchelf zsync libfuse2 zstd tar
+
+      - name: Build AppImage
+        id: compile
+        run: |
+          chmod +x scripts/build_appimage.sh
+          scripts/build_appimage.sh 2>&1 | tee build.log
+          echo "OUTFILE=$(ls dist/*.AppImage 2>/dev/null | head -n1)" >> "$GITHUB_ENV"
+
+      - name: Record Status & Tail Log
+        if: always()
+        run: |
+          mkdir -p status-reports
+          OUTCOME="${{ job.status }}"
+          DETAILS="All steps passed."
+          if [ "$OUTCOME" != "success" ]; then
+            if [ -f build.log ]; then
+              DETAILS=$(tail -n 20 build.log | tr '\n' ' ' | sed 's/"/\\"/g')
+            else
+              DETAILS="Failed during AppImage build."
+            fi
+          fi
+          echo "{\"platform\": \"appimage\", \"status\": \"$OUTCOME\", \"file\": \"${OUTFILE:-none}\", \"error\": \"$DETAILS\"}" > status-reports/appimage.json
+
+      - name: Upload appimage status report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-appimage
+          path: status-reports/*.json
+          retention-days: 1
+
+      - name: Upload appimage artifact
+        if: steps.compile.outcome == 'success' && env.OUTFILE != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: appimage-package
+          path: ${{ env.OUTFILE }}
+
+  build-flatpak:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Install flatpak-builder
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder elfutils
+          flatpak remote-add --if-not-exists --user flathub https://flathub.org/repo/flathub.flatpakrepo
+
+      - name: Install KDE runtime and SDK
+        run: |
+          flatpak install --user -y --noninteractive flathub org.kde.Platform//6.8 org.kde.Sdk//6.8
+
+      - name: Build Flatpak
+        id: compile
+        run: |
+          chmod +x scripts/build_flatpak.sh
+          scripts/build_flatpak.sh 2>&1 | tee build.log
+          echo "OUTFILE=$(ls dist/*.flatpak 2>/dev/null | head -n1)" >> "$GITHUB_ENV"
+
+      - name: Record Status & Tail Log
+        if: always()
+        run: |
+          mkdir -p status-reports
+          OUTCOME="${{ job.status }}"
+          DETAILS="All steps passed."
+          if [ "$OUTCOME" != "success" ]; then
+            if [ -f build.log ]; then
+              DETAILS=$(tail -n 20 build.log | tr '\n' ' ' | sed 's/"/\\"/g')
+            else
+              DETAILS="Failed during Flatpak build."
+            fi
+          fi
+          echo "{\"platform\": \"flatpak\", \"status\": \"$OUTCOME\", \"file\": \"${OUTFILE:-none}\", \"error\": \"$DETAILS\"}" > status-reports/flatpak.json
+
+      - name: Upload flatpak status report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-flatpak
+          path: status-reports/*.json
+          retention-days: 1
+
+      - name: Upload flatpak artifact
+        if: steps.compile.outcome == 'success' && env.OUTFILE != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: flatpak-package
+          path: ${{ env.OUTFILE }}
+
   report:
     runs-on: ubuntu-latest
-    needs: [build, build-void-musl, build-nix]
+    needs: [build, build-void-musl, build-nix, build-appimage, build-flatpak]
     if: always()
     steps:
       - name: Download all status reports
@@ -307,7 +418,7 @@ jobs:
 
   release:
     runs-on: ubuntu-latest
-    needs: [build, build-void-musl, build-nix]
+    needs: [build, build-void-musl, build-nix, build-appimage, build-flatpak]
     if: startsWith(github.ref, 'refs/tags/v')
     permissions:
       contents: write

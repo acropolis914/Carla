@@ -38,12 +38,49 @@ cd aur/clara-git
 makepkg -si
 ```
 
-> **Note:** Both packages provide and conflict with `carla`, `carla-git`, and provide all standard host capabilities (`clap-host`, `lv2-host`, `vst-host`, `vst3-host`, etc.).
+> **Note:** Both packages provide and conflict with `carla`, `carla-git`, and provide all standard host capabilities (`clap-host`, `lv2-host`, `vst-host`, `vst3-host`, etc.). The primary binary and desktop entry are named **`clara`**; **`carla`** is kept as a backwards-compatible symlink.
 
 ---
 
+## 2. Portable Bundles (AppImage & Flatpak)
 
-## 2. Building From Source
+These run on any modern x86_64 Linux without installing distribution packages.
+
+### AppImage
+
+```bash
+chmod +x Clara-1.0.1-x86_64.AppImage
+./Clara-1.0.1-x86_64.AppImage
+```
+
+The AppImage bundles a relocatable Python, PyQt6 (which ships its own Qt6) and the Clara native libraries, so it does not depend on the system Qt.
+
+### Flatpak
+
+```bash
+flatpak install --user Clara-1.0.1-x86_64.flatpak
+flatpak run com.github.acropolis914.Clara
+```
+
+The Flatpak is built against the `org.kde.Platform//6.8` runtime.
+
+### Building the bundles yourself
+
+```bash
+# AppImage (x86_64)
+scripts/build_appimage.sh
+
+# Flatpak
+flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+flatpak install flathub org.kde.Platform//6.8 org.kde.Sdk//6.8
+scripts/build_flatpak.sh
+```
+
+Artifacts land in `dist/`. Running `scripts/install-git-hooks.sh` installs a `pre-push` hook so pushing a `v*` tag builds both bundles locally.
+
+---
+
+## 3. Building From Source
 
 ### Dependencies
 
@@ -113,7 +150,7 @@ make DEFAULT_QT=5 -j$(nproc)
 
 ---
 
-## 3. Launching & CLI Options
+## 4. Launching & CLI Options
 
 Once installed:
 ```bash

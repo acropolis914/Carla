@@ -113,13 +113,16 @@ Pre-built binaries are provided for major Linux distributions:
 
 | Distribution | Format | Quick Installation |
 | :--- | :--- | :--- |
+| **Any Linux (x86_64)** | AppImage | `chmod +x Clara-*-x86_64.AppImage && ./Clara-*-x86_64.AppImage` |
+| **Any Linux (Flatpak)** | Flatpak | `flatpak install --user Clara-*-x86_64.flatpak` |
 | **Arch Linux** | AUR / Pacman | `paru -S clara-bin` or `clara-git` (see [`aur/`](aur/)) |
-
 | **Ubuntu / Debian** | `.deb` | `sudo dpkg -i clara-ubuntu-*.deb && sudo apt-get install -f` |
 | **Fedora / RHEL** | `.rpm` | `sudo dnf install clara-*.rpm` |
 | **Void Linux** | `.tar.zst` | Extract to `/` (`tar --zstd -xvf clara-void-*.tar.zst -C /`) |
 | **Alpine Linux** | `.tar.zst` | Extract to `/` (`tar --zstd -xvf clara-alpine-*.tar.zst -C /`) |
 | **Nix / NixOS** | Flake | `nix run github:acropolis914/Clara` |
+
+> The standalone **AppImage** bundles its own Python + PyQt6/Qt6, so it runs on modern distributions without installing anything. The **Flatpak** uses the `org.kde.Platform` runtime. The primary binary and desktop entry are named **`clara`**; **`carla`** is kept as a backwards-compatible symlink.
 
 [**Browse Release Tags & Assets**](https://github.com/acropolis914/Clara/releases)
 
