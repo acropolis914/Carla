@@ -8,10 +8,10 @@
 from qt_compat import (
     qWarning,
     Qt,
-    QLineF,
+    QPointF,
     QPainter,
     QPen,
-    QGraphicsLineItem,
+    QGraphicsPathItem,
 )
 
 # ------------------------------------------------------------------------------------------------------------
@@ -22,7 +22,6 @@ from . import (
     options,
     port_mode2str,
     port_type2str,
-    CanvasLineMovType,
     PORT_MODE_INPUT,
     PORT_MODE_OUTPUT,
     PORT_TYPE_AUDIO_JACK,
@@ -31,19 +30,29 @@ from . import (
     PORT_TYPE_PARAMETER,
 )
 
+from .linealgos import (
+    get_line_algorithm,
+    LineContext,
+    DIRECTION_INPUT,
+    DIRECTION_OUTPUT,
+)
+
 # ------------------------------------------------------------------------------------------------------------
 
-class CanvasLineMov(QGraphicsLineItem):
-    def __init__(self, port_mode, port_type, parent):
-        QGraphicsLineItem.__init__(self)
+class CanvasLineMov(QGraphicsPathItem):
+    def __init__(self, port_mode, port_type, parent, shape=None):
+        QGraphicsPathItem.__init__(self)
         self.setParentItem(parent)
 
         self.m_port_mode = port_mode
         self.m_port_type = port_type
+        self.m_shape = shape if shape is not None else getattr(options, "line_style", "bezier")
+        self.m_algorithm = get_line_algorithm(self.m_shape)
+        self.m_ctx = None
 
         # Port position doesn't change while moving around line
-        self.p_lineX = self.scenePos().x()
-        self.p_lineY = self.scenePos().y()
+        self.p_itemX = self.scenePos().x()
+        self.p_itemY = self.scenePos().y()
         self.p_width = parent.getPortWidth()
 
         if port_type == PORT_TYPE_AUDIO_JACK:
@@ -59,32 +68,33 @@ class CanvasLineMov(QGraphicsLineItem):
                      port_mode2str(port_mode), port_type2str(port_type), parent))
             pen = QPen(Qt.black)
 
-        pen.setCapStyle(Qt.RoundCap)
+        pen.setCapStyle(self.m_algorithm.cap_style)
         pen.setWidthF(pen.widthF() + 0.00001)
         self.setPen(pen)
 
     def updateLinePos(self, scenePos):
-        item_pos = [0, 0]
-
         if self.m_port_mode == PORT_MODE_INPUT:
-            item_pos[0] = 0
-            item_pos[1] = float(canvas.theme.port_height)/2
+            start = QPointF(0, float(canvas.theme.port_height)/2)
+            direction = DIRECTION_INPUT
         elif self.m_port_mode == PORT_MODE_OUTPUT:
-            item_pos[0] = self.p_width + 12
-            item_pos[1] = float(canvas.theme.port_height)/2
+            start = QPointF(self.p_width + 12, float(canvas.theme.port_height)/2)
+            direction = DIRECTION_OUTPUT
         else:
             return
 
-        line = QLineF(item_pos[0], item_pos[1], scenePos.x() - self.p_lineX, scenePos.y() - self.p_lineY)
-        self.setLine(line)
+        end = QPointF(scenePos.x() - self.p_itemX, scenePos.y() - self.p_itemY)
+        ctx = LineContext(start, end, direction,
+                          port1=self.parentItem(), canvas=canvas, scene_pos=scenePos)
+        self.m_ctx = ctx
+        self.setPath(self.m_algorithm.build_drag_path(ctx))
 
     def type(self):
-        return CanvasLineMovType
+        return self.m_algorithm.mov_line_type
 
     def paint(self, painter, option, widget):
         painter.save()
         painter.setRenderHint(QPainter.Antialiasing, bool(options.antialiasing))
-        QGraphicsLineItem.paint(self, painter, option, widget)
+        QGraphicsPathItem.paint(self, painter, option, widget)
         painter.restore()
 
 # ------------------------------------------------------------------------------------------------------------

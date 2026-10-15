@@ -207,6 +207,7 @@ from carla_shared import (
     getIcon,
     splitter,
 )
+from patchcanvas.linealgos import line_algorithms
 from patchcanvas.theme import Theme, getThemeName
 from utils import QSafeSettings
 
@@ -778,9 +779,8 @@ class CarlaSettingsW(QDialog):
             self.ui.label_canvas_line_style = QLabel(self.tr("Line style:"), self.ui.group_canvas_theme)
             self.ui.label_canvas_line_style.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
             self.ui.cb_canvas_line_style = QComboBox(self.ui.group_canvas_theme)
-            self.ui.cb_canvas_line_style.addItem(self.tr("Bézier curve"), "bezier")
-            self.ui.cb_canvas_line_style.addItem(self.tr("Straight line"), "straight")
-            self.ui.cb_canvas_line_style.addItem(self.tr("Stepped / Orthogonal"), "stepped")
+            for _algo_name, _algo_label in line_algorithms():
+                self.ui.cb_canvas_line_style.addItem(self.tr(_algo_label), _algo_name)
 
             self.ui.label_canvas_line_stroke = QLabel(self.tr("Line pattern:"), self.ui.group_canvas_theme)
             self.ui.label_canvas_line_stroke.setAlignment(Qt.AlignRight | Qt.AlignVCenter)

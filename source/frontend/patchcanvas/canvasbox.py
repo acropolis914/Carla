@@ -197,6 +197,7 @@ from . import (
 from .canvasboxshadow import CanvasBoxShadow
 from .canvasicon import CanvasIcon
 from .canvasport import CanvasPort
+from .linealgos import active_line_algorithm_is_dynamic
 from .theme import Theme
 from .utils import (
     CanvasItemFX,
@@ -605,6 +606,19 @@ class BoxPropertiesDialog(QDialog):
 
 
 # ------------------------------------------------------------------------------------------------------------
+
+
+def _run_global_line_reroute():
+    canvas._line_reroute_pending = False
+    for connection in canvas.connection_list:
+        connection.widget.updateLinePos()
+
+
+def _schedule_global_line_reroute():
+    if getattr(canvas, "_line_reroute_pending", False):
+        return
+    canvas._line_reroute_pending = True
+    QTimer.singleShot(0, _run_global_line_reroute)
 
 
 class CanvasBox(QGraphicsObject):
@@ -1135,6 +1149,11 @@ class CanvasBox(QGraphicsObject):
         if self.pos() != self.m_last_pos or forced:
             for connection in self.m_connection_lines:
                 connection.line.updateLinePos()
+
+            # Dynamic algorithms read global context, so every cable must re-route.
+            # Coalesce to once per event-loop tick to avoid O(cables) work per move event.
+            if active_line_algorithm_is_dynamic():
+                _schedule_global_line_reroute()
 
         self.m_last_pos = self.pos()
 

@@ -9,6 +9,7 @@ from math import floor
 
 from qt_compat import (
     qCritical,
+    QT_VERSION,
     Qt,
     QLineF,
     QPointF,
@@ -63,8 +64,8 @@ from . import (
     PORT_TYPE_PARAMETER,
 )
 
-from .canvasbezierlinemov import CanvasBezierLineMov
 from .canvaslinemov import CanvasLineMov
+from .linealgos import resolve_line_algorithm
 from .theme import Theme
 from .utils import (
     CanvasGetFullPortName,
@@ -262,10 +263,10 @@ class CanvasPort(QGraphicsItem):
                     connection.widget.setLocked(True)
 
         if not self.m_line_mov:
-            LineClass = (
-                CanvasBezierLineMov if options.use_bezier_lines else CanvasLineMov
+            self.m_line_mov = CanvasLineMov(
+                self.m_port_mode, self.m_port_type, self,
+                shape=resolve_line_algorithm().name,
             )
-            self.m_line_mov = LineClass(self.m_port_mode, self.m_port_type, self)
             canvas.last_z_value += 1
             self.m_line_mov.setZValue(canvas.last_z_value)
             canvas.last_z_value += 1

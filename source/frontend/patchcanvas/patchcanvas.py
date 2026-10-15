@@ -50,6 +50,7 @@ from . import (
 from .canvasbox import CanvasBox
 from .canvasbezierline import CanvasBezierLine
 from .canvasline import CanvasLine
+from .linealgos import resolve_line_algorithm
 from .theme import Theme, getDefaultTheme, getThemeName
 from .utils import (
     CanvasCallback,
@@ -1355,7 +1356,7 @@ def connectPorts(
     connection_dict.group_out_id = group_out_id
     connection_dict.port_out_id = port_out_id
 
-    line_shape = getattr(options, "line_style", "bezier") if options.use_bezier_lines else "straight"
+    line_shape = resolve_line_algorithm().name
     line_stroke = getattr(options, "line_stroke", "solid")
     line_opacity = getattr(options, "line_opacity", 100)
     connection_dict.widget = CanvasLine(
@@ -2428,6 +2429,196 @@ def moveAsideNonConnectedNodes(anchor_node=None):
         cy += n_h + vertical_gap
 
     syncNodePositions(non_connected)
+
+
+# ------------------------------------------------------------------------------------------------------------
+# Smart arrange / wire / repel API (driven by the canvas "Arrange tools" toolbar)
+
+
+def _workingNodes(nodes=None):
+    """Explicit list -> current selection -> every visible box."""
+    if nodes:
+        return [n for n in nodes if n is not None]
+    selected = getSelectedNodes()
+    if selected:
+        return list(selected)
+    result = []
+    for group in canvas.group_list:
+        for w in group.widgets:
+            if w is not None and w.isVisible():
+                result.append(w)
+    return result
+
+
+def _nodeGraph(nodes):
+    """Connection edges/incoming restricted to `nodes`, plus a node->group-name map."""
+    node_set = set(nodes)
+    port_nodes = {}
+    group_name = {}
+    for group in canvas.group_list:
+        for widget in group.widgets:
+            if widget is None:
+                continue
+            if widget in node_set:
+                group_name[widget] = group.group_name
+            for port in canvas.port_list:
+                if port.widget and port.widget.parentItem() == widget:
+                    port_nodes[(port.group_id, port.port_id)] = widget
+
+    edges = {n: set() for n in nodes}
+    incoming = {n: set() for n in nodes}
+    for connection in canvas.connection_list:
+        src = port_nodes.get((connection.group_out_id, connection.port_out_id))
+        dst = port_nodes.get((connection.group_in_id, connection.port_in_id))
+        if src in edges and dst in incoming and src is not dst:
+            edges[src].add(dst)
+            incoming[dst].add(src)
+    return edges, incoming, group_name
+
+
+def autoArrangeNodes(nodes=None):
+    """Lay out the given (or selected / all) nodes into signal-flow columns."""
+    nodes = _workingNodes(nodes)
+    if len(nodes) < 2:
+        return
+
+    edges, incoming, group_name = _nodeGraph(nodes)
+
+    # Longest-path layering (nodes inside a cycle settle at layer 0)
+    layer = {n: 0 for n in nodes}
+    for _ in range(len(nodes)):
+        changed = False
+        for src, targets in edges.items():
+            for dst in targets:
+                if layer[dst] < layer[src] + 1:
+                    layer[dst] = layer[src] + 1
+                    changed = True
+        if not changed:
+            break
+
+    columns = {}
+    for n in nodes:
+        columns.setdefault(layer[n], []).append(n)
+    sorted_layers = sorted(columns.keys())
+
+    node_gap = 64
+    vertical_gap = 40
+    origin_x = min(n.x() for n in nodes)
+    center_y = sum(n.y() + n.boundingRect().height() / 2.0 for n in nodes) / float(len(nodes))
+
+    col_widths = {
+        lay: max(n.boundingRect().width() for n in columns[lay])
+        for lay in sorted_layers
+    }
+    col_x = {}
+    curr_x = origin_x
+    for lay in sorted_layers:
+        col_x[lay] = curr_x
+        curr_x += col_widths[lay] + node_gap
+
+    for lay in sorted_layers:
+        col = columns[lay]
+        col.sort(key=lambda n: group_name.get(n, "").lower())
+        total_h = (
+            sum(n.boundingRect().height() for n in col)
+            + (len(col) - 1) * vertical_gap
+        )
+        cy = center_y - total_h / 2.0
+        for n in col:
+            n.setPos(col_x[lay], cy)
+            cy += n.boundingRect().height() + vertical_gap
+
+    if getattr(options, "snap_enabled", True):
+        gs = max(1, getattr(options, "grid_size", 20))
+        for n in nodes:
+            n.setPos(round(n.x() / gs) * gs, round(n.y() / gs) * gs)
+
+    syncNodePositions(nodes)
+
+
+def autoRepelNodes(nodes=None):
+    """Separate overlapping nodes; with nothing selected this repels the whole canvas."""
+    nodes = _workingNodes(nodes)
+    if len(nodes) >= 2:
+        repelNodes(nodes)
+
+
+def autoWire(nodes=None):
+    """Chain the given (or selected / all) nodes in signal-flow order.
+
+    Every consecutive pair is joined by the first compatible, still-free output ->
+    input port pair. Connections are requested through the normal canvas callback so
+    the engine stays authoritative (proper connection ids / undo). Returns how many
+    connections were requested.
+    """
+    nodes = _workingNodes(nodes)
+    if len(nodes) < 2:
+        return 0
+
+    edges, incoming, _group_name = _nodeGraph(nodes)
+
+    # Topological order, x position as a stable tie-breaker, cycles broken by x
+    ordered = []
+    seen = set()
+    pending = set(nodes)
+    while pending:
+        ready = [n for n in pending if not (incoming[n] - seen)]
+        if not ready:
+            ready = list(pending)
+        ready.sort(key=lambda n: n.x())
+        chosen = ready[0]
+        seen.add(chosen)
+        pending.discard(chosen)
+        ordered.append(chosen)
+
+    def ports_of(node, mode):
+        found = []
+        for port in canvas.port_list:
+            if port.widget and port.widget.parentItem() == node and port.port_mode == mode:
+                found.append(port)
+        found.sort(key=lambda p: p.port_id)
+        return found
+
+    def is_connected(port):
+        for connection in canvas.connection_list:
+            if connection.group_out_id == port.group_id and connection.port_out_id == port.port_id:
+                return True
+            if connection.group_in_id == port.group_id and connection.port_in_id == port.port_id:
+                return True
+        return False
+
+    count = 0
+    for i in range(len(ordered) - 1):
+        src = ordered[i]
+        dst = ordered[i + 1]
+        outs = [p for p in ports_of(src, PORT_MODE_OUTPUT) if not is_connected(p)]
+        ins = [p for p in ports_of(dst, PORT_MODE_INPUT) if not is_connected(p)]
+        if not outs or not ins:
+            continue
+        out_port = outs[0]
+        in_port = None
+        for candidate in ins:
+            if candidate.port_type == out_port.port_type:
+                in_port = candidate
+                break
+        if in_port is None:
+            in_port = ins[0]
+        data = "%i:%i:%i:%i" % (
+            out_port.group_id, out_port.port_id,
+            in_port.group_id, in_port.port_id,
+        )
+        canvas.callback(ACTION_PORTS_CONNECT, 0, 0, data)
+        count += 1
+    return count
+
+
+def autoArrangeAndWire(nodes=None):
+    """Arrange the working set, then wire it in signal-flow order."""
+    nodes = _workingNodes(nodes)
+    if len(nodes) < 2:
+        return 0
+    autoArrangeNodes(nodes)
+    return autoWire(nodes)
 
 
 # ------------------------------------------------------------------------------------------------------------

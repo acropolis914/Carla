@@ -882,14 +882,13 @@ class CanvasContextToolBarOverlay(QFrame):
         icon_al_v    = "\uf037" if nf else "║"  # nf-fa-align-center
         icon_dist_h  = "\uf07e" if nf else "⬌"  # nf-fa-arrows-h
         icon_dist_v  = "\uf07d" if nf else "⬍"  # nf-fa-arrows-v
+        icon_tools   = "\uf085" if nf else "🧰" # nf-fa-cogs
 
         if count == 0:
             # Global Canvas Actions
             self.addLabel("CANVAS", "Patchbay Canvas Actions")
             self.addSeparator()
 
-            self.addButton(icon_arr, "Auto-arrange All Nodes (Signal Flow)", self._slot_arrange)
-            self.addButton(icon_repel, "Auto-Repel All Overlapping Nodes", self._slot_repel_all)
             self.addButton(icon_aside, "Park Disconnected Nodes Aside", self._slot_move_aside_all)
             self.addSeparator()
             self.addButton(icon_sel, "Select All Nodes (Ctrl+A)", patchcanvas.selectAllNodes)
@@ -976,6 +975,12 @@ class CanvasContextToolBarOverlay(QFrame):
 
             self.addButton(icon_inv, "Invert Selection", patchcanvas.invertNodeSelection)
             self.addButton(icon_desel, "Clear Selection (Esc)", patchcanvas.deselectAllNodes)
+
+        # Grouped "Arrange tools" popover, always available so the bar stays uncluttered
+        self.addSeparator()
+        btnTools = self.addButton(icon_tools, "Arrange Tools: auto-arrange, auto-wire, repel", lambda: None)
+        btnTools.clicked.disconnect()
+        btnTools.clicked.connect(lambda: self._slot_show_arrange_menu(btnTools, count))
 
         # Calculate exact pixel width for pure icon controls
         total_w = self.layout.contentsMargins().left() + self.layout.contentsMargins().right()
@@ -1066,7 +1071,56 @@ class CanvasContextToolBarOverlay(QFrame):
         btn_pos = source_button.mapToGlobal(QPoint(0, source_button.height() + 4))
         menu.exec_(btn_pos)
 
-    def _apply_color_to_nodes(self, nodes, hex_str):
+    def _slot_show_arrange_menu(self, source_button, count):
+        menu = QMenu(self)
+        menu.setStyleSheet("""
+            QMenu {
+                background-color: #181825;
+                border: 1px solid #45475a;
+                border-radius: 6px;
+                padding: 4px;
+            }
+            QMenu::item {
+                color: #cdd6f4;
+                padding: 4px 18px 4px 10px;
+                border-radius: 4px;
+                font-size: 11px;
+            }
+            QMenu::item:selected {
+                background-color: #313244;
+                color: #ffffff;
+            }
+            QMenu::item:disabled {
+                color: #6c7086;
+            }
+            QMenu::separator {
+                height: 1px;
+                background-color: #45475a;
+                margin: 3px 6px;
+            }
+        """)
+
+        has_selection = count > 0
+
+        act_arrange = menu.addAction("Auto arrange")
+        act_arrange.triggered.connect(lambda: patchcanvas.autoArrangeNodes())
+
+        act_wire = menu.addAction("Auto wire")
+        act_wire.triggered.connect(lambda: patchcanvas.autoWire())
+        act_wire.setEnabled(has_selection)
+
+        act_both = menu.addAction("Arrange + wire")
+        act_both.triggered.connect(lambda: patchcanvas.autoArrangeAndWire())
+        act_both.setEnabled(has_selection)
+
+        menu.addSeparator()
+        act_repel = menu.addAction("Auto repel all" if not has_selection else "Auto repel selection")
+        act_repel.triggered.connect(lambda: patchcanvas.autoRepelNodes())
+
+        btn_pos = source_button.mapToGlobal(QPoint(0, source_button.height() + 4))
+        menu.exec_(btn_pos)
+
+    def _slot_show_color_menu(self, source_button, nodes):
         for n in nodes:
             if hasattr(n, "setCustomColor"):
                 n.setCustomColor(hex_str)

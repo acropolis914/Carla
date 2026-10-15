@@ -20,6 +20,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-15 10:30:00
+- **feat(canvas)**: Obstacle-aware routing API (A* + flocking) and smart arrange/wire tools
+  - New `patchcanvas/routing/` package: `grid.py` (scene-space occupancy grid), `astar.py` (A* search + string-pulling simplify), `flock.py` (force-based waypoint relaxation for cable spacing), and a single public entry point `plan_waypoints(ctx, ...)`. It consumes only a `LineContext` (endpoints, `nodes()`, `siblings()`), never patchcanvas internals.
+  - Registered a new `router` line algorithm (`Smart router (A* + flocking)`): routes cables around node boxes and spaces them from sibling cables, falling back to bézier on failure. Not the default; `bezier` remains default.
+  - New public canvas API (exported from `patchcanvas`): `autoArrangeNodes()`, `autoWire()`, `autoArrangeAndWire()`, `autoRepelNodes()`. Arrange uses signal-flow column layering; wire chains nodes in topological order using compatible free ports and requests connections through the normal canvas callback; repel falls back to the whole canvas when nothing is selected.
+  - Canvas context toolbar now exposes a grouped **Arrange Tools** popover (auto arrange / auto wire / arrange + wire / auto repel), replacing the separate arrange/repel buttons so the bar stays uncluttered. Wire/both are disabled with no selection.
+
+### 2026-10-15 09:05:00
+- **refactor(canvas)**: Retire adaptive, default to bézier, label deprecated styles
+  - `adaptive` hybrid dispatcher removed from the registry; `bezier` is the default again (`CARLA_DEFAULT_CANVAS_LINE_STYLE`, `patchcanvas.options.line_style`). A future A* + flocking router will replace it.
+  - Added a `deprecated` flag to `LineAlgorithm`; `serpentine`, `meander`, `sine`, `zigzag`, `staircase` and `arcloop` are kept but now labelled "` (to be removed)`" in the settings combo.
+
+### 2026-10-15 08:40:00
+- **fix(canvas)**: Line styles collapsed to straight; tune adaptive hybrid
+  - Every non-`bezier` style rendered as a straight line: the settings dialog writes the legacy `Canvas/UseBezierLines` flag as `False` for any non-bezier pick, and `resolve_line_algorithm()` treated that as "force straight". The `line_style` string is now authoritative and the legacy boolean is ignored (`linealgos.py`, `patchcanvas/__init__.py`).
+
+### 2026-10-15 08:20:00
+- **feat(canvas)**: New cable shapes + adaptive hybrid routing
+  - Added registered line algorithms: `sine`, `zigzag`, `staircase`, `serpentine`, `meander`, `arcloop`, `circuit` (H/V trace with rounded corners and sibling-based lane offsets), and `adaptive`, a hybrid dispatcher.
+  - `adaptive` picks per cable: selected → arc/loop, crowded corridor → circuit trace, short → straight, medium → serpentine, long → rounded meander. It is now the **default** line style (`CARLA_DEFAULT_CANVAS_LINE_STYLE`, `options.line_style`).
+  - Renderer flags renamed/clarified: `dynamic` (re-route all cables on node moves; `tracks_others` kept as a read alias) and `selection_sensitive` (re-route on selection change, coalesced per event-loop tick). Dynamic re-routes are coalesced in `CanvasBox.repaintLines` to at most once per event-loop tick.
+  - New geometry helper `rounded_polyline` shared by the circuit/meander/staircase shapes.
+
+### 2026-10-15 07:05:00
+- **refactor(canvas)**: Pluggable line-algorithm registry for patchbay cables
+  - Connection shape logic was spread across `if/elif` chains in `canvasline.py`, the drag previews (`canvaslinemov.py` / `canvasbezierlinemov.py`), and the settings combo. New `patchcanvas/linealgos.py` introduces a `LineAlgorithm` interface (`build_path` / `build_drag_path`, plus `line_type`, `mov_line_type`, `cap_style`) with a registry (`register_line_algorithm`, `get_line_algorithm`, `line_algorithms`).
+  - Algorithms receive a `LineContext` (endpoints + `direction` + the ports/connection/`canvas`), not bare points, so complex renderers are possible: `ctx.siblings()` yields every other cable for coupling/bundling, `ctx.nodes()` yields `(group_id, QRectF)` for node-avoidance routing, and `paint(painter, ctx, path)` plus `params()` are optional hooks. Setting `dynamic = True` makes the canvas re-route all cables on node moves so bundles stay in sync.
+  - `BezierLineAlgorithm`, `StraightLineAlgorithm`, and `SteppedLineAlgorithm` are registered out of the box; adding a new shape is one class + `@register_line_algorithm` with zero branching changes elsewhere.
+  - Drag previews are now a single registry-driven `CanvasLineMov`, so `stepped` gets a live preview too (previously only bezier/straight). Old `CanvasBezierLine` / `CanvasBezierLineMov` names remain as backward-compatible aliases.
+  - The settings "Line style" combo is populated from the registry instead of a hardcoded list (`carla_settings.py`).
+
 ### 2026-10-15 06:11:30
 - **fix(ui)**: Restore `Qt.Key_Backspace` (Qt6 compat)
   - `qt_compat` aliased most `Qt.Key_*` names to their Qt6 `Qt.Key.*` enum for bindings compatibility, but `Key_Backspace` was missing, so deleting a plugin with Backspace crashed with `AttributeError: type object 'Qt' has no attribute 'Key_Backspace'` (`carla_skin.py:1656`). Added the alias.

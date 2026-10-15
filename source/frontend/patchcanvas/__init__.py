@@ -340,4 +340,8 @@ from .patchcanvas import (
     arrangeConnected,
     getSelectedNodes,
     centerGraphInCanvas,
+    autoArrangeNodes,
+    autoWire,
+    autoArrangeAndWire,
+    autoRepelNodes,
 )

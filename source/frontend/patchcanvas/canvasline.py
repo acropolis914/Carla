@@ -11,8 +11,8 @@ from qt_compat import (
     QColor,
     QLinearGradient,
     QPainter,
-    QPainterPath,
     QPen,
+    QTimer,
     QGraphicsPathItem,
 )
 
@@ -22,8 +22,6 @@ from qt_compat import (
 from . import (
     canvas,
     options,
-    CanvasLineType,
-    CanvasBezierLineType,
     ACTION_PORTS_DISCONNECT,
     EYECANDY_FULL,
     PORT_MODE_OUTPUT,
@@ -31,6 +29,12 @@ from . import (
     PORT_TYPE_MIDI_ALSA,
     PORT_TYPE_MIDI_JACK,
     PORT_TYPE_PARAMETER,
+)
+
+from .linealgos import (
+    get_line_algorithm,
+    LineContext,
+    DIRECTION_OUTPUT,
 )
 
 from .canvasportglow import CanvasPortGlow
@@ -51,12 +55,14 @@ class CanvasLine(QGraphicsPathItem):
         self.m_shape = shape if shape is not None else getattr(options, "line_style", "bezier")
         self.m_stroke = stroke if stroke is not None else getattr(options, "line_stroke", "solid")
         self.m_opacity = opacity if opacity is not None else getattr(options, "line_opacity", 100)
+        self.m_algorithm = get_line_algorithm(self.m_shape)
 
         self.m_locked = False
         self.m_lineSelected = None  # None sentinel — ensures updateLineGradient() fires on first call
 
         self._cached_pen = None
         self._cached_cosm_pen = None
+        self._ctx = None
 
         self.setBrush(QColor(0, 0, 0, 0))
         self.setGraphicsEffect(None)
@@ -65,6 +71,7 @@ class CanvasLine(QGraphicsPathItem):
     def setShape(self, shape):
         if self.m_shape != shape:
             self.m_shape = shape
+            self.m_algorithm = get_line_algorithm(shape)
             self.updateLinePos()
 
     def getShape(self):
@@ -111,45 +118,47 @@ class CanvasLine(QGraphicsPathItem):
         self.m_lineSelected = yesno
         self.updateLineGradient()
 
+        # Selection-aware algorithms need a re-route; coalesce to one per event-loop tick
+        if self.m_algorithm.selection_sensitive and self._ctx is not None:
+            QTimer.singleShot(0, self.updateLinePos)
+
     def triggerDisconnect(self):
         for connection in canvas.connection_list:
             if (connection.port_out_id == self.item1.getPortId() and connection.port_in_id == self.item2.getPortId()):
                 canvas.callback(ACTION_PORTS_DISCONNECT, connection.connection_id, 0, "")
                 break
 
+    def _sceneEndpoints(self):
+        if self.item1.getPortMode() != PORT_MODE_OUTPUT:
+            return None
+        rect1 = self.item1.sceneBoundingRect()
+        rect2 = self.item2.sceneBoundingRect()
+        start = QPointF(rect1.right(), rect1.top() + float(canvas.theme.port_height) / 2)
+        end = QPointF(rect2.left(), rect2.top() + float(canvas.theme.port_height) / 2)
+        return start, end
+
+    def getEndpoints(self):
+        pair = self._sceneEndpoints()
+        if pair is None:
+            return None
+        return (pair[0], pair[1], DIRECTION_OUTPUT)
+
     def updateLinePos(self):
-        if self.item1.getPortMode() == PORT_MODE_OUTPUT:
-            rect1 = self.item1.sceneBoundingRect()
-            rect2 = self.item2.sceneBoundingRect()
+        pair = self._sceneEndpoints()
+        if pair is None:
+            return
 
-            item1_x = rect1.right()
-            item2_x = rect2.left()
-            item1_y = rect1.top() + float(canvas.theme.port_height) / 2
-            item2_y = rect2.top() + float(canvas.theme.port_height) / 2
-
-            path = QPainterPath(QPointF(item1_x, item1_y))
-
-            if self.m_shape == "straight":
-                path.lineTo(item2_x, item2_y)
-            elif self.m_shape == "stepped":
-                mid_x = (item1_x + item2_x) / 2
-                path.lineTo(mid_x, item1_y)
-                path.lineTo(mid_x, item2_y)
-                path.lineTo(item2_x, item2_y)
-            else:
-                # Default: cubic Bézier
-                item1_new_x = item1_x + abs(item1_x - item2_x) / 2
-                item2_new_x = item2_x - abs(item1_x - item2_x) / 2
-                path.cubicTo(item1_new_x, item1_y, item2_new_x, item2_y, item2_x, item2_y)
-
-            self.setPath(path)
-            self.updateLineGradient()
-            self.updateLineSelected()
+        start, end = pair
+        self._ctx = LineContext(
+            start, end, DIRECTION_OUTPUT,
+            port1=self.item1, port2=self.item2, connection=self, canvas=canvas,
+        )
+        self.setPath(self.m_algorithm.build_path(self._ctx))
+        self.updateLineGradient()
+        self.updateLineSelected()
 
     def type(self):
-        if self.m_shape == "straight":
-            return CanvasLineType
-        return CanvasBezierLineType
+        return self.m_algorithm.line_type
 
     def updateLineGradient(self):
         rect1 = self.item1.sceneBoundingRect()
@@ -233,7 +242,7 @@ class CanvasLine(QGraphicsPathItem):
         elif self.m_stroke == "dashed":
             pen_style = Qt.DashLine
 
-        cap_style = Qt.RoundCap if self.m_shape == "straight" else Qt.FlatCap
+        cap_style = self.m_algorithm.cap_style
 
         # Cache built pen so paint() never allocates per frame
         self._cached_pen = QPen(port_gradient, 2.00001, pen_style, cap_style)
@@ -248,6 +257,11 @@ class CanvasLine(QGraphicsPathItem):
     def paint(self, painter, option, widget):
         painter.save()
         painter.setRenderHint(QPainter.Antialiasing, bool(options.antialiasing))
+
+        # Let the algorithm draw itself (arrowheads, bundles, animated flow, ...) if it wants to
+        if self._ctx is not None and self.m_algorithm.paint(painter, self._ctx, self.path()):
+            painter.restore()
+            return
 
         pen = self._cached_pen if self._cached_pen is not None else self.pen()
         scale = canvas.scene.getScaleFactor() if hasattr(canvas.scene, "getScaleFactor") else 1.0
