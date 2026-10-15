@@ -1,50 +1,28 @@
 #!/usr/bin/env python3
-# SPDX-FileCopyrightText: 2011-2024 Filipe Coelho <falktx@falktx.com>
+# SPDX-FileCopyrightText: 2011-2025 Filipe Coelho <falktx@falktx.com>
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-# ------------------------------------------------------------------------------------------------------------
-# Imports (Global)
+# ---------------------------------------------------------------------------------------------------------------------
+# Carla frontend dialogs - pure PyQt6 implementation.
+#
+# Historically the About / Jack-Application / Plugin-List dialogs lived in a separate
+# Qt-linked native library (libcarla_frontend). That forced the host to ship a Qt build
+# matching the native one, which conflicted with PyQt6's bundled Qt. These dialogs are now
+# implemented in Python; the only native code used is the (non-Qt) libcarla_utils backend
+# for plugin discovery.
+#
+# The class below keeps the same public API as the old ctypes wrapper so that
+# carla_host.py does not need to change.
 
-# ------------------------------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------------------------------
 # Imports (ctypes)
 
 from ctypes import (
-    c_bool, c_char, c_char_p, c_int, c_uint, c_uint64, c_void_p, cast,
-    cdll, Structure,
-    POINTER
-)
-
-try:
-    from qt_config import qt as _qt_ver
-    if _qt_ver == 6:
-        from PyQt6.sip import unwrapinstance
-    else:
-        try:
-            from PyQt5.sip import unwrapinstance
-        except ImportError:
-            from sip import unwrapinstance
-except ImportError:
-    try:
-        from sip import unwrapinstance
-    except ImportError:
-        def unwrapinstance(_):
-            return None
-
-# ------------------------------------------------------------------------------------------------------------
-# Imports (Custom)
-
-from carla_backend import (
-    structToDict
+    c_bool, c_char, c_char_p, c_uint, c_uint64, Structure
 )
 
 # ---------------------------------------------------------------------------------------------------------------------
-# Convert a ctypes struct into a python dict, or None if null
-
-def structToDictOrNull(struct):
-    return structToDict(struct.contents) if struct else None
-
-# ------------------------------------------------------------------------------------------------------------
-# Carla Frontend API (C stuff)
+# Result structures (kept for API/source compatibility with the old native library)
 
 class JackApplicationDialogResults(Structure):
     _fields_ = [
@@ -84,69 +62,43 @@ class PluginListDialogResults(Structure):
         ("parametersOuts", c_uint),
     ]
 
-# ------------------------------------------------------------------------------------------------------------
-# Carla Frontend object using a DLL
+# ---------------------------------------------------------------------------------------------------------------------
+# Carla Frontend object (pure Python)
 
 class CarlaFrontendLib():
-    def __init__(self, filename):
-        self.lib = cdll.LoadLibrary(filename)
-
-        self.lib.carla_frontend_createAndExecAboutDialog.argtypes = (c_void_p, c_void_p, c_bool, c_bool)
-        self.lib.carla_frontend_createAndExecAboutDialog.restype = None
-
-        self.lib.carla_frontend_createAndExecJackAppDialog.argtypes = (c_void_p, c_char_p)
-        self.lib.carla_frontend_createAndExecJackAppDialog.restype = POINTER(JackApplicationDialogResults)
-
-        self.lib.carla_frontend_createPluginListDialog.argtypes = (c_void_p, POINTER(HostSettings))
-        self.lib.carla_frontend_createPluginListDialog.restype = c_void_p
-
-        self.lib.carla_frontend_destroyPluginListDialog.argtypes = (c_void_p,)
-        self.lib.carla_frontend_destroyPluginListDialog.restype = None
-
-        self.lib.carla_frontend_setPluginListDialogPath.argtypes = (c_void_p, c_int, c_char_p)
-        self.lib.carla_frontend_setPluginListDialogPath.restype = None
-
-        self.lib.carla_frontend_execPluginListDialog.argtypes = (c_void_p,)
-        self.lib.carla_frontend_execPluginListDialog.restype = POINTER(PluginListDialogResults)
-
-        self.lib.carla_frontend_get_cached_plugins_csv.argtypes = (c_void_p,)
-        self.lib.carla_frontend_get_cached_plugins_csv.restype = c_char_p
+    def __init__(self, filename=None):
+        # No native library is loaded anymore; kept for API compatibility.
+        self.lib = None
+        self.filename = filename
 
     # --------------------------------------------------------------------------------------------------------
 
     def createAndExecAboutDialog(self, parent, hostHandle, isControl, isPlugin):
-        return structToDictOrNull(self.lib.carla_frontend_createAndExecAboutDialog(unwrapinstance(parent),
-                                                                                   hostHandle,
-                                                                                   isControl,
-                                                                                   isPlugin))
+        from dialogs.aboutdialog_py import createAndExecAboutDialog
+        return createAndExecAboutDialog(parent, hostHandle, isControl, isPlugin)
 
     def createAndExecJackAppDialog(self, parent, projectFilename):
-        return structToDictOrNull(
-            self.lib.carla_frontend_createAndExecJackAppDialog(unwrapinstance(parent),
-                                                               projectFilename.encode("utf-8")))
+        from dialogs.jackappdialog_py import createAndExecJackAppDialog
+        return createAndExecJackAppDialog(parent, projectFilename)
 
     def createPluginListDialog(self, parent, hostSettings):
-        hostSettingsC = HostSettings()
-        hostSettingsC.showPluginBridges = hostSettings['showPluginBridges']
-        hostSettingsC.showWineBridges = hostSettings['showWineBridges']
-        hostSettingsC.useSystemIcons = hostSettings['useSystemIcons']
-        hostSettingsC.wineAutoPrefix = hostSettings['wineAutoPrefix']
-        hostSettingsC.wineExecutable = hostSettings['wineExecutable'].encode("utf-8")
-        hostSettingsC.wineFallbackPrefix = hostSettings['wineFallbackPrefix'].encode("utf-8")
-        return self.lib.carla_frontend_createPluginListDialog(unwrapinstance(parent), hostSettingsC)
+        from pluginlist.pluginlistdialog_py import createPluginListDialog
+        return createPluginListDialog(parent, hostSettings)
 
     def destroyPluginListDialog(self, dialog):
-        self.lib.carla_frontend_destroyPluginListDialog(dialog)
+        from pluginlist.pluginlistdialog_py import destroyPluginListDialog
+        return destroyPluginListDialog(dialog)
 
     def setPluginListDialogPath(self, dialog, ptype, path):
-        self.lib.carla_frontend_setPluginListDialogPath(dialog, ptype, path.encode("utf-8"))
+        from pluginlist.pluginlistdialog_py import setPluginListDialogPath
+        return setPluginListDialogPath(dialog, ptype, path)
 
     def execPluginListDialog(self, dialog):
-        return structToDictOrNull(self.lib.carla_frontend_execPluginListDialog(dialog))
+        from pluginlist.pluginlistdialog_py import execPluginListDialog
+        return execPluginListDialog(dialog)
 
     def getCachedPluginsCsv(self, dialog):
-        res = self.lib.carla_frontend_get_cached_plugins_csv(dialog)
-        return res.decode('utf-8') if res else ""
-
+        from pluginlist.pluginlistdialog_py import getCachedPluginsCsv
+        return getCachedPluginsCsv(dialog)
 
 # ------------------------------------------------------------------------------------------------------------
