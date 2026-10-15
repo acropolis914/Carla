@@ -195,13 +195,14 @@ jobs:
           docker run --rm -v "$PWD":/workspace -w /workspace \
             --platform linux/arm64 \
             ghcr.io/void-linux/void-musl-full:latest sh -c "
+              set -e
               xbps-install -S -y ca-certificates xbps || true
               xbps-install -Syu -y \
                 base-devel pkg-config git \
                 qt6-base-devel qt6-svg-devel qt6-tools qt6-tools-devel \
                 python3-pyqt6 SDL2-devel musl-fts-devel ccache zstd tar
-              export LDFLAGS='-lfts \$LDFLAGS'
-              make -j$(nproc) DEFAULT_QT=6 2>&1 | tee build.log
+              export LDFLAGS=\"-lfts \$LDFLAGS\"
+              make -j\$(nproc) DEFAULT_QT=6 > build.log 2>&1 || { echo '=== build failed ==='; tail -n 60 build.log; exit 1; }
               mkdir -p /tmp/clara-pkg
               make install PREFIX=/usr DESTDIR=/tmp/clara-pkg DEFAULT_QT=6
               tar --zstd -cf clara-void-musl-${VERSION}-aarch64.tar.zst -C /tmp/clara-pkg .
