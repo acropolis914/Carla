@@ -20,6 +20,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-16 01:00:00
+- **ci(test)**: add `build-test.yml` workflow for downloadable test builds
+  - New `workflow_dispatch`-only workflow that builds every platform (alpine, ubuntu, fedora, archlinux, void-glibc, void-musl, nix, appimage, flatpak) and uploads the resulting packages as run artifacts. It never publishes, tags, or attaches anything to a release, so builds can be verified and downloaded locally (`gh run download`) without touching release assets.
+  - Adds a per-platform "Detect frontend tooling" step that reports `pyuic6`/`uic6` locations and the `HAVE_FRONTEND`/`HAVE_QT6`/`FRONTEND_TYPE` values from `make -pn` into the run summary, to diagnose the Fedora GUI-less packaging issue.
+  - Version string is a dispatch input (`version`, default `0.0.0-test`); `fail-fast` disabled so a single distro failure does not cancel the others.
+
+### 2026-10-16 00:20:00
+- **fix(ci)**: correct multi-distro packaging (frontend tooling, versioning, naming)
+  - Frontend tooling: install the PyQt6 UI tools the build needs (`pyuic6`, required for `HAVE_FRONTEND`). Ubuntu `.deb` and both AppImage jobs now install `pyqt6-dev-tools`; the void-glibc and void-musl jobs install `python3-pyqt6-devel-tools`; the Fedora spec adds `python3-pyqt6` to `BuildRequires`. Previously these jobs silently produced GUI-less packages (no launcher scripts, desktop files, icons or Python frontend).
+  - Packaging: removed the `make install ... || cp -r bin` fallback from every distro and void-musl job, so the stray top-level `bin/` build output is never shipped again.
+  - Versioning: `build-void-musl` now sets `VERSION` (it was producing `clara-void-musl-.tar.zst`), and the AppImage is named after the Clara release version (`Clara-<release>-<arch>.AppImage`, honoring a `CLARA_VERSION` override) instead of the engine `VERSION`.
+  - `scripts/release_and_push_aur.sh` now normalizes the version argument (strips leading `v`/`V`, dots and whitespace, then validates `X.Y.Z`), preventing malformed tags such as `v.1.0.1`.
+
+### 2026-10-15 23:55:00
+- **chore(releases)**: retract all published binary artifacts
+  - Removed every uploaded binary asset from the GitHub releases `v0.1.0`–`v1.0.1` (including the malformed `v.1.0.1`), keeping only the auto-generated source archives. All were broken: GUI-less deb/rpm/nix/void packages (missing launcher scripts, desktop files, icons and the Python frontend), a non-starting AppImage (no frontend bundled; hard-coded `/home/runner` build paths), an empty `void-musl` tarball, and `archlinux`/`alpine` tarballs that were plain install trees rather than real `pkg.tar.zst` packages (no `.PKGINFO`/`.MTREE`).
+  - Each release body now carries a "RETRACTED — DO NOT USE" notice, and `releases.json` marks every documented release `retracted`. Corrected builds will be published after the packaging fixes land.
+
+### 2026-10-15 23:30:00
+- **refactor(frontend)**: replace the Qt-linked native dialogs with pure-PyQt6 implementations
+  - `libcarla_frontend` (a Qt C++ shared library) is no longer built or shipped. Its three dialogs — About, Add JACK Application, and the Plugin List browser — are reimplemented in Python under `source/frontend/dialogs/` and `source/frontend/pluginlist/`, using the non-Qt `libcarla_utils` backend for plugin discovery.
+  - `CarlaFrontendLib` (`carla_frontend.py`) is now a thin pure-Python shim that keeps the same public API, so `carla_host.py` is unchanged and the app no longer needs a system Qt matching the native build (this fixes the AppImage startup crash caused by the Qt ABI mismatch).
+  - Makefile: stop building/installing `libcarla_frontend`, and install the new `dialogs`/`pluginlist` Python packages.
+
 ### 2026-10-15 22:40:00
 - **perf(packaging)**: shrink the AppImage significantly
   - Switched the bundled `appimagetool` from AppImageKit (gzip squashfs) to the maintained `AppImage/appimagetool`, which defaults to **zstd**, and pinned `--comp zstd --mksquashfs-opt -Xcompression-level 19` (override with `APPIMAGE_ZSTD_LEVEL`).
