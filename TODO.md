@@ -8,7 +8,7 @@
 - [x] `[Diff: 1]` Fix: Rack item remove button still does not delete or show confirmation dialog (reopened: calf skin vs other skins / context menu / delete key)
 - [x] `[Diff: 1]` Fix: Left-click drag on empty canvas does not pan the UI
 - [x] `[Diff: 1]` Fix: Patchbay canvas node power button (`⏻`) does not toggle plugin processing state reliably
-- [ ] `[Diff: 1]` Fix: Patchbay minimap looks cut off on unloaded canvas areas (works now, but visually cut off/janky boundary clipping)
+- [x] `[Diff: 1]` Fix: Patchbay minimap looks cut off on unloaded canvas areas (works now, but visually cut off/janky boundary clipping)
 
 
 
@@ -18,7 +18,7 @@
 ## 🎛️ Patchbay Canvas & Navigation
 - [x] `[Diff: 1]` feat: Patchbay selection keyboard shortcuts (Ctrl+A to select all, Photoshop-style selection shortcuts: Ctrl+D to deselect, Ctrl+Shift+I to invert selection)
 - [x] `[Diff: 2]` feat: Smoother patchbay rendering and interaction performance (higher refresh/frame rate, reduced dragging jitter and cable render overhead)
-- [ ] `[Diff: 1]` feat: Search selection persists selected items until user interaction
+- [x] `[Diff: 1]` feat: Search selection persists selected items until user interaction
 - [x] `[Diff: 2]` feat: Subtle canvas alignment dots/grid with snapping; align functions respect grid snap
 - [x] `[Diff: 2]` feat: Auto repel arrangement tools (auto repel selected vs auto repel all), defaulting auto arrange and auto repel to selected items only
 - [x] `[Diff: 3]` feat: Infinite canvas with `infinite-canvas = true` project metadata and migration for legacy files (recenter by subtracting half total bounding box on both X and Y axes)
@@ -32,7 +32,9 @@
 - [x] `[Diff: 2]` feat: Cable routing styles (Bezier, Straight/Linear, Orthogonal/Right-angle)
 - [x] `[Diff: 2]` feat: Dynamic cable coloring based on source and destination node colors with linear gradients
 - [x] `[Diff: 1]` Fix/feat: Patchbay canvasbox color changes dynamically update connected canvas line gradients immediately without requiring redraw or node moves
-- [ ] `[Diff: 3]` feat: Visual signal/event flow animations — pulsing/glow animations on active nodes and animated traveling pulses or particles along cables when audio/MIDI events are transmitted
+- [x] `[Diff: 3]` feat: Visual signal/event flow animations — pulsing/glow animations on active nodes and animated traveling pulses or particles along cables when audio/MIDI events are transmitted
+- [ ] `[Diff: 2]` Fix: Signal-flow pulses sometimes disappear on quiet/transient audio — need peak-hold envelope smoothing so brief silences do not drop a node below the pulse threshold (flicker/stutter)
+- [ ] `[Diff: 2]` feat: Tint signal-flow glows/pulses with the correct colors along the chain — blend from the source node color through the cable to the destination node color (per-endpoint gradient) instead of the single fixed cyan/white
 
 
 ---
@@ -63,12 +65,12 @@
 - [x] `[Diff: 1]` feat: Status indicator for last autosave timestamp and countdown timer to next autosave
 - [x] `[Diff: 2]` feat: Improved logging with Python Rich console, loglevels, log tags, and CLI flags (`--log-whitelist`, `--log-blacklist`)
 - [ ] `[Diff: 2]` feat: Project notes for current session/save file with rich Markdown rendering support in Qt (QTextDocument markdown / preview)
-- [ ] `[Diff: 1]` feat: Standardized `argparse` integration to expose all CLI flags and `--help` with Python `rich` formatting
+- [x] `[Diff: 1]` feat: Standardized `argparse` integration to expose all CLI flags and `--help` with Python `rich` formatting
 - [x] `[Diff: 1]` Fix/feat: Full `.carjp` project file integration across autosave manager, recent files list, dirty tracking, and startup autoload
 ---
 
 ## 🧠 Graph Introspection & Layout
-- [ ] `[Diff: 2]` feat: Graph introspection model (`collect_graph`) returning JSON-able nodes + ports + connections + derived topology, shared by arrange/control layers
+- [x] `[Diff: 2]` feat: Graph introspection model (`collect_graph`) returning JSON-able nodes + ports + connections + derived topology, shared by arrange/control layers
 
 ---
 
@@ -83,3 +85,7 @@
 
 ## 📦 Packaging & Distribution
 - [ ] `[Diff: 1]` Create and maintain `clara-bin` package on AUR for rapid binary installations alongside `clara-git`
+- [ ] `[Diff: 3]` feat: AppImage build with **cross-compilation** (x86_64 + aarch64 via qemu/container), bundling the latest Qt6 libs + PyQt6 bindings (linuxdeploy + linuxdeploy-plugin-qt + appimagetool) so it runs on current distros
+- [ ] `[Diff: 2]` feat: Flatpak manifest (`org.kde.Platform` runtime) + local build script under `scripts/`
+- [ ] `[Diff: 2]` feat: Local `git push` **tag** hook (installed into `.git/hooks/` from `scripts/`) that builds the Flatpak **and** AppImage locally on every `v*` tag push
+- [ ] `[Diff: 1]` Decide Qt bundling policy: bundle libQt6 + PyQt6 inside the AppImage (recommended for portability) vs rely on system Qt

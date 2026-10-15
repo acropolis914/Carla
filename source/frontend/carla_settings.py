@@ -12,6 +12,8 @@ from qt_compat import (
     QDialog,
     QDialogButtonBox,
     QFileDialog,
+    QFont,
+    QFontDatabase,
     QIcon,
     QSize,
     QCheckBox,
@@ -620,26 +622,84 @@ class CarlaSettingsW(QDialog):
             self.tr("Wine"),
             self.tr("Experimental"),
         ]
+        # Nerd Font glyphs for the sidebar tabs (fallback to plain text if absent)
+        try:
+            from carla_canvas import getBestNerdFont
+            nerd_family = getBestNerdFont()
+        except Exception:
+            nerd_family = ""
+        tab_glyphs = [
+            "\uf013",  # nf-fa-cog          General
+            "\uf0e8",  # nf-fa-sitemap      Patchbay
+            "\uf085",  # nf-fa-cogs         Engine
+            "\uf0ac",  # nf-fa-globe        OSC
+            "\uf07b",  # nf-fa-folder       File Paths
+            "\uf12e",  # nf-fa-puzzle-piece Plugin Paths
+            "\uf000",  # nf-fa-glass        Wine
+            "\uf0eb",  # nf-fa-lightbulb    Experimental
+        ]
+        tab_font = QFont(nerd_family, 11) if nerd_family else QFont()
         for row in range(self.ui.lw_page.rowCount()):
             item = self.ui.lw_page.item(row, 0)
             if item is not None:
                 item.setIcon(QIcon())
                 if row < len(tab_titles):
-                    item.setText(tab_titles[row])
+                    if nerd_family:
+                        item.setText("%s  %s" % (tab_glyphs[row], tab_titles[row]))
+                        item.setFont(tab_font)
+                    else:
+                        item.setText(tab_titles[row])
 
-        # Remove hideous page header icons
+        # Remove hideous page header glyphs (upper-right corner of every tab)
         for icon_attr in (
             "label_icon_main",
-            "label_icon_canvas",
-            "label_icon_engine",
-            "label_icon_osc",
-            "label_icon_files",
-            "label_icon_paths",
-            "label_icon_wine",
+            "label_10",             # Canvas
+            "label_icon_engine",    # Engine
+            "label_icon_engine_5",  # OSC
+            "label_31",             # File Paths
+            "label_19",             # Plugin Paths
+            "label_icon_wine",      # Wine
             "label_icon_experimental",
         ):
             if hasattr(self.ui, icon_attr):
                 getattr(self.ui, icon_attr).hide()
+
+        # Remove the legacy 16px info / warning glyphs (their descriptive text stays)
+        for glyph_attr in (
+            "label_22", "label_39", "label_41", "label_32",
+            "label_4", "label_26", "label_37", "label_16",
+        ):
+            if hasattr(self.ui, glyph_attr):
+                getattr(self.ui, glyph_attr).hide()
+
+        # Deprecated option: its toggled handler is disabled upstream
+        if hasattr(self.ui, "cb_canvas_fancy_eyecandy"):
+            self.ui.cb_canvas_fancy_eyecandy.hide()
+
+        # Legacy / superseded options that are no longer worth exposing
+        for legacy_attr in (
+            "cb_canvas_full_repaints",   # slow workaround, superseded by modern rendering
+            "ch_exp_load_lib_global",    # explicitly "NOT RECOMMENDED"
+        ):
+            if hasattr(self.ui, legacy_attr):
+                getattr(self.ui, legacy_attr).hide()
+
+        # Let the help / descriptive text wrap instead of clipping into one unreadable
+        # line. heightForWidth is enabled so the layout reserves the wrapped height and
+        # the text never overlaps itself / the row below.
+        for help_attr in (
+            "label_23", "label_40", "label_42", "label_35", "label_38",
+            "label_12", "label_13", "label_5", "label_30", "label_27",
+            "label_17", "label_engine_ui_bridges_mac_note",
+        ):
+            if hasattr(self.ui, help_attr):
+                lbl = getattr(self.ui, help_attr)
+                lbl.setWordWrap(True)
+                lbl.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+                _pol = lbl.sizePolicy()
+                _pol.setHeightForWidth(True)
+                lbl.setSizePolicy(_pol)
+                lbl.setStyleSheet("color: #7f849c;")
 
         # Modern Catppuccin Dialog & Sidebar Theme
         self.setStyleSheet("""
@@ -660,7 +720,7 @@ class CarlaSettingsW(QDialog):
                 border-radius: 5px;
                 padding: 6px 12px;
                 margin: 1px 2px;
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Ubuntu", Cantarell, sans-serif;
+                font-family: __SIDEBAR_FONT__;
                 font-size: 11px;
                 font-weight: 500;
                 border: none;
@@ -722,7 +782,84 @@ class CarlaSettingsW(QDialog):
                 margin: -4px 0;
                 border-radius: 6px;
             }
+            QComboBox {
+                background: #313244;
+                color: #cdd6f4;
+                border: 1px solid rgba(255, 255, 255, 0.08);
+                border-radius: 4px;
+                padding: 3px 8px;
+                min-height: 18px;
+            }
+            QComboBox:hover {
+                border: 1px solid #89b4fa;
+            }
+            QComboBox::drop-down {
+                border: none;
+                width: 18px;
+            }
+            QComboBox QAbstractItemView {
+                background: #1e1e2e;
+                color: #cdd6f4;
+                border: 1px solid #45475a;
+                outline: 0;
+                selection-background-color: #89b4fa;
+                selection-color: #11111b;
+            }
+            QCheckBox {
+                color: #cdd6f4;
+                spacing: 6px;
+            }
+            QSpinBox, QDoubleSpinBox, QLineEdit {
+                background: #313244;
+                color: #cdd6f4;
+                border: 1px solid rgba(255, 255, 255, 0.08);
+                border-radius: 4px;
+                padding: 2px 6px;
+                selection-background-color: #89b4fa;
+                selection-color: #11111b;
+            }
+            QSpinBox:focus, QDoubleSpinBox:focus, QLineEdit:focus {
+                border: 1px solid #89b4fa;
+            }
+            QScrollBar:vertical {
+                background: transparent;
+                width: 10px;
+                margin: 0;
+            }
+            QScrollBar::handle:vertical {
+                background: #45475a;
+                border-radius: 5px;
+                min-height: 24px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #89b4fa;
+            }
+            QScrollBar:horizontal {
+                background: transparent;
+                height: 10px;
+                margin: 0;
+            }
+            QScrollBar::handle:horizontal {
+                background: #45475a;
+                border-radius: 5px;
+                min-width: 24px;
+            }
+            QScrollBar::handle:horizontal:hover {
+                background: #89b4fa;
+            }
+            QScrollBar::add-line, QScrollBar::sub-line {
+                height: 0;
+                width: 0;
+            }
+            QScrollBar::add-page, QScrollBar::sub-page {
+                background: transparent;
+            }
         """)
+        self.setStyleSheet(
+            self.styleSheet().replace(
+                "__SIDEBAR_FONT__", nerd_family or "Cantarell, sans-serif"
+            )
+        )
 
         for i in range(host.get_engine_driver_count()):
             self.ui.cb_engine_audio_driver.addItem(host.get_engine_driver_name(i))
@@ -1004,7 +1141,29 @@ class CarlaSettingsW(QDialog):
         # -------------------------------------------------------------------------------------------------------------
         # Set-up Icons
 
-        if self.ui.ch_main_system_icons.isChecked():
+        try:
+            from carla_canvas import getBestNerdFont
+            _nerd = getBestNerdFont()
+        except Exception:
+            _nerd = ""
+
+        if _nerd:
+            # Modern Nerd Font glyph buttons instead of the legacy bitmap icons
+            _btn_font = QFont(_nerd, 12)
+            for _btn, _glyph in (
+                (self.ui.b_main_proj_folder_open, "\uf07c"),  # nf-fa-folder-open
+                (self.ui.b_filepaths_add, "\uf067"),          # nf-fa-plus
+                (self.ui.b_filepaths_change, "\uf040"),       # nf-fa-pencil
+                (self.ui.b_filepaths_remove, "\uf068"),       # nf-fa-minus
+                (self.ui.b_paths_add, "\uf067"),
+                (self.ui.b_paths_change, "\uf040"),
+                (self.ui.b_paths_remove, "\uf068"),
+            ):
+                if _btn is not None:
+                    _btn.setIcon(QIcon())
+                    _btn.setText(_glyph)
+                    _btn.setFont(_btn_font)
+        elif self.ui.ch_main_system_icons.isChecked():
             self.ui.b_main_proj_folder_open.setIcon(
                 getIcon("document-open", 16, "svgz")
             )

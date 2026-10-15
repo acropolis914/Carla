@@ -20,6 +20,50 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-15 20:30:00
+- **chore(release)**: Clara 1.0.0 + portable packaging
+  - Bumped the Clara application version to **1.0.0** (`CLARA_VERSION_STRING`, `aur/clara-bin/PKGBUILD`, `releases.json`).
+  - New **Neo Candy** app icon (mixer glyph from the GPL-3.0 `neo-candy-icons` theme) replacing the legacy Carla bitmap/SVG set; rasterized to 16/32/48/128/256px.
+  - New portable **AppImage** builder (`scripts/build_appimage.sh`) that bundles a relocatable CPython + PyQt6 (which ships its own Qt6) and the native libs for x86_64.
+  - New **Flatpak** assets (`data/flatpak/…`) and builder (`scripts/build_flatpak.sh`).
+  - New **git tag hook** (`scripts/git-hooks/pre-push` + `scripts/install-git-hooks.sh`): pushing a `v*` tag builds the AppImage and Flatpak locally into `dist/`.
+  - `clara` is the primary binary/desktop name; `carla` remains as a backwards-compatible symlink.
+
+### 2026-10-15 19:30:00
+- **ui(settings)**: Sidebar typography, Nerd Font icons & label fixes
+  - Sidebar tab buttons now render a **Nerd Font glyph + label** (General, Patchbay, Engine, OSC, File Paths, Plugin Paths, Wine, Experimental) in the detected Nerd Font instead of the cleared legacy bitmap icons; the sidebar font family now follows that font (with a clean sans fallback).
+  - Replaced the remaining **legacy bitmap button icons** (project-folder open, and the Add / Change / Remove buttons on File Paths and Plugin Paths) with Nerd Font glyphs.
+  - Fixed the **overly long descriptive label overlapping itself**: word-wrapped help/note labels now enable `heightForWidth` and top-left alignment so the layout reserves the full wrapped height.
+  - Hid two **legacy options** that are no longer worth exposing: "Full canvas repaints (slower, …)" and "Load Carla backend in global namespace (NOT RECOMMENDED)".
+
+### 2026-10-15 18:45:00
+- **ui(patchbay)**: Search interaction restyle + settings widget polish
+  - Search **results dropdown** selection/hover is now Catppuccin blue (`#89b4fa`) instead of the harsh orange, with a slim themed scrollbar and **no horizontal scrollbar** (results elide to the right and use uniform item sizes).
+  - The on-canvas **search match highlight** was retinted from orange to sapphire (`#74c7ec` for matches, `#89b4fa` for the active row) to match the rest of the theme.
+  - Settings dialog: added consistent theming for **combo boxes** (including their dropdown popup view), **spin boxes**, **line edits**, **check boxes** and all **scrollbars**, so the settings widgets no longer fall back to the default (ugly, horizontally-scrolling) platform style.
+
+### 2026-10-15 18:15:00
+- **ui(settings)**: Settings dialog cleanup
+  - Removed the leftover decorative glyphs in the **upper-right corner of every settings tab** (the old `label_10` / `label_icon_engine_5` / `label_31` / `label_19` header icons were not matched by the previous hide list, so they lingered).
+  - Removed the legacy inline **info / warning 16px icons** next to the descriptive text across Engine, OSC, File Paths, Plugin Paths, Wine and Experimental tabs; the text they annotated is kept.
+  - Hid the deprecated **"Fancy eye-candy"** option (its toggle handler is disabled upstream).
+  - Long help / note lines now **word-wrap** and render in a muted secondary color instead of clipping into a single unreadable line.
+
+### 2026-10-15 17:30:00
+- **feat(patchbay)**: Animated signal / event flow + search moved into the top toolbar
+  - **Search box relocated**: the patchbay search field is no longer a standalone floater; it now lives inside the top context toolbar as a rounded text box that stays anchored to the bar (and follows it when dragged). The results popup still drops down beneath it.
+  - **Signal flow animation**: new `patchcanvas/signalflow.py` animator drives a travelling pulse along every cable and lights up active nodes, using **real engine levels** (input/output peak values polled per plugin). Each pulse has a comet tail for a clear sense of direction; active nodes get both a tinted border and a body glow whose intensity tracks loudness. Levels are smoothed with fast attack / slow decay, and the pulse is now overlaid even on router/orthogonal cables that custom-draw themselves.
+  - **External / PipeWire levels**: new `patchcanvas/pwlevels.py` samples the real level of external nodes (virtual **BUS** sinks, monitors, hardware I/O, external clients) using the same hidden peak-detect tap as pavucontrol (`PA_STREAM_PEAK_DETECT` via `libpulse`, pumped on the GUI thread). Activity is keyed by canvas **group id**, and any node with no sample (e.g. a playback stream like Spotify) falls back to a slightly attenuated level borrowed from the groups it is wired to, so a fully external chain still pulses as long as one Carla plugin sits anywhere on it. Cables light up from **either** endpoint.
+  - **Clean patchbay**: the observer taps (ours and third-party ones like `pavucontrol` / `pwvucontrol`) are recognised by name and filtered out of the canvas, so they never appear as nodes or in port selectors. Per-node capture can be toggled from the right-click menu of the flow button (setting `Canvas/SignalFlowExternal`, default on).
+  - **Quick switch**: a new toggle button (`heartbeat` glyph) in the left canvas palette enables/disables the animation, restored from the new `Canvas/SignalFlow` setting between sessions.
+  - **Cleanup**: removed the bottom-right `?` patchbay shortcuts button (its help text lives on the left-palette `btnHelp` tooltip).
+
+### 2026-10-15 15:45:00
+- **feat(patchbay)**: Search selection now persists
+  - `Ctrl+F` fuzzy search now *selects* the matching nodes in the scene (in addition to the highlight), so the result set stays selected after the search box closes via Enter, click or Esc.
+  - The selection persists until the user interacts with the canvas — a canvas click/drag, or the select-all / invert-selection / deselect-all shortcuts, clears it (`_clearHighlights`).
+  - Because the persisted selection emits `pluginSelected`, it also drives the mini-rack sync and the floating context toolbar, so you can search and then immediately arrange / act on the result set.
+
 ### 2026-10-15 15:00:00
 - **feat(canvas)**: Graph introspection model
   - New `patchcanvas/graph_info.py`: a single JSON-serialisable view of the patchbay (`collect_graph`) — nodes (id, name, split, pos/size/rect, ports with mode/type), connections (out/in group+port+node index) and derived topology (edges, incoming, degree, connected components, longest-path layers). Foundation for the layout plugins and the future claractl / scripting layer.

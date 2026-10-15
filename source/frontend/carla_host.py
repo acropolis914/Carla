@@ -33,7 +33,6 @@ from carla_widgets import *
 from patchcanvas import patchcanvas
 from carla_canvas import (
     CanvasViewportFilter,
-    PatchbayHelpOverlay,
     autoConnectStereoPair,
     canvasCallback,
     findStereoPartner,
@@ -215,6 +214,10 @@ class HostWindow(QMainWindow):
         self.fPluginCount = 0
         self.fPluginList = []
         self.fConnections = {}
+
+        # External patchbay clients whose audio is only tapped for the signal-flow
+        # meters (or third-party peak-detect observers); hidden from the canvas.
+        self.fFilteredPatchbayClients = set()
 
         self.fPluginListDialog = None
         self.fFavoritePlugins = []
@@ -2877,9 +2880,8 @@ class HostWindow(QMainWindow):
         patchcanvas.setInitialPos(self.fCanvasWidth / 2, self.fCanvasHeight / 2)
         self.ui.graphicsView.setSceneRect(0, 0, self.fCanvasWidth, self.fCanvasHeight)
 
-        # Setup canvas viewport auto-scrolling, quick disconnect filter & help overlay
+        # Setup canvas viewport auto-scrolling & quick disconnect filter
         self.canvasFilter = CanvasViewportFilter(self, self.ui.graphicsView)
-        self.patchbayHelpOverlay = self.canvasFilter.helpOverlay
 
         self.ui.miniCanvasPreview.setViewTheme(
             patchcanvas.canvas.theme.canvas_bg,
@@ -3360,6 +3362,23 @@ class HostWindow(QMainWindow):
     # --------------------------------------------------------------------------------------------------------
     # Canvas (host callbacks)
 
+    # Names matching any of these tokens are pure peak-detect observers (ours or
+    # third-party like pavucontrol / pwvucontrol) and must not clutter the canvas.
+    _PATCHBAY_HIDDEN_NAME_TOKENS = (
+        "clarameter",
+        "clara meters",
+        "peak-detect",
+        "peak detect",
+        "pavucontrol",
+        "pwvucontrol",
+    )
+
+    def _isHiddenPatchbayClientName(self, clientName):
+        if not clientName:
+            return False
+        low = clientName.lower()
+        return any(token in low for token in self._PATCHBAY_HIDDEN_NAME_TOKENS)
+
     @pyqtSlot(int, int, int, str)
     def slot_handlePatchbayClientAddedCallback(
         self, clientId, clientIcon, pluginId, clientName
@@ -3368,6 +3387,9 @@ class HostWindow(QMainWindow):
             f"carla_host: slot_handlePatchbayClientAddedCallback clientId={clientId}, clientIcon={clientIcon}, pluginId={pluginId}, clientName='{clientName}'",
             level="debug"
         )
+        if self._isHiddenPatchbayClientName(clientName):
+            self.fFilteredPatchbayClients.add(clientId)
+            return
         pcSplit = patchcanvas.SPLIT_UNDEF
         pcIcon = patchcanvas.ICON_APPLICATION
 
@@ -3420,11 +3442,17 @@ class HostWindow(QMainWindow):
 
     @pyqtSlot(int)
     def slot_handlePatchbayClientRemovedCallback(self, clientId):
+        if clientId in self.fFilteredPatchbayClients:
+            self.fFilteredPatchbayClients.discard(clientId)
+            return
         patchcanvas.removeGroup(clientId)
         self.updateMiniCanvasLater()
 
     @pyqtSlot(int, str)
     def slot_handlePatchbayClientRenamedCallback(self, clientId, newClientName):
+        if clientId in self.fFilteredPatchbayClients or self._isHiddenPatchbayClientName(newClientName):
+            self.fFilteredPatchbayClients.add(clientId)
+            return
         patchcanvas.renameGroup(clientId, newClientName)
         self.updateMiniCanvasLater()
 
@@ -3432,6 +3460,8 @@ class HostWindow(QMainWindow):
     def slot_handlePatchbayClientDataChangedCallback(
         self, clientId, clientIcon, pluginId
     ):
+        if clientId in self.fFilteredPatchbayClients:
+            return
         pcIcon = patchcanvas.ICON_APPLICATION
 
         if clientIcon == PATCHBAY_ICON_PLUGIN:
@@ -3472,6 +3502,8 @@ class HostWindow(QMainWindow):
     def slot_handlePatchbayClientPositionChangedCallback(
         self, clientId, x1, y1, x2, y2
     ):
+        if clientId in self.fFilteredPatchbayClients:
+            return
         if (x1 != 0 and x2 != 0) or (y1 != 0 and y2 != 0):
             patchcanvas.splitGroup(clientId)
         else:
@@ -3487,6 +3519,8 @@ class HostWindow(QMainWindow):
             f"carla_host: slot_handlePatchbayPortAddedCallback clientId={clientId}, portId={portId}, name='{portName}'",
             level="debug"
         )
+        if clientId in self.fFilteredPatchbayClients:
+            return
         if portFlags & PATCHBAY_PORT_IS_INPUT:
             portMode = patchcanvas.PORT_MODE_INPUT
         else:
@@ -3510,6 +3544,8 @@ class HostWindow(QMainWindow):
 
     @pyqtSlot(int, int)
     def slot_handlePatchbayPortRemovedCallback(self, groupId, portId):
+        if groupId in self.fFilteredPatchbayClients:
+            return
         patchcanvas.removePort(groupId, portId)
         self.updateMiniCanvasLater()
 
@@ -3517,6 +3553,8 @@ class HostWindow(QMainWindow):
     def slot_handlePatchbayPortChangedCallback(
         self, groupId, portId, portFlags, portGroupId, newPortName
     ):
+        if groupId in self.fFilteredPatchbayClients:
+            return
         patchcanvas.renamePort(groupId, portId, newPortName)
         self.updateMiniCanvasLater()
 
@@ -3543,6 +3581,8 @@ class HostWindow(QMainWindow):
     def slot_handlePatchbayConnectionAddedCallback(
         self, connectionId, groupOutId, portOutId, groupInId, portInId
     ):
+        if groupOutId in self.fFilteredPatchbayClients or groupInId in self.fFilteredPatchbayClients:
+            return
         self.fConnections[connectionId] = (groupOutId, portOutId, groupInId, portInId)
         patchcanvas.connectPorts(
             connectionId, groupOutId, portOutId, groupInId, portInId
@@ -3553,7 +3593,8 @@ class HostWindow(QMainWindow):
     def slot_handlePatchbayConnectionRemovedCallback(
         self, connectionId, portOutId, portInId
     ):
-        self.fConnections.pop(connectionId, None)
+        if self.fConnections.pop(connectionId, None) is None:
+            return
         patchcanvas.disconnectPorts(connectionId)
         self.updateMiniCanvasLater()
 
@@ -5325,8 +5366,6 @@ class HostWindow(QMainWindow):
 
         if self.fWithCanvas:
             self.slot_miniCanvasCheckSize()
-            if hasattr(self, "patchbayHelpOverlay") and self.patchbayHelpOverlay:
-                self.patchbayHelpOverlay.reposition()
 
     # --------------------------------------------------------------------------------------------------------
     # timer event

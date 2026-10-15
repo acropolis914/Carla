@@ -677,7 +677,7 @@ class CanvasBox(QGraphicsObject):
 
         self.m_port_list_ids = []
         self.m_connection_lines = []
-        self.m_search_highlight = 0  # 0: None, 1: Matched (orange), 2: Active/Hovered (bright/thick orange)
+        self.m_search_highlight = 0  # 0: None, 1: Matched (sapphire), 2: Active/Hovered (bright blue)
         self.m_hover_btn_id = None
         self.m_pressed_btn_id = None
         self.m_hide_unconnected_ports = False
@@ -1793,16 +1793,37 @@ class CanvasBox(QGraphicsObject):
 
         # Draw rectangle
         scale = canvas.scene.getScaleFactor() if hasattr(canvas.scene, "getScaleFactor") else 1.0
+
+        # Signal / event flow activity: light up the node while it processes audio
+        activity = 0.0
+        try:
+            from . import signalflow
+            if signalflow.state.enabled:
+                activity = signalflow.state.levels.get(self.getGroupId(), 0.0)
+        except Exception:
+            activity = 0.0
+
         if getattr(self, "m_search_highlight", 0) == 2:
-            pen = QPen(QColor(255, 170, 0), max(3.0, 3.0 / scale))
+            pen = QPen(QColor(137, 180, 250), max(3.0, 3.0 / scale))
         elif getattr(self, "m_search_highlight", 0) == 1:
-            pen = QPen(QColor(240, 110, 0), max(2.0, 2.0 / scale))
+            pen = QPen(QColor(116, 199, 236), max(2.0, 2.0 / scale))
         elif self.isSelected():
             pen = QPen(canvas.theme.box_pen_sel)
             pen.setWidthF(max(2.5, 2.5 / scale))
         else:
             pen = QPen(canvas.theme.box_pen)
             pen.setWidthF(pen.widthF() + 0.00001)
+
+        if activity > 0.03 and not getattr(self, "m_search_highlight", 0):
+            base = pen.color()
+            glow = QColor(150, 230, 255)
+            mix = min(1.0, 0.35 + 0.65 * activity)
+            pen = QPen(QColor(
+                int(base.red() * (1.0 - mix) + glow.red() * mix),
+                int(base.green() * (1.0 - mix) + glow.green() * mix),
+                int(base.blue() * (1.0 - mix) + glow.blue() * mix),
+            ))
+            pen.setWidthF(max(2.5, (1.5 + 2.5 * activity) / scale))
 
         painter.setPen(pen)
         lineHinting = pen.widthF() / 2
@@ -1830,6 +1851,16 @@ class CanvasBox(QGraphicsObject):
             painter.drawRoundedRect(rect, radius, radius)
         else:
             painter.drawRect(rect)
+
+        # Loudness glow: light up the whole node body while it is processing audio
+        if activity > 0.03:
+            glow_alpha = int(min(100.0, 25.0 + 90.0 * activity))
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(QColor(140, 210, 255, glow_alpha))
+            if radius > 0:
+                painter.drawRoundedRect(rect, radius, radius)
+            else:
+                painter.drawRect(rect)
 
         # Draw plugin inline display if supported
         self.paintInlineDisplay(painter)

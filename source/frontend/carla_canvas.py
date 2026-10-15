@@ -31,6 +31,7 @@ from qt_compat import (
     QHBoxLayout,
     QIcon,
     QLabel,
+    QLineEdit,
     QMenu,
     QMouseEvent,
     QObject,
@@ -200,273 +201,10 @@ def findStereoPartnerConnection(connectionId):
 # ------------------------------------------------------------------------------------------------------------
 
 
-class PatchbayHelpOverlay(QFrame):
-    """An unobtrusive, expandable cheat-sheet floating on the lower right of the patchbay canvas."""
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setObjectName("patchbay_help_overlay")
-        self._expanded = False
-
-        self._layout = QVBoxLayout(self)
-        self._layout.setContentsMargins(6, 6, 6, 6)
-        self._layout.setSpacing(4)
-
-        # Header Widget (Title + Collapse button)
-        self._headerWidget = QWidget(self)
-        headerLayout = QHBoxLayout(self._headerWidget)
-        headerLayout.setContentsMargins(4, 0, 2, 2)
-        headerLayout.setSpacing(6)
-
-        self._lblTitle = QLabel("Canvas Controls", self._headerWidget)
-        self._lblTitle.setStyleSheet(
-            "color: #89b4fa; font-weight: bold; font-size: 11px;"
-        )
-
-        self._btnCollapse = QPushButton("▼", self._headerWidget)
-        self._btnCollapse.setFixedSize(18, 18)
-        self._btnCollapse.setStyleSheet("""
-            QPushButton {
-                background: transparent;
-                border: none;
-                color: #a6adc8;
-                font-weight: bold;
-                font-size: 10px;
-                padding: 0px;
-            }
-            QPushButton:hover {
-                color: #ffffff;
-            }
-        """)
-        self._btnCollapse.clicked.connect(self.toggleExpanded)
-
-        headerLayout.addWidget(self._lblTitle)
-        headerLayout.addStretch()
-        headerLayout.addWidget(self._btnCollapse)
-        self._layout.addWidget(self._headerWidget)
-
-        # Content Label (shortcuts table)
-        self._lblContent = QLabel(self)
-        self._lblContent.setText("""
-            <table style="color: #cdd6f4; font-size: 10px; line-height: 145%;">
-              <tr><td style="color: #f9e2af; font-weight: bold; padding-right: 6px;">V:</td><td>Marquee Select Mode</td></tr>
-              <tr><td style="color: #94e2d5; font-weight: bold; padding-right: 6px;">H / Space:</td><td>Hand / Pan Mode</td></tr>
-              <tr><td style="color: #cba6f7; font-weight: bold; padding-right: 6px;">Q / Esc:</td><td>Pointer (Default)</td></tr>
-              <tr><td style="color: #89b4fa; font-weight: bold; padding-right: 6px;">Drag Port:</td><td>Connect wire</td></tr>
-              <tr><td style="color: #fab387; font-weight: bold; padding-right: 6px;">Alt + Drag:</td><td>Auto-wire stereo pair</td></tr>
-              <tr><td style="color: #a6e3a1; font-weight: bold; padding-right: 6px;">Drag past edge:</td><td>Auto-scroll canvas</td></tr>
-              <tr><td style="color: #f38ba8; font-weight: bold; padding-right: 6px;">Alt / Mid-Click:</td><td>Disconnect cable/port</td></tr>
-              <tr><td style="color: #eba0ac; font-weight: bold; padding-right: 6px;">Shift + Click:</td><td>Alt disconnect</td></tr>
-              <tr><td style="color: #cba6f7; font-weight: bold; padding-right: 6px;">Ctrl + Click:</td><td>Multi-select node</td></tr>
-              <tr><td style="color: #b4befe; font-weight: bold; padding-right: 6px;">Dbl-Click Node:</td><td>Open Custom UI</td></tr>
-              <tr><td style="color: #89dceb; font-weight: bold; padding-right: 6px;">Ctrl + Scroll:</td><td>Zoom in / out</td></tr>
-              <tr><td style="color: #f5c2e7; font-weight: bold; padding-right: 6px;">Right-Click:</td><td>Context menu / arrange</td></tr>
-            </table>
-        """)
-        self._layout.addWidget(self._lblContent)
-
-        # Collapsed Trigger Button (the circle with "?")
-        self._btnCircle = QPushButton("?", self)
-        self._btnCircle.setObjectName("patchbay_help_btn_circle")
-        self._btnCircle.setFixedSize(28, 28)
-        self._btnCircle.setToolTip("Show canvas mouse & keyboard shortcuts")
-        self._btnCircle.setCursor(Qt.PointingHandCursor)
-        self._btnCircle.clicked.connect(self.toggleExpanded)
-        self._btnCircle.setStyleSheet("""
-            QPushButton#patchbay_help_btn_circle {
-                background-color: rgba(30, 30, 46, 0.88);
-                border: 1px solid rgba(137, 180, 250, 0.6);
-                border-radius: 14px;
-                color: #89b4fa;
-                font-weight: bold;
-                font-size: 13px;
-                padding: 0px;
-            }
-            QPushButton#patchbay_help_btn_circle:hover {
-                background-color: rgba(49, 50, 68, 0.98);
-                border: 1px solid #89b4fa;
-                color: #ffffff;
-            }
-        """)
-
 def _get_event_global_pos(event):
     if hasattr(event, "globalPosition"):
         return event.globalPosition().toPoint()
     return event.globalPos()
-
-
-class PatchbayHelpOverlay(QFrame):
-    """Floating draggable quick-reference cheat sheet for canvas navigation and cable shortcuts."""
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setObjectName("patchbay_help_overlay")
-        wa_tooltip = getattr(getattr(Qt, "WidgetAttribute", Qt), "WA_AlwaysShowToolTips", None)
-        if wa_tooltip is not None:
-            self.setAttribute(wa_tooltip, True)
-
-        self._layout = QVBoxLayout(self)
-        self._layout.setContentsMargins(6, 6, 6, 6)
-        self._layout.setSpacing(4)
-
-        # 1. Collapsed button (Circular floating icon)
-        self._btnCircle = QPushButton("?", self)
-        self._btnCircle.setFixedSize(28, 28)
-        self._btnCircle.setCursor(QCursor(Qt.PointingHandCursor))
-        self._btnCircle.setToolTip("Show Patchbay Shortcuts (H)")
-        self._btnCircle.clicked.connect(self.toggleExpanded)
-        self._layout.addWidget(self._btnCircle)
-
-        # 2. Header bar (when expanded)
-        self._headerWidget = QWidget(self)
-        header_layout = QHBoxLayout(self._headerWidget)
-        header_layout.setContentsMargins(4, 2, 4, 2)
-        header_layout.setSpacing(4)
-
-        self._lblTitle = QLabel("Patchbay Shortcuts", self._headerWidget)
-        self._lblTitle.setStyleSheet(
-            "font-weight: bold; color: #cdd6f4; font-size: 11px; background: transparent;"
-        )
-        header_layout.addWidget(self._lblTitle)
-        header_layout.addStretch()
-
-        self._btnClose = QPushButton("✕", self._headerWidget)
-        self._btnClose.setFixedSize(16, 16)
-        self._btnClose.setCursor(QCursor(Qt.PointingHandCursor))
-        self._btnClose.setStyleSheet("""
-            QPushButton {
-                background: transparent;
-                border: none;
-                color: #a6adc8;
-                font-size: 11px;
-                font-weight: bold;
-                padding: 0;
-            }
-            QPushButton:hover {
-                color: #f38ba8;
-            }
-        """)
-        self._btnClose.clicked.connect(lambda: self.setExpanded(False))
-        header_layout.addWidget(self._btnClose)
-
-        self._layout.addWidget(self._headerWidget)
-
-        # 3. Content Label
-        self._lblContent = QLabel(self)
-        self._lblContent.setTextFormat(Qt.RichText)
-        self._lblContent.setStyleSheet(
-            "color: #bac2de; font-size: 10px; line-height: 1.4; background: transparent;"
-        )
-        self._lblContent.setText("""
-            <table cellpadding="1" cellspacing="0" style="color: #bac2de; font-size: 10px;">
-              <tr><td style="color: #89b4fa; font-weight: bold;">Space + Drag</td><td>&nbsp;Pan Canvas</td></tr>
-              <tr><td style="color: #89b4fa; font-weight: bold;">Wheel</td><td>&nbsp;Zoom in/out</td></tr>
-              <tr><td style="color: #89b4fa; font-weight: bold;">F</td><td>&nbsp;Zoom to Fit</td></tr>
-              <tr><td style="color: #a6e3a1; font-weight: bold;">Alt + Drag Wire</td><td>&nbsp;Stereo Autowire L+R</td></tr>
-              <tr><td style="color: #f38ba8; font-weight: bold;">Alt / Shift + Click</td><td>&nbsp;Quick Disconnect</td></tr>
-              <tr><td style="color: #f9e2af; font-weight: bold;">Middle-Click</td><td>&nbsp;Disconnect Wire/Port</td></tr>
-              <tr><td style="color: #cba6f7; font-weight: bold;">Right-Click Node</td><td>&nbsp;Node Actions & Align</td></tr>
-            </table>
-        """)
-        self._layout.addWidget(self._lblContent)
-
-        self.setStyleSheet("""
-            QFrame#patchbay_help_overlay {
-                background-color: rgba(24, 24, 37, 0.93);
-                border: 1px solid #45475a;
-                border-radius: 8px;
-            }
-            QPushButton {
-                background-color: rgba(30, 30, 46, 0.95);
-                border: 1px solid #585b70;
-                border-radius: 14px;
-                color: #cdd6f4;
-                font-weight: bold;
-                font-size: 12px;
-            }
-            QPushButton:hover {
-                background-color: rgba(49, 50, 68, 0.98);
-                border: 1px solid #89b4fa;
-                color: #ffffff;
-            }
-        """)
-
-        # Set default state to collapsed (hidden/icon-only by default)
-        self.setExpanded(False)
-        self._dragPos = None
-        self._userMoved = False
-
-    def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            self._dragPos = _get_event_global_pos(event) - self.frameGeometry().topLeft()
-            event.accept()
-            return
-        super().mousePressEvent(event)
-
-    def mouseMoveEvent(self, event):
-        if self._dragPos is not None and event.buttons() & Qt.LeftButton:
-            vp = self.parentWidget()
-            if vp:
-                new_pos = _get_event_global_pos(event) - self._dragPos
-                # Constrain within viewport bounds
-                x = max(0, min(new_pos.x(), vp.width() - self.width()))
-                y = max(0, min(new_pos.y(), vp.height() - self.height()))
-                self.move(x, y)
-                self._userMoved = True
-                event.accept()
-                return
-        super().mouseMoveEvent(event)
-
-    def mouseReleaseEvent(self, event):
-        self._dragPos = None
-        super().mouseReleaseEvent(event)
-
-    def setExpanded(self, expanded):
-        self._expanded = bool(expanded)
-        if self._expanded:
-            self._btnCircle.hide()
-            self._headerWidget.show()
-            self._lblContent.show()
-            self.setFixedSize(280, 245)
-            self.setStyleSheet("""
-                QFrame#patchbay_help_overlay {
-                    background-color: rgba(24, 24, 37, 0.93);
-                    border: 1px solid #45475a;
-                    border-radius: 8px;
-                }
-            """)
-        else:
-            self._headerWidget.hide()
-            self._lblContent.hide()
-            self._btnCircle.show()
-            self.setFixedSize(28, 28)
-            self.setStyleSheet("""
-                QFrame#patchbay_help_overlay {
-                    background: transparent;
-                    border: none;
-                }
-            """)
-        if not getattr(self, "_userMoved", False):
-            self.reposition()
-
-    def toggleExpanded(self):
-        self.setExpanded(not self._expanded)
-
-    def reposition(self):
-        if getattr(self, "_userMoved", False):
-            return
-        vp = self.parentWidget()
-        if vp is None:
-            return
-        W = vp.width()
-        H = vp.height()
-        w = self.width()
-        h = self.height()
-        margin = 12
-        new_x = max(10, W - w - margin)
-        new_y = max(10, H - h - margin)
-        self.move(new_x, new_y)
-        self.raise_()
 
 
 # ------------------------------------------------------------------------------------------------------------
@@ -538,6 +276,7 @@ class CanvasToolBarOverlay(QFrame):
         self.icon_fit     = "\uf0b2" if font_family else "⛶"   # nf-fa-arrows-alt
         self.icon_grid    = "\uf00a" if font_family else "#"   # nf-fa-th
         self.icon_snap    = "\uf076" if font_family else "🧲"  # nf-fa-magnet
+        self.icon_flow    = "\uf21e" if font_family else "∿"   # nf-fa-heartbeat
         self.icon_help    = "\uf059" if font_family else "?"   # nf-fa-question-circle
         # Main Application Menu Button (Accessible when Menubar is hidden)
         self.btnMenu = QPushButton("☰", self)
@@ -626,6 +365,20 @@ class CanvasToolBarOverlay(QFrame):
 
         add_sep()
 
+        # Signal / Event Flow Animation Toggle
+        self._signalflow_external = True
+        self.btnSignalFlow = QPushButton(self.icon_flow, self)
+        self.btnSignalFlow.setToolTip("Toggle animated signal/event flow over the patchbay\n(right-click for options)")
+        self.btnSignalFlow.setFont(font)
+        self.btnSignalFlow.setFixedSize(28, 28)
+        self.btnSignalFlow.setCheckable(True)
+        self.btnSignalFlow.clicked.connect(self._slot_toggleSignalFlow)
+        self.btnSignalFlow.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.btnSignalFlow.customContextMenuRequested.connect(self._slot_flowMenu)
+        layout.addWidget(self.btnSignalFlow)
+
+        add_sep()
+
         # Patchbay Shortcuts Help Tooltip
         self.btnHelp = QPushButton(self.icon_help, self)
         self.btnHelp.setFont(font)
@@ -669,6 +422,16 @@ class CanvasToolBarOverlay(QFrame):
         self.updateActiveButton(0)
         self.adjustSize()
 
+        try:
+            from utils import QSafeSettings
+            from carla_shared import CARLA_KEY_CANVAS_SIGNAL_FLOW, CARLA_KEY_CANVAS_SIGNAL_FLOW_EXT
+            settings = QSafeSettings("falkTX", "Carla2")
+            self._signalflow_external = settings.value(CARLA_KEY_CANVAS_SIGNAL_FLOW_EXT, True, bool)
+            if settings.value(CARLA_KEY_CANVAS_SIGNAL_FLOW, False, bool):
+                self._applySignalFlow(True)
+        except Exception:
+            pass
+
     def _slot_openMainMenu(self):
         gui = getattr(gCarla, "gui", None)
         if gui is not None and hasattr(gui, "ui"):
@@ -708,6 +471,177 @@ class CanvasToolBarOverlay(QFrame):
         new_state = not getattr(patchcanvas.options, "snap_enabled", True)
         patchcanvas.options.snap_enabled = new_state
         self.btnSnap.setChecked(new_state)
+
+    def _slot_toggleSignalFlow(self):
+        from patchcanvas import signalflow
+        animator = signalflow.get_animator()
+        new_state = not animator.is_enabled()
+        self._applySignalFlow(new_state)
+        try:
+            from utils import QSafeSettings
+            from carla_shared import CARLA_KEY_CANVAS_SIGNAL_FLOW
+            QSafeSettings("falkTX", "Carla2").setValue(CARLA_KEY_CANVAS_SIGNAL_FLOW, new_state)
+        except Exception:
+            pass
+
+    def _slot_flowMenu(self, pos):
+        menu = QMenu(self)
+        act_ext = QAction("Include external / PipeWire nodes", menu)
+        act_ext.setCheckable(True)
+        act_ext.setChecked(bool(self._signalflow_external))
+        act_ext.setToolTip("Sample real levels of external nodes (bus, monitors, hardware) via a hidden peak-detect tap")
+        menu.addAction(act_ext)
+        chosen = menu.exec_(self.btnSignalFlow.mapToGlobal(pos))
+        if chosen is act_ext:
+            self._signalflow_external = act_ext.isChecked()
+            try:
+                from utils import QSafeSettings
+                from carla_shared import CARLA_KEY_CANVAS_SIGNAL_FLOW_EXT
+                QSafeSettings("falkTX", "Carla2").setValue(CARLA_KEY_CANVAS_SIGNAL_FLOW_EXT, self._signalflow_external)
+            except Exception:
+                pass
+            if not self._signalflow_external:
+                self._stopExternalSampler()
+            elif self._signalflow_ready:
+                from patchcanvas import signalflow
+                if signalflow.get_animator().is_enabled():
+                    self._external_sampler()
+
+    def _stopExternalSampler(self):
+        try:
+            from patchcanvas import pwlevels
+            pwlevels.get_sampler().set_nodes(set())
+            pwlevels.get_sampler().stop()
+        except Exception:
+            pass
+
+    def _external_sampler(self):
+        if not self._signalflow_external:
+            return None
+        try:
+            from patchcanvas import pwlevels
+            sampler = pwlevels.get_sampler()
+            if not sampler.is_available():
+                return None
+            if not sampler.is_running() and not sampler.start():
+                return None
+            return sampler
+        except Exception:
+            return None
+
+    def _applySignalFlow(self, enabled):
+        from patchcanvas import signalflow
+        animator = signalflow.get_animator()
+        if not getattr(self, "_signalflow_ready", False):
+            self._signalflow_ready = True
+            animator.set_level_provider(self._provideSignalLevels)
+            animator.add_frame_callback(self._repaintActiveSignalItems)
+        if enabled:
+            animator.start()
+            self._external_sampler()
+        else:
+            animator.stop()
+            self._stopExternalSampler()
+        self.btnSignalFlow.setChecked(bool(enabled))
+
+    def _provideSignalLevels(self):
+        # Returns a {group_id: level} map. Carla only exposes peak values for real
+        # plugins. External / hardware / PipeWire groups (a client such as Spotify, a
+        # virtual BUS sink, a monitor or HW I/O) have no engine peak, so we either read
+        # a real level from a hidden peak-detect tap, or borrow a decaying level from
+        # the plugin groups they are directly wired to.
+        gui = getattr(gCarla, "gui", None)
+        engine = getattr(gui, "host", None) if gui is not None else None
+
+        groups = list(patchcanvas.canvas.group_list)
+        plugin_levels = {}
+        external_groups = []  # (group_id, pw_node_name)
+
+        if engine is not None:
+            for group in groups:
+                gid = getattr(group, "group_id", None)
+                if gid is None:
+                    continue
+                pid = getattr(group, "plugin_id", -1)
+                if not (0 <= pid <= patchcanvas.MAX_PLUGIN_ID_ALLOWED):
+                    name = getattr(group, "pw_node_name", None) or getattr(group, "group_name", None)
+                    external_groups.append((gid, name))
+                    continue
+                try:
+                    level = max(
+                        engine.get_input_peak_value(pid, True),
+                        engine.get_input_peak_value(pid, False),
+                        engine.get_output_peak_value(pid, True),
+                        engine.get_output_peak_value(pid, False),
+                    )
+                except Exception:
+                    continue
+                if level > 0.0:
+                    plugin_levels[gid] = level
+        else:
+            for group in groups:
+                gid = getattr(group, "group_id", None)
+                if gid is None:
+                    continue
+                if getattr(group, "plugin_id", -1) not in range(0, patchcanvas.MAX_PLUGIN_ID_ALLOWED + 1):
+                    name = getattr(group, "pw_node_name", None) or getattr(group, "group_name", None)
+                    external_groups.append((gid, name))
+
+        levels = dict(plugin_levels)
+
+        # Real per-node levels for external groups via a hidden peak-detect tap
+        sampler = self._external_sampler()
+        if sampler is not None and external_groups:
+            connections = list(patchcanvas.canvas.connection_list)
+            connected_ids = set()
+            for conn in connections:
+                connected_ids.add(getattr(conn, "group_out_id", None))
+                connected_ids.add(getattr(conn, "group_in_id", None))
+            desired = [name for gid, name in external_groups if gid in connected_ids and name]
+            sampler.set_nodes(desired)
+            sampler.process()
+            for gid, name in external_groups:
+                if gid in connected_ids and name:
+                    lvl = sampler.level_for(name)
+                    if lvl > 0.0:
+                        levels[gid] = max(levels.get(gid, 0.0), lvl)
+
+        # Light up any remaining external / hardware groups from the plugins they connect to
+        non_plugin_ids = {gid for gid, _name in external_groups}
+        if non_plugin_ids:
+            connections = list(patchcanvas.canvas.connection_list)
+            for _ in range(2):
+                for conn in connections:
+                    out_id = getattr(conn, "group_out_id", None)
+                    in_id = getattr(conn, "group_in_id", None)
+                    src = levels.get(out_id, 0.0)
+                    dst = levels.get(in_id, 0.0)
+                    best = max(src, dst)
+                    if best <= 0.0:
+                        continue
+                    if out_id in non_plugin_ids and out_id not in levels:
+                        levels[out_id] = best * 0.85
+                    if in_id in non_plugin_ids and in_id not in levels:
+                        levels[in_id] = best * 0.85
+
+        return levels
+
+    def _repaintActiveSignalItems(self):
+        from patchcanvas import signalflow
+        levels = signalflow.state.levels
+        if not levels:
+            return
+        canvas = patchcanvas.canvas
+        for conn in list(canvas.connection_list):
+            if getattr(conn, "group_out_id", None) in levels or getattr(conn, "group_in_id", None) in levels:
+                widget = getattr(conn, "widget", None)
+                if widget is not None:
+                    widget.update()
+        for group in list(canvas.group_list):
+            if getattr(group, "group_id", None) in levels:
+                for w in group.widgets:
+                    if w is not None:
+                        w.update()
 
     def updateActiveButton(self, mode):
         self.btnPointer.setChecked(mode == 0)
@@ -810,13 +744,68 @@ class CanvasContextToolBarOverlay(QFrame):
             }
         """)
 
+        # Persistent quick-search field (kept out of the rebuilt action items so
+        # it survives selection changes). Rounded textbox housed in the bar.
+        self.searchEdit = QLineEdit(self)
+        self.searchEdit.setPlaceholderText("Search nodes…")
+        self.searchEdit.setClearButtonEnabled(True)
+        self.searchEdit.setFixedHeight(24)
+        self.searchEdit.setFixedWidth(170)
+        self.searchEdit.setStyleSheet("""
+            QLineEdit {
+                background-color: rgba(17, 17, 27, 0.92);
+                color: #cdd6f4;
+                border: 1px solid #585b70;
+                border-radius: 11px;
+                padding: 1px 10px;
+                font-size: 12px;
+                selection-background-color: #89b4fa;
+                selection-color: #11111b;
+            }
+            QLineEdit:focus {
+                border: 1px solid #89b4fa;
+                background-color: rgba(30, 30, 46, 0.98);
+            }
+        """)
+        self.searchEdit.textChanged.connect(self._slot_search_changed)
+        self.searchEdit.returnPressed.connect(self._slot_search_accept)
+        self.searchEdit.installEventFilter(self)
+
         self.updateSelection()
+
+    def _slot_search_changed(self, text):
+        gv = self.graphicsView
+        if hasattr(gv, "_onSearchTextChanged"):
+            gv._onSearchTextChanged(text)
+
+    def _slot_search_accept(self):
+        gv = self.graphicsView
+        if hasattr(gv, "_onSearchAccept"):
+            gv._onSearchAccept()
+
+    def eventFilter(self, obj, event):
+        if obj is getattr(self, "searchEdit", None):
+            ktype = QEvent.Type.KeyPress if hasattr(QEvent, "Type") else QEvent.KeyPress
+            if event.type() == ktype:
+                if event.key() == Qt.Key_Escape:
+                    self.searchEdit.clearFocus()
+                    gv = self.graphicsView
+                    if hasattr(gv, "hideSearch"):
+                        gv.hideSearch()
+                    return True
+                if event.key() in (Qt.Key_Down, Qt.Key_Up):
+                    lst = getattr(self.graphicsView, "fSearchList", None)
+                    if lst is not None and lst.isVisible() and lst.count():
+                        lst.setFocus()
+                        lst.setCurrentRow(0 if event.key() == Qt.Key_Down else lst.count() - 1)
+                        return True
+        return QFrame.eventFilter(self, obj, event)
 
     def clearLayout(self):
         while self.layout.count():
             item = self.layout.takeAt(0)
             w = item.widget()
-            if w is not None:
+            if w is not None and w is not getattr(self, "searchEdit", None):
                 w.setParent(None)
                 w.deleteLater()
 
@@ -856,6 +845,14 @@ class CanvasContextToolBarOverlay(QFrame):
         self.clearLayout()
         selected = patchcanvas.getSelectedNodes()
         count = len(selected)
+
+        # Quick-search field always leads the bar (rounded textbox)
+        search = getattr(self, "searchEdit", None)
+        if search is not None:
+            search.show()
+            self.layout.addWidget(search)
+            self._items.append(search)
+            self.addSeparator()
 
         nf = bool(self.font_family)
         # Nerd Font glyphs (FontAwesome / Material exact match)
@@ -987,7 +984,10 @@ class CanvasContextToolBarOverlay(QFrame):
         spacing = self.layout.spacing()
         for w in self._items:
             w.show()
-            if isinstance(w, QFrame) and not isinstance(w, (QLabel, QPushButton)):
+            if w is getattr(self, "searchEdit", None):
+                w.setFixedSize(170, 24)
+                total_w += 170 + spacing
+            elif isinstance(w, QFrame) and not isinstance(w, (QLabel, QPushButton)):
                 w.setFixedSize(1, 18)
                 total_w += 1 + spacing
             elif isinstance(w, QPushButton):
@@ -1004,6 +1004,8 @@ class CanvasContextToolBarOverlay(QFrame):
             total_w -= spacing
 
         self.setFixedSize(max(60, total_w), 32)
+        if search is not None and search.hasFocus():
+            search.setFocus()
         if not getattr(self, "_userMoved", False):
             self.reposition()
 
@@ -1339,7 +1341,7 @@ class CanvasContextToolBarOverlay(QFrame):
 
 
 class CanvasViewportFilter(QObject):
-    """Event filter managing boundary auto-scrolling during drag, quick disconnects, and help overlay."""
+    """Event filter managing boundary auto-scrolling during drag and quick disconnects."""
 
     def __init__(self, hostWindow, graphicsView):
         super().__init__(graphicsView.viewport())
@@ -1353,7 +1355,7 @@ class CanvasViewportFilter(QObject):
         self._scrollTimer.setInterval(20)  # 50 Hz smooth scrolling
         self._scrollTimer.timeout.connect(self._slot_autoScroll)
 
-        # Create floating mode toolbar, context toolbar & help overlay inside the viewport
+        # Create floating mode toolbar & context toolbar inside the viewport
         self.toolBar = CanvasToolBarOverlay(self.graphicsView, self.graphicsView.viewport())
         if hasattr(self.hostWindow, "ui") and hasattr(self.hostWindow.ui, "menubar"):
             self.toolBar.btnMenu.setVisible(not self.hostWindow.ui.menubar.isVisible())
@@ -1364,13 +1366,12 @@ class CanvasViewportFilter(QObject):
         self.contextToolBar.show()
         QTimer.singleShot(100, self.contextToolBar.reposition)
 
+        # Let the view locate the search field housed in the top toolbar
+        self.graphicsView.canvasContextToolBar = self.contextToolBar
+
         scene = self.graphicsView.scene()
         if scene and hasattr(scene, "selectionChanged"):
             scene.selectionChanged.connect(self.contextToolBar.updateSelection)
-
-        self.helpOverlay = PatchbayHelpOverlay(self.graphicsView.viewport())
-        self.helpOverlay.show()
-        QTimer.singleShot(100, self.helpOverlay.reposition)
 
         # Hook up tool mode change listener to toolBar
         if hasattr(self.graphicsView, "toolModeChanged"):
@@ -1995,8 +1996,6 @@ class CanvasViewportFilter(QObject):
                 self.toolBar.reposition()
             if hasattr(self, "contextToolBar") and self.contextToolBar:
                 self.contextToolBar.reposition()
-            if hasattr(self, "helpOverlay") and self.helpOverlay:
-                self.helpOverlay.reposition()
 
         return False
 

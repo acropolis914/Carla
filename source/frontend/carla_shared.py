@@ -61,7 +61,7 @@ from carla_backend import (
     ENGINE_TRANSPORT_MODE_JACK,
 )
 
-CLARA_VERSION_STRING = "0.1.5"
+CLARA_VERSION_STRING = "1.0.0"
 
 # ------------------------------------------------------------------------------------------------------------
 # Config
@@ -217,6 +217,8 @@ CARLA_KEY_CANVAS_LINE_STROKE        = "Canvas/LineStroke"      # str ("solid", "
 CARLA_KEY_CANVAS_LINE_OPACITY       = "Canvas/LineOpacity"     # int (20 - 100)
 CARLA_KEY_CANVAS_ARRANGE_STYLE      = "Canvas/ArrangeStyle"    # str (registered arrange algorithm name)
 CARLA_KEY_CANVAS_NODE_MIN_WIDTH     = "Canvas/NodeMinWidth"    # int (100 - 350)
+CARLA_KEY_CANVAS_SIGNAL_FLOW        = "Canvas/SignalFlow"      # bool (animated signal/event flow)
+CARLA_KEY_CANVAS_SIGNAL_FLOW_EXT    = "Canvas/SignalFlowExternal"  # bool (capture levels for external/pipewire nodes)
 
 CARLA_KEY_ENGINE_DRIVER_PREFIX         = "Engine/Driver-"
 CARLA_KEY_ENGINE_AUDIO_DRIVER          = "Engine/AudioDriver"         # str

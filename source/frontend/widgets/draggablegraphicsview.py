@@ -19,10 +19,10 @@ from qt_compat import (
     QGraphicsItem,
     QGraphicsView,
     QMessageBox,
-    QLineEdit,
     QListWidget,
     QListWidgetItem,
     QRectF,
+    QPoint,
     QPointF,
     QEasingCurve,
     QVariantAnimation,
@@ -76,13 +76,15 @@ class DraggableGraphicsView(QGraphicsView):
 
     def keyPressEvent(self, event):
         # Ignore tool hotkeys if searching
-        if hasattr(self, "fSearchEdit") and self.fSearchEdit.isVisible():
+        edit = self._searchWidget()
+        if edit is not None and edit.hasFocus():
             QGraphicsView.keyPressEvent(self, event)
             return
 
         if (event.modifiers() & Qt.ControlModifier):
             if (event.modifiers() & Qt.ShiftModifier) and event.key() == Qt.Key_I:
                 event.accept()
+                self._clearHighlights()
                 import patchcanvas.patchcanvas as pc
                 pc.invertNodeSelection()
                 if hasattr(gCarla.gui, "updateMiniCanvasLater"):
@@ -90,6 +92,7 @@ class DraggableGraphicsView(QGraphicsView):
                 return
             elif event.key() == Qt.Key_A:
                 event.accept()
+                self._clearHighlights()
                 import patchcanvas.patchcanvas as pc
                 pc.selectAllNodes()
                 if hasattr(gCarla.gui, "updateMiniCanvasLater"):
@@ -97,6 +100,7 @@ class DraggableGraphicsView(QGraphicsView):
                 return
             elif event.key() == Qt.Key_D:
                 event.accept()
+                self._clearHighlights()
                 import patchcanvas.patchcanvas as pc
                 pc.deselectAllNodes()
                 if hasattr(gCarla.gui, "updateMiniCanvasLater"):
@@ -201,6 +205,10 @@ class DraggableGraphicsView(QGraphicsView):
                                  gCarla.gui.host.get_last_error(), QMessageBox.Ok, QMessageBox.Ok)
 
     def mousePressEvent(self, event):
+        # A canvas click counts as user interaction and ends the persistent
+        # search selection (see TODO #21).
+        if getattr(self, "_searchSelectedBoxes", None):
+            self._clearHighlights()
         pos = event.position().toPoint() if hasattr(event, "position") else event.pos()
 
         # Check if left click occurred on empty canvas (no interactive nodes/cables/ports)
@@ -360,53 +368,63 @@ class DraggableGraphicsView(QGraphicsView):
     # Canvas Node Quick Search
 
     def initSearchWidgets(self):
-        if hasattr(self, "fSearchEdit"):
+        if hasattr(self, "fSearchList"):
             return
 
-        self.fSearchEdit = QLineEdit(self)
-        self.fSearchEdit.setPlaceholderText("Search canvas nodes... (Esc to close)")
-        self.fSearchEdit.setStyleSheet(
-            "QLineEdit { background: #222; color: #fff; border: 1.5px solid #ffaa00; "
-            "border-radius: 4px; padding: 4px 8px; font-size: 13px; }"
-        )
-        self.fSearchEdit.hide()
+        self._searchSelectedBoxes = []
 
+        # The search *input* now lives in the top context toolbar
+        # (CanvasContextToolBarOverlay.searchEdit). This view only owns the
+        # floating results list shown below that field.
         self.fSearchList = QListWidget(self)
+        self.fSearchList.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.fSearchList.setTextElideMode(Qt.ElideRight)
+        self.fSearchList.setWordWrap(False)
+        self.fSearchList.setUniformItemSizes(True)
         self.fSearchList.setStyleSheet(
             "QListWidget { background: #1c1c1c; color: #ddd; border: 1px solid #444; "
             "border-radius: 4px; outline: none; font-size: 12px; }"
             "QListWidget::item { padding: 4px 8px; }"
-            "QListWidget::item:selected, QListWidget::item:hover { background: #ff8800; color: #000; font-weight: bold; }"
+            "QListWidget::item:selected, QListWidget::item:hover { background: #89b4fa; color: #11111b; font-weight: bold; }"
+            "QScrollBar:vertical { background: #1c1c1c; width: 8px; }"
+            "QScrollBar::handle:vertical { background: #585b70; border-radius: 4px; }"
+            "QScrollBar::handle:vertical:hover { background: #89b4fa; }"
+            "QScrollBar:horizontal { background: #1c1c1c; height: 8px; }"
+            "QScrollBar::handle:horizontal { background: #585b70; border-radius: 4px; }"
+            "QScrollBar::handle:horizontal:hover { background: #89b4fa; }"
+            "QScrollBar::add-line, QScrollBar::sub-line { height: 0px; width: 0px; }"
         )
         self.fSearchList.hide()
 
-        self.fSearchEdit.textChanged.connect(self._onSearchTextChanged)
-        self.fSearchEdit.returnPressed.connect(self._onSearchAccept)
         self.fSearchList.itemClicked.connect(self._onSearchItemClicked)
         self.fSearchList.currentRowChanged.connect(self._onSearchRowChanged)
 
-        self.fSearchEdit.installEventFilter(self)
         self.fSearchList.installEventFilter(self)
 
         shortcut = QShortcut(QKeySequence("Ctrl+F"), self)
         shortcut.activated.connect(self.toggleSearch)
 
+    def _searchWidget(self):
+        toolbar = getattr(self, "canvasContextToolBar", None)
+        return getattr(toolbar, "searchEdit", None) if toolbar is not None else None
+
     def toggleSearch(self):
         self.initSearchWidgets()
-        if self.fSearchEdit.isVisible():
+        edit = self._searchWidget()
+        if edit is None:
+            return
+        if edit.hasFocus():
             self.hideSearch()
+            self.setFocus()
         else:
-            w = 260
-            self.fSearchEdit.setGeometry(12, 12, w, 28)
-            self.fSearchEdit.clear()
-            self.fSearchEdit.show()
-            self.fSearchEdit.raise_()
-            self.fSearchEdit.setFocus()
+            self.fSearchList.hide()
+            edit.setFocus()
+            edit.selectAll()
 
     def hideSearch(self):
-        self._clearHighlights()
-        if hasattr(self, "fSearchEdit"):
-            self.fSearchEdit.hide()
+        # Closing the search keeps matched nodes selected until the user
+        # interacts with the canvas (see TODO #21). Callers that want to drop
+        # the selection as well should invoke _clearHighlights() explicitly.
         if hasattr(self, "fSearchList"):
             self.fSearchList.hide()
         self.setFocus()
@@ -420,6 +438,13 @@ class DraggableGraphicsView(QGraphicsView):
         return boxes
 
     def _clearHighlights(self):
+        for box in getattr(self, "_searchSelectedBoxes", []):
+            try:
+                if box.isSelected():
+                    box.setSelected(False)
+            except Exception:
+                pass
+        self._searchSelectedBoxes = []
         for _, box in self._getCanvasBoxes():
             if getattr(box, "m_search_highlight", 0) != 0:
                 box.m_search_highlight = 0
@@ -451,14 +476,28 @@ class DraggableGraphicsView(QGraphicsView):
 
         for _, name, box in matches:
             box.m_search_highlight = 1
+            try:
+                box.setSelected(True)
+            except Exception:
+                pass
             box.update()
             item = QListWidgetItem(name)
             item.setData(Qt.UserRole, box)
             self.fSearchList.addItem(item)
 
+        # Remember which nodes the search selected so the selection can persist
+        # after the search box closes, until the user interacts with the canvas.
+        self._searchSelectedBoxes = [box for _, _, box in matches]
+
         if matches:
             list_h = min(160, max(40, len(matches) * 26 + 6))
-            self.fSearchList.setGeometry(12, 42, 260, list_h)
+            edit = self._searchWidget()
+            if edit is not None:
+                top_left = edit.mapTo(self.viewport(), QPoint(0, edit.height() + 2))
+                list_w = max(180, edit.width())
+                self.fSearchList.setGeometry(top_left.x(), top_left.y(), list_w, list_h)
+            else:
+                self.fSearchList.setGeometry(12, 42, 260, list_h)
             self.fSearchList.show()
             self.fSearchList.raise_()
             self.fSearchList.setCurrentRow(0)
@@ -534,31 +573,28 @@ class DraggableGraphicsView(QGraphicsView):
         self.hideSearch()
         if not target_box or not self.scene():
             return
-        self.scene().clearSelection()
+        # Keep the whole search match set selected so it persists after the
+        # search closes; just focus and ensure the chosen node is selected.
         self.animateFocusOn(target_box)
-        target_box.setSelected(True)
+        try:
+            target_box.setSelected(True)
+        except Exception:
+            pass
 
     def eventFilter(self, obj, event):
         key_press_type = QEvent.Type.KeyPress if hasattr(QEvent, "Type") else QEvent.KeyPress
         if event.type() == key_press_type:
-            if event.key() == Qt.Key_Escape:
-                self.hideSearch()
-                return True
-            if obj == self.fSearchEdit:
-                if event.key() in (Qt.Key_Down, Qt.Key_Up):
-                    if self.fSearchList.isVisible():
-                        self.fSearchList.setFocus()
-                        if event.key() == Qt.Key_Down and self.fSearchList.currentRow() < self.fSearchList.count() - 1:
-                            self.fSearchList.setCurrentRow(self.fSearchList.currentRow() + 1)
-                        elif event.key() == Qt.Key_Up and self.fSearchList.currentRow() > 0:
-                            self.fSearchList.setCurrentRow(self.fSearchList.currentRow() - 1)
-                        return True
-            elif obj == self.fSearchList:
+            if obj == self.fSearchList:
                 if event.key() in (Qt.Key_Return, Qt.Key_Enter):
                     self._onSearchAccept()
                     return True
+                elif event.key() == Qt.Key_Escape:
+                    self.hideSearch()
+                    return True
                 elif event.key() == Qt.Key_Up and self.fSearchList.currentRow() == 0:
-                    self.fSearchEdit.setFocus()
+                    edit = self._searchWidget()
+                    if edit is not None:
+                        edit.setFocus()
                     return True
         return QGraphicsView.eventFilter(self, obj, event)
 

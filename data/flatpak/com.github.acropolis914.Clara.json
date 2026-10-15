@@ -1,0 +1,63 @@
+{
+  "app-id": "com.github.acropolis914.Clara",
+  "runtime": "org.kde.Platform",
+  "runtime-version": "6.8",
+  "sdk": "org.kde.Sdk",
+  "command": "clara",
+  "finish-args": [
+    "--share=ipc",
+    "--socket=x11",
+    "--socket=wayland",
+    "--socket=pulseaudio",
+    "--device=all",
+    "--filesystem=home",
+    "--filesystem=/tmp",
+    "--filesystem=xdg-run/pipewire-0",
+    "--filesystem=xdg-run/pulse",
+    "--talk-name=org.freedesktop.ReserveDevice1.*",
+    "--own-name=org.freedesktop.ReserveDevice1.Audio*",
+    "--env=QT_QPA_PLATFORM=wayland;xcb"
+  ],
+  "build-options": {
+    "build-args": ["--share=network"],
+    "env": {
+      "PIP_DISABLE_PIP_VERSION_CHECK": "1"
+    }
+  },
+  "cleanup": [
+    "/include",
+    "/lib/pkgconfig",
+    "/share/man",
+    "*.a",
+    "*.la"
+  ],
+  "modules": [
+    {
+      "name": "python3-pyqt6",
+      "buildsystem": "simple",
+      "build-commands": [
+        "install -d /app/bin /app/lib",
+        "cp -a /usr/bin/python3 /app/bin/",
+        "cp -a /usr/lib/libpython3*.so* /app/lib/ || true",
+        "cp -a /usr/lib/python3.* /app/lib/",
+        "python3 -m pip install --prefix=/app --no-warn-script-location 'PyQt6==6.7.1'"
+      ]
+    },
+    {
+      "name": "clara",
+      "buildsystem": "simple",
+      "build-commands": [
+        "make -j${FLATPAK_BUILDER_N_JOBS} DEFAULT_QT=6",
+        "make install DEFAULT_QT=6 PREFIX=/app DESTDIR=/",
+        "install -Dm644 data/flatpak/com.github.acropolis914.Clara.desktop /app/share/applications/com.github.acropolis914.Clara.desktop",
+        "install -Dm644 data/flatpak/com.github.acropolis914.Clara.metainfo.xml /app/share/metainfo/com.github.acropolis914.Clara.metainfo.xml",
+        "install -Dm644 resources/256x256/carla.png /app/share/icons/hicolor/256x256/apps/com.github.acropolis914.Clara.png",
+        "install -Dm644 resources/128x128/carla.png /app/share/icons/hicolor/128x128/apps/com.github.acropolis914.Clara.png",
+        "install -Dm644 resources/scalable/carla.svg /app/share/icons/hicolor/scalable/apps/com.github.acropolis914.Clara.svg"
+      ],
+      "sources": [
+        { "type": "dir", "path": "../.." }
+      ]
+    }
+  ]
+}

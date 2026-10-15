@@ -10,6 +10,7 @@ from qt_compat import (
     QPointF,
     QColor,
     QLinearGradient,
+    QRadialGradient,
     QPainter,
     QPen,
     QTimer,
@@ -260,6 +261,9 @@ class CanvasLine(QGraphicsPathItem):
 
         # Let the algorithm draw itself (arrowheads, bundles, animated flow, ...) if it wants to
         if self._ctx is not None and self.m_algorithm.paint(painter, self._ctx, self.path()):
+            # Still overlay the signal-flow pulse on top of custom-drawn cables
+            painter.setOpacity(1.0)
+            self._draw_signal_pulse(painter, self.path())
             painter.restore()
             return
 
@@ -284,7 +288,88 @@ class CanvasLine(QGraphicsPathItem):
                 painter.setOpacity(0.2)
                 painter.drawPath(self.path())
 
+        # Signal / event flow pulse travelling along the cable
+        painter.setOpacity(1.0)
+        self._draw_signal_pulse(painter, self.path())
+
         painter.restore()
+
+    def _endpointGroupIds(self):
+        out_id = in_id = None
+        try:
+            if self.item1 is not None:
+                box = self.item1.parentItem()
+                out_id = box.getGroupId() if box is not None else None
+        except Exception:
+            out_id = None
+        try:
+            if self.item2 is not None:
+                box = self.item2.parentItem()
+                in_id = box.getGroupId() if box is not None else None
+        except Exception:
+            in_id = None
+        return out_id, in_id
+
+    def _signalLevel(self):
+        from . import signalflow
+        out_id, in_id = self._endpointGroupIds()
+        levels = signalflow.state.levels
+        return max(levels.get(out_id, 0.0), levels.get(in_id, 0.0))
+
+    def _draw_signal_pulse(self, painter, path):
+        from . import signalflow
+        if not signalflow.state.enabled:
+            return
+
+        level = self._signalLevel()
+        if level <= 0.03:
+            return
+
+        offset = getattr(self, "_signal_offset", None)
+        if offset is None:
+            offset = (id(self) % 997) / 997.0  # stable, de-synchronised per cable
+            self._signal_offset = offset
+
+        t = (signalflow.state.phase + offset) % 1.0
+
+        head_radius = 3.5 + 9.0 * level
+        alpha = int(min(255.0, 150.0 + 105.0 * level))
+
+        # Short comet tail trailing behind the head for a clearer sense of flow
+        tail_len = 0.05 + 0.10 * level
+        for i in range(1, 5):
+            tt = (t - tail_len * i / 4.0) % 1.0
+            try:
+                tp = path.pointAtPercent(tt)
+            except Exception:
+                break
+            if tp is None:
+                break
+            frac = 1.0 - i / 5.0
+            r = head_radius * frac
+            a = int(alpha * frac * 0.6)
+            tail_grad = QRadialGradient(tp, r)
+            tail_grad.setColorAt(0.0, QColor(255, 255, 255, a))
+            tail_grad.setColorAt(1.0, QColor(140, 200, 255, 0))
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(tail_grad)
+            painter.drawEllipse(tp, r, r)
+
+        try:
+            point = path.pointAtPercent(t)
+        except Exception:
+            return
+        if point is None:
+            return
+
+        gradient = QRadialGradient(point, head_radius)
+        gradient.setColorAt(0.0, QColor(255, 255, 255, alpha))
+        gradient.setColorAt(0.4, QColor(180, 225, 255, int(alpha * 0.7)))
+        gradient.setColorAt(1.0, QColor(140, 200, 255, 0))
+
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(gradient)
+        painter.drawEllipse(point, head_radius, head_radius)
 
 # ------------------------------------------------------------------------------------------------------------
 # Backward Compatibility Alias

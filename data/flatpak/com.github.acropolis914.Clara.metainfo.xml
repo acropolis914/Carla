@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.github.acropolis914.Clara</id>
+  <name>Clara</name>
+  <summary>Modular audio plugin host and modernized patchbay</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-2.0-or-later</project_license>
+  <description>
+    <p>
+      Clara (Carla Improved) is a modular audio plugin host and a modernized,
+      node-based patchbay. It loads LV2, VST2, VST3, AU and native plugins,
+      routes audio and MIDI, and lets you organise everything on an infinite
+      canvas with colour-coded cables, animated signal flow and powerful
+      auto-arrange and routing algorithms.
+    </p>
+  </description>
+  <launchable type="desktop-id">com.github.acropolis914.Clara.desktop</launchable>
+  <url type="homepage">https://github.com/acropolis914/Clara</url>
+  <url type="bugtracker">https://github.com/acropolis914/Clara/issues</url>
+  <developer id="com.github.acropolis914">
+    <name>Clara maintainers</name>
+  </developer>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="1.0.0" date="2026-10-15">
+      <description>
+        <p>First Clara feature release: patchbay overhaul, animated signal flow, Catppuccin theming and portable AppImage/Flatpak packaging.</p>
+      </description>
+    </release>
+  </releases>
+</component>
