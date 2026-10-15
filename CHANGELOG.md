@@ -20,6 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-15 22:15:00
+- **ci(packaging)**: Experimental aarch64 packaging workflow
+  - New manual-only `.github/workflows/package-aarch64.yml` (`workflow_dispatch`). It builds the same target set as the release workflow (alpine/ubuntu/fedora/archlinux/void archives, AppImage, Flatpak, Nix) on `ubuntu-24.04-arm` runners and attaches the results — suffixed `-aarch64` so they never clobber the x86_64 assets — to the **same** versioned GitHub Release. Targets without an aarch64 image/build fail soft (`continue-on-error`).
+  - `scripts/build_appimage.sh` now accepts `--arch=aarch64` (relocatable CPython + linuxdeploy/appimagetool from the aarch64 assets); `scripts/build_flatpak.sh` derives the output arch from `uname -m`.
+
 ### 2026-10-15 21:30:00
 - **ci(packaging)**: AppImage & Flatpak release jobs + docs
   - `.github/workflows/package.yml` now builds a standalone x86_64 **AppImage** and a **Flatpak** bundle on every `v*` tag and ships them as release assets alongside the deb/rpm/tar.zst/nix packages. Both jobs are non-blocking (`continue-on-error`) so a bundle problem cannot block the rest of the release.

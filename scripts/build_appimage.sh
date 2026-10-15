@@ -48,8 +48,8 @@ for arg in "$@"; do
     esac
 done
 
-if [ "$ARCH" != "x86_64" ]; then
-    printf 'ERROR: only --arch=x86_64 is supported for now (aarch64 needs qemu cross-compilation).\n' >&2
+if [ "$ARCH" != "x86_64" ] && [ "$ARCH" != "aarch64" ]; then
+    printf 'ERROR: unsupported --arch=%s (supported: x86_64, aarch64).\n' "$ARCH" >&2
     exit 1
 fi
 
@@ -104,13 +104,13 @@ ensure_appimagetool() {
 
 PYTHON_DIR=""
 ensure_python() {
-    PYTHON_DIR="$TOOLS_DIR/cpython-${PYTHON_PBS_VERSION}"
+    PYTHON_DIR="$TOOLS_DIR/cpython-${PYTHON_PBS_VERSION}-${ARCH}"
     if [ -x "$PYTHON_DIR/bin/python3" ]; then
         return 0
     fi
-    local tarball="$TOOLS_DIR/cpython-${PYTHON_PBS_VERSION}.tar.gz"
-    download "https://github.com/astral-sh/python-build-standalone/releases/download/${PYTHON_PBS_TAG}/cpython-${PYTHON_PBS_VERSION}+${PYTHON_PBS_TAG}-x86_64-unknown-linux-gnu-install_only.tar.gz" "$tarball"
-    log "Extracting relocatable CPython ${PYTHON_PBS_VERSION}"
+    local tarball="$TOOLS_DIR/cpython-${PYTHON_PBS_VERSION}-${ARCH}.tar.gz"
+    download "https://github.com/astral-sh/python-build-standalone/releases/download/${PYTHON_PBS_TAG}/cpython-${PYTHON_PBS_VERSION}+${PYTHON_PBS_TAG}-${ARCH}-unknown-linux-gnu-install_only.tar.gz" "$tarball"
+    log "Extracting relocatable CPython ${PYTHON_PBS_VERSION} (${ARCH})"
     mkdir -p "$PYTHON_DIR"
     tar -xzf "$tarball" -C "$PYTHON_DIR" --strip-components=1
 }

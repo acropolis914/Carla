@@ -40,7 +40,8 @@ mkdir -p "$OUTPUT_DIR"
 log "Building Flatpak ${APP_ID} ${VERSION}"
 flatpak-builder --force-clean --repo="$REPO_DIR" "$BUILD_DIR" "$MANIFEST"
 
-OUTPUT="$OUTPUT_DIR/Clara-${VERSION}-x86_64.flatpak"
+ARCH="${ARCH:-$(uname -m)}"
+OUTPUT="$OUTPUT_DIR/Clara-${VERSION}-${ARCH}.flatpak"
 log "Exporting single-file bundle: $OUTPUT"
 flatpak build-bundle "$REPO_DIR" "$OUTPUT" "$APP_ID"
 

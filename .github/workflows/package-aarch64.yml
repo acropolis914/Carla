@@ -1,0 +1,340 @@
+name: Multi-distro packaging (aarch64, experimental)
+
+# Manual-only, experimental aarch64 packaging. Builds the same target set as the
+# v* release workflow (distro archives, AppImage, Flatpak, Nix) on arm64 runners
+# and attaches the results to the SAME GitHub Release as the matching x86_64 run
+# (assets are suffixed with -aarch64 so they never clobber the x86_64 files).
+#
+# Targets that have no aarch64 container image / build simply fail soft
+# (continue-on-error) and are skipped.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to attach the aarch64 assets to (e.g. v1.0.1). Defaults to the latest tag."
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.resolve.outputs.tag }}
+      version: ${{ steps.resolve.outputs.version }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve target tag
+        id: resolve
+        run: |
+          TAG="${{ github.event.inputs.tag }}"
+          if [ -z "$TAG" ]; then
+            TAG="$(git describe --tags --abbrev=0 2>/dev/null || true)"
+          fi
+          if [ -z "$TAG" ]; then
+            echo "::error::Could not determine a tag; pass one via the 'tag' input."
+            exit 1
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+          echo "Building aarch64 assets for ${TAG}"
+
+  build:
+    needs: resolve
+    runs-on: ubuntu-24.04-arm
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: alpine
+            image: alpine:latest
+          - platform: ubuntu
+            image: ubuntu:latest
+          - platform: fedora
+            image: fedora:latest
+          - platform: archlinux
+            image: menci/archlinuxarm:latest
+          - platform: void-glibc
+            image: ghcr.io/void-linux/void-glibc-full:latest
+    container:
+      image: ${{ matrix.image }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Install dependencies
+        run: |
+          case "${{ matrix.platform }}" in
+            alpine)
+              apk add --no-cache \
+                git make gcc g++ musl-dev pkgconf \
+                qt6-qtbase-dev qt6-qtsvg-dev qt6-qttools-dev \
+                python3 py3-qt6 sdl2-dev zstd tar \
+                musl-fts-dev ccache
+              ;;
+            ubuntu)
+              export DEBIAN_FRONTEND=noninteractive
+              apt-get update && apt-get install -y \
+                git make build-essential pkg-config \
+                qt6-base-dev qt6-svg-dev qt6-tools-dev qt6-tools-dev-tools \
+                python3 python3-pyqt6 libsdl2-dev \
+                debhelper dh-make zstd tar ccache
+              ;;
+            fedora)
+              dnf install -y \
+                git make gcc gcc-c++ pkgconf \
+                qt6-qtbase-devel qt6-qtsvg-devel qt6-qttools-devel \
+                python3 python3-devel python3-pyqt6 SDL2-devel \
+                rpm-build rpmdevtools zstd tar ccache
+              ;;
+            archlinux)
+              pacman -Syu --noconfirm \
+                git base-devel \
+                qt6-base qt6-svg qt6-tools \
+                python python-pyqt6 sdl2 zstd tar ccache
+              ;;
+            void-glibc)
+              xbps-install -S -y ca-certificates xbps || true
+              xbps-install -Syu -y \
+                base-devel pkg-config git \
+                qt6-base-devel qt6-svg-devel qt6-tools qt6-tools-devel \
+                python3-pyqt6 SDL2-devel zstd tar ccache
+              ;;
+          esac
+
+      - name: Build project
+        id: compile
+        run: |
+          if [ "${{ matrix.platform }}" = "alpine" ]; then
+            export LDFLAGS="-lfts $LDFLAGS"
+          fi
+          make clean || true
+          make -j$(nproc) DEFAULT_QT=6 2>&1 | tee build.log
+
+      - name: Package artifacts
+        id: pkg
+        if: steps.compile.outcome == 'success'
+        run: |
+          VERSION="${{ needs.resolve.outputs.version }}"
+          case "${{ matrix.platform }}" in
+            alpine|void-glibc|archlinux)
+              mkdir -p /tmp/clara-pkg
+              make install PREFIX=/usr DESTDIR=/tmp/clara-pkg DEFAULT_QT=6 || cp -r bin /tmp/clara-pkg/
+              tar --zstd -cf clara-${{ matrix.platform }}-${VERSION}-aarch64.tar.zst -C /tmp/clara-pkg .
+              echo "OUTFILE=clara-${{ matrix.platform }}-${VERSION}-aarch64.tar.zst" >> "$GITHUB_ENV"
+              ;;
+            ubuntu)
+              mkdir -p /tmp/clara-deb/DEBIAN
+              make install PREFIX=/usr DESTDIR=/tmp/clara-deb DEFAULT_QT=6
+              echo "Package: clara" > /tmp/clara-deb/DEBIAN/control
+              echo "Version: ${VERSION}" >> /tmp/clara-deb/DEBIAN/control
+              echo "Section: sound" >> /tmp/clara-deb/DEBIAN/control
+              echo "Priority: optional" >> /tmp/clara-deb/DEBIAN/control
+              echo "Architecture: arm64" >> /tmp/clara-deb/DEBIAN/control
+              echo "Maintainer: CI Builder <ci@build.local>" >> /tmp/clara-deb/DEBIAN/control
+              echo "Depends: libc6, libqt6core6, libqt6gui6, libqt6widgets6, python3, python3-pyqt6, libsdl2-2.0-0" >> /tmp/clara-deb/DEBIAN/control
+              echo "Description: Clara audio application (Carla Improved)" >> /tmp/clara-deb/DEBIAN/control
+              echo " Modular audio plugin host and patchbay based on Carla." >> /tmp/clara-deb/DEBIAN/control
+              dpkg-deb --build /tmp/clara-deb clara-ubuntu-${VERSION}-aarch64.deb
+              echo "OUTFILE=clara-ubuntu-${VERSION}-aarch64.deb" >> "$GITHUB_ENV"
+              ;;
+            fedora)
+              mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+              tar -czf ~/rpmbuild/SOURCES/clara-source.tar.gz \
+                --transform 's,^,clara-source/,' \
+                --exclude='.git' *
+              SPEC_FILE=$(find . -maxdepth 2 -name "*.spec" | head -n 1)
+              if [ -n "$SPEC_FILE" ]; then
+                cp "$SPEC_FILE" ~/rpmbuild/SPECS/clara.spec
+              else
+                cp .github/workflows/specs/clara.spec ~/rpmbuild/SPECS/clara.spec
+              fi
+              sed -i "s/^Version:.*/Version: ${VERSION}/" ~/rpmbuild/SPECS/clara.spec
+              rpmbuild -bb ~/rpmbuild/SPECS/clara.spec
+              find ~/rpmbuild/RPMS -name "*.rpm" -exec cp {} . \;
+              RPM="$(ls *.rpm 2>/dev/null | head -n 1 || true)"
+              if [ -n "$RPM" ]; then
+                NEW="clara-aarch64-${VERSION}.rpm"
+                mv "$RPM" "$NEW"
+                echo "OUTFILE=$NEW" >> "$GITHUB_ENV"
+              fi
+              ;;
+          esac
+
+      - name: Upload binary artifact
+        if: steps.pkg.outcome == 'success' && env.OUTFILE != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform }}-package
+          path: ${{ env.OUTFILE }}
+
+  build-void-musl:
+    needs: resolve
+    runs-on: ubuntu-24.04-arm
+    continue-on-error: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Build & Package inside Void musl container
+        id: compile
+        run: |
+          VERSION="${{ needs.resolve.outputs.version }}"
+          docker run --rm -v "$PWD":/workspace -w /workspace \
+            --platform linux/arm64 \
+            ghcr.io/void-linux/void-musl-full:latest sh -c "
+              xbps-install -S -y ca-certificates xbps || true
+              xbps-install -Syu -y \
+                base-devel pkg-config git \
+                qt6-base-devel qt6-svg-devel qt6-tools qt6-tools-devel \
+                python3-pyqt6 SDL2-devel musl-fts-devel ccache zstd tar
+              export LDFLAGS='-lfts \$LDFLAGS'
+              make -j$(nproc) DEFAULT_QT=6 2>&1 | tee build.log
+              mkdir -p /tmp/clara-pkg
+              make install PREFIX=/usr DESTDIR=/tmp/clara-pkg DEFAULT_QT=6 || cp -r bin /tmp/clara-pkg/
+              tar --zstd -cf clara-void-musl-${VERSION}-aarch64.tar.zst -C /tmp/clara-pkg .
+            "
+          echo "OUTFILE=clara-void-musl-${VERSION}-aarch64.tar.zst" >> "$GITHUB_ENV"
+
+      - name: Upload void-musl artifact
+        if: steps.compile.outcome == 'success' && env.OUTFILE != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: void-musl-package
+          path: ${{ env.OUTFILE }}
+
+  build-nix:
+    needs: resolve
+    runs-on: ubuntu-24.04-arm
+    continue-on-error: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v16
+
+      - name: Build with Nix
+        id: compile
+        run: |
+          nix build --extra-experimental-features 'nix-command flakes' 2>&1 | tee build.log
+
+      - name: Package artifacts
+        id: pkg
+        if: steps.compile.outcome == 'success'
+        run: |
+          VERSION="${{ needs.resolve.outputs.version }}"
+          test -e ./result
+          tar --zstd -cf clara-nix-${VERSION}-aarch64.tar.zst -C result .
+          echo "OUTFILE=clara-nix-${VERSION}-aarch64.tar.zst" >> "$GITHUB_ENV"
+
+      - name: Upload nix artifact
+        if: steps.pkg.outcome == 'success' && env.OUTFILE != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: nix-package
+          path: ${{ env.OUTFILE }}
+
+  build-appimage:
+    needs: resolve
+    runs-on: ubuntu-24.04-arm
+    continue-on-error: true
+    env:
+      ARCH: aarch64
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            git make build-essential pkg-config \
+            qt6-base-dev qt6-svg-dev qt6-tools-dev qt6-tools-dev-tools \
+            python3 python3-pyqt6 libsdl2-dev \
+            file patchelf zsync zstd tar
+
+      - name: Build AppImage
+        id: compile
+        run: |
+          chmod +x scripts/build_appimage.sh
+          ARCH=aarch64 scripts/build_appimage.sh 2>&1 | tee build.log
+          echo "OUTFILE=$(ls dist/*.AppImage 2>/dev/null | head -n1)" >> "$GITHUB_ENV"
+
+      - name: Upload appimage artifact
+        if: steps.compile.outcome == 'success' && env.OUTFILE != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: appimage-aarch64-package
+          path: ${{ env.OUTFILE }}
+
+  build-flatpak:
+    needs: resolve
+    runs-on: ubuntu-24.04-arm
+    continue-on-error: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Install flatpak-builder
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder elfutils
+          flatpak remote-add --if-not-exists --user flathub https://flathub.org/repo/flathub.flatpakrepo
+
+      - name: Install KDE runtime and SDK
+        run: |
+          flatpak install --user -y --noninteractive flathub org.kde.Platform//6.8 org.kde.Sdk//6.8
+
+      - name: Build Flatpak
+        id: compile
+        run: |
+          chmod +x scripts/build_flatpak.sh
+          scripts/build_flatpak.sh 2>&1 | tee build.log
+          echo "OUTFILE=$(ls dist/*.flatpak 2>/dev/null | head -n1)" >> "$GITHUB_ENV"
+
+      - name: Upload flatpak artifact
+        if: steps.compile.outcome == 'success' && env.OUTFILE != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: flatpak-aarch64-package
+          path: ${{ env.OUTFILE }}
+
+  release:
+    needs: [resolve, build, build-void-musl, build-nix, build-appimage, build-flatpak]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Download all aarch64 packages
+        uses: actions/download-artifact@v4
+        with:
+          pattern: "*-package"
+          merge-multiple: true
+          path: release-assets
+
+      - name: Attach aarch64 assets to the existing release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.resolve.outputs.tag }}
+          files: release-assets/*
+          fail_on_unmatched_files: false
+          draft: false
+          prerelease: false
