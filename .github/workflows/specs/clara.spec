@@ -11,6 +11,7 @@ Source0:        clara-source.tar.gz
 BuildRequires:  gcc-c++ make pkgconf
 BuildRequires:  qt6-qtbase-devel qt6-qtsvg-devel qt6-qttools-devel
 BuildRequires:  SDL2-devel python3-devel
+BuildRequires:  python3-pyqt6
 Requires:       qt6-qtbase qt6-qtsvg SDL2 python3-pyqt6
 
 %description
