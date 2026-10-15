@@ -1,0 +1,482 @@
+name: Build test (no publish)
+
+# Manual test builds for every platform. Produces downloadable artifacts only.
+# Nothing is ever published, tagged, or attached to a release here.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version string used in artifact filenames"
+        required: false
+        default: "0.0.0-test"
+      retention_days:
+        description: "Artifact retention in days"
+        required: false
+        default: "7"
+
+env:
+  TEST_VERSION: ${{ github.event.inputs.version }}
+  TEST_RETENTION: ${{ github.event.inputs.retention_days }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: alpine
+            image: alpine:latest
+          - platform: ubuntu
+            image: ubuntu:latest
+          - platform: fedora
+            image: fedora:latest
+          - platform: archlinux
+            image: archlinux:latest
+          - platform: void-glibc
+            image: ghcr.io/void-linux/void-glibc-full:latest
+    container:
+      image: ${{ matrix.image }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Install dependencies
+        id: install
+        run: |
+          case "${{ matrix.platform }}" in
+            alpine)
+              apk add --no-cache \
+                git make gcc g++ musl-dev pkgconf \
+                qt6-qtbase-dev qt6-qtsvg-dev qt6-qttools-dev \
+                python3 py3-qt6 sdl2-dev zstd tar \
+                musl-fts-dev ccache
+              ;;
+            ubuntu)
+              export DEBIAN_FRONTEND=noninteractive
+              apt-get update && apt-get install -y \
+                git make build-essential pkg-config \
+                qt6-base-dev qt6-svg-dev qt6-tools-dev qt6-tools-dev-tools \
+                python3 python3-pyqt6 pyqt6-dev-tools libsdl2-dev \
+                debhelper dh-make zstd tar ccache
+              ;;
+            fedora)
+              dnf install -y \
+                git make gcc gcc-c++ pkgconf \
+                qt6-qtbase-devel qt6-qtsvg-devel qt6-qttools-devel \
+                python3 python3-devel python3-pyqt6 SDL2-devel \
+                rpm-build rpmdevtools zstd tar ccache
+              ;;
+            archlinux)
+              pacman -Syu --noconfirm \
+                git base-devel \
+                qt6-base qt6-svg qt6-tools \
+                python python-pyqt6 sdl2 zstd tar ccache
+              ;;
+            void-glibc)
+              xbps-install -S -y ca-certificates xbps || true
+              xbps-install -Syu -y \
+                base-devel pkg-config git \
+                qt6-base-devel qt6-svg-devel qt6-tools qt6-tools-devel \
+                python3-pyqt6 python3-pyqt6-devel-tools SDL2-devel zstd tar ccache
+              ;;
+          esac
+
+      - name: Detect frontend tooling
+        if: always()
+        run: |
+          echo "### ${{ matrix.platform }} frontend detection" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "pyuic6: $(command -v pyuic6 || echo MISSING)" >> "$GITHUB_STEP_SUMMARY"
+          echo "uic6:   $(command -v uic6 || command -v uic || echo MISSING)" >> "$GITHUB_STEP_SUMMARY"
+          make -pn 2>&1 | grep -E '^(HAVE_FRONTEND|HAVE_QT6|FRONTEND_TYPE)[ :=]' >> "$GITHUB_STEP_SUMMARY" || echo "no HAVE_FRONTEND line emitted" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Build project
+        id: compile
+        run: |
+          if [ "${{ matrix.platform }}" = "alpine" ]; then
+            export LDFLAGS="-lfts $LDFLAGS"
+          fi
+          make clean || true
+          make -j$(nproc) DEFAULT_QT=6 2>&1 | tee build.log
+
+      - name: Package artifacts
+        id: pkg
+        if: steps.compile.outcome == 'success'
+        run: |
+          VERSION="${TEST_VERSION}"
+          case "${{ matrix.platform }}" in
+            alpine|void-glibc)
+              mkdir -p /tmp/clara-pkg
+              make install PREFIX=/usr DESTDIR=/tmp/clara-pkg DEFAULT_QT=6
+              tar --zstd -cf clara-${{ matrix.platform }}-${VERSION}.tar.zst -C /tmp/clara-pkg .
+              echo "OUTFILE=clara-${{ matrix.platform }}-${VERSION}.tar.zst" >> "$GITHUB_ENV"
+              ;;
+            archlinux)
+              mkdir -p /tmp/clara-pkg
+              make install PREFIX=/usr DESTDIR=/tmp/clara-pkg DEFAULT_QT=6
+              tar --zstd -cf clara-archlinux-${VERSION}.tar.zst -C /tmp/clara-pkg .
+              echo "OUTFILE=clara-archlinux-${VERSION}.tar.zst" >> "$GITHUB_ENV"
+              ;;
+            ubuntu)
+              mkdir -p /tmp/clara-deb/DEBIAN
+              make install PREFIX=/usr DESTDIR=/tmp/clara-deb DEFAULT_QT=6
+              echo "Package: clara" > /tmp/clara-deb/DEBIAN/control
+              echo "Version: ${VERSION}" >> /tmp/clara-deb/DEBIAN/control
+              echo "Section: sound" >> /tmp/clara-deb/DEBIAN/control
+              echo "Priority: optional" >> /tmp/clara-deb/DEBIAN/control
+              echo "Architecture: amd64" >> /tmp/clara-deb/DEBIAN/control
+              echo "Maintainer: CI Builder <ci@build.local>" >> /tmp/clara-deb/DEBIAN/control
+              echo "Depends: libc6, libqt6core6, libqt6gui6, libqt6widgets6, python3, python3-pyqt6, libsdl2-2.0-0" >> /tmp/clara-deb/DEBIAN/control
+              echo "Description: Clara audio application (Carla Improved)" >> /tmp/clara-deb/DEBIAN/control
+              echo " Modular audio plugin host and patchbay based on Carla." >> /tmp/clara-deb/DEBIAN/control
+              dpkg-deb --build /tmp/clara-deb clara-ubuntu-${VERSION}.deb
+              echo "OUTFILE=clara-ubuntu-${VERSION}.deb" >> "$GITHUB_ENV"
+              ;;
+            fedora)
+              mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+              tar -czf ~/rpmbuild/SOURCES/clara-source.tar.gz \
+                --transform 's,^,clara-source/,' \
+                --exclude='.git' *
+              SPEC_FILE=$(find . -maxdepth 2 -name "*.spec" | head -n 1)
+              if [ -n "$SPEC_FILE" ]; then
+                cp "$SPEC_FILE" ~/rpmbuild/SPECS/clara.spec
+              else
+                cp .github/workflows/specs/clara.spec ~/rpmbuild/SPECS/clara.spec
+              fi
+              sed -i "s/^Version:.*/Version: ${VERSION}/" ~/rpmbuild/SPECS/clara.spec
+              rpmbuild -bb ~/rpmbuild/SPECS/clara.spec
+              find ~/rpmbuild/RPMS -name "*.rpm" -exec cp {} . \;
+              echo "OUTFILE=$(ls *.rpm 2>/dev/null | head -n 1 || true)" >> "$GITHUB_ENV"
+              ;;
+          esac
+
+      - name: Record Status & Tail Log
+        if: always()
+        run: |
+          mkdir -p status-reports
+          OUTCOME="${{ job.status }}"
+          DETAILS="All steps passed."
+          if [ "$OUTCOME" != "success" ]; then
+            if [ -f build.log ]; then
+              DETAILS=$(tail -n 20 build.log | tr '\n' ' ' | sed 's/"/\\"/g')
+            else
+              DETAILS="Failed during dependency setup or packaging."
+            fi
+          fi
+          echo "{\"platform\": \"${{ matrix.platform }}\", \"status\": \"$OUTCOME\", \"file\": \"${OUTFILE:-none}\", \"error\": \"$DETAILS\"}" > status-reports/${{ matrix.platform }}.json
+
+      - name: Upload distro status report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-${{ matrix.platform }}
+          path: status-reports/*.json
+          retention-days: ${{ env.TEST_RETENTION }}
+
+      - name: Upload binary artifact
+        if: steps.pkg.outcome == 'success' && env.OUTFILE != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform }}-package
+          path: ${{ env.OUTFILE }}
+          retention-days: ${{ env.TEST_RETENTION }}
+
+  build-void-musl:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Build & Package inside Void musl container
+        id: compile
+        run: |
+          VERSION="${TEST_VERSION}"
+          docker run --rm -v "$PWD":/workspace -w /workspace ghcr.io/void-linux/void-musl-full:latest sh -c "
+            xbps-install -S -y ca-certificates xbps || true
+            xbps-install -Syu -y \
+              base-devel pkg-config git \
+              qt6-base-devel qt6-svg-devel qt6-tools qt6-tools-devel \
+              python3-pyqt6 python3-pyqt6-devel-tools SDL2-devel musl-fts-devel ccache zstd tar
+            export LDFLAGS='-lfts \$LDFLAGS'
+            make -j$(nproc) DEFAULT_QT=6 2>&1 | tee build.log
+            mkdir -p /tmp/clara-pkg
+            make install PREFIX=/usr DESTDIR=/tmp/clara-pkg DEFAULT_QT=6
+            tar --zstd -cf clara-void-musl-${VERSION}.tar.zst -C /tmp/clara-pkg .
+          "
+          echo "OUTFILE=clara-void-musl-${VERSION}.tar.zst" >> "$GITHUB_ENV"
+
+      - name: Record Status & Tail Log
+        if: always()
+        run: |
+          mkdir -p status-reports
+          OUTCOME="${{ job.status }}"
+          DETAILS="All steps passed."
+          if [ "$OUTCOME" != "success" ]; then
+            if [ -f build.log ]; then
+              DETAILS=$(tail -n 20 build.log | tr '\n' ' ' | sed 's/"/\\"/g')
+            else
+              DETAILS="Failed during void-musl build."
+            fi
+          fi
+          echo "{\"platform\": \"void-musl\", \"status\": \"$OUTCOME\", \"file\": \"${OUTFILE:-none}\", \"error\": \"$DETAILS\"}" > status-reports/void-musl.json
+
+      - name: Upload void-musl status report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-void-musl
+          path: status-reports/*.json
+          retention-days: ${{ env.TEST_RETENTION }}
+
+      - name: Upload void-musl artifact
+        if: steps.compile.outcome == 'success' && env.OUTFILE != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: void-musl-package
+          path: ${{ env.OUTFILE }}
+          retention-days: ${{ env.TEST_RETENTION }}
+
+  build-nix:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v16
+
+      - name: Build with Nix
+        id: compile
+        run: |
+          nix build --extra-experimental-features 'nix-command flakes' 2>&1 | tee build.log
+
+      - name: Package artifacts
+        id: pkg
+        if: steps.compile.outcome == 'success'
+        run: |
+          VERSION="${TEST_VERSION}"
+          test -e ./result
+          tar --zstd -cf clara-nix-${VERSION}.tar.zst -C result .
+          echo "OUTFILE=clara-nix-${VERSION}.tar.zst" >> "$GITHUB_ENV"
+
+      - name: Record Status & Tail Log
+        if: always()
+        run: |
+          mkdir -p status-reports
+          OUTCOME="${{ job.status }}"
+          DETAILS="All steps passed."
+          if [ "$OUTCOME" != "success" ]; then
+            if [ -f build.log ]; then
+              DETAILS=$(tail -n 20 build.log | tr '\n' ' ' | sed 's/"/\\"/g')
+            else
+              DETAILS="Failed during Nix build."
+            fi
+          fi
+          echo "{\"platform\": \"nix\", \"status\": \"$OUTCOME\", \"file\": \"${OUTFILE:-none}\", \"error\": \"$DETAILS\"}" > status-reports/nix.json
+
+      - name: Upload nix status report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-nix
+          path: status-reports/*.json
+          retention-days: ${{ env.TEST_RETENTION }}
+
+      - name: Upload nix artifact
+        if: steps.pkg.outcome == 'success' && env.OUTFILE != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: nix-package
+          path: ${{ env.OUTFILE }}
+          retention-days: ${{ env.TEST_RETENTION }}
+
+  build-appimage:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            git make build-essential pkg-config \
+            qt6-base-dev qt6-svg-dev qt6-tools-dev qt6-tools-dev-tools \
+            python3 python3-pyqt6 pyqt6-dev-tools libsdl2-dev \
+            file patchelf binutils zsync zstd tar
+
+      - name: Build AppImage
+        id: compile
+        run: |
+          chmod +x scripts/build_appimage.sh
+          export CLARA_VERSION="${TEST_VERSION}"
+          scripts/build_appimage.sh 2>&1 | tee build.log
+          echo "OUTFILE=$(ls dist/*.AppImage 2>/dev/null | head -n1)" >> "$GITHUB_ENV"
+
+      - name: Record Status & Tail Log
+        if: always()
+        run: |
+          mkdir -p status-reports
+          OUTCOME="${{ job.status }}"
+          DETAILS="All steps passed."
+          if [ "$OUTCOME" != "success" ]; then
+            if [ -f build.log ]; then
+              DETAILS=$(tail -n 20 build.log | tr '\n' ' ' | sed 's/"/\\"/g')
+            else
+              DETAILS="Failed during AppImage build."
+            fi
+          fi
+          echo "{\"platform\": \"appimage\", \"status\": \"$OUTCOME\", \"file\": \"${OUTFILE:-none}\", \"error\": \"$DETAILS\"}" > status-reports/appimage.json
+
+      - name: Upload appimage status report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-appimage
+          path: status-reports/*.json
+          retention-days: ${{ env.TEST_RETENTION }}
+
+      - name: Upload appimage artifact
+        if: steps.compile.outcome == 'success' && env.OUTFILE != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: appimage-package
+          path: ${{ env.OUTFILE }}
+          retention-days: ${{ env.TEST_RETENTION }}
+
+  build-flatpak:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Install flatpak-builder
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder elfutils
+          flatpak remote-add --if-not-exists --user flathub https://flathub.org/repo/flathub.flatpakrepo
+
+      - name: Install KDE runtime and SDK
+        run: |
+          flatpak install --user -y --noninteractive flathub org.kde.Platform//6.8 org.kde.Sdk//6.8
+
+      - name: Build Flatpak
+        id: compile
+        run: |
+          chmod +x scripts/build_flatpak.sh
+          scripts/build_flatpak.sh 2>&1 | tee build.log
+          echo "OUTFILE=$(ls dist/*.flatpak 2>/dev/null | head -n1)" >> "$GITHUB_ENV"
+
+      - name: Record Status & Tail Log
+        if: always()
+        run: |
+          mkdir -p status-reports
+          OUTCOME="${{ job.status }}"
+          DETAILS="All steps passed."
+          if [ "$OUTCOME" != "success" ]; then
+            if [ -f build.log ]; then
+              DETAILS=$(tail -n 20 build.log | tr '\n' ' ' | sed 's/"/\\"/g')
+            else
+              DETAILS="Failed during Flatpak build."
+            fi
+          fi
+          echo "{\"platform\": \"flatpak\", \"status\": \"$OUTCOME\", \"file\": \"${OUTFILE:-none}\", \"error\": \"$DETAILS\"}" > status-reports/flatpak.json
+
+      - name: Upload flatpak status report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-flatpak
+          path: status-reports/*.json
+          retention-days: ${{ env.TEST_RETENTION }}
+
+      - name: Upload flatpak artifact
+        if: steps.compile.outcome == 'success' && env.OUTFILE != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: flatpak-package
+          path: ${{ env.OUTFILE }}
+          retention-days: ${{ env.TEST_RETENTION }}
+
+  report:
+    runs-on: ubuntu-latest
+    needs: [build, build-void-musl, build-nix, build-appimage, build-flatpak]
+    if: always()
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Download all status reports
+        uses: actions/download-artifact@v4
+        with:
+          pattern: report-*
+          merge-multiple: true
+          path: reports
+
+      - name: Generate report (with package download links)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          ARTIFACTS=$(gh api \
+            "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts" \
+            --jq '.artifacts[] | select(.name|endswith("-package")) | "\(.name)|\(.size_in_bytes)|\(.id)"' \
+            2>/dev/null || true)
+          {
+            echo "# Build test report (no publish)"
+            echo ""
+            echo "Workflow run: [${GITHUB_RUN_ID}](${RUN_URL})  "
+            echo "Ref: \`${GITHUB_REF_NAME}\`  ·  Version: \`${TEST_VERSION}\`  ·  Commit: \`${GITHUB_SHA}\`"
+            echo ""
+            echo "## Packages (download)"
+            echo ""
+            echo "| Platform | Artifact | Size | Link |"
+            echo "| :--- | :--- | :--- | :--- |"
+            if [ -z "$ARTIFACTS" ]; then
+              echo "| — | none produced | — | — |"
+            else
+              while IFS='|' read -r name size id; do
+                [ -z "$name" ] && continue
+                human=$(numfmt --to=iec "$size")
+                echo "| \`${name%-package}\` | \`$name\` | $human | [download](${RUN_URL}/artifacts/$id) |"
+              done <<< "$ARTIFACTS"
+            fi
+            echo ""
+            echo "## Build status"
+            echo ""
+            echo "| Platform | Status | Artifact file | Error preview |"
+            echo "| :--- | :--- | :--- | :--- |"
+            for file in reports/*.json; do
+              [ -f "$file" ] || continue
+              PLATFORM=$(jq -r '.platform' "$file")
+              STATUS=$(jq -r '.status' "$file")
+              OUTFILE=$(jq -r '.file' "$file")
+              ERR=$(jq -r '.error' "$file" | cut -c 1-80)
+              if [ "$STATUS" = "success" ]; then ICON="✅"; else ICON="❌"; ERR="—"; fi
+              echo "| **$PLATFORM** | $ICON $STATUS | \`$OUTFILE\` | $ERR |"
+            done
+          } > REPORT.md
+          cat REPORT.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-report
+          path: REPORT.md
+          retention-days: ${{ env.TEST_RETENTION }}
