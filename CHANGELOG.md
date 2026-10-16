@@ -20,6 +20,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-16 04:35:00
+- **ci(aur)**: release pipeline now ships a real pacman package
+  - `package.yml` archlinux job packages with `makepkg` as a non-root builder using the shared `.github/aur/PKGBUILD.in` template, producing `clara-bin-<ver>-1-x86_64.pkg.tar.zst` with proper `.PKGINFO`/`.MTREE` metadata as the release asset (previously a plain `clara-archlinux-*.tar.zst` DESTDIR tarball). `build-test.yml` now uses the same template instead of an inline heredoc.
+  - `aur/clara-bin/PKGBUILD` now consumes the package asset via `bsdtar` extraction (excluding `.PKGINFO`/`.MTREE`) instead of copying a `usr/` tree from the plain tarball.
+  - The archlinux release container installs the full runtime dependency list so the PKGBUILD dependency set is validated on every release build.
+
 ### 2026-10-16 04:20:00
 - **ci(aur)**: build a real pacman package with makepkg in the test workflow
   - New `aur` choice for the `only` dispatch input plus a `build-aur` job: builds the source in an `archlinux:latest` container, then packages it with `makepkg` as a non-root user, producing `clara-bin-<ver>-1-x86_64.pkg.tar.zst` with proper `.PKGINFO` and `.MTREE` metadata (instead of the plain DESTDIR tarball the `distros` job uploads). The job asserts both metadata entries exist and uploads the result as `aur-package`.

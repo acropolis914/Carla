@@ -64,7 +64,9 @@ jobs:
                 git base-devel \
                 qt6-base qt6-svg qt6-tools \
                 python python-pyqt6 sdl2 zstd tar ccache \
-                mesa libglvnd libx11 libxcursor libxext libxrandr
+                mesa libglvnd libx11 libxcursor libxext libxrandr \
+                python-rich fluidsynth liblo file libsndfile hicolor-icon-theme \
+                ttf-nerd-fonts-symbols qt6-wayland wayland
               ;;
             void-glibc)
               xbps-install -S -y ca-certificates xbps || true
@@ -98,10 +100,15 @@ jobs:
               echo "OUTFILE=clara-${{ matrix.platform }}-${VERSION}.tar.zst" >> "$GITHUB_ENV"
               ;;
             archlinux)
-              mkdir -p /tmp/clara-pkg
-              make install PREFIX=/usr DESTDIR=/tmp/clara-pkg DEFAULT_QT=6
-              tar --zstd -cf clara-archlinux-${VERSION}.tar.zst -C /tmp/clara-pkg .
-              echo "OUTFILE=clara-archlinux-${VERSION}.tar.zst" >> "$GITHUB_ENV"
+              PKGVER="${VERSION//-/.}"
+              useradd -m builder
+              chown -R builder:builder "$GITHUB_WORKSPACE"
+              mkdir -p /home/builder/pkg
+              sed -e "s/@PKGVER@/${PKGVER}/" -e "s|@SOURCEDIR@|${GITHUB_WORKSPACE}|" .github/aur/PKGBUILD.in > /home/builder/pkg/PKGBUILD
+              chown -R builder:builder /home/builder/pkg
+              su builder -c "cd /home/builder/pkg && makepkg -f --noconfirm"
+              cp /home/builder/pkg/*.pkg.tar.zst .
+              echo "OUTFILE=$(ls *.pkg.tar.zst | head -n 1)" >> "$GITHUB_ENV"
               ;;
             ubuntu)
               mkdir -p /tmp/clara-deb/DEBIAN
