@@ -204,5 +204,6 @@ aur/*/*.pkg.tar.*
 /run_distrobox_test.sh
 /debug.log
 /logs/
-/aur/clara-git/
+/aur/clara-git/*
+!/aur/clara-git/PKGBUILD
 
