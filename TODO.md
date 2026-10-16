@@ -33,6 +33,7 @@
 - [x] `[Diff: 2]` feat: Dynamic cable coloring based on source and destination node colors with linear gradients
 - [x] `[Diff: 1]` Fix/feat: Patchbay canvasbox color changes dynamically update connected canvas line gradients immediately without requiring redraw or node moves
 - [x] `[Diff: 3]` feat: Visual signal/event flow animations — pulsing/glow animations on active nodes and animated traveling pulses or particles along cables when audio/MIDI events are transmitted
+- [x] `[Diff: 2]` Fix: OpenGL-first canvas rendering — default to hardware acceleration, eliminate artificial software-render throttling, fix PulseAudio peak-detect read callback in `pwlevels.py`, and reapply clean UI fixes
 - [ ] `[Diff: 2]` Fix: Signal-flow pulses sometimes disappear on quiet/transient audio — need peak-hold envelope smoothing so brief silences do not drop a node below the pulse threshold (flicker/stutter)
 - [ ] `[Diff: 2]` feat: Tint signal-flow glows/pulses with the correct colors along the chain — blend from the source node color through the cable to the destination node color (per-endpoint gradient) instead of the single fixed cyan/white
 

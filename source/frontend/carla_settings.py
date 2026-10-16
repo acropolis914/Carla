@@ -908,6 +908,33 @@ class CarlaSettingsW(QDialog):
                 self.ui.cb_canvas_use_opengl_canvas.setChecked
             )
 
+        # Expose "Fancy eye-candy" in Canvas settings page. The original
+        # checkbox lives on the Experimental page, which is hidden unless
+        # experimental mode is on, making the full eye-candy profile
+        # (glow connections, group animations) unreachable otherwise.
+        if hasattr(self.ui, "group_canvas_render") and hasattr(self.ui, "cb_canvas_fancy_eyecandy"):
+            self.ui.cb_canvas_fancy_eyecandy_canvas = QCheckBox(
+                self.tr("Fancy eye-candy (glow connections, group animations)"),
+                self.ui.group_canvas_render,
+            )
+            self.ui.group_canvas_render.layout().insertWidget(
+                2, self.ui.cb_canvas_fancy_eyecandy_canvas
+            )
+            # Sync state bidirectionally between Canvas and Experimental tabs
+            self.ui.cb_canvas_fancy_eyecandy_canvas.toggled.connect(
+                self.ui.cb_canvas_fancy_eyecandy.setChecked
+            )
+            self.ui.cb_canvas_fancy_eyecandy.toggled.connect(
+                self.ui.cb_canvas_fancy_eyecandy_canvas.setChecked
+            )
+            # Full eye-candy only pays off with the GL renderer
+            self.ui.cb_canvas_fancy_eyecandy_canvas.setEnabled(
+                self.ui.cb_canvas_use_opengl.isChecked()
+            )
+            self.ui.cb_canvas_use_opengl_canvas.toggled.connect(
+                self.ui.cb_canvas_fancy_eyecandy_canvas.setEnabled
+            )
+
         # Dynamic Line Style, Stroke, and Opacity Controls in Canvas Tab
         if hasattr(self.ui, "group_canvas_theme") and hasattr(self.ui, "gridLayout_2"):
             # Hide old checkbox since we now have a rich style selector
@@ -1809,7 +1836,17 @@ class CarlaSettingsW(QDialog):
         self.host.experimental = self.ui.ch_main_experimental.isChecked()
 
         if not self.host.experimental:
+            # Disabling experimental mode resets the experimental page to its
+            # defaults, but OpenGL rendering and fancy eye-candy are also
+            # exposed as regular Canvas options, so a plain save must not
+            # silently turn them off.
+            keep_opengl = self.ui.cb_canvas_use_opengl.isChecked()
+            keep_hq_aa = self.ui.cb_canvas_render_hq_aa.isChecked()
+            keep_fancy = self.ui.cb_canvas_fancy_eyecandy.isChecked()
             self.resetExperimentalSettings()
+            self.ui.cb_canvas_use_opengl.setChecked(keep_opengl)
+            self.ui.cb_canvas_render_hq_aa.setChecked(keep_hq_aa)
+            self.ui.cb_canvas_fancy_eyecandy.setChecked(keep_fancy)
 
         # -------------------------------------------------------------------------------------------------------------
         # Main

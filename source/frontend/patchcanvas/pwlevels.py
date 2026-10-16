@@ -245,6 +245,13 @@ class PulsePeakSampler(object):
             target = name
         elif (name + ".monitor") in self._sources:
             target = name + ".monitor"
+        else:
+            name_norm = name.lower().replace(" ", "_").replace("-", "_")
+            for src in self._sources:
+                src_norm = src.lower().replace("-", "_")
+                if name_norm in src_norm or src_norm in name_norm:
+                    target = src
+                    break
         self._resolved[name] = target
         return target
 
@@ -336,9 +343,10 @@ class PulsePeakSampler(object):
                 elif peak > 1.0:
                     peak = 1.0
                 # find the name for this stream pointer
-                key = stream.value if stream else 0
+                key = getattr(stream, "value", stream)
                 for name, ptr in self._streams.items():
-                    if ptr == key:
+                    ptr_val = getattr(ptr, "value", ptr)
+                    if ptr_val == key:
                         self._levels[name] = peak
                         break
             except Exception:

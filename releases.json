@@ -1,6 +1,29 @@
 {
-  "latest": "1.0.1",
+  "latest": "1.0.2",
   "releases": {
+    "1.0.2": {
+      "version": "1.0.2",
+      "date": "2026-10-17",
+      "urgency": "suggested",
+      "summary": "OpenGL-first canvas rendering with uninterrupted signal flow, live pulse animations, log flood rate limiting, and Modern UI refinements",
+      "changes": [
+        "OpenGL-first canvas: default to hardware acceleration for fluid drop shadows, cable glow, and 25 FPS signal-flow pulses without artificial throttle profiles",
+        "Signal flow & audio pulse fix: resolved ctypes pointer unwrap in libpulse read callback so PipeWire/PulseAudio peak meters reliably feed node pulsing and travelling line pulses",
+        "Log flood rate limiting: terminal log output capped at 60 lines/sec and UI log flushes batched (100ms) to stop high-frequency debug floods from freezing the UI thread",
+        "Modern UI default layout: side panel and canvas meters hidden by default in modern mode; floating toolbars and minimap anchored to the patchbay container",
+        "Settings dialog persistence: fixed experimental reset wiping custom canvas/OpenGL choices on normal save, and exposed Fancy Eye-Candy in the Canvas tab"
+      ],
+      "installation": {
+        "appimage": "Download `Clara-1.0.2-x86_64.AppImage`, then: `chmod +x Clara-1.0.2-x86_64.AppImage && ./Clara-1.0.2-x86_64.AppImage`",
+        "flatpak": "Download/run the Flatpak bundle: `flatpak install --user com.github.acropolis914.Clara.flatpak`",
+        "arch": "Install via AUR / PKGBUILD: `paru -S clara-bin` (or `clara-git`)",
+        "ubuntu": "Download `.deb` and run: `sudo dpkg -i clara-ubuntu-*.deb && sudo apt-get install -f`",
+        "fedora": "Download `.rpm` and run: `sudo dnf install clara-*.rpm`",
+        "void": "Extract tarball: `tar --zstd -xvf clara-void-*.tar.zst -C /`",
+        "alpine": "Extract tarball: `tar --zstd -xvf clara-alpine-*.tar.zst -C /`",
+        "nix": "Run directly via Flake: `nix run github:acropolis914/Clara`"
+      }
+    },
     "1.0.1": {
       "version": "1.0.1",
       "date": "2026-10-15",

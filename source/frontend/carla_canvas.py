@@ -531,10 +531,6 @@ class CanvasToolBarOverlay(QFrame):
 
     def _applySignalFlow(self, enabled):
         from patchcanvas import signalflow
-        if enabled and getattr(patchcanvas.options, "software_render", False):
-            # The animated pulse repaints every active cable at ~25 FPS, which
-            # the software raster path cannot keep up with; stay static there.
-            enabled = False
         animator = signalflow.get_animator()
         if not getattr(self, "_signalflow_ready", False):
             self._signalflow_ready = True
@@ -682,19 +678,20 @@ class CanvasToolBarOverlay(QFrame):
         parent = self.parentWidget()
         if parent is None:
             return
-        # Anchor to the top-left of the patchbay container so the palette
-        # stays in place regardless of canvas panning/zooming or resizing.
-        self.move(8, 8)
+        # Left palette: pinned to the patchbay's left edge, vertically centered.
+        x = 12
+        y = max(12, (parent.height() - self.height()) // 2)
+        self.move(x, y)
         self.raise_()
 
 
 # ------------------------------------------------------------------------------------------------------------
-# Floating Context Actions Toolbar (Top-Right Palette)
+# Floating Context Actions Toolbar (Top Centered Palette)
 # ------------------------------------------------------------------------------------------------------------
 
 
 class CanvasContextToolBarOverlay(QFrame):
-    """Floating context-sensitive horizontal action toolbar anchored to the top-right of the patchbay container."""
+    """Floating context-sensitive horizontal action toolbar centered on the patchbay's top edge."""
 
     def __init__(self, graphicsView, parent=None):
         super().__init__(parent or graphicsView.viewport())
@@ -1331,10 +1328,9 @@ class CanvasContextToolBarOverlay(QFrame):
         parent = self.parentWidget()
         if parent is None:
             return
-        # Anchor to the top-right of the patchbay container so the toolbar
-        # stays in place regardless of canvas panning/zooming or resizing.
-        x = max(8, parent.width() - self.width() - 8)
-        y = 8
+        # Top toolbar: pinned to the patchbay's top edge, horizontally centered.
+        x = max(12, (parent.width() - self.width()) // 2)
+        y = 12
         self.move(x, y)
         self.raise_()
 
@@ -1359,9 +1355,9 @@ class CanvasViewportFilter(QObject):
         self._scrollTimer.setInterval(20)  # 50 Hz smooth scrolling
         self._scrollTimer.timeout.connect(self._slot_autoScroll)
 
-        # Create floating mode toolbar & context toolbar, anchored to the
-        # patchbay container (the graphics view's parent) so they stay put
-        # when the view is panned, zoomed or resized.
+        # Create floating mode toolbar & context toolbar, parented to the
+        # patchbay widget itself so they stay with the canvas frame when the
+        # view is panned, zoomed or resized.
         overlayParent = self.graphicsView.parentWidget() or self.graphicsView
         self.toolBar = CanvasToolBarOverlay(self.graphicsView, overlayParent)
         if hasattr(self.hostWindow, "ui") and hasattr(self.hostWindow.ui, "menubar"):

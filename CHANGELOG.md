@@ -20,6 +20,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-17 03:25:00
+- **feat(canvas)**: Clara 1.0.2 - OpenGL-first canvas rendering and uninterrupted signal flow
+  - Default `UseOpenGL` to `true` (with fallback only if Qt reports OpenGL unsupported), ensuring hardware acceleration handles canvas box drop shadows, cable glow, and 25 FPS signal-flow pulses fluidly without artificial software-render throttle profiles.
+  - `pwlevels.py`: resolved ctypes `c_void_p` callback pointer unwrap in `_on_stream_read`, allowing PipeWire and PulseAudio audio peaks to reliably drive node pulsing and cable travelling comets; added normalized name matching for audio sources.
+  - `carla_logger.py`: rate-limit terminal output to 60 lines/sec when attached to a TTY and only mirror logs when `sys.stdout.isatty()`.
+  - `carla_host.py`: batched log flushes every 100ms and capped log buffer at 5000 lines to prevent UI thread lockups under high-frequency backend logging; respect `ModernUiMode` at startup and default to hiding the side panel and meters in modern mode.
+  - `carla_canvas.py` & `carla_host.py`: anchored floating canvas mode palette, context toolbar, and minimap to the patchbay container frame so they remain consistently positioned regardless of canvas pan/zoom/resize.
+  - `carla_settings.py`: prevented normal settings save from resetting experimental and OpenGL selections, and exposed "Fancy eye-candy" directly in the Canvas tab.
+
 ### 2026-10-16 21:32:00
 - **fix(frontend)**: modern UI hides the side panel by default, and the canvas toolbars no longer drift
   - Side panel: in Modern UI mode the left sidebar is now off at startup; a stale `ShowSidePanel=true` written by classic-era defaults no longer overrides the modern layout. Enabling Modern UI from Settings also closes the sidebar immediately. Classic mode still defaults to the panel shown.
@@ -45,7 +54,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Fresh configs default to `UseOpenGL=false`, which put the patchbay on the software raster path where the fork's eye candy makes it unusable. `setupCanvas` now detects the actual viewport type and sets `patchcanvas.options.software_render`; on that path the canvas drops effects that are GPU-cheap but CPU-brutal: box drop-shadow effects (`canvasbox.py`), the cosmetic cable glow overlay (`canvasline.py`), the animated signal-flow pulse (~25 FPS repaint of every active cable, `carla_canvas.py`), and minimap re-renders (whole-scene second pass, `carla_host.py`). GL users are unaffected.
 
 ### 2026-10-16 05:20:00
-- **ci(aur)**: fully automate AUR publishing for clara-bin + clara-git
   - New `publish-aur` job in `package.yml` (runs after `release` on `v*` tags): sets up the AUR SSH key from the `AUR_SSH_PRIVATE_KEY` secret, clones `ssh://aur@aur.archlinux.org/<pkg>.git` for both packages, bumps `pkgver`, regenerates `.SRCINFO` with `makepkg`, commits and pushes. `clara-bin` PKGBUILD comes from the repo (source of truth); `clara-git` PKGBUILD is updated directly in its AUR repo. Skips cleanly when nothing changed.
   - AppImage confirmed release-only: it is uploaded as the `appimage-package` CI artifact and attached to GitHub Releases with the other distro packages; `dist/` is gitignored and nothing is committed to the repo.
 
