@@ -20,6 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-16 21:05:00
+- **fix(frontend)**: Modern UI setting is honored at startup
+  - `ModernUiMode=true` configs that also had a stale `SideBySideEnabled=false` started classic while Settings > Modern UI stayed checked; only retoggling applied the modern view. Two causes: (1) `loadSettings(True)` runs before the side-by-side action exists, so the modern mode was only restored into the checkbox and never applied; (2) `saveSettings` derived `SideBySideEnabled` from "is the split tab the currently selected tab", which saved `false` whenever another tab was focused on close.
+  - `carla_host.py`: save now uses the side-by-side action's checked state; both restore paths treat Modern UI as the master switch (modern on ⇒ side-by-side applied regardless of a stale saved `false`).
+
 ### 2026-10-16 20:47:00
 - **fix(frontend)**: backend log floods no longer freeze the UI
   - The C++ backend floods the debug callback (JACK `nframes == bufferSize` assertion loop, PipeWire/PulseAudio port add/remove churn). Every line was rendered with `rich` for the terminal (`console_enabled` hardcoded `True`, even with no tty attached) and appended one line at a time to the log `QPlainTextEdit`, each call re-laying-out the whole document. Under flood this consumed ~82% of CPU in the logging pipeline (`_print_terminal` 46.5% + `print` 21.8% + `slot_onLogAdded` 21.2%), pegging the GUI thread at ~96% and freezing the app.

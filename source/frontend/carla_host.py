@@ -828,9 +828,15 @@ class HostWindow(QMainWindow):
             self.ui.menu_Canvas.addAction(self.act_canvas_side_by_side)
             self.ui.toolBar.addAction(self.act_canvas_side_by_side)
 
-            # Restore side-by-side settings if saved
+            # Restore side-by-side settings if saved. Modern UI is the master
+            # switch (toggling it forces this layout), so it wins over a stale
+            # SideBySideEnabled=false and the startup view matches the menu.
             settings = QSettings()
-            if settings.value("SideBySideEnabled", False, bool):
+            modernUi = settings.value("ModernUiMode", True, bool)
+            sideBySide = settings.value("SideBySideEnabled", modernUi, bool)
+            if modernUi:
+                sideBySide = True
+            if sideBySide:
                 self.act_canvas_side_by_side.setChecked(True)
                 self.slot_toggleSideBySideView(True)
                 saved_sizes = settings.value("SideBySideSizes", None)
@@ -3637,8 +3643,15 @@ class HostWindow(QMainWindow):
         settings.setValue("ShowStatusBar", show_sb)
         settings.setValue("ShowSidePanel", self.ui.dockWidget.isEnabled())
 
-        # Persist side-by-side view state and splitter ratio
-        is_split = hasattr(self, "tabSplit") and self.ui.tabWidget.indexOf(self.tabSplit) == self.ui.tabWidget.currentIndex()
+        # Persist side-by-side view state and splitter ratio.
+        # The action state is the truth; the old "is split tab current" check
+        # saved false whenever another tab was focused on close, producing
+        # ModernUiMode=true + SideBySideEnabled=false configs that started
+        # classic while the menu claimed modern.
+        if hasattr(self, "act_canvas_side_by_side") and self.act_canvas_side_by_side is not None:
+            is_split = bool(self.act_canvas_side_by_side.isChecked())
+        else:
+            is_split = hasattr(self, "tabSplit") and self.ui.tabWidget.indexOf(self.tabSplit) == self.ui.tabWidget.currentIndex()
         settings.setValue("SideBySideEnabled", bool(is_split))
         if hasattr(self, "act_settings_modern_ui") and self.act_settings_modern_ui is not None:
             settings.setValue("ModernUiMode", self.act_settings_modern_ui.isChecked())
@@ -3717,6 +3730,10 @@ class HostWindow(QMainWindow):
             # Restore side-by-side view state and splitter ratio (default True for modern)
             default_split = True if modernUi else False
             sideBySide = settings.value("SideBySideEnabled", default_split, bool)
+            # Modern UI is the master switch; a stale SideBySideEnabled=false
+            # must not start the UI classic while the menu claims modern.
+            if modernUi:
+                sideBySide = True
             if sideBySide and self.fWithCanvas and hasattr(self, "act_canvas_side_by_side") and self.act_canvas_side_by_side is not None:
                 self.act_canvas_side_by_side.setChecked(True)
                 self.slot_toggleSideBySideView(True)
