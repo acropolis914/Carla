@@ -3754,7 +3754,12 @@ class HostWindow(QMainWindow):
             # else:
             # self.ui.splitter.setSizes([210, 99999])
 
-            showSidePanel = settings.value("ShowSidePanel", True, bool)
+            # Modern UI uses a clean canvas with no side panel; any stale
+            # ShowSidePanel=true saved by classic-era defaults must not
+            # override the modern layout.
+            showSidePanel = settings.value("ShowSidePanel", not modernUi, bool)
+            if modernUi:
+                showSidePanel = False
             self.ui.act_settings_show_side_panel.setChecked(showSidePanel)
             self.slot_showSidePanel(showSidePanel)
 
@@ -4169,6 +4174,11 @@ class HostWindow(QMainWindow):
             # Modern mode default is unified side-by-side view; Classic mode default is classic multi-tab view
             self.act_canvas_side_by_side.setChecked(yesNo)
             self.slot_toggleSideBySideView(yesNo)
+
+        if yesNo and hasattr(self.ui, "act_settings_show_side_panel") and self.ui.act_settings_show_side_panel is not None:
+            # Modern UI hides the side panel by default
+            self.ui.act_settings_show_side_panel.setChecked(False)
+            self.slot_showSidePanel(False)
 
         self._updateMiniCanvasPlacement()
 
@@ -4671,8 +4681,12 @@ class HostWindow(QMainWindow):
             return self.ui.miniCanvasOverlay
         try:
             from widgets.canvasminimapframe import CanvasMinimapOverlay
+            # Anchor the map to the patchbay container (the graphics view's
+            # parent), matching the floating toolbars, so it stays put when
+            # the view is panned/zoomed/resized.
+            overlayParent = self.ui.graphicsView.parentWidget() or self.ui.graphicsView.viewport()
             overlay = CanvasMinimapOverlay(
-                self.ui.graphicsView.viewport(),
+                overlayParent,
                 self.ui.graphicsView,
                 self.scene,
                 self,
@@ -4693,7 +4707,8 @@ class HostWindow(QMainWindow):
         if getattr(self.ui, "btnShowMiniCanvas", None) is not None:
             return self.ui.btnShowMiniCanvas
         try:
-            btn = QToolButton(self.ui.graphicsView.viewport())
+            btnParent = self.ui.graphicsView.parentWidget() or self.ui.graphicsView.viewport()
+            btn = QToolButton(btnParent)
             btn.setObjectName("btnShowMiniCanvas")
             btn.setText("\U0001F5FA  Map")
             btn.setToolTip("Show minimap")
@@ -4914,18 +4929,20 @@ class HostWindow(QMainWindow):
         if overlay is None:
             return
         try:
-            vp = self.ui.graphicsView.viewport()
+            # Position against the overlay's parent (the patchbay container,
+            # matching the floating toolbars); fall back to the viewport.
+            base = overlay.parentWidget() or self.ui.graphicsView.viewport()
             if overlay.isVisible():
                 overlay.adjustSize()
                 if getattr(self, "_miniCanvasUserPositioned", False):
                     pos = overlay.pos()
                 else:
                     pos = QPoint(
-                        vp.width() - overlay.width() - 10,
-                        vp.height() - overlay.height() - 10,
+                        base.width() - overlay.width() - 10,
+                        base.height() - overlay.height() - 10,
                     )
-                max_x = max(0, vp.width() - overlay.width())
-                max_y = max(0, vp.height() - overlay.height())
+                max_x = max(0, base.width() - overlay.width())
+                max_y = max(0, base.height() - overlay.height())
                 pos.setX(max(0, min(pos.x(), max_x)))
                 pos.setY(max(0, min(pos.y(), max_y)))
                 overlay.move(pos)
@@ -4934,7 +4951,7 @@ class HostWindow(QMainWindow):
             btn = getattr(self.ui, "btnShowMiniCanvas", None)
             if btn is not None:
                 if not overlay.isVisible():
-                    btn.move(vp.width() - btn.width() - 12, vp.height() - btn.height() - 12)
+                    btn.move(base.width() - btn.width() - 12, base.height() - btn.height() - 12)
                     btn.raise_()
                     btn.show()
                 else:

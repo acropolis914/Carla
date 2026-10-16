@@ -679,23 +679,22 @@ class CanvasToolBarOverlay(QFrame):
     def reposition(self):
         if getattr(self, "_userMoved", False):
             return
-        vp = self.parentWidget()
-        if vp is None:
+        parent = self.parentWidget()
+        if parent is None:
             return
-        # Position floating on the left side (Photoshop palette position)
-        x = 12
-        y = max(12, (vp.height() - self.height()) // 2)
-        self.move(x, y)
+        # Anchor to the top-left of the patchbay container so the palette
+        # stays in place regardless of canvas panning/zooming or resizing.
+        self.move(8, 8)
         self.raise_()
 
 
 # ------------------------------------------------------------------------------------------------------------
-# Floating Context Actions Toolbar (Top Centered Palette)
+# Floating Context Actions Toolbar (Top-Right Palette)
 # ------------------------------------------------------------------------------------------------------------
 
 
 class CanvasContextToolBarOverlay(QFrame):
-    """Floating context-sensitive horizontal action toolbar at the top of the patchbay canvas."""
+    """Floating context-sensitive horizontal action toolbar anchored to the top-right of the patchbay container."""
 
     def __init__(self, graphicsView, parent=None):
         super().__init__(parent or graphicsView.viewport())
@@ -1329,12 +1328,13 @@ class CanvasContextToolBarOverlay(QFrame):
     def reposition(self):
         if getattr(self, "_userMoved", False):
             return
-        vp = self.parentWidget()
-        if vp is None:
+        parent = self.parentWidget()
+        if parent is None:
             return
-        # Position floating at top center
-        x = max(12, (vp.width() - self.width()) // 2)
-        y = 12
+        # Anchor to the top-right of the patchbay container so the toolbar
+        # stays in place regardless of canvas panning/zooming or resizing.
+        x = max(8, parent.width() - self.width() - 8)
+        y = 8
         self.move(x, y)
         self.raise_()
 
@@ -1359,14 +1359,17 @@ class CanvasViewportFilter(QObject):
         self._scrollTimer.setInterval(20)  # 50 Hz smooth scrolling
         self._scrollTimer.timeout.connect(self._slot_autoScroll)
 
-        # Create floating mode toolbar & context toolbar inside the viewport
-        self.toolBar = CanvasToolBarOverlay(self.graphicsView, self.graphicsView.viewport())
+        # Create floating mode toolbar & context toolbar, anchored to the
+        # patchbay container (the graphics view's parent) so they stay put
+        # when the view is panned, zoomed or resized.
+        overlayParent = self.graphicsView.parentWidget() or self.graphicsView
+        self.toolBar = CanvasToolBarOverlay(self.graphicsView, overlayParent)
         if hasattr(self.hostWindow, "ui") and hasattr(self.hostWindow.ui, "menubar"):
             self.toolBar.btnMenu.setVisible(not self.hostWindow.ui.menubar.isVisible())
         self.toolBar.show()
         QTimer.singleShot(100, self.toolBar.reposition)
 
-        self.contextToolBar = CanvasContextToolBarOverlay(self.graphicsView, self.graphicsView.viewport())
+        self.contextToolBar = CanvasContextToolBarOverlay(self.graphicsView, overlayParent)
         self.contextToolBar.show()
         QTimer.singleShot(100, self.contextToolBar.reposition)
 

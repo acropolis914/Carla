@@ -20,6 +20,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-16 21:32:00
+- **fix(frontend)**: modern UI hides the side panel by default, and the canvas toolbars no longer drift
+  - Side panel: in Modern UI mode the left sidebar is now off at startup; a stale `ShowSidePanel=true` written by classic-era defaults no longer overrides the modern layout. Enabling Modern UI from Settings also closes the sidebar immediately. Classic mode still defaults to the panel shown.
+  - `carla_host.py`: `loadSettings` defaults `ShowSidePanel` to `not modernUi` and forces it off while modern is active; `slot_toggleModernUi` hides the side panel when modern is switched on.
+  - Canvas toolbars & minimap: the floating left mode palette, the top context toolbar and the floating minimap were parented to the patchbay viewport and re-centred on every resize; they are now anchored to the patchbay container (the graphics view's parent), pinned to the container's top-left, top-right and bottom-right respectively, so panning, zooming, splitter moves and window resizes keep them in place.
+  - `carla_canvas.py`: `CanvasViewportFilter` reparents both overlays to the graphics view's parent; `CanvasToolBarOverlay.reposition`/`CanvasContextToolBarOverlay.reposition` pin to fixed top-left/top-right corners.
+  - `carla_host.py`: `_ensureMiniCanvasOverlay`/`_ensureMiniCanvasRestoreButton` reparent the minimap overlay and its restore "Map" button to the patchbay container; `_repositionMiniCanvasFloat` pins them to the container's bottom-right.
+
 ### 2026-10-16 21:05:00
 - **fix(frontend)**: Modern UI setting is honored at startup
   - `ModernUiMode=true` configs that also had a stale `SideBySideEnabled=false` started classic while Settings > Modern UI stayed checked; only retoggling applied the modern view. Two causes: (1) `loadSettings(True)` runs before the side-by-side action exists, so the modern mode was only restored into the checkbox and never applied; (2) `saveSettings` derived `SideBySideEnabled` from "is the split tab the currently selected tab", which saved `false` whenever another tab was focused on close.
