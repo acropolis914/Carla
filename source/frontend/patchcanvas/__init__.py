@@ -96,6 +96,7 @@ class options_t(object):
         "use_bezier_lines",
         "antialiasing",
         "eyecandy",
+        "software_render",
         "inline_displays",
         "rounded_nodes",
         "node_radius",
@@ -274,6 +275,7 @@ options.auto_select_items = False
 options.use_bezier_lines = True
 options.antialiasing = ANTIALIASING_SMALL
 options.eyecandy = EYECANDY_SMALL
+options.software_render = False
 options.inline_displays = False
 options.rounded_nodes = True
 options.node_radius = 8
@@ -304,6 +306,7 @@ def setOptions(new_options):
     options.use_bezier_lines = new_options.use_bezier_lines
     options.antialiasing = new_options.antialiasing
     options.eyecandy = new_options.eyecandy
+    options.software_render = getattr(new_options, "software_render", False)
     options.inline_displays = new_options.inline_displays
     options.rounded_nodes = getattr(new_options, "rounded_nodes", True)
     options.node_radius = getattr(new_options, "node_radius", 8)

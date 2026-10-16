@@ -280,7 +280,7 @@ class CanvasLine(QGraphicsPathItem):
         painter.drawPath(self.path())
 
         # Cosmetic glow overlay — skip entirely when eye candy is off
-        if options.eyecandy:
+        if options.eyecandy and not options.software_render:
             cosm_pen = getattr(self, "_cached_cosm_pen", None)
             if cosm_pen is not None:
                 painter.setPen(cosm_pen)

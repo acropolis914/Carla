@@ -2810,6 +2810,12 @@ class HostWindow(QMainWindow):
         self.ui.peak_out.displayMeter(2, 0.0, True)
 
     def setupCanvas(self):
+        # Detect whether the graphics view ended up on the software raster
+        # path. If so, GPU-hungry canvas effects are disabled below, as they
+        # make the patchbay unusable at software rendering speeds.
+        vp = self.ui.graphicsView.viewport()
+        software_render = "GL" not in type(vp).__name__.upper()
+
         pOptions = patchcanvas.options_t()
         pOptions.theme_name = self.fSavedSettings[CARLA_KEY_CANVAS_THEME]
         pOptions.auto_hide_groups = self.fSavedSettings[
@@ -2844,6 +2850,7 @@ class HostWindow(QMainWindow):
         pOptions.arrange_style = self.fSavedSettings.get(
             CARLA_KEY_CANVAS_ARRANGE_STYLE, CARLA_DEFAULT_CANVAS_ARRANGE_STYLE
         )
+        pOptions.software_render = software_render
 
         if self.fSavedSettings[CARLA_KEY_CANVAS_FANCY_EYE_CANDY]:
             pOptions.eyecandy = patchcanvas.EYECANDY_FULL
@@ -2996,6 +3003,10 @@ class HostWindow(QMainWindow):
         patchcanvas.setInitialPos(x, y)
 
     def updateMiniCanvasLater(self):
+        if getattr(patchcanvas.options, "software_render", False):
+            # The minimap renders the whole scene a second time; too costly on
+            # the software raster path, so leave it static there.
+            return
         if self._isModernMiniCanvasMode():
             self._expandSceneRectForMinimap()
             if hasattr(self.ui, "modernMiniCanvas") and self.ui.modernMiniCanvas is not None:

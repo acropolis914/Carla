@@ -20,6 +20,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-16 06:10:00
+- **perf(canvas)**: automatic software-render performance profile for the patchbay
+  - Fresh configs default to `UseOpenGL=false`, which put the patchbay on the software raster path where the fork's eye candy makes it unusable. `setupCanvas` now detects the actual viewport type and sets `patchcanvas.options.software_render`; on that path the canvas drops effects that are GPU-cheap but CPU-brutal: box drop-shadow effects (`canvasbox.py`), the cosmetic cable glow overlay (`canvasline.py`), the animated signal-flow pulse (~25 FPS repaint of every active cable, `carla_canvas.py`), and minimap re-renders (whole-scene second pass, `carla_host.py`). GL users are unaffected.
+
 ### 2026-10-16 05:20:00
 - **ci(aur)**: fully automate AUR publishing for clara-bin + clara-git
   - New `publish-aur` job in `package.yml` (runs after `release` on `v*` tags): sets up the AUR SSH key from the `AUR_SSH_PRIVATE_KEY` secret, clones `ssh://aur@aur.archlinux.org/<pkg>.git` for both packages, bumps `pkgver`, regenerates `.SRCINFO` with `makepkg`, commits and pushes. `clara-bin` PKGBUILD comes from the repo (source of truth); `clara-git` PKGBUILD is updated directly in its AUR repo. Skips cleanly when nothing changed.

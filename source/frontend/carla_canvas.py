@@ -531,6 +531,10 @@ class CanvasToolBarOverlay(QFrame):
 
     def _applySignalFlow(self, enabled):
         from patchcanvas import signalflow
+        if enabled and getattr(patchcanvas.options, "software_render", False):
+            # The animated pulse repaints every active cable at ~25 FPS, which
+            # the software raster path cannot keep up with; stay static there.
+            enabled = False
         animator = signalflow.get_animator()
         if not getattr(self, "_signalflow_ready", False):
             self._signalflow_ready = True
