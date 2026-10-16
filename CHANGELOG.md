@@ -22,8 +22,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### 2026-10-16 05:20:00
 - **ci(aur)**: fully automate AUR publishing for clara-bin + clara-git
-  - New `publish-aur` job in `package.yml` (runs after `release` on `v*` tags): sets up the AUR SSH key from the `AUR_SSH_PRIVATE_KEY` secret, regenerates `.SRCINFO` with `makepkg` for both packages, clones (or inits) `ssh://aur@aur.archlinux.org/<pkg>.git`, commits the bumped PKGBUILD + `.SRCINFO`, and pushes. Skips cleanly when nothing changed.
-  - The release-time PKGBUILD bump step now updates both `aur/clara-bin` and `aur/clara-git` in the repo (clara-git PKGBUILD is now tracked).
+  - New `publish-aur` job in `package.yml` (runs after `release` on `v*` tags): sets up the AUR SSH key from the `AUR_SSH_PRIVATE_KEY` secret, clones `ssh://aur@aur.archlinux.org/<pkg>.git` for both packages, bumps `pkgver`, regenerates `.SRCINFO` with `makepkg`, commits and pushes. `clara-bin` PKGBUILD comes from the repo (source of truth); `clara-git` PKGBUILD is updated directly in its AUR repo. Skips cleanly when nothing changed.
   - AppImage confirmed release-only: it is uploaded as the `appimage-package` CI artifact and attached to GitHub Releases with the other distro packages; `dist/` is gitignored and nothing is committed to the repo.
 
 ### 2026-10-16 04:35:00

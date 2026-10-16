@@ -474,15 +474,15 @@ jobs:
           draft: false
           prerelease: false
 
-      - name: Update aur PKGBUILD versions
+      - name: Update aur/clara-bin PKGBUILD version
         run: |
           TAG="${GITHUB_REF_NAME#v}"
-          sed -i "s/^pkgver=.*/pkgver=${TAG}/" aur/clara-bin/PKGBUILD aur/clara-git/PKGBUILD
+          sed -i "s/^pkgver=.*/pkgver=${TAG}/" aur/clara-bin/PKGBUILD
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add aur/clara-bin/PKGBUILD aur/clara-git/PKGBUILD
+          git add aur/clara-bin/PKGBUILD
           git diff --quiet && git diff --staged --quiet || {
-            git commit -m "chore(aur): bump clara-bin + clara-git pkgver to ${TAG} [skip ci]"
+            git commit -m "chore(aur): bump clara-bin pkgver to ${TAG} [skip ci]"
             git push origin HEAD:main
           }
 
@@ -523,22 +523,22 @@ jobs:
           set -euo pipefail
           export GIT_SSH_COMMAND="ssh -i /home/builder/.ssh/aur -o UserKnownHostsFile=/home/builder/.ssh/known_hosts -o StrictHostKeyChecking=yes"
           for pkg in clara-bin clara-git; do
-            workdir="/home/builder/$pkg-work"
             aurdir="/home/builder/$pkg-aur"
-            rm -rf "$workdir" "$aurdir"
-            mkdir -p "$workdir"
-            cp "$GITHUB_WORKSPACE/aur/$pkg/PKGBUILD" "$workdir/PKGBUILD"
-            sed -i "s/^pkgver=.*/pkgver=${TAG}/" "$workdir/PKGBUILD"
-            cd "$workdir"
-            makepkg --printsrcinfo > .SRCINFO
+            rm -rf "$aurdir"
 
             if ! git clone "ssh://aur@aur.archlinux.org/$pkg.git" "$aurdir" 2>/dev/null; then
               mkdir -p "$aurdir"
               git -C "$aurdir" init -q
               git -C "$aurdir" remote add origin "ssh://aur@aur.archlinux.org/$pkg.git"
             fi
-            cp PKGBUILD .SRCINFO "$aurdir/"
+
+            if [ "$pkg" = "clara-bin" ]; then
+              cp "$GITHUB_WORKSPACE/aur/clara-bin/PKGBUILD" "$aurdir/PKGBUILD"
+            fi
+
+            sed -i "s/^pkgver=.*/pkgver=${TAG}/" "$aurdir/PKGBUILD"
             cd "$aurdir"
+            makepkg --printsrcinfo > .SRCINFO
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
             git add PKGBUILD .SRCINFO
