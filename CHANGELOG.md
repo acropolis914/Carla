@@ -20,6 +20,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-17 05:32:00
+- **feat(settings)**: declarative schema overhaul with responsive 2-column layout and UI refinements
+  - Reconstructed settings tabs (**General**, **Patchbay**, **OSC**, **Wine**, **Experimental**) using data-driven schemas (`settings_schema.py`) and `SettingsFormBuilder`.
+  - Fixed sidebar tab label truncation by widening the sidebar navigation table and inheriting the default system UI typography.
+  - Eliminated legacy dead whitespace by top-aligning form containers directly at the layout root.
+
 ### 2026-10-17 03:25:00
 - **feat(canvas)**: Clara 1.0.2 - OpenGL-first canvas rendering and uninterrupted signal flow
   - Default `UseOpenGL` to `true` (with fallback only if Qt reports OpenGL unsupported), ensuring hardware acceleration handles canvas box drop shadows, cable glow, and 25 FPS signal-flow pulses fluidly without artificial software-render throttle profiles.

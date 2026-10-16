@@ -219,6 +219,8 @@ CARLA_KEY_CANVAS_ARRANGE_STYLE      = "Canvas/ArrangeStyle"    # str (registered
 CARLA_KEY_CANVAS_NODE_MIN_WIDTH     = "Canvas/NodeMinWidth"    # int (100 - 350)
 CARLA_KEY_CANVAS_SIGNAL_FLOW        = "Canvas/SignalFlow"      # bool (animated signal/event flow)
 CARLA_KEY_CANVAS_SIGNAL_FLOW_EXT    = "Canvas/SignalFlowExternal"  # bool (capture levels for external/pipewire nodes)
+CARLA_KEY_CANVAS_BOX_SHADOWS        = "Canvas/BoxShadows"      # bool (drop shadows beneath node boxes)
+CARLA_KEY_CANVAS_NODE_TRANSITIONS   = "Canvas/NodeTransitions" # bool (fade/scale animations for node changes)
 
 CARLA_KEY_ENGINE_DRIVER_PREFIX         = "Engine/Driver-"
 CARLA_KEY_ENGINE_AUDIO_DRIVER          = "Engine/AudioDriver"         # str
@@ -318,6 +320,9 @@ CARLA_DEFAULT_CANVAS_LINE_STROKE       = "solid"
 CARLA_DEFAULT_CANVAS_LINE_OPACITY      = 100
 CARLA_DEFAULT_CANVAS_ARRANGE_STYLE     = "flow"
 CARLA_DEFAULT_CANVAS_NODE_MIN_WIDTH    = 160
+CARLA_DEFAULT_CANVAS_BOX_SHADOWS        = True
+CARLA_DEFAULT_CANVAS_NODE_TRANSITIONS   = True
+CARLA_DEFAULT_CANVAS_SIGNAL_FLOW        = False
 
 # Engine
 CARLA_DEFAULT_FORCE_STEREO          = False
@@ -344,11 +349,11 @@ elif os.path.exists("/usr/bin/jackd") or os.path.exists("/usr/bin/jackdbus") or 
 else:
     CARLA_DEFAULT_AUDIO_DRIVER = "PulseAudio"
 
+CARLA_DEFAULT_PROCESS_MODE = ENGINE_PROCESS_MODE_PATCHBAY
+
 if CARLA_DEFAULT_AUDIO_DRIVER == "JACK":
-    CARLA_DEFAULT_PROCESS_MODE   = ENGINE_PROCESS_MODE_MULTIPLE_CLIENTS
     CARLA_DEFAULT_TRANSPORT_MODE = ENGINE_TRANSPORT_MODE_JACK
 else:
-    CARLA_DEFAULT_PROCESS_MODE   = ENGINE_PROCESS_MODE_PATCHBAY
     CARLA_DEFAULT_TRANSPORT_MODE = ENGINE_TRANSPORT_MODE_INTERNAL
 
 # OSC

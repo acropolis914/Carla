@@ -14,6 +14,7 @@ from qt_compat import (
     QFileDialog,
     QFont,
     QFontDatabase,
+    QHeaderView,
     QIcon,
     QSize,
     QCheckBox,
@@ -212,6 +213,14 @@ from carla_shared import (
 from patchcanvas.linealgos import line_algorithms
 from patchcanvas.theme import Theme, getThemeName
 from utils import QSafeSettings
+from settings_schema import (
+    SettingsFormBuilder,
+    GENERAL_SCHEMA,
+    PATCHBAY_SCHEMA,
+    OSC_SCHEMA,
+    WINE_SCHEMA,
+    EXPERIMENTAL_SCHEMA,
+)
 
 # ---------------------------------------------------------------------------------------------------------------------
 # ...
@@ -607,9 +616,11 @@ class CarlaSettingsW(QDialog):
 
         # Modern compact sidebar layout & styling
         self.ui.lw_page.setIconSize(QSize(0, 0))
-        self.ui.lw_page.setFixedWidth(136)
+        self.ui.lw_page.setFixedWidth(195)
         self.ui.lw_page.setShowGrid(False)
-        self.ui.lw_page.verticalHeader().setDefaultSectionSize(32)
+        stretch_mode = getattr(QHeaderView.ResizeMode, "Stretch", None) if hasattr(QHeaderView, "ResizeMode") else getattr(QHeaderView, "Stretch", 1)
+        self.ui.lw_page.horizontalHeader().setSectionResizeMode(stretch_mode)
+        self.ui.lw_page.verticalHeader().setDefaultSectionSize(34)
 
         # Tab titles with refined typography
         tab_titles = [
@@ -622,12 +633,6 @@ class CarlaSettingsW(QDialog):
             self.tr("Wine"),
             self.tr("Experimental"),
         ]
-        # Nerd Font glyphs for the sidebar tabs (fallback to plain text if absent)
-        try:
-            from carla_canvas import getBestNerdFont
-            nerd_family = getBestNerdFont()
-        except Exception:
-            nerd_family = ""
         tab_glyphs = [
             "\uf013",  # nf-fa-cog          General
             "\uf0e8",  # nf-fa-sitemap      Patchbay
@@ -638,17 +643,34 @@ class CarlaSettingsW(QDialog):
             "\uf000",  # nf-fa-glass        Wine
             "\uf0eb",  # nf-fa-lightbulb    Experimental
         ]
-        tab_font = QFont(nerd_family, 11) if nerd_family else QFont()
+        try:
+            from carla_canvas import getBestNerdFont
+            nerd_family = getBestNerdFont()
+        except Exception:
+            nerd_family = ""
+
+        def _make_glyph_icon(glyph, size=18):
+            if not nerd_family:
+                return QIcon()
+            from qt_compat import QPixmap, QPainter, QColor
+            pm = QPixmap(size, size)
+            pm.fill(QColor(0, 0, 0, 0))
+            p = QPainter(pm)
+            p.setFont(QFont(nerd_family, int(size * 0.72)))
+            p.setPen(QColor("#89b4fa"))
+            p.drawText(pm.rect(), Qt.AlignCenter, glyph)
+            p.end()
+            return QIcon(pm)
+
+        self.ui.lw_page.setIconSize(QSize(18, 18))
+
         for row in range(self.ui.lw_page.rowCount()):
             item = self.ui.lw_page.item(row, 0)
             if item is not None:
-                item.setIcon(QIcon())
                 if row < len(tab_titles):
-                    if nerd_family:
-                        item.setText("%s  %s" % (tab_glyphs[row], tab_titles[row]))
-                        item.setFont(tab_font)
-                    else:
-                        item.setText(tab_titles[row])
+                    if nerd_family and row < len(tab_glyphs):
+                        item.setIcon(_make_glyph_icon(tab_glyphs[row]))
+                    item.setText(tab_titles[row])
 
         # Remove hideous page header glyphs (upper-right corner of every tab)
         for icon_attr in (
@@ -678,6 +700,7 @@ class CarlaSettingsW(QDialog):
 
         # Legacy / superseded options that are no longer worth exposing
         for legacy_attr in (
+            "group_experimental_canvas", # Canvas settings are unified under Patchbay tab
             "cb_canvas_full_repaints",   # slow workaround, superseded by modern rendering
             "ch_exp_load_lib_global",    # explicitly "NOT RECOMMENDED"
         ):
@@ -716,24 +739,20 @@ class CarlaSettingsW(QDialog):
                 gridline-color: transparent;
             }
             QTableWidget#lw_page::item {
-                color: #a6adc8;
+                color: #cdd6f4;
                 border-radius: 5px;
-                padding: 6px 12px;
+                padding: 6px 10px;
                 margin: 1px 2px;
-                font-family: __SIDEBAR_FONT__;
-                font-size: 11px;
-                font-weight: 500;
                 border: none;
                 outline: none;
             }
             QTableWidget#lw_page::item:hover {
-                background: rgba(255, 255, 255, 0.05);
-                color: #cdd6f4;
+                background: rgba(255, 255, 255, 0.08);
+                color: #ffffff;
             }
             QTableWidget#lw_page::item:selected {
                 background: #89b4fa;
                 color: #11111b;
-                font-weight: 600;
             }
             QGroupBox {
                 border: 1px solid rgba(255, 255, 255, 0.06);
@@ -855,11 +874,6 @@ class CarlaSettingsW(QDialog):
                 background: transparent;
             }
         """)
-        self.setStyleSheet(
-            self.styleSheet().replace(
-                "__SIDEBAR_FONT__", nerd_family or "Cantarell, sans-serif"
-            )
-        )
 
         for i in range(host.get_engine_driver_count()):
             self.ui.cb_engine_audio_driver.addItem(host.get_engine_driver_name(i))
@@ -890,114 +904,99 @@ class CarlaSettingsW(QDialog):
             self.ui.cb_canvas_use_opengl.setEnabled(False)
             self.ui.cb_canvas_render_hq_aa.setEnabled(False)
 
-        # Expose "Use OpenGL for rendering" in Canvas settings page
-        if hasattr(self.ui, "group_canvas_render"):
-            self.ui.cb_canvas_use_opengl_canvas = QCheckBox(
-                self.tr("Use OpenGL for rendering (needs restart)"),
-                self.ui.group_canvas_render,
-            )
-            self.ui.cb_canvas_use_opengl_canvas.setEnabled(hasCanvasGL)
-            self.ui.group_canvas_render.layout().insertWidget(
-                1, self.ui.cb_canvas_use_opengl_canvas
-            )
-            # Sync state bidirectionally between Canvas and Experimental tabs
-            self.ui.cb_canvas_use_opengl_canvas.toggled.connect(
-                self.ui.cb_canvas_use_opengl.setChecked
-            )
-            self.ui.cb_canvas_use_opengl.toggled.connect(
-                self.ui.cb_canvas_use_opengl_canvas.setChecked
-            )
+        # Build clean declarative 2-column settings pages
+        # 1. General Tab
+        if hasattr(self.ui, "page_main"):
+            for old_grp in ("label_main", "group_main_paths", "group_main_theme", "group_main_misc", "group_main_experimental", "label_icon_main", "label", "label_2", "label_3"):
+                if hasattr(self.ui, old_grp):
+                    getattr(self.ui, old_grp).hide()
+            self.general_form_builder = SettingsFormBuilder(self, GENERAL_SCHEMA)
+            self.general_form_builder.build_page(self.ui.page_main)
+            
+            # Live update hooks for rack spacing sliders
+            if "rack_spacing" in self.general_form_builder.widgets:
+                def _on_live_rack_spacing(val):
+                    if hasattr(gCarla, "gui") and gCarla.gui is not None and hasattr(gCarla.gui.ui, "listWidget"):
+                        gCarla.gui.ui.listWidget.setSpacing(val)
+                self.general_form_builder.widgets["rack_spacing"].valueChanged.connect(_on_live_rack_spacing)
 
-        # Expose "Fancy eye-candy" in Canvas settings page. The original
-        # checkbox lives on the Experimental page, which is hidden unless
-        # experimental mode is on, making the full eye-candy profile
-        # (glow connections, group animations) unreachable otherwise.
-        if hasattr(self.ui, "group_canvas_render") and hasattr(self.ui, "cb_canvas_fancy_eyecandy"):
-            self.ui.cb_canvas_fancy_eyecandy_canvas = QCheckBox(
-                self.tr("Fancy eye-candy (glow connections, group animations)"),
-                self.ui.group_canvas_render,
-            )
-            self.ui.group_canvas_render.layout().insertWidget(
-                2, self.ui.cb_canvas_fancy_eyecandy_canvas
-            )
-            # Sync state bidirectionally between Canvas and Experimental tabs
-            self.ui.cb_canvas_fancy_eyecandy_canvas.toggled.connect(
-                self.ui.cb_canvas_fancy_eyecandy.setChecked
-            )
-            self.ui.cb_canvas_fancy_eyecandy.toggled.connect(
-                self.ui.cb_canvas_fancy_eyecandy_canvas.setChecked
-            )
-            # Full eye-candy only pays off with the GL renderer
-            self.ui.cb_canvas_fancy_eyecandy_canvas.setEnabled(
-                self.ui.cb_canvas_use_opengl.isChecked()
-            )
-            self.ui.cb_canvas_use_opengl_canvas.toggled.connect(
-                self.ui.cb_canvas_fancy_eyecandy_canvas.setEnabled
-            )
+            if "rack_padding" in self.general_form_builder.widgets:
+                def _on_live_rack_padding(val):
+                    if hasattr(gCarla, "gui") and gCarla.gui is not None and hasattr(gCarla.gui.ui, "listWidget"):
+                        lw = gCarla.gui.ui.listWidget
+                        for i in range(lw.count()):
+                            item = lw.item(i)
+                            if hasattr(item, "fWidget") and item.fWidget is not None:
+                                w = item.fWidget
+                                if hasattr(w, "ui") and hasattr(w.ui, "verticalLayout"):
+                                    w.ui.verticalLayout.setContentsMargins(14, val, 6, val)
+                                    if hasattr(w, "updateRackItemSize"):
+                                        w.updateRackItemSize()
+                self.general_form_builder.widgets["rack_padding"].valueChanged.connect(_on_live_rack_padding)
 
-        # Dynamic Line Style, Stroke, and Opacity Controls in Canvas Tab
-        if hasattr(self.ui, "group_canvas_theme") and hasattr(self.ui, "gridLayout_2"):
-            # Hide old checkbox since we now have a rich style selector
-            self.ui.cb_canvas_bezier_lines.setVisible(False)
+            if "rack_min_width" in self.general_form_builder.widgets:
+                def _on_live_rack_min_width(val):
+                    if hasattr(gCarla, "gui") and gCarla.gui is not None and hasattr(gCarla.gui.ui, "listWidget"):
+                        from widgets.racklistwidget import RackListItem
+                        RackListItem.kMinimumWidth = val
+                        gCarla.gui.ui.listWidget.setMinimumWidth(val)
+                        lw = gCarla.gui.ui.listWidget
+                        for i in range(lw.count()):
+                            item = lw.item(i)
+                            if hasattr(item, "fWidget") and item.fWidget is not None:
+                                w = item.fWidget
+                                if hasattr(w, "setMinimumWidth"):
+                                    w.setMinimumWidth(val)
+                self.general_form_builder.widgets["rack_min_width"].valueChanged.connect(_on_live_rack_min_width)
 
-            self.ui.label_canvas_line_style = QLabel(self.tr("Line style:"), self.ui.group_canvas_theme)
-            self.ui.label_canvas_line_style.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            self.ui.cb_canvas_line_style = QComboBox(self.ui.group_canvas_theme)
-            for _algo_name, _algo_label in line_algorithms():
-                self.ui.cb_canvas_line_style.addItem(self.tr(_algo_label), _algo_name)
+            if "show_statusbar" in self.general_form_builder.widgets:
+                def _on_live_statusbar_toggle(checked):
+                    if hasattr(gCarla, "gui") and gCarla.gui is not None and hasattr(gCarla.gui.ui, "statusbar"):
+                        gCarla.gui.ui.statusbar.setVisible(checked)
+                self.general_form_builder.widgets["show_statusbar"].toggled.connect(_on_live_statusbar_toggle)
+        else:
+            self.general_form_builder = None
 
-            self.ui.label_canvas_line_stroke = QLabel(self.tr("Line pattern:"), self.ui.group_canvas_theme)
-            self.ui.label_canvas_line_stroke.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            self.ui.cb_canvas_line_stroke = QComboBox(self.ui.group_canvas_theme)
-            self.ui.cb_canvas_line_stroke.addItem(self.tr("Solid"), "solid")
-            self.ui.cb_canvas_line_stroke.addItem(self.tr("Dotted"), "dotted")
-            self.ui.cb_canvas_line_stroke.addItem(self.tr("Dashed"), "dashed")
+        # 2. Patchbay Tab
+        if hasattr(self.ui, "page_canvas"):
+            for old_grp in ("label_9", "label_10", "group_canvas_theme", "group_canvas_options", "group_canvas_render"):
+                if hasattr(self.ui, old_grp):
+                    getattr(self.ui, old_grp).hide()
 
-            self.ui.label_canvas_line_opacity = QLabel(self.tr("Line opacity:"), self.ui.group_canvas_theme)
-            self.ui.label_canvas_line_opacity.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            self.canvas_form_builder = SettingsFormBuilder(self, PATCHBAY_SCHEMA)
+            self.canvas_form_builder.build_page(self.ui.page_canvas)
+        else:
+            self.canvas_form_builder = None
 
-            self.ui.layout_canvas_line_opacity = QHBoxLayout()
-            self.ui.sl_canvas_line_opacity = QSlider(Qt.Horizontal, self.ui.group_canvas_theme)
-            self.ui.sl_canvas_line_opacity.setMinimum(20)
-            self.ui.sl_canvas_line_opacity.setMaximum(100)
-            self.ui.sl_canvas_line_opacity.setValue(100)
-            self.ui.label_canvas_line_opacity_val = QLabel("100%", self.ui.group_canvas_theme)
-            self.ui.label_canvas_line_opacity_val.setMinimumWidth(40)
-            self.ui.sl_canvas_line_opacity.valueChanged.connect(
-                lambda v: self.ui.label_canvas_line_opacity_val.setText(f"{v}%")
-            )
-            self.ui.layout_canvas_line_opacity.addWidget(self.ui.sl_canvas_line_opacity)
-            self.ui.layout_canvas_line_opacity.addWidget(self.ui.label_canvas_line_opacity_val)
+        # 3. OSC Tab
+        if hasattr(self.ui, "page_osc"):
+            for old_grp in ("label_14", "label_36", "label_icon_engine_5", "label_20", "label_21", "group_osc_core", "group_osc_tcp_port", "group_osc_udp_port", "ch_osc_enable"):
+                if hasattr(self.ui, old_grp):
+                    getattr(self.ui, old_grp).hide()
+            self.osc_form_builder = SettingsFormBuilder(self, OSC_SCHEMA)
+            self.osc_form_builder.build_page(self.ui.page_osc)
+        else:
+            self.osc_form_builder = None
 
-            # Insert into gridLayout_2
-            self.ui.gridLayout_2.addWidget(self.ui.label_canvas_line_style, 2, 1, 1, 2)
-            self.ui.gridLayout_2.addWidget(self.ui.cb_canvas_line_style, 2, 3, 1, 1)
+        # 4. Wine Tab
+        if hasattr(self.ui, "page_wine"):
+            for old_grp in ("label_29", "label_icon_wine", "label_36", "label_26", "label_27", "label_28", "group_wine_exec", "group_wine_prefix", "group_wine_environment", "group_wine_realtime"):
+                if hasattr(self.ui, old_grp):
+                    getattr(self.ui, old_grp).hide()
+            self.wine_form_builder = SettingsFormBuilder(self, WINE_SCHEMA)
+            self.wine_form_builder.build_page(self.ui.page_wine)
+        else:
+            self.wine_form_builder = None
 
-            self.ui.gridLayout_2.addWidget(self.ui.label_canvas_line_stroke, 3, 1, 1, 2)
-            self.ui.gridLayout_2.addWidget(self.ui.cb_canvas_line_stroke, 3, 3, 1, 1)
-
-            self.ui.gridLayout_2.addWidget(self.ui.label_canvas_line_opacity, 4, 1, 1, 2)
-            self.ui.gridLayout_2.addLayout(self.ui.layout_canvas_line_opacity, 4, 3, 1, 1)
-
-            # Node Minimum Width Control
-            self.ui.label_canvas_node_min_width = QLabel(self.tr("Node min width:"), self.ui.group_canvas_theme)
-            self.ui.label_canvas_node_min_width.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            self.ui.layout_canvas_node_min_width = QHBoxLayout()
-            self.ui.sl_canvas_node_min_width = QSlider(Qt.Horizontal, self.ui.group_canvas_theme)
-            self.ui.sl_canvas_node_min_width.setMinimum(100)
-            self.ui.sl_canvas_node_min_width.setMaximum(320)
-            self.ui.sl_canvas_node_min_width.setValue(CARLA_DEFAULT_CANVAS_NODE_MIN_WIDTH)
-            self.ui.label_canvas_node_min_width_val = QLabel(f"{CARLA_DEFAULT_CANVAS_NODE_MIN_WIDTH} px", self.ui.group_canvas_theme)
-            self.ui.label_canvas_node_min_width_val.setMinimumWidth(50)
-            self.ui.sl_canvas_node_min_width.valueChanged.connect(
-                lambda v: self.ui.label_canvas_node_min_width_val.setText(f"{v} px")
-            )
-            self.ui.layout_canvas_node_min_width.addWidget(self.ui.sl_canvas_node_min_width)
-            self.ui.layout_canvas_node_min_width.addWidget(self.ui.label_canvas_node_min_width_val)
-
-            self.ui.gridLayout_2.addWidget(self.ui.label_canvas_node_min_width, 5, 1, 1, 2)
-            self.ui.gridLayout_2.addLayout(self.ui.layout_canvas_node_min_width, 5, 3, 1, 1)
-
+        # 5. Experimental Tab
+        if hasattr(self.ui, "page_experimental"):
+            for old_grp in ("label_11", "label_icon_experimental", "label_16", "label_17", "label_25", "group_experimental_main", "group_experimental_canvas", "group_experimental_engine"):
+                if hasattr(self.ui, old_grp):
+                    getattr(self.ui, old_grp).hide()
+            self.experimental_form_builder = SettingsFormBuilder(self, EXPERIMENTAL_SCHEMA)
+            self.experimental_form_builder.build_page(self.ui.page_experimental)
+        else:
+            self.experimental_form_builder = None
 
         if host.isPlugin:
             self.ui.cb_engine_audio_driver.setEnabled(False)
@@ -1030,132 +1029,10 @@ class CarlaSettingsW(QDialog):
         if not (CARLA_OS_LINUX or CARLA_OS_MAC):
             self.ui.ch_exp_jack_apps.setVisible(False)
 
-        # FIXME, not implemented yet
         self.ui.ch_engine_uis_always_on_top.hide()
-
-        # FIXME broken in some Qt5 versions
-        self.ui.cb_canvas_eyecandy.setEnabled(QT_VERSION >= 0x50C00)
-
-        # removed in Qt6
-        if QT_VERSION >= 0x60000:
-            self.ui.cb_canvas_render_hq_aa.hide()
 
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
 
-        # Autosave UI controls
-        self.ch_main_autosave = QCheckBox(self.tr("Enable automatic project backup (Autosave)"), self.ui.group_main_misc)
-        self.ch_main_autosave.setObjectName("ch_main_autosave")
-        self.ui.gridLayout_4.addWidget(self.ch_main_autosave, 2, 0, 1, 3)
-
-        self.layout_autosave_params = QHBoxLayout()
-        self.lbl_autosave_interval = QLabel(self.tr("Autosave interval (mins):"), self.ui.group_main_misc)
-        self.sb_autosave_interval = QSpinBox(self.ui.group_main_misc)
-        self.sb_autosave_interval.setRange(1, 120)
-        self.layout_autosave_params.addWidget(self.lbl_autosave_interval)
-        self.layout_autosave_params.addWidget(self.sb_autosave_interval)
-
-        self.lbl_autosave_max = QLabel(self.tr("Max autosaves to keep:"), self.ui.group_main_misc)
-        self.sb_autosave_max = QSpinBox(self.ui.group_main_misc)
-        self.sb_autosave_max.setRange(1, 50)
-        self.layout_autosave_params.addWidget(self.lbl_autosave_max)
-        self.layout_autosave_params.addWidget(self.sb_autosave_max)
-        self.layout_autosave_params.addStretch()
-
-        self.ui.gridLayout_4.addLayout(self.layout_autosave_params, 3, 0, 1, 3)
-        self.ch_main_autosave.toggled.connect(self.sb_autosave_interval.setEnabled)
-        self.ch_main_autosave.toggled.connect(self.sb_autosave_max.setEnabled)
-        self.ch_main_autosave.toggled.connect(self.lbl_autosave_interval.setEnabled)
-        self.ch_main_autosave.toggled.connect(self.lbl_autosave_max.setEnabled)
-
-        self.ch_main_log_to_console = QCheckBox(self.tr("Mirror application logs to terminal (Rich formatted)"), self.ui.group_main_misc)
-        self.ch_main_log_to_console.setObjectName("ch_main_log_to_console")
-        self.ui.gridLayout_4.addWidget(self.ch_main_log_to_console, 4, 0, 1, 3)
-
-        # Statusbar visibility toggle
-        self.ch_main_show_statusbar = QCheckBox(self.tr("Show Statusbar at bottom"), self.ui.group_main_misc)
-        self.ch_main_show_statusbar.setObjectName("ch_main_show_statusbar")
-        self.ui.gridLayout_4.addWidget(self.ch_main_show_statusbar, 5, 0, 1, 3)
-
-        # Minimize to system tray toggle
-        self.ch_main_minimize_to_tray = QCheckBox(self.tr("Minimize to system tray instead of taskbar"), self.ui.group_main_misc)
-        self.ch_main_minimize_to_tray.setObjectName("ch_main_minimize_to_tray")
-        self.ui.gridLayout_4.addWidget(self.ch_main_minimize_to_tray, 6, 0, 1, 3)
-
-        # Rack Appearance & Geometry Live Tweakables Group
-        self.group_rack_geometry = QGroupBox(self.tr("Rack Layout & Spacing"), self.ui.page_main)
-        self.layout_rack_geo = QFormLayout(self.group_rack_geometry)
-
-        # 1. Rack Item Spacing Margin (0 - 16 px)
-        self.sl_rack_spacing = QSlider(Qt.Horizontal, self.group_rack_geometry)
-        self.sl_rack_spacing.setRange(0, 16)
-        self.lbl_rack_spacing_val = QLabel("4 px", self.group_rack_geometry)
-        layout_sp = QHBoxLayout()
-        layout_sp.addWidget(self.sl_rack_spacing)
-        layout_sp.addWidget(self.lbl_rack_spacing_val)
-        self.layout_rack_geo.addRow(self.tr("Slot vertical spacing:"), layout_sp)
-
-        # 2. Rack Item Internal Padding Top/Bottom (2 - 16 px)
-        self.sl_rack_padding = QSlider(Qt.Horizontal, self.group_rack_geometry)
-        self.sl_rack_padding.setRange(2, 16)
-        self.lbl_rack_padding_val = QLabel("6 px", self.group_rack_geometry)
-        layout_pd = QHBoxLayout()
-        layout_pd.addWidget(self.sl_rack_padding)
-        layout_pd.addWidget(self.lbl_rack_padding_val)
-        self.layout_rack_geo.addRow(self.tr("Slot internal padding:"), layout_pd)
-
-        # 3. Rack Minimum Width Constraint (180 - 450 px)
-        self.sl_rack_min_width = QSlider(Qt.Horizontal, self.group_rack_geometry)
-        self.sl_rack_min_width.setRange(180, 450)
-        self.lbl_rack_min_width_val = QLabel("200 px", self.group_rack_geometry)
-        layout_mw = QHBoxLayout()
-        layout_mw.addWidget(self.sl_rack_min_width)
-        layout_mw.addWidget(self.lbl_rack_min_width_val)
-        self.layout_rack_geo.addRow(self.tr("Slot minimum width:"), layout_mw)
-
-        if hasattr(self.ui, "verticalLayout_5"):
-            self.ui.verticalLayout_5.insertWidget(self.ui.verticalLayout_5.count() - 1, self.group_rack_geometry)
-
-        # Live update hooks
-        def _on_live_rack_spacing(val):
-            self.lbl_rack_spacing_val.setText(f"{val} px")
-            if hasattr(gCarla, "gui") and gCarla.gui is not None and hasattr(gCarla.gui.ui, "listWidget"):
-                gCarla.gui.ui.listWidget.setSpacing(val)
-
-        def _on_live_rack_padding(val):
-            self.lbl_rack_padding_val.setText(f"{val} px")
-            if hasattr(gCarla, "gui") and gCarla.gui is not None and hasattr(gCarla.gui.ui, "listWidget"):
-                lw = gCarla.gui.ui.listWidget
-                for i in range(lw.count()):
-                    item = lw.item(i)
-                    if hasattr(item, "fWidget") and item.fWidget is not None:
-                        w = item.fWidget
-                        if hasattr(w, "ui") and hasattr(w.ui, "verticalLayout"):
-                            w.ui.verticalLayout.setContentsMargins(14, val, 6, val)
-                            if hasattr(w, "updateRackItemSize"):
-                                w.updateRackItemSize()
-
-        def _on_live_rack_min_width(val):
-            self.lbl_rack_min_width_val.setText(f"{val} px")
-            if hasattr(gCarla, "gui") and gCarla.gui is not None and hasattr(gCarla.gui.ui, "listWidget"):
-                from widgets.racklistwidget import RackListItem
-                RackListItem.kMinimumWidth = val
-                gCarla.gui.ui.listWidget.setMinimumWidth(val)
-                lw = gCarla.gui.ui.listWidget
-                for i in range(lw.count()):
-                    item = lw.item(i)
-                    if hasattr(item, "fWidget") and item.fWidget is not None:
-                        w = item.fWidget
-                        if hasattr(w, "setMinimumWidth"):
-                            w.setMinimumWidth(val)
-
-        def _on_live_statusbar_toggle(checked):
-            if hasattr(gCarla, "gui") and gCarla.gui is not None and hasattr(gCarla.gui.ui, "statusbar"):
-                gCarla.gui.ui.statusbar.setVisible(checked)
-
-        self.sl_rack_spacing.valueChanged.connect(_on_live_rack_spacing)
-        self.sl_rack_padding.valueChanged.connect(_on_live_rack_padding)
-        self.sl_rack_min_width.valueChanged.connect(_on_live_rack_min_width)
-        self.ch_main_show_statusbar.toggled.connect(_on_live_statusbar_toggle)
 
         if CARLA_OS_MAC:
             self.setWindowModality(Qt.WindowModal)
@@ -1243,7 +1120,7 @@ class CarlaSettingsW(QDialog):
         self.ui.ch_exp_wine_bridges.toggled.connect(self.slot_enableWineBridges)
         self.ui.cb_exp_plugin_bridges.toggled.connect(self.slot_pluginBridgesToggled)
         self.ui.cb_canvas_eyecandy.toggled.connect(self.slot_canvasEyeCandyToggled)
-        # self.ui.cb_canvas_fancy_eyecandy.toggled.connect(self.slot_canvasFancyEyeCandyToggled)
+        self.ui.cb_canvas_fancy_eyecandy.toggled.connect(self.slot_canvasFancyEyeCandyToggled)
         self.ui.cb_canvas_use_opengl.toggled.connect(self.slot_canvasOpenGLToggled)
         if hasattr(self.ui, "cb_canvas_rounded_nodes"):
             self.ui.cb_canvas_rounded_nodes.toggled.connect(
@@ -1285,261 +1162,13 @@ class CarlaSettingsW(QDialog):
         settings = QSafeSettings()
 
         # -------------------------------------------------------------------------------------------------------------
-        # Main
+        # General & Canvas
 
-        self.ui.ch_main_show_logs.setChecked(self.host.showLogs)
-        self.ui.ch_engine_uis_always_on_top.setChecked(self.host.uisAlwaysOnTop)
+        if getattr(self, "general_form_builder", None) is not None:
+            self.general_form_builder.load_values(settings)
 
-        self.ui.le_main_proj_folder.setText(
-            settings.value(
-                CARLA_KEY_MAIN_PROJECT_FOLDER, CARLA_DEFAULT_MAIN_PROJECT_FOLDER, str
-            )
-        )
-
-        self.ui.ch_main_theme_pro.setChecked(
-            self.ui.group_main_theme.isEnabled()
-            and settings.value(
-                CARLA_KEY_MAIN_USE_PRO_THEME, CARLA_DEFAULT_MAIN_USE_PRO_THEME, bool
-            )
-        )
-
-        self.ui.cb_main_theme_color.setCurrentIndex(
-            self.ui.cb_main_theme_color.findText(
-                settings.value(
-                    CARLA_KEY_MAIN_PRO_THEME_COLOR,
-                    CARLA_DEFAULT_MAIN_PRO_THEME_COLOR,
-                    str,
-                )
-            )
-        )
-
-        self.ui.sb_main_refresh_interval.setValue(
-            settings.value(
-                CARLA_KEY_MAIN_REFRESH_INTERVAL,
-                CARLA_DEFAULT_MAIN_REFRESH_INTERVAL,
-                int,
-            )
-        )
-
-        self.ui.ch_main_confirm_exit.setChecked(
-            settings.value(
-                CARLA_KEY_MAIN_CONFIRM_EXIT, CARLA_DEFAULT_MAIN_CONFIRM_EXIT, bool
-            )
-        )
-
-        autosave_enabled = settings.value(
-            CARLA_KEY_MAIN_AUTOSAVE_ENABLED, CARLA_DEFAULT_MAIN_AUTOSAVE_ENABLED, bool
-        )
-        self.ch_main_autosave.setChecked(autosave_enabled)
-        self.sb_autosave_interval.setValue(
-            settings.value(
-                CARLA_KEY_MAIN_AUTOSAVE_INTERVAL,
-                CARLA_DEFAULT_MAIN_AUTOSAVE_INTERVAL,
-                int,
-            )
-        )
-        self.sb_autosave_max.setValue(
-            settings.value(
-                CARLA_KEY_MAIN_AUTOSAVE_MAX,
-                CARLA_DEFAULT_MAIN_AUTOSAVE_MAX,
-                int,
-            )
-        )
-        self.sb_autosave_interval.setEnabled(autosave_enabled)
-        self.sb_autosave_max.setEnabled(autosave_enabled)
-        self.lbl_autosave_interval.setEnabled(autosave_enabled)
-        self.lbl_autosave_max.setEnabled(autosave_enabled)
-
-        self.ch_main_log_to_console.setChecked(
-            settings.value(
-                CARLA_KEY_MAIN_LOG_TO_CONSOLE,
-                CARLA_DEFAULT_MAIN_LOG_TO_CONSOLE,
-                bool,
-            )
-        )
-
-        self.ui.cb_main_classic_skin_default.setChecked(
-            settings.value(
-                CARLA_KEY_MAIN_CLASSIC_SKIN, CARLA_DEFAULT_MAIN_CLASSIC_SKIN, bool
-            )
-        )
-
-        self.ui.ch_main_system_icons.setChecked(
-            settings.value(
-                CARLA_KEY_MAIN_SYSTEM_ICONS, CARLA_DEFAULT_MAIN_SYSTEM_ICONS, bool
-            )
-        )
-
-        self.ch_main_show_statusbar.setChecked(
-            settings.value("ShowStatusBar", True, bool)
-        )
-
-        self.ch_main_minimize_to_tray.setChecked(
-            settings.value(
-                CARLA_KEY_MAIN_MINIMIZE_TO_TRAY,
-                CARLA_DEFAULT_MAIN_MINIMIZE_TO_TRAY,
-                bool,
-            )
-        )
-        self.sl_rack_spacing.setValue(
-            settings.value("RackItemSpacing", 4, int)
-        )
-        self.sl_rack_padding.setValue(
-            settings.value("RackItemPadding", 6, int)
-        )
-        self.sl_rack_min_width.setValue(
-            settings.value("RackItemMinWidth", 200, int)
-        )
-        self.lbl_rack_spacing_val.setText(f"{self.sl_rack_spacing.value()} px")
-        self.lbl_rack_padding_val.setText(f"{self.sl_rack_padding.value()} px")
-        self.lbl_rack_min_width_val.setText(f"{self.sl_rack_min_width.value()} px")
-
-        # -------------------------------------------------------------------------------------------------------------
-        # Canvas
-
-        self.ui.cb_canvas_theme.setCurrentIndex(
-            self.ui.cb_canvas_theme.findText(
-                settings.value(CARLA_KEY_CANVAS_THEME, CARLA_DEFAULT_CANVAS_THEME, str)
-            )
-        )
-
-        self.ui.cb_canvas_size.setCurrentIndex(
-            self.ui.cb_canvas_size.findText(
-                settings.value(CARLA_KEY_CANVAS_SIZE, CARLA_DEFAULT_CANVAS_SIZE, str)
-            )
-        )
-
-        self.ui.cb_canvas_bezier_lines.setChecked(
-            settings.value(
-                CARLA_KEY_CANVAS_USE_BEZIER_LINES,
-                CARLA_DEFAULT_CANVAS_USE_BEZIER_LINES,
-                bool,
-            )
-        )
-
-        self.ui.cb_canvas_hide_groups.setChecked(
-            settings.value(
-                CARLA_KEY_CANVAS_AUTO_HIDE_GROUPS,
-                CARLA_DEFAULT_CANVAS_AUTO_HIDE_GROUPS,
-                bool,
-            )
-        )
-
-        self.ui.cb_canvas_auto_select.setChecked(
-            settings.value(
-                CARLA_KEY_CANVAS_AUTO_SELECT_ITEMS,
-                CARLA_DEFAULT_CANVAS_AUTO_SELECT_ITEMS,
-                bool,
-            )
-        )
-
-        if self.ui.cb_canvas_eyecandy.isEnabled():
-            self.ui.cb_canvas_eyecandy.setChecked(
-                settings.value(
-                    CARLA_KEY_CANVAS_EYE_CANDY, CARLA_DEFAULT_CANVAS_EYE_CANDY, bool
-                )
-            )
-
-        self.ui.cb_canvas_fancy_eyecandy.setChecked(
-            settings.value(
-                CARLA_KEY_CANVAS_FANCY_EYE_CANDY,
-                CARLA_DEFAULT_CANVAS_FANCY_EYE_CANDY,
-                bool,
-            )
-        )
-
-        self.ui.cb_canvas_use_opengl.setChecked(
-            self.ui.cb_canvas_use_opengl.isEnabled()
-            and settings.value(
-                CARLA_KEY_CANVAS_USE_OPENGL, CARLA_DEFAULT_CANVAS_USE_OPENGL, bool
-            )
-        )
-
-        self.ui.cb_canvas_render_aa.setCheckState(
-            Qt.CheckState(
-                settings.value(
-                    CARLA_KEY_CANVAS_ANTIALIASING,
-                    CARLA_DEFAULT_CANVAS_ANTIALIASING,
-                    int,
-                )
-            )
-        )
-
-        self.ui.cb_canvas_render_hq_aa.setChecked(
-            self.ui.cb_canvas_render_hq_aa.isEnabled()
-            and settings.value(
-                CARLA_KEY_CANVAS_HQ_ANTIALIASING,
-                CARLA_DEFAULT_CANVAS_HQ_ANTIALIASING,
-                bool,
-            )
-        )
-
-        self.ui.cb_canvas_full_repaints.setChecked(
-            settings.value(
-                CARLA_KEY_CANVAS_FULL_REPAINTS, CARLA_DEFAULT_CANVAS_FULL_REPAINTS, bool
-            )
-        )
-
-        self.ui.cb_canvas_inline_displays.setChecked(
-            settings.value(
-                CARLA_KEY_CANVAS_INLINE_DISPLAYS,
-                CARLA_DEFAULT_CANVAS_INLINE_DISPLAYS,
-                bool,
-            )
-        )
-
-        if hasattr(self.ui, "cb_canvas_rounded_nodes"):
-            roundedNodes = settings.value(
-                CARLA_KEY_CANVAS_ROUNDED_NODES,
-                CARLA_DEFAULT_CANVAS_ROUNDED_NODES,
-                bool,
-            )
-            nodeRadius = settings.value(
-                CARLA_KEY_CANVAS_NODE_RADIUS,
-                CARLA_DEFAULT_CANVAS_NODE_RADIUS,
-                int,
-            )
-            self.ui.cb_canvas_rounded_nodes.setChecked(roundedNodes)
-            self.ui.sl_canvas_node_radius.setValue(nodeRadius)
-            self.ui.label_canvas_node_radius.setText(f"{nodeRadius} px")
-            self.ui.sl_canvas_node_radius.setEnabled(roundedNodes)
-            self.ui.label_canvas_node_radius.setEnabled(roundedNodes)
-
-        if hasattr(self.ui, "cb_canvas_line_style"):
-            lineStyle = settings.value(
-                CARLA_KEY_CANVAS_LINE_STYLE,
-                CARLA_DEFAULT_CANVAS_LINE_STYLE,
-                str,
-            )
-            idxStyle = self.ui.cb_canvas_line_style.findData(lineStyle)
-            if idxStyle >= 0:
-                self.ui.cb_canvas_line_style.setCurrentIndex(idxStyle)
-
-            lineStroke = settings.value(
-                CARLA_KEY_CANVAS_LINE_STROKE,
-                CARLA_DEFAULT_CANVAS_LINE_STROKE,
-                str,
-            )
-            idxStroke = self.ui.cb_canvas_line_stroke.findData(lineStroke)
-            if idxStroke >= 0:
-                self.ui.cb_canvas_line_stroke.setCurrentIndex(idxStroke)
-
-            lineOpacity = settings.value(
-                CARLA_KEY_CANVAS_LINE_OPACITY,
-                CARLA_DEFAULT_CANVAS_LINE_OPACITY,
-                int,
-            )
-            self.ui.sl_canvas_line_opacity.setValue(lineOpacity)
-            self.ui.label_canvas_line_opacity_val.setText(f"{lineOpacity}%")
-
-        if hasattr(self.ui, "sl_canvas_node_min_width"):
-            nodeMinWidth = settings.value(
-                CARLA_KEY_CANVAS_NODE_MIN_WIDTH,
-                CARLA_DEFAULT_CANVAS_NODE_MIN_WIDTH,
-                int,
-            )
-            self.ui.sl_canvas_node_min_width.setValue(nodeMinWidth)
-            self.ui.label_canvas_node_min_width_val.setText(f"{nodeMinWidth} px")
+        if getattr(self, "canvas_form_builder", None) is not None:
+            self.canvas_form_builder.load_values(settings)
 
         # -------------------------------------------------------------------------------------------------------------
 
@@ -1614,51 +1243,8 @@ class CarlaSettingsW(QDialog):
         # -------------------------------------------------------------------------------------------------------------
         # OSC
 
-        self.ui.ch_osc_enable.setChecked(
-            settings.value(CARLA_KEY_OSC_ENABLED, CARLA_DEFAULT_OSC_ENABLED, bool)
-        )
-
-        self.ui.group_osc_tcp_port.setChecked(
-            settings.value(
-                CARLA_KEY_OSC_TCP_PORT_ENABLED, CARLA_DEFAULT_OSC_TCP_PORT_ENABLED, bool
-            )
-        )
-
-        self.ui.group_osc_udp_port.setChecked(
-            settings.value(
-                CARLA_KEY_OSC_UDP_PORT_ENABLED, CARLA_DEFAULT_OSC_UDP_PORT_ENABLED, bool
-            )
-        )
-
-        self.ui.sb_osc_tcp_port_number.setValue(
-            settings.value(
-                CARLA_KEY_OSC_TCP_PORT_NUMBER, CARLA_DEFAULT_OSC_TCP_PORT_NUMBER, int
-            )
-        )
-
-        self.ui.sb_osc_udp_port_number.setValue(
-            settings.value(
-                CARLA_KEY_OSC_UDP_PORT_NUMBER, CARLA_DEFAULT_OSC_UDP_PORT_NUMBER, int
-            )
-        )
-
-        if settings.value(
-            CARLA_KEY_OSC_TCP_PORT_RANDOM, CARLA_DEFAULT_OSC_TCP_PORT_RANDOM, bool
-        ):
-            self.ui.rb_osc_tcp_port_specific.setChecked(False)
-            self.ui.rb_osc_tcp_port_random.setChecked(True)
-        else:
-            self.ui.rb_osc_tcp_port_random.setChecked(False)
-            self.ui.rb_osc_tcp_port_specific.setChecked(True)
-
-        if settings.value(
-            CARLA_KEY_OSC_UDP_PORT_RANDOM, CARLA_DEFAULT_OSC_UDP_PORT_RANDOM, bool
-        ):
-            self.ui.rb_osc_udp_port_specific.setChecked(False)
-            self.ui.rb_osc_udp_port_random.setChecked(True)
-        else:
-            self.ui.rb_osc_udp_port_random.setChecked(False)
-            self.ui.rb_osc_udp_port_specific.setChecked(True)
+        if getattr(self, "osc_form_builder", None) is not None:
+            self.osc_form_builder.load_values(settings)
 
         # -------------------------------------------------------------------------------------------------------------
         # File Paths
@@ -1756,76 +1342,14 @@ class CarlaSettingsW(QDialog):
         # -------------------------------------------------------------------------------------------------------------
         # Wine
 
-        self.ui.le_wine_exec.setText(
-            settings.value(
-                CARLA_KEY_WINE_EXECUTABLE, CARLA_DEFAULT_WINE_EXECUTABLE, str
-            )
-        )
-
-        self.ui.cb_wine_prefix_detect.setChecked(
-            settings.value(
-                CARLA_KEY_WINE_AUTO_PREFIX, CARLA_DEFAULT_WINE_AUTO_PREFIX, bool
-            )
-        )
-
-        self.ui.le_wine_prefix_fallback.setText(
-            settings.value(
-                CARLA_KEY_WINE_FALLBACK_PREFIX, CARLA_DEFAULT_WINE_FALLBACK_PREFIX, str
-            )
-        )
-
-        self.ui.group_wine_realtime.setChecked(
-            settings.value(
-                CARLA_KEY_WINE_RT_PRIO_ENABLED, CARLA_DEFAULT_WINE_RT_PRIO_ENABLED, bool
-            )
-        )
-
-        self.ui.sb_wine_base_prio.setValue(
-            settings.value(
-                CARLA_KEY_WINE_BASE_RT_PRIO, CARLA_DEFAULT_WINE_BASE_RT_PRIO, int
-            )
-        )
-
-        self.ui.sb_wine_server_prio.setValue(
-            settings.value(
-                CARLA_KEY_WINE_SERVER_RT_PRIO, CARLA_DEFAULT_WINE_SERVER_RT_PRIO, int
-            )
-        )
+        if getattr(self, "wine_form_builder", None) is not None:
+            self.wine_form_builder.load_values(settings)
 
         # -------------------------------------------------------------------------------------------------------------
         # Experimental
 
-        self.ui.ch_exp_jack_apps.setChecked(
-            settings.value(
-                CARLA_KEY_EXPERIMENTAL_JACK_APPS,
-                CARLA_DEFAULT_EXPERIMENTAL_JACK_APPS,
-                bool,
-            )
-        )
-
-        self.ui.ch_exp_export_lv2.setChecked(
-            settings.value(
-                CARLA_KEY_EXPERIMENTAL_EXPORT_LV2,
-                CARLA_DEFAULT_EXPERIMENTAL_LV2_EXPORT,
-                bool,
-            )
-        )
-
-        self.ui.ch_exp_load_lib_global.setChecked(
-            settings.value(
-                CARLA_KEY_EXPERIMENTAL_LOAD_LIB_GLOBAL,
-                CARLA_DEFAULT_EXPERIMENTAL_LOAD_LIB_GLOBAL,
-                bool,
-            )
-        )
-
-        self.ui.ch_exp_prevent_bad_behaviour.setChecked(
-            settings.value(
-                CARLA_KEY_EXPERIMENTAL_PREVENT_BAD_BEHAVIOUR,
-                CARLA_DEFAULT_EXPERIMENTAL_PREVENT_BAD_BEHAVIOUR,
-                bool,
-            )
-        )
+        if getattr(self, "experimental_form_builder", None) is not None:
+            self.experimental_form_builder.load_values(settings)
 
     # -----------------------------------------------------------------------------------------------------------------
 
@@ -1849,119 +1373,13 @@ class CarlaSettingsW(QDialog):
             self.ui.cb_canvas_fancy_eyecandy.setChecked(keep_fancy)
 
         # -------------------------------------------------------------------------------------------------------------
-        # Main
+        # General & Canvas
 
-        settings.setValue(
-            CARLA_KEY_MAIN_PROJECT_FOLDER, self.ui.le_main_proj_folder.text()
-        )
-        settings.setValue(
-            CARLA_KEY_MAIN_CONFIRM_EXIT, self.ui.ch_main_confirm_exit.isChecked()
-        )
-        settings.setValue(
-            CARLA_KEY_MAIN_CLASSIC_SKIN,
-            self.ui.cb_main_classic_skin_default.isChecked(),
-        )
-        settings.setValue(
-            CARLA_KEY_MAIN_USE_PRO_THEME, self.ui.ch_main_theme_pro.isChecked()
-        )
-        settings.setValue(
-            CARLA_KEY_MAIN_PRO_THEME_COLOR, self.ui.cb_main_theme_color.currentText()
-        )
-        settings.setValue(
-            CARLA_KEY_MAIN_REFRESH_INTERVAL, self.ui.sb_main_refresh_interval.value()
-        )
-        settings.setValue(
-            CARLA_KEY_MAIN_SYSTEM_ICONS, self.ui.ch_main_system_icons.isChecked()
-        )
-        settings.setValue(
-            CARLA_KEY_MAIN_AUTOSAVE_ENABLED, self.ch_main_autosave.isChecked()
-        )
-        settings.setValue(
-            CARLA_KEY_MAIN_AUTOSAVE_INTERVAL, self.sb_autosave_interval.value()
-        )
-        settings.setValue(
-            CARLA_KEY_MAIN_AUTOSAVE_MAX, self.sb_autosave_max.value()
-        )
-        settings.setValue(
-            CARLA_KEY_MAIN_LOG_TO_CONSOLE, self.ch_main_log_to_console.isChecked()
-        )
-        settings.setValue("ShowStatusBar", self.ch_main_show_statusbar.isChecked())
-        settings.setValue(
-            CARLA_KEY_MAIN_MINIMIZE_TO_TRAY, self.ch_main_minimize_to_tray.isChecked()
-        )
-        settings.setValue("RackItemSpacing", self.sl_rack_spacing.value())
-        settings.setValue("RackItemPadding", self.sl_rack_padding.value())
-        settings.setValue("RackItemMinWidth", self.sl_rack_min_width.value())
+        if getattr(self, "general_form_builder", None) is not None:
+            self.general_form_builder.save_values(settings)
 
-        # -------------------------------------------------------------------------------------------------------------
-        # Canvas
-
-        settings.setValue(CARLA_KEY_CANVAS_THEME, self.ui.cb_canvas_theme.currentText())
-        settings.setValue(CARLA_KEY_CANVAS_SIZE, self.ui.cb_canvas_size.currentText())
-        settings.setValue(
-            CARLA_KEY_CANVAS_USE_BEZIER_LINES,
-            self.ui.cb_canvas_bezier_lines.isChecked(),
-        )
-        settings.setValue(
-            CARLA_KEY_CANVAS_AUTO_HIDE_GROUPS, self.ui.cb_canvas_hide_groups.isChecked()
-        )
-        settings.setValue(
-            CARLA_KEY_CANVAS_AUTO_SELECT_ITEMS,
-            self.ui.cb_canvas_auto_select.isChecked(),
-        )
-        settings.setValue(
-            CARLA_KEY_CANVAS_EYE_CANDY, self.ui.cb_canvas_eyecandy.isChecked()
-        )
-        settings.setValue(
-            CARLA_KEY_CANVAS_FANCY_EYE_CANDY,
-            self.ui.cb_canvas_fancy_eyecandy.isChecked(),
-        )
-        settings.setValue(
-            CARLA_KEY_CANVAS_USE_OPENGL, self.ui.cb_canvas_use_opengl.isChecked()
-        )
-        settings.setValue(
-            CARLA_KEY_CANVAS_HQ_ANTIALIASING, self.ui.cb_canvas_render_hq_aa.isChecked()
-        )
-        # NOTE: checkState() 0, 1, 2 match their enum variants
-        settings.setValue(
-            CARLA_KEY_CANVAS_ANTIALIASING, self.ui.cb_canvas_render_aa.checkState()
-        )
-        settings.setValue(
-            CARLA_KEY_CANVAS_FULL_REPAINTS, self.ui.cb_canvas_full_repaints.isChecked()
-        )
-        settings.setValue(
-            CARLA_KEY_CANVAS_INLINE_DISPLAYS,
-            self.ui.cb_canvas_inline_displays.isChecked(),
-        )
-        if hasattr(self.ui, "cb_canvas_rounded_nodes"):
-            settings.setValue(
-                CARLA_KEY_CANVAS_ROUNDED_NODES,
-                self.ui.cb_canvas_rounded_nodes.isChecked(),
-            )
-            settings.setValue(
-                CARLA_KEY_CANVAS_NODE_RADIUS,
-                self.ui.sl_canvas_node_radius.value(),
-            )
-
-        if hasattr(self.ui, "cb_canvas_line_style"):
-            selected_style = self.ui.cb_canvas_line_style.currentData()
-            settings.setValue(CARLA_KEY_CANVAS_LINE_STYLE, selected_style)
-            # Sync bezier lines boolean flag
-            settings.setValue(CARLA_KEY_CANVAS_USE_BEZIER_LINES, bool(selected_style == "bezier"))
-            settings.setValue(
-                CARLA_KEY_CANVAS_LINE_STROKE,
-                self.ui.cb_canvas_line_stroke.currentData(),
-            )
-            settings.setValue(
-                CARLA_KEY_CANVAS_LINE_OPACITY,
-                self.ui.sl_canvas_line_opacity.value(),
-            )
-
-        if hasattr(self.ui, "sl_canvas_node_min_width"):
-            settings.setValue(
-                CARLA_KEY_CANVAS_NODE_MIN_WIDTH,
-                self.ui.sl_canvas_node_min_width.value(),
-            )
+        if getattr(self, "canvas_form_builder", None) is not None:
+            self.canvas_form_builder.save_values(settings)
 
         # -------------------------------------------------------------------------------------------------------------
 
@@ -2039,25 +1457,8 @@ class CarlaSettingsW(QDialog):
         # -------------------------------------------------------------------------------------------------------------
         # OSC
 
-        settings.setValue(CARLA_KEY_OSC_ENABLED, self.ui.ch_osc_enable.isChecked())
-        settings.setValue(
-            CARLA_KEY_OSC_TCP_PORT_ENABLED, self.ui.group_osc_tcp_port.isChecked()
-        )
-        settings.setValue(
-            CARLA_KEY_OSC_UDP_PORT_ENABLED, self.ui.group_osc_udp_port.isChecked()
-        )
-        settings.setValue(
-            CARLA_KEY_OSC_TCP_PORT_RANDOM, self.ui.rb_osc_tcp_port_random.isChecked()
-        )
-        settings.setValue(
-            CARLA_KEY_OSC_UDP_PORT_RANDOM, self.ui.rb_osc_udp_port_random.isChecked()
-        )
-        settings.setValue(
-            CARLA_KEY_OSC_TCP_PORT_NUMBER, self.ui.sb_osc_tcp_port_number.value()
-        )
-        settings.setValue(
-            CARLA_KEY_OSC_UDP_PORT_NUMBER, self.ui.sb_osc_udp_port_number.value()
-        )
+        if getattr(self, "osc_form_builder", None) is not None:
+            self.osc_form_builder.save_values(settings)
 
         # -------------------------------------------------------------------------------------------------------------
         # File Paths
@@ -2162,37 +1563,14 @@ class CarlaSettingsW(QDialog):
         # -------------------------------------------------------------------------------------------------------------
         # Wine
 
-        settings.setValue(CARLA_KEY_WINE_EXECUTABLE, self.ui.le_wine_exec.text())
-        settings.setValue(
-            CARLA_KEY_WINE_AUTO_PREFIX, self.ui.cb_wine_prefix_detect.isChecked()
-        )
-        settings.setValue(
-            CARLA_KEY_WINE_FALLBACK_PREFIX, self.ui.le_wine_prefix_fallback.text()
-        )
-        settings.setValue(
-            CARLA_KEY_WINE_RT_PRIO_ENABLED, self.ui.group_wine_realtime.isChecked()
-        )
-        settings.setValue(
-            CARLA_KEY_WINE_BASE_RT_PRIO, self.ui.sb_wine_base_prio.value()
-        )
-        settings.setValue(
-            CARLA_KEY_WINE_SERVER_RT_PRIO, self.ui.sb_wine_server_prio.value()
-        )
+        if getattr(self, "wine_form_builder", None) is not None:
+            self.wine_form_builder.save_values(settings)
 
         # -------------------------------------------------------------------------------------------------------------
         # Experimental
 
-        settings.setValue(
-            CARLA_KEY_EXPERIMENTAL_JACK_APPS, self.ui.ch_exp_jack_apps.isChecked()
-        )
-        settings.setValue(
-            CARLA_KEY_EXPERIMENTAL_LOAD_LIB_GLOBAL,
-            self.ui.ch_exp_load_lib_global.isChecked(),
-        )
-        settings.setValue(
-            CARLA_KEY_EXPERIMENTAL_PREVENT_BAD_BEHAVIOUR,
-            self.ui.ch_exp_prevent_bad_behaviour.isChecked(),
-        )
+        if getattr(self, "experimental_form_builder", None) is not None:
+            self.experimental_form_builder.save_values(settings)
 
     # -----------------------------------------------------------------------------------------------------------------
 
@@ -2204,76 +1582,15 @@ class CarlaSettingsW(QDialog):
         # Main
 
         if currentRow == self.TAB_INDEX_MAIN:
-            self.ui.le_main_proj_folder.setText(CARLA_DEFAULT_MAIN_PROJECT_FOLDER)
-            self.ui.ch_main_theme_pro.setChecked(
-                CARLA_DEFAULT_MAIN_USE_PRO_THEME
-                and self.ui.group_main_theme.isEnabled()
-            )
-            self.ui.cb_main_theme_color.setCurrentIndex(
-                self.ui.cb_main_theme_color.findText(CARLA_DEFAULT_MAIN_PRO_THEME_COLOR)
-            )
-            self.ui.sb_main_refresh_interval.setValue(
-                CARLA_DEFAULT_MAIN_REFRESH_INTERVAL
-            )
-            self.ui.ch_main_confirm_exit.setChecked(CARLA_DEFAULT_MAIN_CONFIRM_EXIT)
-            self.ch_main_autosave.setChecked(CARLA_DEFAULT_MAIN_AUTOSAVE_ENABLED)
-            self.sb_autosave_interval.setValue(CARLA_DEFAULT_MAIN_AUTOSAVE_INTERVAL)
-            self.sb_autosave_max.setValue(CARLA_DEFAULT_MAIN_AUTOSAVE_MAX)
-            self.ch_main_log_to_console.setChecked(CARLA_DEFAULT_MAIN_LOG_TO_CONSOLE)
-            self.ui.cb_main_classic_skin_default(CARLA_DEFAULT_MAIN_CLASSIC_SKIN)
-            self.ui.ch_main_show_logs.setChecked(CARLA_DEFAULT_MAIN_SHOW_LOGS)
-            self.ch_main_show_statusbar.setChecked(True)
-            self.ch_main_minimize_to_tray.setChecked(CARLA_DEFAULT_MAIN_MINIMIZE_TO_TRAY)
-            self.sl_rack_spacing.setValue(4)
-            self.sl_rack_padding.setValue(6)
-            self.sl_rack_min_width.setValue(200)
+            if getattr(self, "general_form_builder", None) is not None:
+                self.general_form_builder.reset_defaults()
 
         # -------------------------------------------------------------------------------------------------------------
         # Canvas
 
         elif currentRow == self.TAB_INDEX_CANVAS:
-            self.ui.cb_canvas_theme.setCurrentIndex(
-                self.ui.cb_canvas_theme.findText(CARLA_DEFAULT_CANVAS_THEME)
-            )
-            self.ui.cb_canvas_size.setCurrentIndex(
-                self.ui.cb_canvas_size.findText(CARLA_DEFAULT_CANVAS_SIZE)
-            )
-            self.ui.cb_canvas_bezier_lines.setChecked(
-                CARLA_DEFAULT_CANVAS_USE_BEZIER_LINES
-            )
-            self.ui.cb_canvas_hide_groups.setChecked(
-                CARLA_DEFAULT_CANVAS_AUTO_HIDE_GROUPS
-            )
-            self.ui.cb_canvas_auto_select.setChecked(
-                CARLA_DEFAULT_CANVAS_AUTO_SELECT_ITEMS
-            )
-            self.ui.cb_canvas_eyecandy.setChecked(
-                CARLA_DEFAULT_CANVAS_EYE_CANDY
-                and self.ui.cb_canvas_eyecandy.isEnabled()
-            )
-            self.ui.cb_canvas_render_aa.setCheckState(
-                Qt.PartiallyChecked
-            )  # CARLA_DEFAULT_CANVAS_ANTIALIASING
-            self.ui.cb_canvas_full_repaints.setChecked(
-                CARLA_DEFAULT_CANVAS_FULL_REPAINTS
-            )
-            if hasattr(self.ui, "cb_canvas_rounded_nodes"):
-                self.ui.cb_canvas_rounded_nodes.setChecked(
-                    CARLA_DEFAULT_CANVAS_ROUNDED_NODES
-                )
-                self.ui.sl_canvas_node_radius.setValue(CARLA_DEFAULT_CANVAS_NODE_RADIUS)
-            if hasattr(self.ui, "cb_canvas_line_style"):
-                idxStyle = self.ui.cb_canvas_line_style.findData(CARLA_DEFAULT_CANVAS_LINE_STYLE)
-                if idxStyle >= 0:
-                    self.ui.cb_canvas_line_style.setCurrentIndex(idxStyle)
-                idxStroke = self.ui.cb_canvas_line_stroke.findData(CARLA_DEFAULT_CANVAS_LINE_STROKE)
-                if idxStroke >= 0:
-                    self.ui.cb_canvas_line_stroke.setCurrentIndex(idxStroke)
-                self.ui.sl_canvas_line_opacity.setValue(CARLA_DEFAULT_CANVAS_LINE_OPACITY)
-                self.ui.label_canvas_line_opacity_val.setText(f"{CARLA_DEFAULT_CANVAS_LINE_OPACITY}%")
-            if hasattr(self.ui, "sl_canvas_node_min_width"):
-                self.ui.sl_canvas_node_min_width.setValue(CARLA_DEFAULT_CANVAS_NODE_MIN_WIDTH)
-                self.ui.label_canvas_node_min_width_val.setText(f"{CARLA_DEFAULT_CANVAS_NODE_MIN_WIDTH} px")
+            if getattr(self, "canvas_form_builder", None) is not None:
+                self.canvas_form_builder.reset_defaults()
 
         # -------------------------------------------------------------------------------------------------------------
         # Engine
@@ -2313,25 +1630,8 @@ class CarlaSettingsW(QDialog):
         # OSC
 
         elif currentRow == self.TAB_INDEX_OSC:
-            self.ui.ch_osc_enable.setChecked(CARLA_DEFAULT_OSC_ENABLED)
-            self.ui.group_osc_tcp_port.setChecked(CARLA_DEFAULT_OSC_TCP_PORT_ENABLED)
-            self.ui.group_osc_udp_port.setChecked(CARLA_DEFAULT_OSC_UDP_PORT_ENABLED)
-            self.ui.sb_osc_tcp_port_number.setValue(CARLA_DEFAULT_OSC_TCP_PORT_NUMBER)
-            self.ui.sb_osc_udp_port_number.setValue(CARLA_DEFAULT_OSC_UDP_PORT_NUMBER)
-
-            if CARLA_DEFAULT_OSC_TCP_PORT_RANDOM:
-                self.ui.rb_osc_tcp_port_specific.setChecked(False)
-                self.ui.rb_osc_tcp_port_random.setChecked(True)
-            else:
-                self.ui.rb_osc_tcp_port_random.setChecked(False)
-                self.ui.rb_osc_tcp_port_specific.setChecked(True)
-
-            if CARLA_DEFAULT_OSC_UDP_PORT_RANDOM:
-                self.ui.rb_osc_udp_port_specific.setChecked(False)
-                self.ui.rb_osc_udp_port_random.setChecked(True)
-            else:
-                self.ui.rb_osc_udp_port_random.setChecked(False)
-                self.ui.rb_osc_udp_port_specific.setChecked(True)
+            if getattr(self, "osc_form_builder", None) is not None:
+                self.osc_form_builder.reset_defaults()
 
         # -------------------------------------------------------------------------------------------------------------
         # Plugin Paths
@@ -2445,18 +1745,15 @@ class CarlaSettingsW(QDialog):
         # Wine
 
         elif currentRow == self.TAB_INDEX_WINE:
-            self.ui.le_wine_exec.setText(CARLA_DEFAULT_WINE_EXECUTABLE)
-            self.ui.cb_wine_prefix_detect.setChecked(CARLA_DEFAULT_WINE_AUTO_PREFIX)
-            self.ui.le_wine_prefix_fallback.setText(CARLA_DEFAULT_WINE_FALLBACK_PREFIX)
-            self.ui.group_wine_realtime.setChecked(CARLA_DEFAULT_WINE_RT_PRIO_ENABLED)
-            self.ui.sb_wine_base_prio.setValue(CARLA_DEFAULT_WINE_BASE_RT_PRIO)
-            self.ui.sb_wine_server_prio.setValue(CARLA_DEFAULT_WINE_SERVER_RT_PRIO)
+            if getattr(self, "wine_form_builder", None) is not None:
+                self.wine_form_builder.reset_defaults()
 
         # -------------------------------------------------------------------------------------------------------------
         # Experimental
 
         elif currentRow == self.TAB_INDEX_EXPERIMENTAL:
-            self.resetExperimentalSettings()
+            if getattr(self, "experimental_form_builder", None) is not None:
+                self.experimental_form_builder.reset_defaults()
 
     def resetExperimentalSettings(self):
         # Forever experimental
