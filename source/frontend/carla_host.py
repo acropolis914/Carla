@@ -542,10 +542,25 @@ class HostWindow(QMainWindow):
         # Connect logger signal
         logger.logAdded.connect(self.slot_onLogAdded)
 
+        # Batch incoming log lines and flush them on a timer. Appending one
+        # line at a time re-lays-out the entire document per call, which melts
+        # the UI when the backend floods the log (JACK/pipewire churn).
+        self._logPendingLines = []
+        self._logFlushTimer = QTimer(self)
+        self._logFlushTimer.setInterval(100)
+        self._logFlushTimer.timeout.connect(self._flushLogPending)
+        self._logFlushTimer.start()
+
         def _log_append(text):
             logger.log_raw_string(text)
 
         self.ui.text_logs.appendPlainText = _log_append
+
+        # Bound the widget so a log flood cannot grow the document forever.
+        try:
+            self.ui.text_logs.setMaximumBlockCount(5000)
+        except Exception:
+            pass
 
         self.ui.text_logs.textChanged.connect(self.slot_logButtonsState)
         self.ui.logs_clear.clicked.connect(self.slot_logClear)
@@ -4963,6 +4978,7 @@ class HostWindow(QMainWindow):
 
     @pyqtSlot()
     def slot_logClear(self):
+        self._logPendingLines = []
         logger.history.clear()
         self.ui.text_logs.clear()
         self.ui.text_logs.appendPlainText("======= Logs cleared ========")
@@ -4976,14 +4992,23 @@ class HostWindow(QMainWindow):
         chk = self.log_tag_checkboxes.get(entry.tag)
         if chk is not None and not chk.isChecked():
             return
+        self._logPendingLines.append(entry.formatted_ui())
+
+    @pyqtSlot()
+    def _flushLogPending(self):
+        if not self._logPendingLines:
+            return
+        lines = self._logPendingLines
+        self._logPendingLines = []
         if hasattr(self, "_orig_log_append"):
-            self._orig_log_append(entry.formatted_ui())
+            self._orig_log_append("\n".join(lines))
 
     @pyqtSlot()
     def slot_logFilterChanged(self):
         """Re-render visible logs from history when checklist changes"""
         if not hasattr(self, "_orig_log_append"):
             return
+        self._logPendingLines = []
         self.ui.text_logs.clear()
         for entry in logger.history:
             chk = self.log_tag_checkboxes.get(entry.tag)

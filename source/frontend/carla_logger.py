@@ -5,6 +5,7 @@
 import sys
 import os
 import re
+import time
 from datetime import datetime
 from qt_config import qt as qt_config
 if qt_config == 5:
@@ -93,7 +94,10 @@ class CarlaLogger(QObject):
 
     def __init__(self):
         super().__init__()
-        self.console_enabled = True
+        # Only mirror logs to the terminal when one is actually attached. GUI
+        # launches (no tty) previously paid for rich rendering every line for
+        # output nobody could see, which froze the UI under backend log floods.
+        self.console_enabled = sys.stdout.isatty()
         self.min_level = LOG_LEVEL_INFO
         self.whitelist = set()  # if non-empty, only these tags shown
         self.blacklist = set()  # these tags hidden
@@ -101,6 +105,12 @@ class CarlaLogger(QObject):
         self.max_history = 5000
         self._last_msg = None
         self._repeat_count = 0
+        # Terminal output is capped so a backend log flood cannot peg the CPU
+        # rendering rich text nobody can read fast enough.
+        self._console_max_per_sec = 60
+        self._console_window_start = 0.0
+        self._console_window_count = 0
+        self._console_suppressed = 0
 
     def parse_cli_args(self, args=None):
         if args is None:
@@ -141,6 +151,25 @@ class CarlaLogger(QObject):
             return False
         return self.is_tag_active(entry.tag)
 
+    def _console_budget_ok(self):
+        """Consume one terminal-print token; False when over the rate limit."""
+        now = time.monotonic()
+        if now - self._console_window_start >= 1.0:
+            self._console_window_start = now
+            self._console_window_count = 0
+            if self._console_suppressed:
+                suppressed = self._console_suppressed
+                self._console_suppressed = 0
+                self._console_window_count += 1
+                self._print_terminal(LogEntry(
+                    LOG_LEVEL_WARNING, "APP",
+                    f"[console throttled: {suppressed} lines suppressed]"))
+        if self._console_window_count < self._console_max_per_sec:
+            self._console_window_count += 1
+            return True
+        self._console_suppressed += 1
+        return False
+
     def log(self, level, tag, message):
         msg_key = (tag, message)
         if msg_key == self._last_msg:
@@ -161,9 +190,10 @@ class CarlaLogger(QObject):
         if len(self.history) > self.max_history:
             self.history.pop(0)
 
-        # Output to terminal if enabled
+        # Output to terminal if enabled (rate-limited so floods cannot peg CPU)
         if self.console_enabled and self.should_display(entry):
-            self._print_terminal(entry)
+            if self._console_budget_ok():
+                self._print_terminal(entry)
 
         # Emit to UI
         self.logAdded.emit(entry)

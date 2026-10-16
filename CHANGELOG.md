@@ -20,6 +20,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-16 20:47:00
+- **fix(frontend)**: backend log floods no longer freeze the UI
+  - The C++ backend floods the debug callback (JACK `nframes == bufferSize` assertion loop, PipeWire/PulseAudio port add/remove churn). Every line was rendered with `rich` for the terminal (`console_enabled` hardcoded `True`, even with no tty attached) and appended one line at a time to the log `QPlainTextEdit`, each call re-laying-out the whole document. Under flood this consumed ~82% of CPU in the logging pipeline (`_print_terminal` 46.5% + `print` 21.8% + `slot_onLogAdded` 21.2%), pegging the GUI thread at ~96% and freezing the app.
+  - `carla_logger.py`: console mirroring now defaults to `sys.stdout.isatty()` so GUI launches skip `rich` rendering entirely; terminal output is rate-limited to 60 lines/sec with a `[console throttled: N lines suppressed]` summary.
+  - `carla_host.py`: log lines are batched and flushed once per 100 ms instead of one widget re-layout per line; the log widget is capped at 5000 blocks.
+  - Verified with py-spy: CPU drops from ~96% to ~10% (now dominated by normal Qt event-loop + refresh timers), UI stays responsive on the software-raster viewport.
+
 ### 2026-10-16 06:10:00
 - **perf(canvas)**: automatic software-render performance profile for the patchbay
   - Fresh configs default to `UseOpenGL=false`, which put the patchbay on the software raster path where the fork's eye candy makes it unusable. `setupCanvas` now detects the actual viewport type and sets `patchcanvas.options.software_render`; on that path the canvas drops effects that are GPU-cheap but CPU-brutal: box drop-shadow effects (`canvasbox.py`), the cosmetic cable glow overlay (`canvasline.py`), the animated signal-flow pulse (~25 FPS repaint of every active cable, `carla_canvas.py`), and minimap re-renders (whole-scene second pass, `carla_host.py`). GL users are unaffected.
