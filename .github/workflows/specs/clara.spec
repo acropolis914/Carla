@@ -29,7 +29,12 @@ rm -rf %{buildroot}
 make install PREFIX=/usr DESTDIR=%{buildroot} DEFAULT_QT=6
 
 %files
-/usr/*
+/usr/bin/*
+/usr/include/carla
+/usr/lib/carla
+/usr/lib/lv2/carla.lv2
+/usr/lib/pkgconfig/*
+/usr/share/carla
 
 %changelog
 * Tue Oct 13 2026 CI Builder <ci@build.local> - 0.1.0-1

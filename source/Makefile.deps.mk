@@ -344,10 +344,10 @@ endif
 # ---------------------------------------------------------------------------------------------------------------------
 # Set PyQt tools
 
-PYRCC5 ?= $(shell which pyrcc5 2>/dev/null)
-PYUIC5 ?= $(shell which pyuic5 2>/dev/null)
+PYRCC5 ?= $(shell command -v pyrcc5 2>/dev/null)
+PYUIC5 ?= $(shell command -v pyuic5 2>/dev/null)
 
-PYUIC6 ?= $(shell which pyuic6 2>/dev/null)
+PYUIC6 ?= $(shell command -v pyuic6 2>/dev/null)
 
 ifneq (,$(findstring true,$(HAVE_QT5)$(HAVE_QT5PKG)$(HAVE_QT5BREW)))
 ifneq ($(PYUIC5)$(PYRCC5),)
