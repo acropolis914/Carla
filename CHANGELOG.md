@@ -20,6 +20,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-18 04:00:00
+- **chore**: synchronize version string to 1.0.3 and ignore local PKGBUILD artifacts
+
 ### 2026-10-18 00:50:00
 - **feat(theme)**: live system theme adaptation, canvasbox synchronization, and color likeliness matching
   - Implemented `find_closest_system_color` with 75% perceptual likeliness threshold matching and tone adjustment against `QApplication.palette()`.
