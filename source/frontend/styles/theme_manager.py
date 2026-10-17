@@ -8,6 +8,37 @@ Canvasbox theming is handled independently via patchcanvas/themes.json.
 import math
 import os
 import glob
+
+# Global minimal scrollbar QSS applied to all themes
+MINIMAL_SCROLLBAR_QSS = """QScrollBar:vertical {
+    border: none;
+    background-color: transparent;
+    width: 8px;
+    margin: 0px;
+    border-radius: 4px;
+}
+QScrollBar::handle:vertical {
+    min-height: 24px;
+    border-radius: 4px;
+}
+QScrollBar::handle:vertical:hover {
+    /* inherits theme colors */
+}
+QScrollBar:horizontal {
+    border: none;
+    background-color: transparent;
+    height: 8px;
+    margin: 0px;
+    border-radius: 4px;
+}
+QScrollBar::handle:horizontal {
+    min-width: 24px;
+    border-radius: 4px;
+}
+QScrollBar::handle:horizontal:hover {
+    /* inherits theme colors */
+}
+"""
 from qt_compat import QApplication, QColor, QPalette
 
 CARLA_KEY_MAIN_USE_SYSTEM_THEME = "Main/UseSystemTheme"
@@ -233,51 +264,10 @@ class ThemeManager:
                 self._original_style = curr_style.objectName()
 
         if use_system:
-            # Revert to system styling: clear injected QSS stylesheet and restore base style
+            # Revert to system styling then layer theme + minimal scrollbar QSS on top
             app.setStyleSheet("")
             if self._original_style:
                 app.setStyle(self._original_style)
-            # Load full Catppuccin theme but keep minimal custom scrollbar rules
-            minimal_qss = """QScrollBar:vertical {
-    border: none;
-    background-color: transparent;
-    width: 8px;
-    margin: 0px;
-    border-radius: 4px;
-}
-QScrollBar::handle:vertical {
-    background-color: #494d64;
-    min-height: 24px;
-    border-radius: 4px;
-}
-QScrollBar::handle:vertical:hover {
-    background-color: #8aadf4;
-}
-QScrollBar:horizontal {
-    border: none;
-    background-color: transparent;
-    height: 8px;
-    margin: 0px;
-    border-radius: 4px;
-}
-QScrollBar::handle:horizontal {
-    background-color: #494d64;
-    min-width: 24px;
-    border-radius: 4px;
-}
-QScrollBar::handle:horizontal:hover {
-    background-color: #8aadf4;
-}
-QPushButton#canvasMenuButton {
-    color: #8aadf4;
-    font-weight: bold;
-}
-QFrame#canvasToolbarSeparator {
-    background-color: #363a4f;
-    border: none;
-    margin: 2px 2px;
-}"""
-            # Load the selected theme QSS to style status bar, background, toolbars, etc.
             qss_file = self._resolve_theme_file(theme_name)
             if not qss_file and theme_name != CARLA_DEFAULT_MAIN_APP_THEME:
                 qss_file = self._resolve_theme_file(CARLA_DEFAULT_MAIN_APP_THEME)
@@ -288,8 +278,7 @@ QFrame#canvasToolbarSeparator {
                         theme_qss = f.read()
                 except Exception:
                     theme_qss = ""
-            combined_qss = theme_qss + "\n" + minimal_qss
-            app.setStyleSheet(combined_qss)
+            app.setStyleSheet(theme_qss + "\n" + MINIMAL_SCROLLBAR_QSS)
             self._notify_theme_changed()
             return
 
@@ -301,49 +290,16 @@ QFrame#canvasToolbarSeparator {
             # Fallback to default bundled theme
             qss_file = self._resolve_theme_file(CARLA_DEFAULT_MAIN_APP_THEME)
 
+        theme_qss = ""
         if qss_file and os.path.isfile(qss_file):
             try:
                 with open(qss_file, "r", encoding="utf-8") as f:
                     theme_qss = f.read()
             except Exception as e:
                 print(f"[THEME] Failed to load stylesheet {qss_file}: {e}")
-                theme_qss = ""
-            # Minimal rounded thin scrollbars (always applied)
-            minimal_qss = """QScrollBar:vertical {
-    border: none;
-    background-color: transparent;
-    width: 8px;
-    margin: 0px;
-    border-radius: 4px;
-}
-QScrollBar::handle:vertical {
-    background-color: #494d64;
-    min-height: 24px;
-    border-radius: 4px;
-}
-QScrollBar::handle:vertical:hover {
-    background-color: #8aadf4;
-}
-QScrollBar:horizontal {
-    border: none;
-    background-color: transparent;
-    height: 8px;
-    margin: 0px;
-    border-radius: 4px;
-}
-QScrollBar::handle:horizontal {
-    background-color: #494d64;
-    min-width: 24px;
-    border-radius: 4px;
-}
-QScrollBar::handle:horizontal:hover {
-    background-color: #8aadf4;
-}"""
-            combined_qss = theme_qss + "\n" + minimal_qss
-            app.setStyleSheet(combined_qss)
-        else:
-            app.setStyleSheet("")
 
+        # Always apply minimal scrollbars on top of theme QSS
+        app.setStyleSheet(theme_qss + "\n" + MINIMAL_SCROLLBAR_QSS)
         self._notify_theme_changed()
 
 
