@@ -304,6 +304,41 @@ class Theme(object):
             default_name = getDefaultThemeName()
             theme_raw = themes_dict.get(default_name, {})
 
+        try:
+            from styles.theme_manager import theme_manager, find_closest_system_color
+            from qt_compat import QApplication, QPalette
+
+            if theme_manager.is_using_system():
+                app = QApplication.instance()
+                pal = app.palette() if app else None
+                if pal:
+                    adapted_raw = {}
+                    for k, v in theme_raw.items():
+                        if k == "canvas_bg":
+                            adapted_raw[k] = pal.color(QPalette.Base).name()
+                        elif k in ("box_bg_1", "box_bg_2"):
+                            adapted_raw[k] = pal.color(QPalette.Window).name()
+                        elif k == "box_text":
+                            adapted_raw[k] = pal.color(QPalette.WindowText).name()
+                        elif k == "box_text_sel":
+                            adapted_raw[k] = pal.color(QPalette.HighlightedText).name()
+                        elif k == "port_text":
+                            adapted_raw[k] = pal.color(QPalette.Text).name()
+                        elif k == "port_text_sel":
+                            adapted_raw[k] = pal.color(QPalette.HighlightedText).name()
+                        elif k == "box_pen_sel_color":
+                            adapted_raw[k] = pal.color(QPalette.Highlight).name()
+                        elif k == "rubberband_brush":
+                            c = pal.color(QPalette.Highlight)
+                            adapted_raw[k] = f"#{c.red():02x}{c.green():02x}{c.blue():02x}40"
+                        elif isinstance(v, str) and (v.startswith("#") or v.startswith("rgb")):
+                            adapted_raw[k] = find_closest_system_color(v, pal, threshold=0.75).name()
+                        else:
+                            adapted_raw[k] = v
+                    theme_raw = adapted_raw
+        except Exception as e:
+            print(f"[THEME] Warning adapting system theme: {e}")
+
         theme_data = parse_theme_dict(theme_raw)
         for key, value in theme_data.items():
             setattr(self, key, value)

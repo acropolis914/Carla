@@ -20,6 +20,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-18 00:50:00
+- **feat(theme)**: live system theme adaptation, canvasbox synchronization, and color likeliness matching
+  - Implemented `find_closest_system_color` with 75% perceptual likeliness threshold matching and tone adjustment against `QApplication.palette()`.
+  - Enabled live seamless toggle of "Use system desktop theme" without application restart, updating the patchbay canvas, canvasboxes, rack background, and top banners in real time.
+  - Dynamically synchronized patchbay canvas, canvasbox node headers/bodies, port text, and selection rubberbands to the system palette when system theme is active.
+  - Updated rack list widget viewport and top notification/support banners to dynamically adapt to system palette roles.
+
 ### 2026-10-18 00:30:00
 - **feat(theme)**: Catppuccin Macchiato default, roundedness, minimal scrollbars, and full QSS data-driven styling
   - Set `Catppuccin Macchiato` as default theme for application interface and patchbay canvas.

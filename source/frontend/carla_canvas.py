@@ -280,10 +280,10 @@ class CanvasToolBarOverlay(QFrame):
         self.icon_help    = "\uf059" if font_family else "?"   # nf-fa-question-circle
         # Main Application Menu Button (Accessible when Menubar is hidden)
         self.btnMenu = QPushButton("☰", self)
+        self.btnMenu.setObjectName("canvasMenuButton")
         self.btnMenu.setToolTip("Main Menu (Ctrl+M to toggle menubar)")
         self.btnMenu.setFont(font)
         self.btnMenu.setFixedSize(28, 28)
-        self.btnMenu.setStyleSheet("color: #89b4fa; font-weight: bold;")
         self.btnMenu.clicked.connect(self._slot_openMainMenu)
         layout.addWidget(self.btnMenu)
 
@@ -311,10 +311,10 @@ class CanvasToolBarOverlay(QFrame):
 
         def add_sep():
             line = QFrame(self)
+            line.setObjectName("canvasToolbarSeparator")
             line.setFrameShape(QFrame.HLine)
             line.setFrameShadow(QFrame.Sunken)
             line.setFixedHeight(1)
-            line.setStyleSheet("background-color: #45475a; border: none; margin: 2px 2px;")
             layout.addWidget(line)
 
         add_sep()
@@ -735,9 +735,9 @@ class CanvasContextToolBarOverlay(QFrame):
 
     def addSeparator(self):
         line = QFrame(self)
+        line.setObjectName("canvasToolbarSeparator")
         line.setFrameShape(QFrame.VLine)
         line.setFrameShadow(QFrame.Sunken)
-        line.setStyleSheet("background-color: #45475a; border: none; margin: 3px 2px;")
         line.setFixedSize(1, 18)
         self.layout.addWidget(line)
         self._items.append(line)

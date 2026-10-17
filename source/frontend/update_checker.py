@@ -227,58 +227,6 @@ class UpdateNotificationBanner(QFrame):
         self.release_info = release_info
         self.version = release_info.get("version", "")
         self.urgency = release_info.get("urgency", "minor").lower()
-
-        # Urgency color palette
-        badge_colors = {
-            "critical": ("#F38BA8", "#1E1E2E"),  # Catppuccin Red badge
-            "suggested": ("#89B4FA", "#1E1E2E"), # Catppuccin Blue badge
-            "minor": ("#A6ADC8", "#1E1E2E")      # Catppuccin Subtext badge
-        }
-        badge_bg, badge_fg = badge_colors.get(self.urgency, badge_colors["minor"])
-
-        self.setStyleSheet(f"""
-            QFrame#UpdateNotificationBanner {{
-                background-color: #181825;
-                border-bottom: 2px solid {badge_bg};
-                padding: 4px 10px;
-            }}
-            QLabel {{
-                color: #CDD6F4;
-                font-size: 12px;
-            }}
-            QPushButton {{
-                background-color: #313244;
-                color: #CDD6F4;
-                border: 1px solid #45475A;
-                border-radius: 4px;
-                padding: 3px 10px;
-                font-size: 11px;
-            }}
-            QPushButton:hover {{
-                background-color: #45475A;
-            }}
-            QPushButton#InstallBtn {{
-                background-color: #A6E3A1;
-                color: #11111B;
-                font-weight: bold;
-                border: none;
-            }}
-            QPushButton#InstallBtn:hover {{
-                background-color: #94E2D5;
-            }}
-            QPushButton#ReleasesBtn {{
-                background-color: #313244;
-                color: #CDD6F4;
-            }}
-            QPushButton#ReleasesBtn:hover {{
-                background-color: #45475A;
-            }}
-            QPushButton#ChangelogBtn {{
-                background-color: #89B4FA;
-                color: #11111B;
-                font-weight: bold;
-            }}
-        """)
         self.setObjectName("UpdateNotificationBanner")
 
         layout = QHBoxLayout(self)
@@ -286,9 +234,10 @@ class UpdateNotificationBanner(QFrame):
         layout.setSpacing(10)
 
         # Urgency badge
-        badge = QLabel(f" {self.urgency.upper()} ")
-        badge.setStyleSheet(f"background-color: {badge_bg}; color: {badge_fg}; font-weight: bold; border-radius: 3px; padding: 2px 4px;")
-        layout.addWidget(badge)
+        self.badge = QLabel(f" {self.urgency.upper()} ")
+        layout.addWidget(self.badge)
+
+        self.update_theme_styling()
 
         msg = QLabel(f"A new version of <b>Clara (v{self.version})</b> is available!")
         layout.addWidget(msg)
@@ -396,6 +345,109 @@ class UpdateNotificationBanner(QFrame):
     def hide_banner(self):
         self.setVisible(False)
 
+    def update_theme_styling(self):
+        try:
+            from styles.theme_manager import theme_manager, find_closest_system_color
+            from qt_compat import QApplication, QPalette
+        except ImportError:
+            return
+
+        badge_colors = {
+            "critical": ("#F38BA8", "#1E1E2E"),
+            "suggested": ("#89B4FA", "#1E1E2E"),
+            "minor": ("#A6ADC8", "#1E1E2E")
+        }
+        badge_bg, badge_fg = badge_colors.get(self.urgency, badge_colors["minor"])
+
+        if theme_manager.is_using_system():
+            app = QApplication.instance()
+            pal = app.palette() if app else QPalette()
+            bg_col = find_closest_system_color("#181825", pal).name()
+            border_col = find_closest_system_color(badge_bg, pal).name()
+            text_col = pal.color(QPalette.WindowText).name()
+            btn_bg = pal.color(QPalette.Button).name()
+            btn_fg = pal.color(QPalette.ButtonText).name()
+            accent_bg = pal.color(QPalette.Highlight).name()
+            accent_fg = pal.color(QPalette.HighlightedText).name()
+            mid_border = pal.color(QPalette.Mid).name()
+
+            self.setStyleSheet(f"""
+                QFrame#UpdateNotificationBanner {{
+                    background-color: {bg_col};
+                    border-bottom: 2px solid {border_col};
+                    padding: 4px 10px;
+                }}
+                QLabel {{
+                    color: {text_col};
+                    font-size: 12px;
+                }}
+                QPushButton {{
+                    background-color: {btn_bg};
+                    color: {btn_fg};
+                    border: 1px solid {mid_border};
+                    border-radius: 4px;
+                    padding: 3px 10px;
+                    font-size: 11px;
+                }}
+                QPushButton:hover {{
+                    background-color: {pal.color(QPalette.Midlight).name()};
+                }}
+                QPushButton#InstallBtn {{
+                    background-color: {accent_bg};
+                    color: {accent_fg};
+                    font-weight: bold;
+                    border: none;
+                }}
+            """)
+            if hasattr(self, "badge"):
+                self.badge.setStyleSheet(f"background-color: {border_col}; color: {pal.color(QPalette.Base).name()}; font-weight: bold; border-radius: 3px; padding: 2px 4px;")
+        else:
+            self.setStyleSheet(f"""
+                QFrame#UpdateNotificationBanner {{
+                    background-color: #181825;
+                    border-bottom: 2px solid {badge_bg};
+                    padding: 4px 10px;
+                }}
+                QLabel {{
+                    color: #CDD6F4;
+                    font-size: 12px;
+                }}
+                QPushButton {{
+                    background-color: #313244;
+                    color: #CDD6F4;
+                    border: 1px solid #45475A;
+                    border-radius: 4px;
+                    padding: 3px 10px;
+                    font-size: 11px;
+                }}
+                QPushButton:hover {{
+                    background-color: #45475A;
+                }}
+                QPushButton#InstallBtn {{
+                    background-color: #A6E3A1;
+                    color: #11111B;
+                    font-weight: bold;
+                    border: none;
+                }}
+                QPushButton#InstallBtn:hover {{
+                    background-color: #94E2D5;
+                }}
+                QPushButton#ReleasesBtn {{
+                    background-color: #313244;
+                    color: #CDD6F4;
+                }}
+                QPushButton#ReleasesBtn:hover {{
+                    background-color: #45475A;
+                }}
+                QPushButton#ChangelogBtn {{
+                    background-color: #89B4FA;
+                    color: #11111B;
+                    font-weight: bold;
+                }}
+            """)
+            if hasattr(self, "badge"):
+                self.badge.setStyleSheet(f"background-color: {badge_bg}; color: {badge_fg}; font-weight: bold; border-radius: 3px; padding: 2px 4px;")
+
     def confirm_skip(self):
         reply = QMessageBox.question(
             self,
@@ -414,46 +466,16 @@ class SupportNotificationBanner(QFrame):
     """Subtle support banner prompted after runtime duration with snooze / never options."""
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setStyleSheet("""
-            QFrame#SupportNotificationBanner {
-                background-color: #181825;
-                border-bottom: 2px solid #F5C2E7;
-                padding: 4px 10px;
-            }
-            QLabel {
-                color: #CDD6F4;
-                font-size: 12px;
-            }
-            QPushButton {
-                background-color: #313244;
-                color: #CDD6F4;
-                border: 1px solid #45475A;
-                border-radius: 4px;
-                padding: 3px 8px;
-                font-size: 11px;
-            }
-            QPushButton:hover {
-                background-color: #45475A;
-            }
-            QPushButton#SponsorBtn {
-                background-color: #F5C2E7;
-                color: #11111B;
-                font-weight: bold;
-                border: none;
-            }
-            QPushButton#SponsorBtn:hover {
-                background-color: #F5E0DC;
-            }
-        """)
         self.setObjectName("SupportNotificationBanner")
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(8, 4, 8, 4)
         layout.setSpacing(8)
 
-        badge = QLabel(" SUPPORT ")
-        badge.setStyleSheet("background-color: #F5C2E7; color: #11111B; font-weight: bold; border-radius: 3px; padding: 2px 4px;")
-        layout.addWidget(badge)
+        self.badge = QLabel(" SUPPORT ")
+        layout.addWidget(self.badge)
+
+        self.update_theme_styling()
 
         msg = QLabel("Enjoying Clara? Consider supporting ongoing development and maintenance:")
         layout.addWidget(msg)
@@ -497,6 +519,90 @@ class SupportNotificationBanner(QFrame):
         btn_close.setToolTip("Dismiss for current session")
         btn_close.clicked.connect(self.close_session)
         layout.addWidget(btn_close)
+
+    def update_theme_styling(self):
+        try:
+            from styles.theme_manager import theme_manager, find_closest_system_color
+            from qt_compat import QApplication, QPalette
+        except ImportError:
+            return
+
+        if theme_manager.is_using_system():
+            app = QApplication.instance()
+            pal = app.palette() if app else QPalette()
+            bg_col = find_closest_system_color("#181825", pal).name()
+            border_col = find_closest_system_color("#F5C2E7", pal).name()
+            text_col = pal.color(QPalette.WindowText).name()
+            btn_bg = pal.color(QPalette.Button).name()
+            btn_fg = pal.color(QPalette.ButtonText).name()
+            accent_bg = pal.color(QPalette.Highlight).name()
+            accent_fg = pal.color(QPalette.HighlightedText).name()
+            mid_border = pal.color(QPalette.Mid).name()
+
+            self.setStyleSheet(f"""
+                QFrame#SupportNotificationBanner {{
+                    background-color: {bg_col};
+                    border-bottom: 2px solid {border_col};
+                    padding: 4px 10px;
+                }}
+                QLabel {{
+                    color: {text_col};
+                    font-size: 12px;
+                }}
+                QPushButton {{
+                    background-color: {btn_bg};
+                    color: {btn_fg};
+                    border: 1px solid {mid_border};
+                    border-radius: 4px;
+                    padding: 3px 8px;
+                    font-size: 11px;
+                }}
+                QPushButton:hover {{
+                    background-color: {pal.color(QPalette.Midlight).name()};
+                }}
+                QPushButton#SponsorBtn {{
+                    background-color: {accent_bg};
+                    color: {accent_fg};
+                    font-weight: bold;
+                    border: none;
+                }}
+            """)
+            if hasattr(self, "badge"):
+                self.badge.setStyleSheet(f"background-color: {border_col}; color: {pal.color(QPalette.Base).name()}; font-weight: bold; border-radius: 3px; padding: 2px 4px;")
+        else:
+            self.setStyleSheet("""
+                QFrame#SupportNotificationBanner {
+                    background-color: #181825;
+                    border-bottom: 2px solid #F5C2E7;
+                    padding: 4px 10px;
+                }
+                QLabel {
+                    color: #CDD6F4;
+                    font-size: 12px;
+                }
+                QPushButton {
+                    background-color: #313244;
+                    color: #CDD6F4;
+                    border: 1px solid #45475A;
+                    border-radius: 4px;
+                    padding: 3px 8px;
+                    font-size: 11px;
+                }
+                QPushButton:hover {
+                    background-color: #45475A;
+                }
+                QPushButton#SponsorBtn {
+                    background-color: #F5C2E7;
+                    color: #11111B;
+                    font-weight: bold;
+                    border: none;
+                }
+                QPushButton#SponsorBtn:hover {
+                    background-color: #F5E0DC;
+                }
+            """)
+            if hasattr(self, "badge"):
+                self.badge.setStyleSheet("background-color: #F5C2E7; color: #11111B; font-weight: bold; border-radius: 3px; padding: 2px 4px;")
 
     def close_session(self):
         self.setVisible(False)

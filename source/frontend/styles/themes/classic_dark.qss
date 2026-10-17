@@ -306,3 +306,14 @@ QListWidget#rackListWidget::item:selected {
     background: transparent;
     border: none;
 }
+
+QPushButton#canvasMenuButton {
+    color: #2a82da;
+    font-weight: bold;
+}
+
+QFrame#canvasToolbarSeparator {
+    background-color: #444444;
+    border: none;
+    margin: 2px 2px;
+}

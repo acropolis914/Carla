@@ -5,15 +5,108 @@ and applies styles live to QApplication without requiring application restart.
 Canvasbox theming is handled independently via patchcanvas/themes.json.
 """
 
+import math
 import os
 import glob
-from qt_compat import QApplication
+from qt_compat import QApplication, QColor, QPalette
 
 CARLA_KEY_MAIN_USE_SYSTEM_THEME = "Main/UseSystemTheme"
 CARLA_DEFAULT_MAIN_USE_SYSTEM_THEME = False
 
 CARLA_KEY_MAIN_APP_THEME = "Main/AppTheme"
 CARLA_DEFAULT_MAIN_APP_THEME = "Catppuccin Macchiato"
+
+
+def find_closest_system_color(color, palette=None, threshold=0.75) -> QColor:
+    """
+    Find the closest color in the active system palette to `color`.
+    Evaluates perceptual likeliness: (1.0 - delta_c / max_distance).
+    If likeliness >= threshold (default 0.75 / 75%), return the closest system color.
+    Otherwise, adjust the color towards the system theme tone by blending 25% of the
+    closest system color into the target color, preserving its role while harmonizing
+    with the platform theme.
+    """
+    if isinstance(color, str):
+        c = color.strip()
+        if not c.startswith("#") and not c.startswith("rgb"):
+            c = "#" + c
+        qcol = QColor(c)
+    elif isinstance(color, QColor):
+        qcol = color
+    elif isinstance(color, (list, tuple)) and len(color) >= 3:
+        qcol = QColor(int(color[0]), int(color[1]), int(color[2]))
+    else:
+        qcol = QColor(color)
+
+    if not qcol.isValid():
+        qcol = QColor(0, 0, 0)
+
+    tr, tg, tb = qcol.red(), qcol.green(), qcol.blue()
+
+    if palette is None:
+        app = QApplication.instance()
+        palette = app.palette() if app else QPalette()
+
+    roles = (
+        QPalette.Window,
+        QPalette.WindowText,
+        QPalette.Base,
+        QPalette.AlternateBase,
+        QPalette.Text,
+        QPalette.Button,
+        QPalette.ButtonText,
+        QPalette.Highlight,
+        QPalette.HighlightedText,
+        QPalette.Mid,
+        QPalette.Dark,
+        QPalette.Light,
+    )
+
+    best_sys_col = None
+    best_likeliness = -1.0
+
+    for role in roles:
+        sys_col = palette.color(role)
+        sr, sg, sb = sys_col.red(), sys_col.green(), sys_col.blue()
+        # Perceptual Euclidean distance with eye sensitivity weights
+        dr = tr - sr
+        dg = tg - sg
+        db = tb - sb
+        dist = math.sqrt(0.299 * (dr ** 2) + 0.587 * (dg ** 2) + 0.114 * (db ** 2))
+        likeliness = 1.0 - (dist / 255.0)
+
+        if likeliness > best_likeliness:
+            best_likeliness = likeliness
+            best_sys_col = sys_col
+
+    if best_sys_col is None:
+        return qcol
+
+    if best_likeliness >= threshold:
+        return best_sys_col
+
+    # Else adjust it a bit: blend 25% of closest system color and calibrate brightness
+    sys_win = palette.color(QPalette.Window)
+    is_sys_dark = (0.299 * sys_win.red() + 0.587 * sys_win.green() + 0.114 * sys_win.blue()) < 128
+
+    sr, sg, sb = best_sys_col.red(), best_sys_col.green(), best_sys_col.blue()
+    blend_r = int(round(tr * 0.75 + sr * 0.25))
+    blend_g = int(round(tg * 0.75 + sg * 0.25))
+    blend_b = int(round(tb * 0.75 + sb * 0.25))
+
+    cur_lum = 0.299 * blend_r + 0.587 * blend_g + 0.114 * blend_b
+    if not is_sys_dark and cur_lum > 180:
+        factor = 0.35
+        blend_r = int(blend_r * factor)
+        blend_g = int(blend_g * factor)
+        blend_b = int(blend_b * factor)
+    elif is_sys_dark and cur_lum < 40:
+        factor = 1.4
+        blend_r = min(255, int(blend_r * factor))
+        blend_g = min(255, int(blend_g * factor))
+        blend_b = min(255, int(blend_b * factor))
+
+    return QColor(blend_r, blend_g, blend_b)
 
 
 class ThemeManager:
@@ -81,8 +174,52 @@ class ThemeManager:
                         return path
         return None
 
+    def _notify_theme_changed(self):
+        """Live update patchcanvas, canvasbox, rack list, and banners without application restart."""
+        # 1. PatchCanvas & CanvasBoxes
+        try:
+            from patchcanvas import patchcanvas
+            if hasattr(patchcanvas, "canvas") and getattr(patchcanvas.canvas, "initiated", False):
+                from patchcanvas.theme import Theme
+                from utils import QSafeSettings
+                from carla_shared import CARLA_KEY_CANVAS_THEME, CARLA_DEFAULT_CANVAS_THEME
+                settings = QSafeSettings("falkTX", "Carla2")
+                canvas_theme_name = settings.value(CARLA_KEY_CANVAS_THEME, CARLA_DEFAULT_CANVAS_THEME, str)
+                patchcanvas.canvas.theme = Theme(canvas_theme_name)
+                if hasattr(patchcanvas.canvas, "scene") and patchcanvas.canvas.scene:
+                    patchcanvas.canvas.scene.updateTheme()
+                if hasattr(patchcanvas.canvas, "group_list"):
+                    for group in patchcanvas.canvas.group_list:
+                        if hasattr(group, "updateTheme"):
+                            group.updateTheme()
+                        if hasattr(group, "port_list"):
+                            for port in group.port_list:
+                                if hasattr(port, "updateTheme"):
+                                    port.updateTheme()
+                if hasattr(patchcanvas.canvas, "scene") and patchcanvas.canvas.scene:
+                    patchcanvas.canvas.scene.update()
+        except Exception as e:
+            print(f"[THEME] Error live refreshing canvas: {e}")
+
+        # 2. Main GUI, Rack List Widget & Banners
+        try:
+            from carla_shared import gCarla
+            if hasattr(gCarla, "gui") and gCarla.gui is not None:
+                if hasattr(gCarla.gui, "_update_split_tab_views"):
+                    gCarla.gui._update_split_tab_views()
+                if hasattr(gCarla.gui.ui, "listWidget"):
+                    gCarla.gui.ui.listWidget.update()
+                if hasattr(gCarla.gui, "fUpdateBanner") and gCarla.gui.fUpdateBanner:
+                    if hasattr(gCarla.gui.fUpdateBanner, "update_theme_styling"):
+                        gCarla.gui.fUpdateBanner.update_theme_styling()
+                if hasattr(gCarla.gui, "fSupportBanner") and gCarla.gui.fSupportBanner:
+                    if hasattr(gCarla.gui.fSupportBanner, "update_theme_styling"):
+                        gCarla.gui.fSupportBanner.update_theme_styling()
+        except Exception as e:
+            print(f"[THEME] Error live refreshing GUI views: {e}")
+
     def apply_theme(self, theme_name: str = CARLA_DEFAULT_MAIN_APP_THEME, use_system: bool = False):
-        """Apply the specified theme or revert to native system styling live."""
+        """Apply the specified theme or revert to native system styling live without restart."""
         app = QApplication.instance()
         if not app:
             return
@@ -100,6 +237,7 @@ class ThemeManager:
             app.setStyleSheet("")
             if self._original_style:
                 app.setStyle(self._original_style)
+            self._notify_theme_changed()
             return
 
         # Ensure a clean consistent baseline Qt widget layout
@@ -120,6 +258,8 @@ class ThemeManager:
                 app.setStyleSheet("")
         else:
             app.setStyleSheet("")
+
+        self._notify_theme_changed()
 
 
 theme_manager = ThemeManager.instance()

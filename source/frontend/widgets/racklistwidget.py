@@ -22,6 +22,7 @@ from qt_compat import (
     QListWidget,
     QListWidgetItem,
     QMessageBox,
+    QPalette,
     QPushButton,
     QTimer,
 )
@@ -551,19 +552,28 @@ class RackListWidget(QListWidget):
 
         width = self.width()
         height = self.height()
-        
-        settings = QSafeSettings("falkTX", "Carla2")
-        theme_name = settings.value(CARLA_KEY_CANVAS_THEME, CARLA_DEFAULT_CANVAS_THEME, str)
-        theme = Theme(theme_name)
-        
-        bg_col = theme.canvas_bg if hasattr(theme, 'canvas_bg') else QColor("#222222")
 
-        painter.fillRect(0, 0, width, height, bg_col)
-        
-        if hasattr(theme, 'box_bg_1'):
-            painter.setPen(theme.box_bg_1)
+        from styles.theme_manager import theme_manager
+        if theme_manager.is_using_system():
+            pal = self.palette()
+            bg_col = pal.color(QPalette.Base)
+            painter.fillRect(0, 0, width, height, bg_col)
+            painter.setPen(pal.color(QPalette.Mid))
             painter.setBrush(Qt.NoBrush)
-            painter.drawRect(self.fPixmapWidth, 0, width-self.fPixmapWidth*2, height)
+            painter.drawRect(self.fPixmapWidth, 0, width - self.fPixmapWidth * 2, height)
+        else:
+            settings = QSafeSettings("falkTX", "Carla2")
+            theme_name = settings.value(CARLA_KEY_CANVAS_THEME, CARLA_DEFAULT_CANVAS_THEME, str)
+            theme = Theme(theme_name)
+
+            bg_col = theme.canvas_bg if hasattr(theme, 'canvas_bg') else QColor("#222222")
+
+            painter.fillRect(0, 0, width, height, bg_col)
+
+            if hasattr(theme, 'box_bg_1'):
+                painter.setPen(theme.box_bg_1)
+                painter.setBrush(Qt.NoBrush)
+                painter.drawRect(self.fPixmapWidth, 0, width - self.fPixmapWidth * 2, height)
 
         QListWidget.paintEvent(self, event)
 
