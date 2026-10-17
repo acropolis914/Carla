@@ -46,14 +46,19 @@ from carla_backend import (
 from carla_shared import (
     CARLA_KEY_MAIN_USE_PRO_THEME,
     CARLA_KEY_MAIN_PRO_THEME_COLOR,
+    CARLA_KEY_MAIN_USE_SYSTEM_THEME,
+    CARLA_KEY_MAIN_APP_THEME,
     CARLA_DEFAULT_MAIN_USE_PRO_THEME,
     CARLA_DEFAULT_MAIN_PRO_THEME_COLOR,
+    CARLA_DEFAULT_MAIN_USE_SYSTEM_THEME,
+    CARLA_DEFAULT_MAIN_APP_THEME,
     CWD,
     getPaths,
     gCarla
 )
 
 from utils import QSafeSettings
+from styles.theme_manager import theme_manager
 
 # ------------------------------------------------------------------------------------------------------------
 
@@ -104,15 +109,9 @@ class CarlaApplication():
         self.fSysTranslator = sysTranslator
 
         # base settings
-        settings    = QSafeSettings("falkTX", appName)
-        useProTheme = CARLA_OS_MAC or settings.value(CARLA_KEY_MAIN_USE_PRO_THEME, CARLA_DEFAULT_MAIN_USE_PRO_THEME, bool)
-
-        if not useProTheme:
-            self.createApp(appName)
-            return
-
-        # set style
-        # QApplication.setStyle("carla" if stylesDir else "fusion")
+        settings = QSafeSettings("falkTX", appName)
+        useSystemTheme = settings.value(CARLA_KEY_MAIN_USE_SYSTEM_THEME, CARLA_DEFAULT_MAIN_USE_SYSTEM_THEME, bool)
+        appTheme = settings.value(CARLA_KEY_MAIN_APP_THEME, CARLA_DEFAULT_MAIN_APP_THEME, str)
 
         # create app
         self.createApp(appName)
@@ -120,25 +119,8 @@ class CarlaApplication():
         if gCarla.nogui:
             return
 
-        # self.fApp.setStyle("carla" if stylesDir else "fusion")
-
-        if CARLA_OS_WIN:
-            carlastyle1 = os.path.join(pathBinaries, "styles", "carlastyle.dll")
-            carlastyle2 = os.path.join(pathResources, "styles", "carlastyle.dll")
-            carlastyle = carlastyle2 if os.path.exists(carlastyle2) else carlastyle1
-            self._stylelib = CDLL(carlastyle, RTLD_GLOBAL)
-            self._stylelib.set_qt_app_style.argtypes = None
-            self._stylelib.set_qt_app_style.restype = None
-            self._stylelib.set_qt_app_style()
-
-        # set palette
-        proThemeColor = settings.value(CARLA_KEY_MAIN_PRO_THEME_COLOR, CARLA_DEFAULT_MAIN_PRO_THEME_COLOR, str).lower()
-
-        if CARLA_OS_MAC or proThemeColor == "black":
-            self.createPaletteBlack()
-
-        elif proThemeColor == "blue":
-            self.createPaletteBlue()
+        # Apply QSS theme or native system style
+        theme_manager.apply_theme(appTheme, use_system=useSystemTheme)
 
     def createApp(self, appName):
         if qt_config == 5 and CARLA_OS_LINUX:

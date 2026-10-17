@@ -20,6 +20,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-17 15:40:00
+- **feat(ui)**: data-driven QSS theming engine and theme selector
+  - Added `styles/theme_manager.py` discovering and hot-reloading `.qss` theme files dynamically from disk (`source/frontend/styles/themes/` and `~/.config/clara/themes/`).
+  - Added Catppuccin Mocha, Catppuccin Latte (Light), and Classic Dark stylesheets.
+  - Replaced legacy Pro Theme with `Use system desktop theme` toggle and dynamic `Application theme` selector in Settings > General with live styling updates.
+  - Preserved canvasbox and patchbay node/cable theme isolation (`patchcanvas/themes.json`).
+
 ## [1.0.3] - 2026-10-17
 
 ### 2026-10-17 11:15:00

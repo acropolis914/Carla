@@ -954,6 +954,28 @@ class CarlaSettingsW(QDialog):
                     if hasattr(gCarla, "gui") and gCarla.gui is not None and hasattr(gCarla.gui.ui, "statusbar"):
                         gCarla.gui.ui.statusbar.setVisible(checked)
                 self.general_form_builder.widgets["show_statusbar"].toggled.connect(_on_live_statusbar_toggle)
+
+            # Populate dynamic theme list and connect live theme switching
+            if "app_theme" in self.general_form_builder.widgets and "use_system_theme" in self.general_form_builder.widgets:
+                from styles.theme_manager import theme_manager
+                cb_theme = self.general_form_builder.widgets["app_theme"]
+                ch_sys = self.general_form_builder.widgets["use_system_theme"]
+                
+                # Refresh available themes dynamically from disk
+                current_text = cb_theme.currentText()
+                cb_theme.clear()
+                avail_themes = theme_manager.get_available_themes()
+                cb_theme.addItems(avail_themes)
+                if current_text and cb_theme.findText(current_text) >= 0:
+                    cb_theme.setCurrentText(current_text)
+
+                def _on_live_theme_change(*_):
+                    use_system = ch_sys.isChecked()
+                    chosen_theme = cb_theme.currentText()
+                    theme_manager.apply_theme(chosen_theme, use_system=use_system)
+
+                ch_sys.toggled.connect(_on_live_theme_change)
+                cb_theme.currentTextChanged.connect(_on_live_theme_change)
         else:
             self.general_form_builder = None
 

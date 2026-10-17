@@ -50,6 +50,10 @@ from carla_shared import (
     CARLA_DEFAULT_MAIN_SYSTEM_ICONS,
     CARLA_KEY_MAIN_CLASSIC_SKIN,
     CARLA_DEFAULT_MAIN_CLASSIC_SKIN,
+    CARLA_KEY_MAIN_USE_SYSTEM_THEME,
+    CARLA_DEFAULT_MAIN_USE_SYSTEM_THEME,
+    CARLA_KEY_MAIN_APP_THEME,
+    CARLA_DEFAULT_MAIN_APP_THEME,
     # Canvas
     CARLA_KEY_CANVAS_THEME,
     CARLA_DEFAULT_CANVAS_THEME,
@@ -247,16 +251,27 @@ GENERAL_SCHEMA = {
                     ],
                 },
                 {
-                    "title": "Diagnostics & Refresh",
+                    "title": "Interface & Theming",
                     "fields": [
                         {
-                            "id": "refresh_interval",
-                            "type": "spinbox",
-                            "label": "UI refresh rate (ms):",
-                            "key": CARLA_KEY_MAIN_REFRESH_INTERVAL,
-                            "default": CARLA_DEFAULT_MAIN_REFRESH_INTERVAL,
-                            "min": 10,
-                            "max": 100,
+                            "id": "use_system_theme",
+                            "type": "checkbox",
+                            "label": "Use system desktop theme (native Qt styling)",
+                            "key": CARLA_KEY_MAIN_USE_SYSTEM_THEME,
+                            "default": CARLA_DEFAULT_MAIN_USE_SYSTEM_THEME,
+                        },
+                        {
+                            "id": "app_theme",
+                            "type": "combobox",
+                            "label": "Application theme:",
+                            "key": CARLA_KEY_MAIN_APP_THEME,
+                            "default": CARLA_DEFAULT_MAIN_APP_THEME,
+                            "options": [
+                                "Catppuccin Mocha",
+                                "Catppuccin Latte",
+                                "Classic Dark",
+                            ],
+                            "depends_on": "not use_system_theme",
                         },
                         {
                             "id": "classic_skin",
@@ -271,6 +286,20 @@ GENERAL_SCHEMA = {
                             "label": "Use system desktop icons if available",
                             "key": CARLA_KEY_MAIN_SYSTEM_ICONS,
                             "default": CARLA_DEFAULT_MAIN_SYSTEM_ICONS,
+                        },
+                    ],
+                },
+                {
+                    "title": "Diagnostics & Refresh",
+                    "fields": [
+                        {
+                            "id": "refresh_interval",
+                            "type": "spinbox",
+                            "label": "UI refresh rate (ms):",
+                            "key": CARLA_KEY_MAIN_REFRESH_INTERVAL,
+                            "default": CARLA_DEFAULT_MAIN_REFRESH_INTERVAL,
+                            "min": 10,
+                            "max": 100,
                         },
                     ],
                 },

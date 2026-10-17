@@ -1,0 +1,126 @@
+# Classic Dark QSS Theme for Clara
+# Dark neutral tones inspired by professional audio workstations
+
+QWidget {
+    background-color: #2b2b2b;
+    color: #e0e0e0;
+    font-family: inherit;
+    font-size: 10pt;
+    selection-background-color: #4a90e2;
+    selection-color: #ffffff;
+}
+
+QMainWindow, QDialog {
+    background-color: #2b2b2b;
+}
+
+QMenuBar {
+    background-color: #222222;
+    color: #e0e0e0;
+    border-bottom: 1px solid #3c3c3c;
+}
+
+QMenuBar::item:selected {
+    background-color: #383838;
+    color: #4a90e2;
+}
+
+QMenu {
+    background-color: #222222;
+    color: #e0e0e0;
+    border: 1px solid #3c3c3c;
+    border-radius: 4px;
+    padding: 4px;
+}
+
+QMenu::item:selected {
+    background-color: #4a90e2;
+    color: #ffffff;
+}
+
+QPushButton {
+    background-color: #383838;
+    color: #e0e0e0;
+    border: 1px solid #4a4a4a;
+    border-radius: 4px;
+    padding: 5px 14px;
+}
+
+QPushButton:hover {
+    background-color: #454545;
+    border-color: #4a90e2;
+}
+
+QPushButton:pressed {
+    background-color: #4a90e2;
+    color: #ffffff;
+}
+
+QLineEdit, QTextEdit, QPlainTextEdit, QSpinBox, QDoubleSpinBox {
+    background-color: #1e1e1e;
+    color: #e0e0e0;
+    border: 1px solid #3c3c3c;
+    border-radius: 4px;
+    padding: 4px 8px;
+}
+
+QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus {
+    border: 1px solid #4a90e2;
+}
+
+QComboBox {
+    background-color: #383838;
+    color: #e0e0e0;
+    border: 1px solid #4a4a4a;
+    border-radius: 4px;
+    padding: 4px 10px;
+}
+
+QListView, QTreeView, QTableView {
+    background-color: #1e1e1e;
+    color: #e0e0e0;
+    border: 1px solid #3c3c3c;
+    selection-background-color: #4a90e2;
+    selection-color: #ffffff;
+}
+
+QTabBar::tab {
+    background-color: #222222;
+    color: #aaaaaa;
+    border: 1px solid #3c3c3c;
+    padding: 6px 14px;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    margin-right: 2px;
+}
+
+QTabBar::tab:selected {
+    background-color: #2b2b2b;
+    color: #4a90e2;
+    font-weight: bold;
+}
+
+QGroupBox {
+    border: 1px solid #3c3c3c;
+    border-radius: 6px;
+    margin-top: 12px;
+    padding-top: 14px;
+    font-weight: bold;
+    color: #4a90e2;
+}
+
+QScrollBar:vertical {
+    background-color: #222222;
+    width: 10px;
+}
+
+QScrollBar::handle:vertical {
+    background-color: #454545;
+    border-radius: 4px;
+}
+
+QStatusBar {
+    background-color: #1e1e1e;
+    color: #888888;
+    border-top: 1px solid #3c3c3c;
+}

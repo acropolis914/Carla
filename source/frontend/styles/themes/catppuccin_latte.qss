@@ -1,0 +1,128 @@
+# Catppuccin Latte QSS Theme for Clara (Light Mode)
+# Base: #eff1f5, Mantle: #e6e9ef, Crust: #dce0e8, Surface0: #ccd0da, Surface1: #bcc0cc
+# Text: #4c4f69, Subtext0: #6c6f85, Blue: #1e66f5
+
+QWidget {
+    background-color: #eff1f5;
+    color: #4c4f69;
+    font-family: inherit;
+    font-size: 10pt;
+    selection-background-color: #1e66f5;
+    selection-color: #ffffff;
+}
+
+QMainWindow, QDialog {
+    background-color: #eff1f5;
+}
+
+QMenuBar {
+    background-color: #e6e9ef;
+    color: #4c4f69;
+    border-bottom: 1px solid #ccd0da;
+}
+
+QMenuBar::item:selected {
+    background-color: #ccd0da;
+    color: #1e66f5;
+}
+
+QMenu {
+    background-color: #e6e9ef;
+    color: #4c4f69;
+    border: 1px solid #ccd0da;
+    border-radius: 6px;
+    padding: 4px;
+}
+
+QMenu::item:selected {
+    background-color: #1e66f5;
+    color: #ffffff;
+}
+
+QPushButton {
+    background-color: #e6e9ef;
+    color: #4c4f69;
+    border: 1px solid #bcc0cc;
+    border-radius: 6px;
+    padding: 5px 14px;
+}
+
+QPushButton:hover {
+    background-color: #ccd0da;
+    border-color: #1e66f5;
+}
+
+QPushButton:pressed {
+    background-color: #1e66f5;
+    color: #ffffff;
+}
+
+QLineEdit, QTextEdit, QPlainTextEdit, QSpinBox, QDoubleSpinBox {
+    background-color: #ffffff;
+    color: #4c4f69;
+    border: 1px solid #bcc0cc;
+    border-radius: 6px;
+    padding: 4px 8px;
+}
+
+QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus {
+    border: 1px solid #1e66f5;
+}
+
+QComboBox {
+    background-color: #e6e9ef;
+    color: #4c4f69;
+    border: 1px solid #bcc0cc;
+    border-radius: 6px;
+    padding: 4px 10px;
+}
+
+QListView, QTreeView, QTableView {
+    background-color: #ffffff;
+    color: #4c4f69;
+    border: 1px solid #ccd0da;
+    selection-background-color: #1e66f5;
+    selection-color: #ffffff;
+}
+
+QTabBar::tab {
+    background-color: #e6e9ef;
+    color: #6c6f85;
+    border: 1px solid #ccd0da;
+    padding: 6px 14px;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    margin-right: 2px;
+}
+
+QTabBar::tab:selected {
+    background-color: #eff1f5;
+    color: #1e66f5;
+    font-weight: bold;
+}
+
+QGroupBox {
+    border: 1px solid #ccd0da;
+    border-radius: 8px;
+    margin-top: 12px;
+    padding-top: 14px;
+    font-weight: bold;
+    color: #1e66f5;
+}
+
+QScrollBar:vertical {
+    background-color: #e6e9ef;
+    width: 10px;
+    border-radius: 5px;
+}
+
+QScrollBar::handle:vertical {
+    background-color: #bcc0cc;
+    border-radius: 5px;
+}
+
+QStatusBar {
+    background-color: #e6e9ef;
+    color: #6c6f85;
+    border-top: 1px solid #ccd0da;
+}
