@@ -615,11 +615,11 @@ endif
 		$(DESTDIR)$(DATADIR)/carla/carla_shared.py
 
 	# Install resources (gui)
-	install -m 755 \
-		bin/resources/carla-plugin \
-		bin/resources/carla-plugin-patchbay \
-		bin/resources/*-ui \
-		$(DESTDIR)$(DATADIR)/carla/resources
+	@for f in bin/resources/carla-plugin bin/resources/carla-plugin-patchbay bin/resources/*-ui; do \
+		if [ -f "$$f" ]; then \
+			install -m 755 "$$f" $(DESTDIR)$(DATADIR)/carla/resources/; \
+		fi; \
+	done
 endif # CPPMODE
 
 ifeq ($(HAVE_THEME),true)
@@ -760,30 +760,20 @@ endif
 ifneq ($(HAIKU),true)
 ifeq ($(HAVE_FRONTEND),true)
 	# Install vst plugin
-	install -d $(DESTDIR)$(LIBDIR)/vst/carla.vst
-
-	install -m 644 \
-		bin/CarlaRack*.* \
-		bin/CarlaPatchbay*.* \
-		$(DESTDIR)$(LIBDIR)/vst/carla.vst
-
-	# Link binaries for vst plugin
-	@for i in `find $(DESTDIR)$(LIBDIR)/carla/ -maxdepth 1 -type f -exec basename {} ';'`; do \
-		$(LINK) ../../carla/$$i $(DESTDIR)$(LIBDIR)/vst/carla.vst/$$i; \
-	done
-	rm -f $(DESTDIR)$(LIBDIR)/vst/carla.vst/libcarla_standalone2.*
-
-	# Link jack app bridge
-	rm -rf $(DESTDIR)$(LIBDIR)/vst/carla.vst/jack
-	$(LINK) ../../carla/jack $(DESTDIR)$(LIBDIR)/vst/carla.vst/jack
-
-	# Link resources for vst plugin
-	rm -rf $(DESTDIR)$(LIBDIR)/vst/carla.vst/resources
-	$(LINK) ../../../share/carla/resources $(DESTDIR)$(LIBDIR)/vst/carla.vst/resources
-
-	# Link styles for vst plugin
-	rm -rf $(DESTDIR)$(LIBDIR)/vst/carla.vst/styles
-	$(LINK) ../../carla/styles $(DESTDIR)$(LIBDIR)/vst/carla.vst/styles
+	@if ls bin/CarlaRack* >/dev/null 2>&1; then \
+		install -d $(DESTDIR)$(LIBDIR)/vst/carla.vst; \
+		install -m 644 bin/CarlaRack*.* bin/CarlaPatchbay*.* $(DESTDIR)$(LIBDIR)/vst/carla.vst; \
+		for i in `find $(DESTDIR)$(LIBDIR)/carla/ -maxdepth 1 -type f -exec basename {} ';'`; do \
+			$(LINK) ../../carla/$$i $(DESTDIR)$(LIBDIR)/vst/carla.vst/$$i; \
+		done; \
+		rm -f $(DESTDIR)$(LIBDIR)/vst/carla.vst/libcarla_standalone2.*; \
+		rm -rf $(DESTDIR)$(LIBDIR)/vst/carla.vst/jack; \
+		$(LINK) ../../carla/jack $(DESTDIR)$(LIBDIR)/vst/carla.vst/jack; \
+		rm -rf $(DESTDIR)$(LIBDIR)/vst/carla.vst/resources; \
+		$(LINK) ../../../share/carla/resources $(DESTDIR)$(LIBDIR)/vst/carla.vst/resources; \
+		rm -rf $(DESTDIR)$(LIBDIR)/vst/carla.vst/styles; \
+		$(LINK) ../../carla/styles $(DESTDIR)$(LIBDIR)/vst/carla.vst/styles; \
+	fi
 endif
 endif
 

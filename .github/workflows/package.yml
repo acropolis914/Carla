@@ -10,7 +10,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: true   # Cancel remaining distros immediately if any fails
+      fail-fast: false   # Allow other distros to finish even if one fails
       matrix:
         include:
           - platform: alpine
