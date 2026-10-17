@@ -137,7 +137,7 @@ jobs:
                 cp .github/workflows/specs/clara.spec ~/rpmbuild/SPECS/clara.spec
               fi
               sed -i "s/^Version:.*/Version: ${VERSION}/" ~/rpmbuild/SPECS/clara.spec
-              rpmbuild -bb ~/rpmbuild/SPECS/clara.spec
+              QA_RPATHS=0x0001 rpmbuild -bb ~/rpmbuild/SPECS/clara.spec
               find ~/rpmbuild/RPMS -name "*.rpm" -exec cp {} . \;
               echo "OUTFILE=$(ls *.rpm 2>/dev/null | head -n 1 || true)" >> "$GITHUB_ENV"
               ;;
