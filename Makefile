@@ -672,42 +672,18 @@ endif
 	install -m 644 resources/scalable/carla-control.svg $(DESTDIR)$(DATADIR)/icons/hicolor/scalable/apps
 
 	# Install resources (re-use python files)
-	$(LINK) ../common                      $(DESTDIR)$(DATADIR)/carla/resources
-	$(LINK) ../patchcanvas                 $(DESTDIR)$(DATADIR)/carla/resources
-	$(LINK) ../utils                       $(DESTDIR)$(DATADIR)/carla/resources
-	$(LINK) ../widgets                     $(DESTDIR)$(DATADIR)/carla/resources
-	$(LINK) ../dialogs                     $(DESTDIR)$(DATADIR)/carla/resources
-	$(LINK) ../pluginlist                  $(DESTDIR)$(DATADIR)/carla/resources
-	$(LINK) ../carla_app.py                $(DESTDIR)$(DATADIR)/carla/resources
-	$(LINK) ../carla_backend.py            $(DESTDIR)$(DATADIR)/carla/resources
-	$(LINK) ../carla_backend_qt.py         $(DESTDIR)$(DATADIR)/carla/resources
-	$(LINK) ../carla_frontend.py           $(DESTDIR)$(DATADIR)/carla/resources
-	$(LINK) ../carla_host.py               $(DESTDIR)$(DATADIR)/carla/resources
-	$(LINK) ../carla_host_control.py       $(DESTDIR)$(DATADIR)/carla/resources
-	$(LINK) ../carla_settings.py           $(DESTDIR)$(DATADIR)/carla/resources
-	$(LINK) ../carla_skin.py               $(DESTDIR)$(DATADIR)/carla/resources
-	$(LINK) ../carla_shared.py             $(DESTDIR)$(DATADIR)/carla/resources
-	$(LINK) ../carla_utils.py              $(DESTDIR)$(DATADIR)/carla/resources
-	$(LINK) ../carla_widgets.py            $(DESTDIR)$(DATADIR)/carla/resources
-	$(LINK) ../externalui.py               $(DESTDIR)$(DATADIR)/carla/resources
-	$(LINK) ../qt_compat.py                $(DESTDIR)$(DATADIR)/carla/resources
-	$(LINK) ../qt_config.py                $(DESTDIR)$(DATADIR)/carla/resources
-	$(LINK) ../resources_rc.py             $(DESTDIR)$(DATADIR)/carla/resources
-	$(LINK) ../ui_carla_about.py           $(DESTDIR)$(DATADIR)/carla/resources
-	$(LINK) ../ui_carla_edit.py            $(DESTDIR)$(DATADIR)/carla/resources
-	$(LINK) ../ui_carla_host.py            $(DESTDIR)$(DATADIR)/carla/resources
-	$(LINK) ../ui_carla_parameter.py       $(DESTDIR)$(DATADIR)/carla/resources
-	$(LINK) ../ui_carla_plugin_calf.py     $(DESTDIR)$(DATADIR)/carla/resources
-	$(LINK) ../ui_carla_plugin_classic.py  $(DESTDIR)$(DATADIR)/carla/resources
-	$(LINK) ../ui_carla_plugin_compact.py  $(DESTDIR)$(DATADIR)/carla/resources
-	$(LINK) ../ui_carla_plugin_default.py  $(DESTDIR)$(DATADIR)/carla/resources
-	$(LINK) ../ui_carla_plugin_presets.py  $(DESTDIR)$(DATADIR)/carla/resources
-	$(LINK) ../ui_carla_settings.py        $(DESTDIR)$(DATADIR)/carla/resources
-	$(LINK) ../ui_carla_settings_driver.py $(DESTDIR)$(DATADIR)/carla/resources
-	$(LINK) ../ui_inputdialog_value.py     $(DESTDIR)$(DATADIR)/carla/resources
-	$(LINK) ../ui_midipattern.py           $(DESTDIR)$(DATADIR)/carla/resources
-	$(LINK) ../ui_xycontroller.py          $(DESTDIR)$(DATADIR)/carla/resources
-	$(LINK) ../update_checker.py           $(DESTDIR)$(DATADIR)/carla/resources
+	@for item in common patchcanvas utils widgets dialogs pluginlist \
+		carla_app.py carla_backend.py carla_backend_qt.py carla_frontend.py carla_host.py \
+		carla_host_control.py carla_settings.py carla_skin.py carla_shared.py carla_utils.py \
+		carla_widgets.py externalui.py qt_compat.py qt_config.py resources_rc.py \
+		ui_carla_edit.py ui_carla_host.py ui_carla_parameter.py ui_carla_plugin_calf.py \
+		ui_carla_plugin_classic.py ui_carla_plugin_compact.py ui_carla_plugin_default.py \
+		ui_carla_plugin_presets.py ui_carla_settings.py ui_carla_settings_driver.py \
+		ui_inputdialog_value.py ui_midipattern.py ui_xycontroller.py update_checker.py; do \
+		if [ -e "$(DESTDIR)$(DATADIR)/carla/$$item" ]; then \
+			$(LINK) ../$$item $(DESTDIR)$(DATADIR)/carla/resources/$$item; \
+		fi; \
+	done
 	install -d $(DESTDIR)$(DATADIR)/carla/scripts
 	install -m 755 scripts/clara_self_updater.sh $(DESTDIR)$(DATADIR)/carla/scripts/clara_self_updater.sh
 
