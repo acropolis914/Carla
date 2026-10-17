@@ -1013,6 +1013,8 @@ class HostWindow(QMainWindow):
                 QTimer.singleShot(0, self.checkRecentOnStartup)
             else:
                 QTimer.singleShot(0, self.slot_engineStart)
+            if not self.host.isPlugin:
+                QTimer.singleShot(1500, self.startStartupPluginScanner)
 
     # --------------------------------------------------------------------------------------------------------
     # Manage visibility state, needed for NSM
@@ -2340,6 +2342,8 @@ class HostWindow(QMainWindow):
             self.fPluginListDialog = d = gCarla.felib.createPluginListDialog(
                 self.fParentOrSelf, hostSettings
             )
+            if hasattr(d, "pluginAddRequested"):
+                d.pluginAddRequested.connect(self.loadPluginFromInfo)
 
             gCarla.felib.setPluginListDialogPath(
                 d, PLUGIN_LADSPA, self.fSavedSettings[CARLA_KEY_PATHS_LADSPA]
@@ -2369,14 +2373,11 @@ class HostWindow(QMainWindow):
                 d, PLUGIN_CLAP, self.fSavedSettings[CARLA_KEY_PATHS_CLAP]
             )
 
+        self._lastLoadedFromDialog = False
         ret = gCarla.felib.execPluginListDialog(self.fPluginListDialog)
 
-        # TODO
-        # if dialog.fFavoritePluginsChanged:
-        # self.fFavoritePlugins = dialog.fFavoritePlugins
-
-        if not ret:
-            return
+        if not ret or getattr(self, "_lastLoadedFromDialog", False):
+            return None
 
         if not self.host.is_engine_running():
             QMessageBox.warning(
@@ -2559,18 +2560,36 @@ class HostWindow(QMainWindow):
         moveAsideNonConnectedNodes()
         self.updateMiniCanvasLater()
 
-    @pyqtSlot()
-    def slot_pluginAdd(self):
-        data = self.showAddPluginDialog()
+    def startStartupPluginScanner(self):
+        try:
+            from pluginlist.startup_scanner import getGlobalScanner
+            scanner = getGlobalScanner()
+            paths = {
+                PLUGIN_LADSPA: self.fSavedSettings.get(CARLA_KEY_PATHS_LADSPA, ""),
+                PLUGIN_DSSI: self.fSavedSettings.get(CARLA_KEY_PATHS_DSSI, ""),
+                PLUGIN_LV2: self.fSavedSettings.get(CARLA_KEY_PATHS_LV2, ""),
+                PLUGIN_VST2: self.fSavedSettings.get(CARLA_KEY_PATHS_VST2, ""),
+                PLUGIN_VST3: self.fSavedSettings.get(CARLA_KEY_PATHS_VST3, ""),
+                PLUGIN_CLAP: self.fSavedSettings.get(CARLA_KEY_PATHS_CLAP, ""),
+                PLUGIN_JSFX: self.fSavedSettings.get(CARLA_KEY_PATHS_JSFX, ""),
+                PLUGIN_SF2: self.fSavedSettings.get(CARLA_KEY_PATHS_SF2, ""),
+                PLUGIN_SFZ: self.fSavedSettings.get(CARLA_KEY_PATHS_SFZ, ""),
+            }
+            scanner.configure(paths=paths)
+            scanner.start()
+        except Exception as exc:
+            print("HostWindow: startStartupPluginScanner failed:", exc)
 
-        if data is None:
-            return
+    def loadPluginFromData(self, btype, ptype, filename, label, uniqueId, extraPtr):
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+            ok = self.host.add_plugin(
+                btype, ptype, filename, None, label, uniqueId, extraPtr, PLUGIN_OPTIONS_NULL
+            )
+        finally:
+            QApplication.restoreOverrideCursor()
 
-        btype, ptype, filename, label, uniqueId, extraPtr = data
-
-        if not self.host.add_plugin(
-            btype, ptype, filename, None, label, uniqueId, extraPtr, PLUGIN_OPTIONS_NULL
-        ):
+        if not ok:
             CustomMessageBox(
                 self,
                 QMessageBox.Critical,
@@ -2580,6 +2599,36 @@ class HostWindow(QMainWindow):
                 QMessageBox.Ok,
                 QMessageBox.Ok,
             )
+            return False
+        return True
+
+    def loadPluginFromInfo(self, info):
+        self._lastLoadedFromDialog = True
+        if not self.host.is_engine_running():
+            QMessageBox.warning(
+                self,
+                self.tr("Warning"),
+                self.tr("Cannot add new plugins while engine is stopped"),
+            )
+            return False
+
+        btype = info["build"]
+        ptype = info["type"]
+        filename = info["filename"]
+        label = info["label"]
+        uniqueId = info["uniqueId"]
+        extraPtr = None
+        return self.loadPluginFromData(btype, ptype, filename, label, uniqueId, extraPtr)
+
+    @pyqtSlot()
+    def slot_pluginAdd(self):
+        data = self.showAddPluginDialog()
+
+        if data is None:
+            return
+
+        btype, ptype, filename, label, uniqueId, extraPtr = data
+        self.loadPluginFromData(btype, ptype, filename, label, uniqueId, extraPtr)
 
     @pyqtSlot()
     def slot_confirmRemoveAll(self):

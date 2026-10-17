@@ -39,6 +39,7 @@ from qt_compat import (
     QIcon,
     QLabel,
     QLineEdit,
+    QMenu,
     QProgressBar,
     QPushButton,
     QSettings,
@@ -47,9 +48,11 @@ from qt_compat import (
     QTableWidget,
     QTableWidgetItem,
     QTimer,
+    QToolButton,
     QVBoxLayout,
     QWidget,
     Qt,
+    pyqtSignal,
 )
 
 try:
@@ -146,6 +149,10 @@ if _SELECT_ROWS is None:
 _SINGLE_SELECTION = getattr(QAbstractItemView, "SingleSelection", None)
 if _SINGLE_SELECTION is None:
     _SINGLE_SELECTION = QAbstractItemView.SelectionMode.SingleSelection
+
+_EXTENDED_SELECTION = getattr(QAbstractItemView, "ExtendedSelection", None)
+if _EXTENDED_SELECTION is None:
+    _EXTENDED_SELECTION = QAbstractItemView.SelectionMode.ExtendedSelection
 
 _ALIGN_RIGHT = getattr(Qt, "AlignRight", None)
 if _ALIGN_RIGHT is None:
@@ -481,6 +488,8 @@ class _PluginRefreshDialog(QDialog):
 # The main dialog
 
 class PyPluginListDialog(QDialog):
+    pluginAddRequested = pyqtSignal(dict)
+
     def __init__(self, parent, hostSettings):
         super().__init__(parent)
         self.setWindowTitle(self.tr("Carla - Add New"))
@@ -497,6 +506,7 @@ class PyPluginListDialog(QDialog):
         }
 
         self.retPlugin = {}
+        self._rowPluginData = {}
 
         self._lastTableWidgetIndex = 0
         self._refreshDialog = None
@@ -514,6 +524,12 @@ class PyPluginListDialog(QDialog):
         }
         self._restartDiscoveryTool()
 
+        # -- search debounce timer -----------------------------------------------------------------------
+        self._searchDebounceTimer = QTimer(self)
+        self._searchDebounceTimer.setSingleShot(True)
+        self._searchDebounceTimer.setInterval(40)
+        self._searchDebounceTimer.timeout.connect(self._checkFilters)
+
         # -- global discovery options --------------------------------------------------------------------
         if not CARLA_OS_WIN:
             try:
@@ -528,12 +544,12 @@ class PyPluginListDialog(QDialog):
 
         # -- connections ---------------------------------------------------------------------------------
         self.finished.connect(self._saveSettings)
-        self.b_add.clicked.connect(self.accept)
+        self.b_add.clicked.connect(self._slotAddClicked)
         self.b_cancel.clicked.connect(self.reject)
-        self.b_refresh.clicked.connect(self._refreshPlugins)
         self.b_clear_filters.clicked.connect(self._clearFilters)
 
-        self.lineEdit.textChanged.connect(lambda _text: self._checkFilters())
+        self.lineEdit.textChanged.connect(lambda _text: self._searchDebounceTimer.start())
+        self.table.itemSelectionChanged.connect(self._updateSelectionState)
         self.table.currentCellChanged.connect(lambda r, c, pr, pc: self._checkPlugin(r))
         self.table.cellClicked.connect(self._cellClicked)
         self.table.cellDoubleClicked.connect(self._cellDoubleClicked)
@@ -600,8 +616,24 @@ class PyPluginListDialog(QDialog):
         self.lineEdit.setClearButtonEnabled(True)
         searchRow.addWidget(self.lineEdit)
 
-        self.b_refresh = QPushButton(self.tr("Refresh"), self)
+        self.b_refresh = QToolButton(self)
+        self.b_refresh.setText(self.tr("Rescan"))
+        tb_style = getattr(Qt, "ToolButtonTextBesideIcon", None)
+        if tb_style is None:
+            tb_style = Qt.ToolButtonStyle.ToolButtonTextBesideIcon
+        self.b_refresh.setToolButtonStyle(tb_style)
         self.b_refresh.setIcon(getIcon("view-refresh", 16, "svgz"))
+        pm = getattr(QToolButton, "MenuButtonPopup", None)
+        if pm is None:
+            pm = QToolButton.ToolButtonPopupMode.MenuButtonPopup
+        self.b_refresh.setPopupMode(pm)
+        refreshMenu = QMenu(self.b_refresh)
+        act_quick = refreshMenu.addAction(self.tr("Quick Rescan (New & Modified)"))
+        act_quick.triggered.connect(lambda: self._startScan(ignoreCache=False))
+        act_full = refreshMenu.addAction(self.tr("Full Rescan (All Plugins)"))
+        act_full.triggered.connect(lambda: self._startScan(ignoreCache=True))
+        self.b_refresh.setMenu(refreshMenu)
+        self.b_refresh.setDefaultAction(act_quick)
         searchRow.addWidget(self.b_refresh)
 
         self.b_clear_filters = QPushButton(self.tr("Reset filters"), self)
@@ -610,7 +642,24 @@ class PyPluginListDialog(QDialog):
 
         grid.addLayout(searchRow, 0, 0, 1, 3)
 
-        # row 1..3: filters (toolbox) | table | info
+        # row 1: inline scan status bar (hidden by default)
+        self.scanBar = QWidget(self)
+        scanLayout = QHBoxLayout(self.scanBar)
+        scanLayout.setContentsMargins(2, 2, 2, 2)
+        self.scanStatusLabel = QLabel(self.tr("Scanning plugins..."), self.scanBar)
+        self.scanProgressBar = QProgressBar(self.scanBar)
+        self.scanProgressBar.setRange(0, 0)
+        self.scanProgressBar.setFixedHeight(12)
+        self.b_scan_stop = QPushButton(self.tr("Stop"), self.scanBar)
+        self.b_scan_stop.setIcon(getIcon("media-playback-stop", 16, "svgz"))
+        self.b_scan_stop.clicked.connect(self._stopScan)
+        scanLayout.addWidget(self.scanStatusLabel)
+        scanLayout.addWidget(self.scanProgressBar, 1)
+        scanLayout.addWidget(self.b_scan_stop)
+        self.scanBar.hide()
+        grid.addWidget(self.scanBar, 1, 0, 1, 3)
+
+        # row 2..4: filters (toolbox) | table | info
         self._buildFilters()
 
         self.table = QTableWidget(0, _TABLE_COLUMNS, self)
@@ -618,7 +667,7 @@ class PyPluginListDialog(QDialog):
         self.table.setEditTriggers(_NO_EDIT_TRIGGERS)
         self.table.setShowGrid(False)
         self.table.setAlternatingRowColors(True)
-        self.table.setSelectionMode(_SINGLE_SELECTION)
+        self.table.setSelectionMode(_EXTENDED_SELECTION)
         self.table.setSelectionBehavior(_SELECT_ROWS)
         self.table.setWordWrap(False)
         self.table.setSortingEnabled(True)
@@ -632,17 +681,20 @@ class PyPluginListDialog(QDialog):
         self.table.setColumnWidth(TW_NAME, 250)
         self.table.setColumnWidth(TW_LABEL, 200)
         self.table.setColumnWidth(TW_MAKER, 150)
-        grid.addWidget(self.table, 1, 1, 3, 1)
+        grid.addWidget(self.table, 2, 1, 3, 1)
 
         self._buildInfoPanel()
-        grid.addWidget(self.tab_info, 1, 2, 3, 1)
+        grid.addWidget(self.tab_info, 2, 2, 3, 1)
 
-        # row 4: status + buttons
+        # row 5: status + buttons
         bottomRow = QHBoxLayout()
         self.label = QLabel(self.tr("(Number of Plugins go here)"), self)
         self.label.setTextInteractionFlags(Qt.TextSelectableByMouse)
         bottomRow.addWidget(self.label)
         bottomRow.addStretch(1)
+
+        self.ch_keep_open = QCheckBox(self.tr("Keep open"), self)
+        bottomRow.addWidget(self.ch_keep_open)
 
         self.b_add = QPushButton(self.tr("&Add Plugin"), self)
         self.b_add.setIcon(getIcon("list-add", 16, "svgz"))
@@ -653,7 +705,7 @@ class PyPluginListDialog(QDialog):
         self.b_cancel.setIcon(getIcon("dialog-cancel", 16, "svgz"))
         bottomRow.addWidget(self.b_cancel)
 
-        grid.addLayout(bottomRow, 4, 0, 1, 3)
+        grid.addLayout(bottomRow, 5, 0, 1, 3)
 
     def _buildFilters(self):
         self.filterBox = QToolBox(self)
@@ -738,7 +790,7 @@ class PyPluginListDialog(QDialog):
         self.filterBox.setCurrentIndex(0)
         self.filterBox.setMinimumWidth(150)
         self._grid_placeholder = self.filterBox
-        self.layout().addWidget(self.filterBox, 1, 0, 3, 1)
+        self.layout().addWidget(self.filterBox, 2, 0, 3, 1)
 
     def _buildInfoPanel(self):
         self.tab_info = QTabWidget(self)
@@ -835,28 +887,26 @@ class PyPluginListDialog(QDialog):
 
         if self._discovery["firstInit"]:
             self._discovery["firstInit"] = False
-
-            self._refreshDialog = _PluginRefreshDialog(self)
-            self._refreshDialog.b_start.setEnabled(False)
-            self._refreshDialog.b_skip.setEnabled(True)
-            self._refreshDialog.ch_updated.setChecked(True)
-            self._refreshDialog.ch_invalid.setChecked(False)
-            self._refreshDialog.group.setEnabled(False)
-            self._refreshDialog.group_formats.hide()
-            self._refreshDialog.progressBar.setFormat(self.tr("Starting initial discovery..."))
-            self._refreshDialog.adjustSize()
-
-            self._refreshDialog.b_skip.clicked.connect(self._refreshPluginsSkip)
-            self._refreshDialog.finished.connect(lambda _r: self._refreshPluginsStop())
-
             self._addPluginsToTable()   # show instantly from cache
-            self._timer.start()         # start background scan silently
+
+        # Connect to background scanner if running
+        try:
+            from pluginlist.startup_scanner import getGlobalScanner
+            scanner = getGlobalScanner()
+            if scanner.isRunning():
+                self._connectScanner(scanner)
+                self.scanBar.show()
+            else:
+                self.scanBar.hide()
+        except Exception as exc:
+            print("PyPluginListDialog: Failed to check global scanner:", exc)
 
     # ----------------------------------------------------------------------------------------------------
     # settings
 
     def _loadSettings(self):
         settings = _newSettings()
+        self.ch_keep_open.setChecked(_getBool(settings, "PluginDatabase/KeepOpen", False))
 
         geo = _getBytes(settings, "PluginDatabase/Geometry")
         if geo:
@@ -943,6 +993,7 @@ class PyPluginListDialog(QDialog):
 
         settings.setValue("PluginDatabase/Geometry", self.saveGeometry())
         settings.setValue("PluginDatabase/TableGeometry", self.table.horizontalHeader().saveState())
+        settings.setValue("PluginDatabase/KeepOpen", self.ch_keep_open.isChecked())
         settings.setValue("PluginDatabase/ShowEffects", self.ch_effects.isChecked())
         settings.setValue("PluginDatabase/ShowInstruments", self.ch_instruments.isChecked())
         settings.setValue("PluginDatabase/ShowMIDI", self.ch_midi.isChecked())
@@ -1307,81 +1358,87 @@ class PyPluginListDialog(QDialog):
         return True
 
     # ----------------------------------------------------------------------------------------------------
-    # refresh
+    # scanner & live discovery
 
-    def _refreshPlugins(self):
-        self._refreshPluginsStop()
+    def _connectScanner(self, scanner):
+        try:
+            scanner.pluginDiscovered.disconnect(self._onScannerPluginDiscovered)
+        except Exception:
+            pass
+        try:
+            scanner.statusChanged.disconnect(self._onScannerStatusChanged)
+        except Exception:
+            pass
+        try:
+            scanner.fileChanged.disconnect(self._onScannerFileChanged)
+        except Exception:
+            pass
+        try:
+            scanner.scanFinished.disconnect(self._onScannerFinished)
+        except Exception:
+            pass
 
-        self._refreshDialog = _PluginRefreshDialog(self)
-        self._refreshDialog.b_start.clicked.connect(self._refreshPluginsStart)
-        self._refreshDialog.b_skip.clicked.connect(self._refreshPluginsSkip)
-        self._refreshDialog.finished.connect(lambda _r: self._refreshPluginsStop())
-        self._refreshDialog.exec()
+        scanner.pluginDiscovered.connect(self._onScannerPluginDiscovered)
+        scanner.statusChanged.connect(self._onScannerStatusChanged)
+        scanner.fileChanged.connect(self._onScannerFileChanged)
+        scanner.scanFinished.connect(self._onScannerFinished)
 
-    def _refreshPluginsStart(self):
-        self._plugins["internal"] = []
-        self._plugins["ladspa"] = []
-        self._plugins["dssi"] = []
-        self._plugins["lv2"] = []
-        self._plugins["vst2"] = []
-        self._plugins["vst3"] = []
-        self._plugins["clap"] = []
-        self._plugins["au"] = []
-        self._plugins["jsfx"] = []
-        self._plugins["kits"] = []
+    def _startScan(self, ignoreCache=False):
+        from pluginlist.startup_scanner import getGlobalScanner
+        scanner = getGlobalScanner()
+        if scanner.isRunning():
+            return
 
-        r = self._refreshDialog
-        if r is not None:
-            r.b_start.setEnabled(False)
-            r.b_skip.setEnabled(True)
-            self._discovery["ignoreCache"] = r.ch_all.isChecked()
-            self._discovery["checkInvalid"] = r.ch_invalid.isChecked()
-        if self._discovery["ignoreCache"]:
+        if ignoreCache:
+            self.table.setRowCount(0)
+            self._lastTableWidgetIndex = 0
+            self._rowPluginData.clear()
+            self._plugins = {k: [] for k in self._plugins}
             self.cache.clear()
+            _newSettings().remove("PluginCache")
 
-        self._restartDiscoveryTool()
+        scanner.configure(paths=self.paths, ignoreCache=ignoreCache, checkInvalid=ignoreCache)
+        self._connectScanner(scanner)
+        self.scanStatusLabel.setText(self.tr("Starting discovery..."))
+        self.scanBar.show()
+        scanner.start()
 
-        if not self._timer.isActive():
-            self._timer.start()
+    def _stopScan(self):
+        from pluginlist.startup_scanner import getGlobalScanner
+        scanner = getGlobalScanner()
+        if scanner.isRunning():
+            scanner.requestStop()
+        self.scanStatusLabel.setText(self.tr("Scan stopped"))
+        self.scanBar.hide()
 
-    def _refreshPluginsStop(self):
-        d = self._discovery
+    def _onScannerStatusChanged(self, status):
+        self.scanStatusLabel.setText(status)
 
-        if d["handle"] is not None:
-            d["handle"].stop()
-            d["handle"] = None
+    def _onScannerFileChanged(self, filename):
+        if filename:
+            self.scanStatusLabel.setText(f"Scanning: {filename}")
 
-        r = self._refreshDialog
-        self._refreshDialog = None
-        if r is not None:
-            r.close()
+    def _onScannerFinished(self, count):
+        self.scanBar.hide()
+        self._updatePluginsSummaryLabel()
+        self._checkPlugin(self.table.currentRow())
 
-        if self._timer.isActive():
-            self._timer.stop()
-            self._addPluginsToTable()
+    def _onScannerPluginDiscovered(self, pinfo, sha1):
+        if not self._pluginsAdd(pinfo):
+            return
+        self._streamPluginToTable(pinfo)
 
-    def _refreshPluginsSkip(self):
-        d = self._discovery
-        if d["handle"] is not None:
-            d["handle"].skip()
-
-    # ----------------------------------------------------------------------------------------------------
-    # table
-
-    def _addPluginsToTable(self):
+    def _streamPluginToTable(self, info):
         self.table.setSortingEnabled(False)
-        self.table.clearContents()
+        row = self.table.rowCount()
+        self.table.insertRow(row)
+        self._lastTableWidgetIndex = row
+        self._addPluginToTable(info)
+        self._filterSingleRow(row)
+        self.table.setSortingEnabled(True)
+        self._updatePluginsSummaryLabel()
 
-        total = sum(len(v) for v in self._plugins.values())
-        self.table.setRowCount(total)
-
-        order = ["internal", "ladspa", "dssi", "lv2", "vst2", "vst3", "clap", "au", "jsfx", "kits"]
-        self._lastTableWidgetIndex = 0
-        for key in order:
-            for info in self._plugins[key]:
-                self._addPluginToTable(info)
-
-        # label summary
+    def _updatePluginsSummaryLabel(self):
         self.label.setText(
             self.tr("Have %1 Internal, %2 LADSPA, %3 DSSI, %4 LV2, %5 VST2, %6 VST3, %7 CLAP and %8 JSFX plugins, plus %9 Sound Kits")
             .replace("%1", str(len(self._plugins["internal"])))
@@ -1395,10 +1452,88 @@ class PyPluginListDialog(QDialog):
             .replace("%9", str(len(self._plugins["kits"])))
         )
 
+    # ----------------------------------------------------------------------------------------------------
+    # table
+
+    def _addPluginsToTable(self):
+        self.table.setSortingEnabled(False)
+        self.table.clearContents()
+        self._rowPluginData.clear()
+
+        total = sum(len(v) for v in self._plugins.values())
+        self.table.setRowCount(total)
+
+        order = ["internal", "ladspa", "dssi", "lv2", "vst2", "vst3", "clap", "au", "jsfx", "kits"]
+        self._lastTableWidgetIndex = 0
+        for key in order:
+            for info in self._plugins[key]:
+                self._addPluginToTable(info)
+
+        self._updatePluginsSummaryLabel()
         self.table.setSortingEnabled(True)
 
         self._checkFilters()
         self._checkPlugin(self.table.currentRow())
+
+    def _cacheRowData(self, index, info, pluginText=None):
+        if pluginText is None:
+            pluginText = (info["name"] + " " + info["label"] + " " + info["maker"] + " " + info["filename"]).lower()
+
+        if CARLA_OS_WIN:
+            nativeBins = (BINARY_WIN32, BINARY_WIN64) if CARLA_OS_64BIT else (BINARY_WIN32, BINARY_NONE)
+            wineBins = (BINARY_NONE, BINARY_NONE)
+        elif CARLA_OS_MAC:
+            nativeBins = (BINARY_POSIX64, BINARY_NONE)
+            wineBins = (BINARY_WIN32, BINARY_WIN64)
+        else:
+            nativeBins = (BINARY_POSIX32, BINARY_POSIX64)
+            wineBins = (BINARY_WIN32, BINARY_WIN64)
+
+        aIns = info["audioIns"]
+        aOuts = info["audioOuts"]
+        cvIns = info["cvIns"]
+        cvOuts = info["cvOuts"]
+        mIns = info["midiIns"]
+        mOuts = info["midiOuts"]
+        phints = info["hints"]
+        ptype = info["type"]
+        categ = (info.get("category") or "").lower()
+
+        isSynth = bool(phints & PLUGIN_IS_SYNTH)
+        isEffect = aIns > 0 and aOuts > 0 and not isSynth
+        isMidi = aIns == 0 and aOuts == 0 and mIns > 0 and mOuts > 0
+        isKit = ptype in (PLUGIN_SF2, PLUGIN_SFZ)
+        isOther = not (isEffect or isSynth or isMidi or isKit)
+        isNative = info["build"] == BINARY_NATIVE
+        isRtSafe = bool(phints & PLUGIN_IS_RTSAFE)
+        isStereo = (aIns == 2 and aOuts == 2) or (isSynth and aOuts == 2)
+        hasCV = cvIns + cvOuts > 0
+        hasGui = bool(phints & PLUGIN_HAS_CUSTOM_UI)
+        hasIDisp = bool(phints & PLUGIN_HAS_INLINE_DISPLAY)
+        isBridged = (not isNative) and (info["build"] in nativeBins)
+        isBridgedWine = (not isNative) and (info["build"] in wineBins)
+
+        data = {
+            "info": info,
+            "text": pluginText,
+            "isEffect": isEffect,
+            "isSynth": isSynth,
+            "isMidi": isMidi,
+            "isKit": isKit,
+            "isOther": isOther,
+            "isNative": isNative,
+            "isRtSafe": isRtSafe,
+            "isStereo": isStereo,
+            "hasCV": hasCV,
+            "hasGui": hasGui,
+            "hasIDisp": hasIDisp,
+            "isBridged": isBridged,
+            "isBridgedWine": isBridgedWine,
+            "type": ptype,
+            "category": categ,
+        }
+        self._rowPluginData[index] = data
+        return data
 
     def _addPluginToTable(self, info):
         index = self._lastTableWidgetIndex
@@ -1416,14 +1551,63 @@ class PyPluginListDialog(QDialog):
         self.table.setItem(index, TW_MAKER, QTableWidgetItem(info["maker"]))
         self.table.setItem(index, TW_BINARY, QTableWidgetItem(os.path.basename(info["filename"])))
 
-        pluginText = (info["name"] + info["label"] + info["maker"] + info["filename"]).lower()
+        pluginText = (info["name"] + " " + info["label"] + " " + info["maker"] + " " + info["filename"]).lower()
 
         itemName = self.table.item(index, TW_NAME)
         itemName.setData(int(Qt.UserRole) + UR_PLUGIN_INFO, QByteArray(_infoToBytes(info)))
         itemName.setData(int(Qt.UserRole) + UR_SEARCH_TEXT, pluginText)
 
+        data = self._cacheRowData(index, info, pluginText)
+        itemName.setData(int(Qt.UserRole) + 50, data)
+
     # ----------------------------------------------------------------------------------------------------
     # slots
+
+    def _updateSelectionState(self):
+        selected_rows = set(idx.row() for idx in self.table.selectedIndexes())
+        count = len(selected_rows)
+        if count == 0:
+            self.b_add.setText(self.tr("&Add Plugin"))
+            self.b_add.setEnabled(self.table.currentRow() >= 0)
+        elif count == 1:
+            self.b_add.setText(self.tr("&Add Plugin"))
+            self.b_add.setEnabled(True)
+        else:
+            self.b_add.setText(self.tr("&Add Selected (%1)").replace("%1", str(count)))
+            self.b_add.setEnabled(True)
+
+    def _slotAddClicked(self):
+        selected_rows = sorted(set(idx.row() for idx in self.table.selectedIndexes()))
+        if not selected_rows and self.table.currentRow() >= 0:
+            selected_rows = [self.table.currentRow()]
+
+        if not selected_rows:
+            return
+
+        added_infos = []
+        for row in selected_rows:
+            item = self.table.item(row, TW_NAME)
+            if item is None:
+                continue
+            data = item.data(int(Qt.UserRole) + 50)
+            info = data["info"] if isinstance(data, dict) else None
+            if not info:
+                raw = item.data(int(Qt.UserRole) + UR_PLUGIN_INFO)
+                if raw is not None:
+                    info, _ = _bytesToInfo(bytes(raw) if isinstance(raw, QByteArray) else bytes(raw))
+            if info:
+                added_infos.append(info)
+                self.pluginAddRequested.emit(info)
+
+        if added_infos:
+            self.retPlugin = added_infos[-1]
+            names = ", ".join(i["name"] for i in added_infos[:3])
+            if len(added_infos) > 3:
+                names += f" (+{len(added_infos)-3} more)"
+            self.label.setText(self.tr("Loaded %1").replace("%1", names))
+
+        if not self.ch_keep_open.isChecked():
+            self.accept()
 
     def _cellClicked(self, row, column):
         if column != TW_FAVORITE:
@@ -1452,14 +1636,116 @@ class PyPluginListDialog(QDialog):
 
     def _cellDoubleClicked(self, _row, column):
         if column != TW_FAVORITE:
-            self.done(_qt_accepted())
+            self._slotAddClicked()
 
     def focusSearchFieldAndSelectAll(self):
         self.lineEdit.setFocus()
         self.lineEdit.selectAll()
 
+    def _filterSingleRow(self, row):
+        item = self.table.item(row, TW_NAME)
+        if item is None:
+            return
+        data = item.data(int(Qt.UserRole) + 50)
+        if not data:
+            raw = item.data(int(Qt.UserRole) + UR_PLUGIN_INFO)
+            info, _ = _bytesToInfo(bytes(raw)) if raw else (None, 0)
+            if not info:
+                return
+            data = self._cacheRowData(row, info)
+            item.setData(int(Qt.UserRole) + 50, data)
+
+        text = self.lineEdit.text().lower().strip()
+        tokens = [t for t in text.split() if t]
+        if tokens and not all(tok in data["text"] for tok in tokens):
+            self.table.hideRow(row)
+            return
+
+        if not self.ch_effects.isChecked() and data["isEffect"]:
+            self.table.hideRow(row)
+            return
+        if not self.ch_instruments.isChecked() and data["isSynth"]:
+            self.table.hideRow(row)
+            return
+        if not self.ch_midi.isChecked() and data["isMidi"]:
+            self.table.hideRow(row)
+            return
+        if not self.ch_other.isChecked() and data["isOther"]:
+            self.table.hideRow(row)
+            return
+        if not self.ch_kits.isChecked() and data["isKit"]:
+            self.table.hideRow(row)
+            return
+        if not self.ch_internal.isChecked() and data["type"] == PLUGIN_INTERNAL:
+            self.table.hideRow(row)
+            return
+        if not self.ch_ladspa.isChecked() and data["type"] == PLUGIN_LADSPA:
+            self.table.hideRow(row)
+            return
+        if not self.ch_dssi.isChecked() and data["type"] == PLUGIN_DSSI:
+            self.table.hideRow(row)
+            return
+        if not self.ch_lv2.isChecked() and data["type"] == PLUGIN_LV2:
+            self.table.hideRow(row)
+            return
+        if not self.ch_vst.isChecked() and data["type"] == PLUGIN_VST2:
+            self.table.hideRow(row)
+            return
+        if not self.ch_vst3.isChecked() and data["type"] == PLUGIN_VST3:
+            self.table.hideRow(row)
+            return
+        if not self.ch_clap.isChecked() and data["type"] == PLUGIN_CLAP:
+            self.table.hideRow(row)
+            return
+        if not self.ch_jsfx.isChecked() and data["type"] == PLUGIN_JSFX:
+            self.table.hideRow(row)
+            return
+        if not self.ch_native.isChecked() and data["isNative"]:
+            self.table.hideRow(row)
+            return
+        if not self.ch_bridged.isChecked() and data["isBridged"]:
+            self.table.hideRow(row)
+            return
+        if not self.ch_bridged_wine.isChecked() and data["isBridgedWine"]:
+            self.table.hideRow(row)
+            return
+        if self.ch_favorites.isChecked() and not self._isFavorite(data["info"]):
+            self.table.hideRow(row)
+            return
+        if self.ch_rtsafe.isChecked() and not data["isRtSafe"]:
+            self.table.hideRow(row)
+            return
+        if self.ch_cv.isChecked() and not data["hasCV"]:
+            self.table.hideRow(row)
+            return
+        if self.ch_gui.isChecked() and not data["hasGui"]:
+            self.table.hideRow(row)
+            return
+        if self.ch_inline_display.isChecked() and not data["hasIDisp"]:
+            self.table.hideRow(row)
+            return
+        if self.ch_stereo.isChecked() and not data["isStereo"]:
+            self.table.hideRow(row)
+            return
+
+        categ = data["category"]
+        if (self.ch_cat_all.isChecked()
+              or (self.ch_cat_delay.isChecked() and categ == "delay")
+              or (self.ch_cat_distortion.isChecked() and categ == "distortion")
+              or (self.ch_cat_dynamics.isChecked() and categ == "dynamics")
+              or (self.ch_cat_eq.isChecked() and categ == "eq")
+              or (self.ch_cat_filter.isChecked() and categ == "filter")
+              or (self.ch_cat_modulator.isChecked() and categ == "modulator")
+              or (self.ch_cat_synth.isChecked() and categ == "synth")
+              or (self.ch_cat_utility.isChecked() and categ == "utility")
+              or (self.ch_cat_other.isChecked() and categ == "other")):
+            self.table.showRow(row)
+        else:
+            self.table.hideRow(row)
+
     def _checkFilters(self):
-        text = self.lineEdit.text().lower()
+        text = self.lineEdit.text().lower().strip()
+        tokens = [t for t in text.split() if t]
 
         hideEffects = not self.ch_effects.isChecked()
         hideInstruments = not self.ch_instruments.isChecked()
@@ -1488,120 +1774,100 @@ class PyPluginListDialog(QDialog):
         hideNonIDisp = self.ch_inline_display.isChecked()
         hideNonStereo = self.ch_stereo.isChecked()
 
-        if CARLA_OS_WIN:
-            nativeBins = (BINARY_WIN32, BINARY_WIN64) if CARLA_OS_64BIT else (BINARY_WIN32, BINARY_NONE)
-            wineBins = (BINARY_NONE, BINARY_NONE)
-        elif CARLA_OS_MAC:
-            nativeBins = (BINARY_POSIX64, BINARY_NONE)
-            wineBins = (BINARY_WIN32, BINARY_WIN64)
-        else:
-            nativeBins = (BINARY_POSIX32, BINARY_POSIX64)
-            wineBins = (BINARY_WIN32, BINARY_WIN64)
+        catAll = self.ch_cat_all.isChecked()
+        catDelay = self.ch_cat_delay.isChecked()
+        catDist = self.ch_cat_distortion.isChecked()
+        catDyn = self.ch_cat_dynamics.isChecked()
+        catEq = self.ch_cat_eq.isChecked()
+        catFilt = self.ch_cat_filter.isChecked()
+        catMod = self.ch_cat_modulator.isChecked()
+        catSynth = self.ch_cat_synth.isChecked()
+        catUtil = self.ch_cat_utility.isChecked()
+        catOther = self.ch_cat_other.isChecked()
 
-        for i in range(self.table.rowCount()):
-            item = self.table.item(i, TW_NAME)
-            if item is None:
-                continue
-            data = item.data(int(Qt.UserRole) + UR_PLUGIN_INFO)
-            info, _ = _bytesToInfo(bytes(data)) if data is not None else (None, 0)
-            if info is None:
-                self.table.hideRow(i)
-                continue
+        self.table.setUpdatesEnabled(False)
+        try:
+            for i in range(self.table.rowCount()):
+                item = self.table.item(i, TW_NAME)
+                if item is None:
+                    continue
+                data = item.data(int(Qt.UserRole) + 50)
+                if not data:
+                    raw = item.data(int(Qt.UserRole) + UR_PLUGIN_INFO)
+                    info, _ = _bytesToInfo(bytes(raw)) if raw else (None, 0)
+                    if not info:
+                        self.table.hideRow(i)
+                        continue
+                    data = self._cacheRowData(i, info)
+                    item.setData(int(Qt.UserRole) + 50, data)
 
-            ptext = item.data(int(Qt.UserRole) + UR_SEARCH_TEXT)
-            ptext = str(ptext) if ptext is not None else ""
+                if tokens and not all(tok in data["text"] for tok in tokens):
+                    self.table.hideRow(i)
+                    continue
 
-            aIns = info["audioIns"]
-            aOuts = info["audioOuts"]
-            cvIns = info["cvIns"]
-            cvOuts = info["cvOuts"]
-            mIns = info["midiIns"]
-            mOuts = info["midiOuts"]
-            phints = info["hints"]
-            ptype = info["type"]
-            categ = info["category"]
-
-            isSynth = bool(phints & PLUGIN_IS_SYNTH)
-            isEffect = aIns > 0 and aOuts > 0 and not isSynth
-            isMidi = aIns == 0 and aOuts == 0 and mIns > 0 and mOuts > 0
-            isKit = ptype in (PLUGIN_SF2, PLUGIN_SFZ)
-            isOther = not (isEffect or isSynth or isMidi or isKit)
-            isNative = info["build"] == BINARY_NATIVE
-            isRtSafe = bool(phints & PLUGIN_IS_RTSAFE)
-            isStereo = (aIns == 2 and aOuts == 2) or (isSynth and aOuts == 2)
-            hasCV = cvIns + cvOuts > 0
-            hasGui = bool(phints & PLUGIN_HAS_CUSTOM_UI)
-            hasIDisp = bool(phints & PLUGIN_HAS_INLINE_DISPLAY)
-            isBridged = (not isNative) and (info["build"] in nativeBins)
-            isBridgedWine = (not isNative) and (info["build"] in wineBins)
-
-            def hasText():
-                for token in text.strip().split(" "):
-                    if token in ptext:
-                        return True
-                return False
-
-            if hideEffects and isEffect:
-                self.table.hideRow(i)
-            elif hideInstruments and isSynth:
-                self.table.hideRow(i)
-            elif hideMidi and isMidi:
-                self.table.hideRow(i)
-            elif hideOther and isOther:
-                self.table.hideRow(i)
-            elif hideKits and isKit:
-                self.table.hideRow(i)
-            elif hideInternal and ptype == PLUGIN_INTERNAL:
-                self.table.hideRow(i)
-            elif hideLadspa and ptype == PLUGIN_LADSPA:
-                self.table.hideRow(i)
-            elif hideDSSI and ptype == PLUGIN_DSSI:
-                self.table.hideRow(i)
-            elif hideLV2 and ptype == PLUGIN_LV2:
-                self.table.hideRow(i)
-            elif hideVST2 and ptype == PLUGIN_VST2:
-                self.table.hideRow(i)
-            elif hideVST3 and ptype == PLUGIN_VST3:
-                self.table.hideRow(i)
-            elif hideCLAP and ptype == PLUGIN_CLAP:
-                self.table.hideRow(i)
-            elif hideAU and ptype == PLUGIN_AU:
-                self.table.hideRow(i)
-            elif hideJSFX and ptype == PLUGIN_JSFX:
-                self.table.hideRow(i)
-            elif hideNative and isNative:
-                self.table.hideRow(i)
-            elif hideBridged and isBridged:
-                self.table.hideRow(i)
-            elif hideBridgedWine and isBridgedWine:
-                self.table.hideRow(i)
-            elif hideNonRtSafe and not isRtSafe:
-                self.table.hideRow(i)
-            elif hideNonCV and not hasCV:
-                self.table.hideRow(i)
-            elif hideNonGui and not hasGui:
-                self.table.hideRow(i)
-            elif hideNonIDisp and not hasIDisp:
-                self.table.hideRow(i)
-            elif hideNonStereo and not isStereo:
-                self.table.hideRow(i)
-            elif text and not hasText():
-                self.table.hideRow(i)
-            elif hideNonFavs and not self._isFavorite(info):
-                self.table.hideRow(i)
-            elif (self.ch_cat_all.isChecked()
-                  or (self.ch_cat_delay.isChecked() and categ == "delay")
-                  or (self.ch_cat_distortion.isChecked() and categ == "distortion")
-                  or (self.ch_cat_dynamics.isChecked() and categ == "dynamics")
-                  or (self.ch_cat_eq.isChecked() and categ == "eq")
-                  or (self.ch_cat_filter.isChecked() and categ == "filter")
-                  or (self.ch_cat_modulator.isChecked() and categ == "modulator")
-                  or (self.ch_cat_synth.isChecked() and categ == "synth")
-                  or (self.ch_cat_utility.isChecked() and categ == "utility")
-                  or (self.ch_cat_other.isChecked() and categ == "other")):
-                self.table.showRow(i)
-            else:
-                self.table.hideRow(i)
+                if hideEffects and data["isEffect"]:
+                    self.table.hideRow(i)
+                elif hideInstruments and data["isSynth"]:
+                    self.table.hideRow(i)
+                elif hideMidi and data["isMidi"]:
+                    self.table.hideRow(i)
+                elif hideOther and data["isOther"]:
+                    self.table.hideRow(i)
+                elif hideKits and data["isKit"]:
+                    self.table.hideRow(i)
+                elif hideInternal and data["type"] == PLUGIN_INTERNAL:
+                    self.table.hideRow(i)
+                elif hideLadspa and data["type"] == PLUGIN_LADSPA:
+                    self.table.hideRow(i)
+                elif hideDSSI and data["type"] == PLUGIN_DSSI:
+                    self.table.hideRow(i)
+                elif hideLV2 and data["type"] == PLUGIN_LV2:
+                    self.table.hideRow(i)
+                elif hideVST2 and data["type"] == PLUGIN_VST2:
+                    self.table.hideRow(i)
+                elif hideVST3 and data["type"] == PLUGIN_VST3:
+                    self.table.hideRow(i)
+                elif hideCLAP and data["type"] == PLUGIN_CLAP:
+                    self.table.hideRow(i)
+                elif hideAU and data["type"] == PLUGIN_AU:
+                    self.table.hideRow(i)
+                elif hideJSFX and data["type"] == PLUGIN_JSFX:
+                    self.table.hideRow(i)
+                elif hideNative and data["isNative"]:
+                    self.table.hideRow(i)
+                elif hideBridged and data["isBridged"]:
+                    self.table.hideRow(i)
+                elif hideBridgedWine and data["isBridgedWine"]:
+                    self.table.hideRow(i)
+                elif hideNonRtSafe and not data["isRtSafe"]:
+                    self.table.hideRow(i)
+                elif hideNonCV and not data["hasCV"]:
+                    self.table.hideRow(i)
+                elif hideNonGui and not data["hasGui"]:
+                    self.table.hideRow(i)
+                elif hideNonIDisp and not data["hasIDisp"]:
+                    self.table.hideRow(i)
+                elif hideNonStereo and not data["isStereo"]:
+                    self.table.hideRow(i)
+                elif hideNonFavs and not self._isFavorite(data["info"]):
+                    self.table.hideRow(i)
+                else:
+                    categ = data["category"]
+                    if (catAll
+                          or (catDelay and categ == "delay")
+                          or (catDist and categ == "distortion")
+                          or (catDyn and categ == "dynamics")
+                          or (catEq and categ == "eq")
+                          or (catFilt and categ == "filter")
+                          or (catMod and categ == "modulator")
+                          or (catSynth and categ == "synth")
+                          or (catUtil and categ == "utility")
+                          or (catOther and categ == "other")):
+                        self.table.showRow(i)
+                    else:
+                        self.table.hideRow(i)
+        finally:
+            self.table.setUpdatesEnabled(True)
 
     def _checkFiltersCategoryAll(self, clicked=False):
         notClicked = not clicked

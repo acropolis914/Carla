@@ -20,6 +20,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-18 04:40:00
+- **feat(plugins)**: non-blocking startup scanner, inline live-streaming refresh, and persistent multi-add loading
+  - Added low-priority non-blocking startup background scanner thread (`PluginScannerThread`) to pre-warm plugin cache without audio or UI lag.
+  - Replaced secondary refresh modal with inline scan bar featuring live progress, filename status, and instant Stop control.
+  - Enabled live incremental streaming of discovered plugins directly into the table while scanning.
+  - Implemented multi-selection batch adding (`ExtendedSelection`), "Keep open" toggle, and `Qt.WaitCursor` loading feedback.
+  - Optimized search filtering with item-attached precomputed metadata, debouncing, and multi-word `AND` token matching.
+
 ### 2026-10-18 04:00:00
 - **chore**: synchronize version string to 1.0.3 and ignore local PKGBUILD artifacts
 
