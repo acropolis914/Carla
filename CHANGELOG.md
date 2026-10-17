@@ -26,6 +26,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Added Catppuccin Mocha, Catppuccin Latte (Light), and Classic Dark stylesheets.
   - Replaced legacy Pro Theme with `Use system desktop theme` toggle and dynamic `Application theme` selector in Settings > General with live styling updates.
   - Preserved canvasbox and patchbay node/cable theme isolation (`patchcanvas/themes.json`).
+- **fix(ci)**: robust version fallback and Fedora RPM version formatting
+  - Fall back to numeric tag/version when triggered on branches so `dpkg-deb` and `rpmbuild` do not fail on non-digit branch names.
+  - Convert hyphens to dots in RPM `Version:` field to satisfy RPM specification constraints.
 
 ## [1.0.3] - 2026-10-17
 
