@@ -433,6 +433,8 @@ ifeq ($(HAVE_FRONTEND),true)
 	install -d $(DESTDIR)$(DATADIR)/carla/resources/translations
 	install -d $(DESTDIR)$(DATADIR)/carla/common
 	install -d $(DESTDIR)$(DATADIR)/carla/patchcanvas
+	install -d $(DESTDIR)$(DATADIR)/carla/styles
+	install -d $(DESTDIR)$(DATADIR)/carla/styles/themes
 	install -d $(DESTDIR)$(DATADIR)/carla/utils
 	install -d $(DESTDIR)$(DATADIR)/carla/widgets
 endif
@@ -607,6 +609,15 @@ endif
 		source/frontend/pluginlist/*.py \
 		$(DESTDIR)$(DATADIR)/carla/pluginlist/
 
+	install -d $(DESTDIR)$(DATADIR)/carla/styles
+	install -d $(DESTDIR)$(DATADIR)/carla/styles/themes
+	install -m 644 \
+		source/frontend/styles/*.py \
+		$(DESTDIR)$(DATADIR)/carla/styles/
+	install -m 644 \
+		source/frontend/styles/themes/*.qss \
+		$(DESTDIR)$(DATADIR)/carla/styles/themes/
+
 	# Adjust LIBDIR and DATADIR value in python code
 	sed $(SED_ARGS) 's?X_LIBDIR_X = None?X_LIBDIR_X = "$(LIBDIR)"?' \
 		$(DESTDIR)$(DATADIR)/carla/carla_shared.py
@@ -672,7 +683,7 @@ endif
 	install -m 644 resources/scalable/carla-control.svg $(DESTDIR)$(DATADIR)/icons/hicolor/scalable/apps
 
 	# Install resources (re-use python files)
-	@for item in common patchcanvas utils widgets dialogs pluginlist \
+	@for item in common patchcanvas styles utils widgets dialogs pluginlist \
 		carla_app.py carla_backend.py carla_backend_qt.py carla_frontend.py carla_host.py \
 		carla_host_control.py carla_settings.py carla_skin.py carla_shared.py carla_utils.py \
 		carla_widgets.py externalui.py qt_compat.py qt_config.py resources_rc.py \

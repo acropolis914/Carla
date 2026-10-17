@@ -29,6 +29,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **fix(ci)**: robust version fallback and Fedora RPM version formatting
   - Fall back to numeric tag/version when triggered on branches so `dpkg-deb` and `rpmbuild` do not fail on non-digit branch names.
   - Convert hyphens to dots in RPM `Version:` field to satisfy RPM specification constraints.
+- **fix(build)**: install `styles` directory and themes in Makefile
+  - Include `styles/` and `styles/themes/*.qss` in `make install` and resource linking so packaged installations find `styles.theme_manager`.
 
 ## [1.0.3] - 2026-10-17
 
