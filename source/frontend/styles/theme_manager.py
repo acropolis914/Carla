@@ -237,6 +237,59 @@ class ThemeManager:
             app.setStyleSheet("")
             if self._original_style:
                 app.setStyle(self._original_style)
+            # Load full Catppuccin theme but keep minimal custom scrollbar rules
+            minimal_qss = """QScrollBar:vertical {
+    border: none;
+    background-color: transparent;
+    width: 8px;
+    margin: 0px;
+    border-radius: 4px;
+}
+QScrollBar::handle:vertical {
+    background-color: #494d64;
+    min-height: 24px;
+    border-radius: 4px;
+}
+QScrollBar::handle:vertical:hover {
+    background-color: #8aadf4;
+}
+QScrollBar:horizontal {
+    border: none;
+    background-color: transparent;
+    height: 8px;
+    margin: 0px;
+    border-radius: 4px;
+}
+QScrollBar::handle:horizontal {
+    background-color: #494d64;
+    min-width: 24px;
+    border-radius: 4px;
+}
+QScrollBar::handle:horizontal:hover {
+    background-color: #8aadf4;
+}
+QPushButton#canvasMenuButton {
+    color: #8aadf4;
+    font-weight: bold;
+}
+QFrame#canvasToolbarSeparator {
+    background-color: #363a4f;
+    border: none;
+    margin: 2px 2px;
+}"""
+            # Load the selected theme QSS to style status bar, background, toolbars, etc.
+            qss_file = self._resolve_theme_file(theme_name)
+            if not qss_file and theme_name != CARLA_DEFAULT_MAIN_APP_THEME:
+                qss_file = self._resolve_theme_file(CARLA_DEFAULT_MAIN_APP_THEME)
+            theme_qss = ""
+            if qss_file and os.path.isfile(qss_file):
+                try:
+                    with open(qss_file, "r", encoding="utf-8") as f:
+                        theme_qss = f.read()
+                except Exception:
+                    theme_qss = ""
+            combined_qss = theme_qss + "\n" + minimal_qss
+            app.setStyleSheet(combined_qss)
             self._notify_theme_changed()
             return
 
@@ -251,11 +304,43 @@ class ThemeManager:
         if qss_file and os.path.isfile(qss_file):
             try:
                 with open(qss_file, "r", encoding="utf-8") as f:
-                    qss_content = f.read()
-                app.setStyleSheet(qss_content)
+                    theme_qss = f.read()
             except Exception as e:
                 print(f"[THEME] Failed to load stylesheet {qss_file}: {e}")
-                app.setStyleSheet("")
+                theme_qss = ""
+            # Minimal rounded thin scrollbars (always applied)
+            minimal_qss = """QScrollBar:vertical {
+    border: none;
+    background-color: transparent;
+    width: 8px;
+    margin: 0px;
+    border-radius: 4px;
+}
+QScrollBar::handle:vertical {
+    background-color: #494d64;
+    min-height: 24px;
+    border-radius: 4px;
+}
+QScrollBar::handle:vertical:hover {
+    background-color: #8aadf4;
+}
+QScrollBar:horizontal {
+    border: none;
+    background-color: transparent;
+    height: 8px;
+    margin: 0px;
+    border-radius: 4px;
+}
+QScrollBar::handle:horizontal {
+    background-color: #494d64;
+    min-width: 24px;
+    border-radius: 4px;
+}
+QScrollBar::handle:horizontal:hover {
+    background-color: #8aadf4;
+}"""
+            combined_qss = theme_qss + "\n" + minimal_qss
+            app.setStyleSheet(combined_qss)
         else:
             app.setStyleSheet("")
 
