@@ -3265,6 +3265,7 @@ class HostWindow(QMainWindow):
             # Dynamically reparent patchbay and rack into the splitter
             self.splitter.addWidget(self.ui.patchbay)
             self.splitter.addWidget(self.ui.rack)
+            self.ui.rack.setMinimumWidth(self.ui.listWidget.minimumWidth() if hasattr(self.ui, "listWidget") and self.ui.listWidget is not None else 200)
             self.ui.patchbay.show()
             self.ui.rack.show()
 
@@ -3707,6 +3708,7 @@ class HostWindow(QMainWindow):
                 from widgets.racklistwidget import RackListItem
                 RackListItem.kMinimumWidth = rackMinWidth
                 self.ui.listWidget.setMinimumWidth(rackMinWidth)
+                self.ui.rack.setMinimumWidth(rackMinWidth)
                 self.ui.listWidget.setSpacing(rackSpacing)
 
             # Restore Modern UI mode (default True)

@@ -1713,9 +1713,12 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
         if hasattr(gCarla, "gui") and gCarla.gui is not None:
             pitem = gCarla.gui.getPluginItem(self.fPluginId)
             if pitem is not None:
-                pitem.setSizeHint(QSize(0, h))
-            if hasattr(gCarla.gui, "ui") and hasattr(gCarla.gui.ui, "listWidget") and gCarla.gui.ui.listWidget is not None:
-                gCarla.gui.ui.listWidget.scheduleDelayedItemsLayout()
+                current_hint = pitem.sizeHint()
+                if current_hint.height() != h:
+                    w = current_hint.width() if current_hint.width() > 0 else 200
+                    pitem.setSizeHint(QSize(w, h))
+                    if hasattr(gCarla.gui, "ui") and hasattr(gCarla.gui.ui, "listWidget") and gCarla.gui.ui.listWidget is not None:
+                        gCarla.gui.ui.listWidget.scheduleDelayedItemsLayout()
 
     def adjustViewableKnobCount(self):
         if self.w_knobs_left is None:
@@ -1769,7 +1772,8 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
         if not self.fAdjustViewableKnobCountScheduled:
             self.fAdjustViewableKnobCountScheduled = True
             QTimer.singleShot(100, self.adjustViewableKnobCount)
-        self.updateRackItemSize()
+        if self.height() != self.getFixedHeight():
+            self.updateRackItemSize()
         QFrame.resizeEvent(self, event)
 
     def timerEvent(self, event):
