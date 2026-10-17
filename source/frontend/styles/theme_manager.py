@@ -13,7 +13,7 @@ CARLA_KEY_MAIN_USE_SYSTEM_THEME = "Main/UseSystemTheme"
 CARLA_DEFAULT_MAIN_USE_SYSTEM_THEME = False
 
 CARLA_KEY_MAIN_APP_THEME = "Main/AppTheme"
-CARLA_DEFAULT_MAIN_APP_THEME = "Catppuccin Mocha"
+CARLA_DEFAULT_MAIN_APP_THEME = "Catppuccin Macchiato"
 
 
 class ThemeManager:
@@ -26,12 +26,16 @@ class ThemeManager:
         self.user_themes_dir = os.path.expanduser("~/.config/clara/themes")
         self._current_theme = None
         self._using_system = False
+        self._original_style = None
 
     @classmethod
     def instance(cls):
         if cls._instance is None:
             cls._instance = ThemeManager()
         return cls._instance
+
+    def is_using_system(self) -> bool:
+        return self._using_system
 
     def get_available_themes(self) -> list[str]:
         """Return a sorted list of unique available theme names discovered from disk."""
@@ -46,13 +50,13 @@ class ThemeManager:
                     themes.add(title)
 
         if not themes:
-            themes.add("Catppuccin Mocha")
+            themes.add("Catppuccin Macchiato")
 
-        # Sort with Catppuccin Mocha first, then alphabetical
+        # Sort with Catppuccin Macchiato first, then alphabetical
         sorted_themes = sorted(list(themes))
-        if "Catppuccin Mocha" in sorted_themes:
-            sorted_themes.remove("Catppuccin Mocha")
-            sorted_themes.insert(0, "Catppuccin Mocha")
+        if "Catppuccin Macchiato" in sorted_themes:
+            sorted_themes.remove("Catppuccin Macchiato")
+            sorted_themes.insert(0, "Catppuccin Macchiato")
         return sorted_themes
 
     def _resolve_theme_file(self, theme_name: str) -> str | None:
@@ -86,9 +90,16 @@ class ThemeManager:
         self._using_system = use_system
         self._current_theme = theme_name
 
+        if self._original_style is None and hasattr(app, "style"):
+            curr_style = app.style()
+            if curr_style:
+                self._original_style = curr_style.objectName()
+
         if use_system:
-            # Revert to system styling: clear injected QSS stylesheet
+            # Revert to system styling: clear injected QSS stylesheet and restore base style
             app.setStyleSheet("")
+            if self._original_style:
+                app.setStyle(self._original_style)
             return
 
         # Ensure a clean consistent baseline Qt widget layout

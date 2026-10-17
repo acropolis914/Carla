@@ -270,29 +270,7 @@ class RackListWidget(QListWidget):
         self.btn_floating_add.setText("+ Add Plugin")
         self.btn_floating_add.setToolTip("Add new plugin to rack")
         self.btn_floating_add.setCursor(Qt.PointingHandCursor)
-        self.btn_floating_add.setStyleSheet("""
-            QPushButton {
-                background: rgba(30, 30, 46, 0.88);
-                color: #cdd6f4;
-                font-family: inherit;
-                font-weight: 600;
-                font-size: 11px;
-                border-radius: 6px;
-                padding: 6px 14px;
-                border: 1px solid rgba(137, 180, 250, 0.35);
-            }
-            QPushButton:hover {
-                background: rgba(49, 50, 68, 0.95);
-                color: #89b4fa;
-                border: 1px solid #89b4fa;
-            }
-            QPushButton:pressed {
-                background: rgba(69, 71, 90, 0.95);
-                color: #b4befe;
-                border: 1px solid #b4befe;
-                padding-top: 7px;
-            }
-        """)
+        self.btn_floating_add.setObjectName("rackFloatingAddButton")
         self.btn_floating_add.clicked.connect(self._onFloatingAddClicked)
         self.btn_floating_add.adjustSize()
         self.btn_floating_add.show()

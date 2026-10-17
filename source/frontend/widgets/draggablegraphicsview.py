@@ -381,19 +381,7 @@ class DraggableGraphicsView(QGraphicsView):
         self.fSearchList.setTextElideMode(Qt.ElideRight)
         self.fSearchList.setWordWrap(False)
         self.fSearchList.setUniformItemSizes(True)
-        self.fSearchList.setStyleSheet(
-            "QListWidget { background: #1c1c1c; color: #ddd; border: 1px solid #444; "
-            "border-radius: 4px; outline: none; font-size: 12px; }"
-            "QListWidget::item { padding: 4px 8px; }"
-            "QListWidget::item:selected, QListWidget::item:hover { background: #89b4fa; color: #11111b; font-weight: bold; }"
-            "QScrollBar:vertical { background: #1c1c1c; width: 8px; }"
-            "QScrollBar::handle:vertical { background: #585b70; border-radius: 4px; }"
-            "QScrollBar::handle:vertical:hover { background: #89b4fa; }"
-            "QScrollBar:horizontal { background: #1c1c1c; height: 8px; }"
-            "QScrollBar::handle:horizontal { background: #585b70; border-radius: 4px; }"
-            "QScrollBar::handle:horizontal:hover { background: #89b4fa; }"
-            "QScrollBar::add-line, QScrollBar::sub-line { height: 0px; width: 0px; }"
-        )
+        self.fSearchList.setObjectName("canvasNodeSearchList")
         self.fSearchList.hide()
 
         self.fSearchList.itemClicked.connect(self._onSearchItemClicked)

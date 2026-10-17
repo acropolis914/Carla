@@ -447,23 +447,7 @@ class HostWindow(QMainWindow):
         # Set up GUI (rack)
 
         self.ui.listWidget.setHostAndParent(self.host, self)
-        self.ui.listWidget.setStyleSheet("""
-            QListWidget {
-                background-color: #11111b;
-                border: none;
-                outline: none;
-                padding: 6px;
-            }
-            QListWidget::item {
-                background: transparent;
-                border: none;
-                margin-bottom: 5px;
-            }
-            QListWidget::item:selected {
-                background: transparent;
-                border: none;
-            }
-        """)
+        self.ui.listWidget.setObjectName("rackListWidget")
 
         sb = self.ui.listWidget.verticalScrollBar()
         self.ui.rackScrollBar.setMinimum(sb.minimum())
@@ -3301,54 +3285,65 @@ class HostWindow(QMainWindow):
                 if logs_idx != -1:
                     self.ui.tabWidget.removeTab(logs_idx)
 
-                # Modern flush styling: seamless flow between patchbay and rack without borders
-                bg_hex = "#181825"
-                if hasattr(patchcanvas, "theme") and hasattr(patchcanvas.theme, "canvas_bg"):
-                    bg_hex = patchcanvas.theme.canvas_bg.name()
+                # Only apply custom flush styling if not using system desktop theme
+                from styles.theme_manager import theme_manager
+                if not theme_manager.is_using_system():
+                    bg_hex = "#181825"
+                    if hasattr(patchcanvas, "theme") and hasattr(patchcanvas.theme, "canvas_bg"):
+                        bg_hex = patchcanvas.theme.canvas_bg.name()
 
-                self.splitter.setStyleSheet(f"""
-                    QSplitter {{
-                        background: {bg_hex};
-                    }}
-                    QSplitter::handle {{
-                        background-color: #313244;
-                        width: 1px;
-                    }}
-                    QSplitter::handle:hover {{
-                        background-color: #89b4fa;
-                        width: 3px;
-                    }}
-                """)
-                self.ui.tabWidget.setStyleSheet("""
-                    QTabWidget::pane {
-                        border: none;
-                        background: transparent;
-                        margin: 0px;
-                        padding: 0px;
-                    }
-                """)
-                self.ui.frame.setFrameShape(QFrame.NoFrame)
-                self.ui.frame.setStyleSheet(f"QFrame#frame {{ background-color: {bg_hex}; border: none; }}")
-                self.ui.rack.setStyleSheet(f"QWidget#rack {{ background-color: {bg_hex}; border: none; }}")
-                self.ui.patchbay.setStyleSheet(f"QWidget#patchbay {{ background-color: {bg_hex}; border: none; }}")
-                self.ui.graphicsView.setStyleSheet("QGraphicsView { border: none; outline: none; }")
-                self.ui.listWidget.setStyleSheet(f"""
-                    QListWidget {{
-                        background-color: {bg_hex};
-                        border: none;
-                        outline: none;
-                        padding: 4px;
-                    }}
-                    QListWidget::item {{
-                        background: transparent;
-                        border: none;
-                        margin-bottom: 5px;
-                    }}
-                    QListWidget::item:selected {{
-                        background: transparent;
-                        border: none;
-                    }}
-                """)
+                    self.splitter.setStyleSheet(f"""
+                        QSplitter {{
+                            background: {bg_hex};
+                        }}
+                        QSplitter::handle {{
+                            background-color: #313244;
+                            width: 1px;
+                        }}
+                        QSplitter::handle:hover {{
+                            background-color: #89b4fa;
+                            width: 3px;
+                        }}
+                    """)
+                    self.ui.tabWidget.setStyleSheet("""
+                        QTabWidget::pane {
+                            border: none;
+                            background: transparent;
+                            margin: 0px;
+                            padding: 0px;
+                        }
+                    """)
+                    self.ui.frame.setFrameShape(QFrame.NoFrame)
+                    self.ui.frame.setStyleSheet(f"QFrame#frame {{ background-color: {bg_hex}; border: none; }}")
+                    self.ui.rack.setStyleSheet(f"QWidget#rack {{ background-color: {bg_hex}; border: none; }}")
+                    self.ui.patchbay.setStyleSheet(f"QWidget#patchbay {{ background-color: {bg_hex}; border: none; }}")
+                    self.ui.graphicsView.setStyleSheet("QGraphicsView { border: none; outline: none; }")
+                    self.ui.listWidget.setStyleSheet(f"""
+                        QListWidget {{
+                            background-color: {bg_hex};
+                            border: none;
+                            outline: none;
+                            padding: 4px;
+                        }}
+                        QListWidget::item {{
+                            background: transparent;
+                            border: none;
+                            margin-bottom: 5px;
+                        }}
+                        QListWidget::item:selected {{
+                            background: transparent;
+                            border: none;
+                        }}
+                    """)
+                else:
+                    self.splitter.setStyleSheet("")
+                    self.ui.tabWidget.setStyleSheet("")
+                    self.ui.frame.setFrameShape(QFrame.StyledPanel)
+                    self.ui.frame.setStyleSheet("")
+                    self.ui.rack.setStyleSheet("")
+                    self.ui.patchbay.setStyleSheet("")
+                    self.ui.graphicsView.setStyleSheet("")
+                    self.ui.listWidget.setStyleSheet("")
             else:
                 self.splitter.setStyleSheet("")
                 self.ui.tabWidget.setStyleSheet("")
@@ -3357,6 +3352,7 @@ class HostWindow(QMainWindow):
                 self.ui.rack.setStyleSheet("")
                 self.ui.patchbay.setStyleSheet("")
                 self.ui.graphicsView.setStyleSheet("")
+                self.ui.listWidget.setStyleSheet("")
 
             splitTabIndex = self.ui.tabWidget.indexOf(self.tabSplit)
             if splitTabIndex == -1:

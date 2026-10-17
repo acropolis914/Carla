@@ -708,10 +708,6 @@ class CanvasMinimapOverlay(QFrame):
         super().__init__(parent)
         self.setObjectName("miniCanvasFloatFrame")
         self.setFrameShape(QFrame.StyledPanel)
-        self.setStyleSheet(
-            "QFrame#miniCanvasFloatFrame { background-color: rgba(24,24,37,0.86); "
-            "border: 1px solid rgba(137,180,250,0.35); border-radius: 6px; }"
-        )
 
         self._collapsed = False
         self._drag_origin = None

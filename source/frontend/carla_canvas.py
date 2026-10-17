@@ -393,32 +393,6 @@ class CanvasToolBarOverlay(QFrame):
 • <b>Right-Click Node</b>: Node Actions & Align""")
         layout.addWidget(self.btnHelp)
 
-        self.setStyleSheet("""
-            QFrame#canvas_toolbar_overlay {
-                background-color: rgba(24, 24, 37, 0.94);
-                border: 1px solid #45475a;
-                border-radius: 8px;
-            }
-            QPushButton {
-                background: transparent;
-                border: none;
-                border-radius: 5px;
-                color: #a6adc8;
-                font-weight: bold;
-                text-align: center;
-                padding: 0px;
-                margin: 0px;
-            }
-            QPushButton:hover {
-                background-color: rgba(69, 71, 90, 0.7);
-                color: #cdd6f4;
-            }
-            QPushButton:checked {
-                background-color: #89b4fa;
-                color: #11111b;
-            }
-        """)
-
         self.updateActiveButton(0)
         self.adjustSize()
 
@@ -709,64 +683,14 @@ class CanvasContextToolBarOverlay(QFrame):
         if not self.font_family:
             self.font.setPointSize(10)
 
-        self.setStyleSheet("""
-            QFrame#canvas_context_toolbar_overlay {
-                background-color: rgba(24, 24, 37, 0.94);
-                border: 1px solid #45475a;
-                border-radius: 8px;
-            }
-            QPushButton {
-                background: transparent;
-                border: none;
-                border-radius: 4px;
-                color: #cdd6f4;
-                text-align: center;
-                padding: 0px;
-                margin: 0px;
-            }
-            QPushButton:hover {
-                background-color: rgba(69, 71, 90, 0.85);
-                color: #ffffff;
-            }
-            QPushButton:pressed {
-                background-color: #89b4fa;
-                color: #11111b;
-            }
-            QPushButton:checked {
-                background-color: rgba(137, 180, 250, 0.35);
-                color: #89b4fa;
-            }
-            QLabel {
-                color: #a6adc8;
-                font-size: 11px;
-                font-weight: bold;
-                padding: 0 4px;
-            }
-        """)
-
         # Persistent quick-search field (kept out of the rebuilt action items so
         # it survives selection changes). Rounded textbox housed in the bar.
         self.searchEdit = QLineEdit(self)
+        self.searchEdit.setObjectName("canvasSearchEdit")
         self.searchEdit.setPlaceholderText("Search nodes…")
         self.searchEdit.setClearButtonEnabled(True)
         self.searchEdit.setFixedHeight(24)
         self.searchEdit.setFixedWidth(170)
-        self.searchEdit.setStyleSheet("""
-            QLineEdit {
-                background-color: rgba(17, 17, 27, 0.92);
-                color: #cdd6f4;
-                border: 1px solid #585b70;
-                border-radius: 11px;
-                padding: 1px 10px;
-                font-size: 12px;
-                selection-background-color: #89b4fa;
-                selection-color: #11111b;
-            }
-            QLineEdit:focus {
-                border: 1px solid #89b4fa;
-                background-color: rgba(30, 30, 46, 0.98);
-            }
-        """)
         self.searchEdit.textChanged.connect(self._slot_search_changed)
         self.searchEdit.returnPressed.connect(self._slot_search_accept)
         self.searchEdit.installEventFilter(self)
@@ -1011,29 +935,6 @@ class CanvasContextToolBarOverlay(QFrame):
 
     def _slot_show_color_menu(self, source_button, nodes):
         menu = QMenu(self)
-        menu.setStyleSheet("""
-            QMenu {
-                background-color: #181825;
-                border: 1px solid #45475a;
-                border-radius: 6px;
-                padding: 4px;
-            }
-            QMenu::item {
-                color: #cdd6f4;
-                padding: 4px 18px 4px 10px;
-                border-radius: 4px;
-                font-size: 11px;
-            }
-            QMenu::item:selected {
-                background-color: #313244;
-                color: #ffffff;
-            }
-            QMenu::separator {
-                height: 1px;
-                background-color: #45475a;
-                margin: 3px 6px;
-            }
-        """)
 
         presets = [
             ("Default Dark", "#1e1e2e"),
@@ -1075,32 +976,6 @@ class CanvasContextToolBarOverlay(QFrame):
 
     def _slot_show_arrange_menu(self, source_button, count):
         menu = QMenu(self)
-        menu.setStyleSheet("""
-            QMenu {
-                background-color: #181825;
-                border: 1px solid #45475a;
-                border-radius: 6px;
-                padding: 4px;
-            }
-            QMenu::item {
-                color: #cdd6f4;
-                padding: 4px 18px 4px 10px;
-                border-radius: 4px;
-                font-size: 11px;
-            }
-            QMenu::item:selected {
-                background-color: #313244;
-                color: #ffffff;
-            }
-            QMenu::item:disabled {
-                color: #6c7086;
-            }
-            QMenu::separator {
-                height: 1px;
-                background-color: #45475a;
-                margin: 3px 6px;
-            }
-        """)
 
         has_selection = count > 0
 

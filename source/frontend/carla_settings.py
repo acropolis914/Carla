@@ -724,156 +724,7 @@ class CarlaSettingsW(QDialog):
                 lbl.setSizePolicy(_pol)
                 lbl.setStyleSheet("color: #7f849c;")
 
-        # Modern Catppuccin Dialog & Sidebar Theme
-        self.setStyleSheet("""
-            QDialog {
-                background: #1e1e2e;
-                color: #cdd6f4;
-            }
-            QTableWidget#lw_page {
-                background: #181825;
-                border: none;
-                border-right: 1px solid rgba(255, 255, 255, 0.05);
-                padding: 6px 4px;
-                outline: 0;
-                gridline-color: transparent;
-            }
-            QTableWidget#lw_page::item {
-                color: #cdd6f4;
-                border-radius: 5px;
-                padding: 6px 10px;
-                margin: 1px 2px;
-                border: none;
-                outline: none;
-            }
-            QTableWidget#lw_page::item:hover {
-                background: rgba(255, 255, 255, 0.08);
-                color: #ffffff;
-            }
-            QTableWidget#lw_page::item:selected {
-                background: #89b4fa;
-                color: #11111b;
-            }
-            QGroupBox {
-                border: 1px solid rgba(255, 255, 255, 0.06);
-                border-radius: 6px;
-                margin-top: 14px;
-                padding-top: 14px;
-                font-weight: 600;
-                color: #89b4fa;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                subcontrol-position: top left;
-                padding: 0 6px;
-            }
-            QPushButton {
-                background: #313244;
-                color: #cdd6f4;
-                border: 1px solid rgba(255, 255, 255, 0.08);
-                border-radius: 4px;
-                padding: 4px 12px;
-                font-size: 11px;
-                font-weight: 500;
-            }
-            QPushButton:hover {
-                background: #45475a;
-                color: #ffffff;
-            }
-            QPushButton:pressed {
-                background: #585b70;
-            }
-            QSlider::groove:horizontal {
-                background: #313244;
-                height: 4px;
-                border-radius: 2px;
-            }
-            QSlider::sub-page:horizontal {
-                background: #89b4fa;
-                height: 4px;
-                border-radius: 2px;
-            }
-            QSlider::handle:horizontal {
-                background: #cdd6f4;
-                border: 1px solid #89b4fa;
-                width: 12px;
-                height: 12px;
-                margin: -4px 0;
-                border-radius: 6px;
-            }
-            QComboBox {
-                background: #313244;
-                color: #cdd6f4;
-                border: 1px solid rgba(255, 255, 255, 0.08);
-                border-radius: 4px;
-                padding: 3px 8px;
-                min-height: 18px;
-            }
-            QComboBox:hover {
-                border: 1px solid #89b4fa;
-            }
-            QComboBox::drop-down {
-                border: none;
-                width: 18px;
-            }
-            QComboBox QAbstractItemView {
-                background: #1e1e2e;
-                color: #cdd6f4;
-                border: 1px solid #45475a;
-                outline: 0;
-                selection-background-color: #89b4fa;
-                selection-color: #11111b;
-            }
-            QCheckBox {
-                color: #cdd6f4;
-                spacing: 6px;
-            }
-            QSpinBox, QDoubleSpinBox, QLineEdit {
-                background: #313244;
-                color: #cdd6f4;
-                border: 1px solid rgba(255, 255, 255, 0.08);
-                border-radius: 4px;
-                padding: 2px 6px;
-                selection-background-color: #89b4fa;
-                selection-color: #11111b;
-            }
-            QSpinBox:focus, QDoubleSpinBox:focus, QLineEdit:focus {
-                border: 1px solid #89b4fa;
-            }
-            QScrollBar:vertical {
-                background: transparent;
-                width: 10px;
-                margin: 0;
-            }
-            QScrollBar::handle:vertical {
-                background: #45475a;
-                border-radius: 5px;
-                min-height: 24px;
-            }
-            QScrollBar::handle:vertical:hover {
-                background: #89b4fa;
-            }
-            QScrollBar:horizontal {
-                background: transparent;
-                height: 10px;
-                margin: 0;
-            }
-            QScrollBar::handle:horizontal {
-                background: #45475a;
-                border-radius: 5px;
-                min-width: 24px;
-            }
-            QScrollBar::handle:horizontal:hover {
-                background: #89b4fa;
-            }
-            QScrollBar::add-line, QScrollBar::sub-line {
-                height: 0;
-                width: 0;
-            }
-            QScrollBar::add-page, QScrollBar::sub-page {
-                background: transparent;
-            }
-        """)
+        # Dialog inherits theme from ThemeManager / QApplication stylesheet
 
         for i in range(host.get_engine_driver_count()):
             self.ui.cb_engine_audio_driver.addItem(host.get_engine_driver_name(i))
@@ -973,6 +824,12 @@ class CarlaSettingsW(QDialog):
                     use_system = ch_sys.isChecked()
                     chosen_theme = cb_theme.currentText()
                     theme_manager.apply_theme(chosen_theme, use_system=use_system)
+                    try:
+                        from carla_shared import gCarla
+                        if hasattr(gCarla, "gui") and gCarla.gui is not None and hasattr(gCarla.gui, "_update_split_tab_views"):
+                            gCarla.gui._update_split_tab_views()
+                    except Exception:
+                        pass
 
                 ch_sys.toggled.connect(_on_live_theme_change)
                 cb_theme.currentTextChanged.connect(_on_live_theme_change)

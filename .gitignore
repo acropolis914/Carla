@@ -7,6 +7,7 @@
 .cache/
 .kdev4/
 .DS_Store
+.opencode/
 
 # Temp files
 *~

@@ -267,6 +267,7 @@ GENERAL_SCHEMA = {
                             "key": CARLA_KEY_MAIN_APP_THEME,
                             "default": CARLA_DEFAULT_MAIN_APP_THEME,
                             "options": [
+                                "Catppuccin Macchiato",
                                 "Catppuccin Mocha",
                                 "Catppuccin Latte",
                                 "Classic Dark",

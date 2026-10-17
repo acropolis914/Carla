@@ -258,7 +258,7 @@ def getThemeName(idx):
 
 def getDefaultThemeName():
     names = getThemeNames()
-    return names[0] if names else "Modern Dark"
+    return names[0] if names else "Catppuccin Macchiato"
 
 
 def getDefaultTheme():

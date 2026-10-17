@@ -20,6 +20,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-18 00:30:00
+- **feat(theme)**: Catppuccin Macchiato default, roundedness, minimal scrollbars, and full QSS data-driven styling
+  - Set `Catppuccin Macchiato` as default theme for application interface and patchbay canvas.
+  - Added modern 6–8px component roundedness and minimal 8px scrollbars with subtle track and contrast hover handles across all themes.
+  - Extracted hardcoded inline stylesheets from Python files into theme stylesheets (`catppuccin_macchiato.qss`, `catppuccin_mocha.qss`, `catppuccin_latte.qss`, `classic_dark.qss`) targeting semantic IDs (`#miniCanvasFloatFrame`, `#canvasNodeSearchList`, `#rackListWidget`, `#rackFloatingAddButton`, `#canvasSearchEdit`).
+  - Added pure native Qt system theme fallback when "Use system desktop theme" is enabled, clearing inline overrides and restoring the system Qt style.
+
 ### 2026-10-17 15:40:00
 - **feat(ui)**: data-driven QSS theming engine and theme selector
   - Added `styles/theme_manager.py` discovering and hot-reloading `.qss` theme files dynamically from disk (`source/frontend/styles/themes/` and `~/.config/clara/themes/`).
