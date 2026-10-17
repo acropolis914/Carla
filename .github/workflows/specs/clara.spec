@@ -35,7 +35,6 @@ make install PREFIX=/usr DESTDIR=%{buildroot} DEFAULT_QT=6
 /usr/include/carla
 /usr/lib/carla
 /usr/lib/lv2/carla.lv2
-%{_libdir}/vst/carla.vst
 /usr/lib/pkgconfig/*
 /usr/share/*
 
