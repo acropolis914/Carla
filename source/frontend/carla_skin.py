@@ -3043,7 +3043,8 @@ class PluginSlot_Minimal(PluginSlot_Default):
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setWidget(self.sliders_container)
-        self.scroll_area.setStyleSheet("QScrollArea { border: none; background: transparent; }")
+        from styles.theme_manager import MINIMAL_SCROLLBAR_QSS
+        self.scroll_area.setStyleSheet("QScrollArea { border: none; background: transparent; }\n" + MINIMAL_SCROLLBAR_QSS)
 
         self.ui.verticalLayout.addWidget(self.scroll_area, 1)
 
