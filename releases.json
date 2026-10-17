@@ -1,6 +1,28 @@
 {
-  "latest": "1.0.2",
+  "latest": "1.0.3",
   "releases": {
+    "1.0.3": {
+      "version": "1.0.3",
+      "date": "2026-10-17",
+      "urgency": "suggested",
+      "summary": "Rack width stability on half-screen tiling, signal-flow peak-hold decay, and gradient-tinted cable pulses",
+      "changes": [
+        "Eliminated rack width blinking and rightward shifting on window focus/defocus under tiling window managers (Hyprland)",
+        "Flexible statusbar controls dropping window minimum width from 824px to 420px for seamless half-screen tiling",
+        "Peak-hold buffer with exponential decay for signal flow pulses to eliminate flickering on transient audio",
+        "Source-to-destination gradient color interpolation for traveling cable pulses"
+      ],
+      "installation": {
+        "appimage": "Download `Clara-1.0.3-x86_64.AppImage`, then: `chmod +x Clara-1.0.3-x86_64.AppImage && ./Clara-1.0.3-x86_64.AppImage`",
+        "flatpak": "Download/run the Flatpak bundle: `flatpak install --user com.github.acropolis914.Clara.flatpak`",
+        "arch": "Install via AUR / PKGBUILD: `paru -S clara-bin` (or `clara-git`)",
+        "ubuntu": "Download `.deb` and run: `sudo dpkg -i clara-ubuntu-*.deb && sudo apt-get install -f`",
+        "fedora": "Download `.rpm` and run: `sudo dnf install clara-*.rpm`",
+        "void": "Extract tarball: `tar --zstd -xvf clara-void-*.tar.zst -C /`",
+        "alpine": "Extract tarball: `tar --zstd -xvf clara-alpine-*.tar.zst -C /`",
+        "nix": "Run directly via Flake: `nix run github:acropolis914/Clara`"
+      }
+    },
     "1.0.2": {
       "version": "1.0.2",
       "date": "2026-10-17",

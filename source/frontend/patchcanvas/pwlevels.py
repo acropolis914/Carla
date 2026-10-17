@@ -19,6 +19,7 @@
 
 import ctypes
 import ctypes.util
+import time
 
 # --- libpulse constants -------------------------------------------------------------------------------------
 
@@ -232,7 +233,31 @@ class PulsePeakSampler(object):
     def level_for(self, name):
         if not name:
             return 0.0
-        return self._levels.get(name, 0.0)
+        # Peak-hold envelope smoothing: decay levels over time so transient/quiet audio
+        # doesn't immediately drop to zero and cause rapid cable pulse flicker.
+        now = time.monotonic()
+        if not hasattr(self, "_held_levels"):
+            self._held_levels = {}
+            self._held_times = {}
+
+        raw = self._levels.get(name, 0.0)
+        held = self._held_levels.get(name, 0.0)
+        last_t = self._held_times.get(name, now)
+        dt = max(0.0, now - last_t)
+
+        if raw >= held:
+            held = raw
+            self._held_times[name] = now
+        else:
+            # Hold peak for 150ms, then decay smoothly (~70% per 100ms)
+            if dt > 0.15:
+                decay_rate = 0.85 ** ((dt - 0.15) / 0.04)
+                held = max(raw, held * decay_rate)
+                if held < 0.005:
+                    held = 0.0
+
+        self._held_levels[name] = held
+        return held
 
     def levels(self):
         return dict(self._levels)

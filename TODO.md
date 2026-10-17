@@ -34,8 +34,8 @@
 - [x] `[Diff: 1]` Fix/feat: Patchbay canvasbox color changes dynamically update connected canvas line gradients immediately without requiring redraw or node moves
 - [x] `[Diff: 3]` feat: Visual signal/event flow animations — pulsing/glow animations on active nodes and animated traveling pulses or particles along cables when audio/MIDI events are transmitted
 - [x] `[Diff: 2]` Fix: OpenGL-first canvas rendering — default to hardware acceleration, eliminate artificial software-render throttling, fix PulseAudio peak-detect read callback in `pwlevels.py`, and reapply clean UI fixes
-- [ ] `[Diff: 2]` Fix: Signal-flow pulses sometimes disappear on quiet/transient audio — need peak-hold envelope smoothing so brief silences do not drop a node below the pulse threshold (flicker/stutter)
-- [ ] `[Diff: 2]` feat: Tint signal-flow glows/pulses with the correct colors along the chain — blend from the source node color through the cable to the destination node color (per-endpoint gradient) instead of the single fixed cyan/white
+- [x] `[Diff: 2]` Fix: Signal-flow pulses sometimes disappear on quiet/transient audio — need peak-hold envelope smoothing so brief silences do not drop a node below the pulse threshold (flicker/stutter)
+- [x] `[Diff: 2]` feat: Tint signal-flow glows/pulses with the correct colors along the chain — blend from the source node color through the cable to the destination node color (per-endpoint gradient) instead of the single fixed cyan/white
 
 
 ---
@@ -55,7 +55,7 @@
 ---
 
 ## 📊 Status Bar & Diagnostics
-- [ ] `[Diff: 2]` feat: Reposition/resize bottom bar audio info (sample rate, buffer size, DSP load, etc.) — make more compact or relocate to settings
+- [x] `[Diff: 2]` feat: Reposition/resize bottom bar audio info (sample rate, buffer size, DSP load, etc.) — make flexible and compact for tiling
 - [ ] `[Diff: 2]` feat: Mini DSP load graph over time with side label and hover tooltip
 - [ ] `[Diff: 2]` feat: Floating sidebar quick settings overlay for patchbay with integrated search bar
 
@@ -85,8 +85,7 @@
 ---
 
 ## 📦 Packaging & Distribution
-- [ ] `[Diff: 1]` Create and maintain `clara-bin` package on AUR for rapid binary installations alongside `clara-git`
-- [ ] `[Diff: 3]` feat: AppImage build with **cross-compilation** (x86_64 + aarch64 via qemu/container), bundling the latest Qt6 libs + PyQt6 bindings (linuxdeploy + linuxdeploy-plugin-qt + appimagetool) so it runs on current distros
-- [ ] `[Diff: 2]` feat: Flatpak manifest (`org.kde.Platform` runtime) + local build script under `scripts/`
-- [ ] `[Diff: 2]` feat: Local `git push` **tag** hook (installed into `.git/hooks/` from `scripts/`) that builds the Flatpak **and** AppImage locally on every `v*` tag push
-- [ ] `[Diff: 1]` Decide Qt bundling policy: bundle libQt6 + PyQt6 inside the AppImage (recommended for portability) vs rely on system Qt
+- [x] `[Diff: 1]` Create and maintain `clara-bin` package on AUR for rapid binary installations alongside `clara-git`
+- [x] `[Diff: 3]` feat: AppImage build with standalone builder bundling CPython + PyQt6/Qt6
+- [x] `[Diff: 2]` feat: Flatpak manifest (`org.kde.Platform` 6.8 runtime) + automated CI workflow
+- [x] `[Diff: 1]` Decide Qt bundling policy: bundle libQt6 + PyQt6 inside AppImage/Flatpak for modern system portability

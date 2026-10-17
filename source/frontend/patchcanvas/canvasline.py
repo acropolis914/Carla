@@ -335,6 +335,43 @@ class CanvasLine(QGraphicsPathItem):
         head_radius = 3.5 + 9.0 * level
         alpha = int(min(255.0, 150.0 + 105.0 * level))
 
+        # Interpolate pulse color along connection chain: blend source node color to destination node color
+        c1 = getattr(self, "_pulse_c1", None)
+        c2 = getattr(self, "_pulse_c2", None)
+        if c1 is None or c2 is None:
+            c1 = QColor(140, 200, 255)
+            c2 = QColor(140, 200, 255)
+            try:
+                for port, attr in ((self.item1, "_pulse_c1"), (self.item2, "_pulse_c2")):
+                    col = None
+                    parent = port.parentItem() if port is not None else None
+                    if parent is not None and hasattr(parent, "getCustomColor"):
+                        custom_c = parent.getCustomColor()
+                        if custom_c is not None:
+                            col = QColor(custom_c)
+                    if col is None and port is not None:
+                        ptype = port.getPortType()
+                        theme = canvas.theme
+                        if ptype == PORT_TYPE_AUDIO_JACK:
+                            col = theme.line_audio_jack
+                        elif ptype in (PORT_TYPE_MIDI_JACK, PORT_TYPE_MIDI_ALSA):
+                            col = theme.line_midi_jack
+                        elif ptype == PORT_TYPE_PARAMETER:
+                            col = theme.line_parameter
+                    if col is not None:
+                        setattr(self, attr, col)
+                c1 = getattr(self, "_pulse_c1", c1)
+                c2 = getattr(self, "_pulse_c2", c2)
+            except Exception:
+                pass
+
+        def _interp_color(pos):
+            # Blend c1 -> c2 along path parameter pos
+            r = int(c1.red() + (c2.red() - c1.red()) * pos)
+            g = int(c1.green() + (c2.green() - c1.green()) * pos)
+            b = int(c1.blue() + (c2.blue() - c1.blue()) * pos)
+            return r, g, b
+
         # Short comet tail trailing behind the head for a clearer sense of flow
         tail_len = 0.05 + 0.10 * level
         for i in range(1, 5):
@@ -348,9 +385,11 @@ class CanvasLine(QGraphicsPathItem):
             frac = 1.0 - i / 5.0
             r = head_radius * frac
             a = int(alpha * frac * 0.6)
+            tr, tg, tb = _interp_color(tt)
             tail_grad = QRadialGradient(tp, r)
             tail_grad.setColorAt(0.0, QColor(255, 255, 255, a))
-            tail_grad.setColorAt(1.0, QColor(140, 200, 255, 0))
+            tail_grad.setColorAt(0.5, QColor(tr, tg, tb, int(a * 0.6)))
+            tail_grad.setColorAt(1.0, QColor(tr, tg, tb, 0))
             painter.setPen(Qt.NoPen)
             painter.setBrush(tail_grad)
             painter.drawEllipse(tp, r, r)
@@ -362,10 +401,12 @@ class CanvasLine(QGraphicsPathItem):
         if point is None:
             return
 
+        pr, pg, pb = _interp_color(t)
         gradient = QRadialGradient(point, head_radius)
         gradient.setColorAt(0.0, QColor(255, 255, 255, alpha))
-        gradient.setColorAt(0.4, QColor(180, 225, 255, int(alpha * 0.7)))
-        gradient.setColorAt(1.0, QColor(140, 200, 255, 0))
+        gradient.setColorAt(0.35, QColor(min(255, pr + 60), min(255, pg + 60), min(255, pb + 60), int(alpha * 0.85)))
+        gradient.setColorAt(0.7, QColor(pr, pg, pb, int(alpha * 0.5)))
+        gradient.setColorAt(1.0, QColor(pr, pg, pb, 0))
 
         painter.setPen(Qt.NoPen)
         painter.setBrush(gradient)

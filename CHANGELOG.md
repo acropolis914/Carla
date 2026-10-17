@@ -20,6 +20,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-10-17
+
+### 2026-10-17 11:15:00
+- **feat(canvas)**: peak-hold pulse smoothing and gradient-tinted signal flow
+  - `pwlevels.py`: implemented 150ms peak-hold buffer with exponential decay (`0.85 ** ((dt - 0.15) / 0.04)`) to eliminate rapid signal flickering and dropouts during transient audio.
+  - `canvasline.py`: interpolated RGB colors between source and destination nodes along path parameter `t` (`_interp_color(t)`), rendering cable traveling comets with full source-to-destination gradient tinting.
+
 ### 2026-10-17 05:58:00
 - **fix(rack)**: eliminate rack width blinking and defocus position jumping
   - Guard `updateRackItemSize()` in `AbstractPluginSlot.resizeEvent` to only trigger when height changes, breaking the re-layout loop between slot frames and `QListWidget`.
