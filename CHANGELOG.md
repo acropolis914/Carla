@@ -24,6 +24,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **fix(rack)**: eliminate rack width blinking and defocus position jumping
   - Guard `updateRackItemSize()` in `AbstractPluginSlot.resizeEvent` to only trigger when height changes, breaking the re-layout loop between slot frames and `QListWidget`.
   - Maintain symmetric splitter resizing and enforce container `minimumWidth` so Hyprland border adjustments on focus/defocus don't shift the rack rightward.
+  - Make statusbar indicators and combo boxes flexible with `QSizePolicy.Ignored` / `Minimum` so the window minimum width drops from 824px to 420px, allowing half-screen tiling without layout clipping.
 
 ### 2026-10-17 05:32:00
 - **feat(settings)**: declarative schema overhaul with responsive 2-column layout and UI refinements

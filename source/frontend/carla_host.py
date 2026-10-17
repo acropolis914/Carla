@@ -74,6 +74,7 @@ from qt_compat import (
     QPoint,
     QPointF,
     QRectF,
+    QSizePolicy,
     QSplitter,
     QSurfaceFormat,
     QSystemTrayIcon,
@@ -988,13 +989,34 @@ class HostWindow(QMainWindow):
         # Autosave and project status indicators in statusbar
         self.label_save_status = QLabel(self.ui.tw_statusbar)
         self.label_save_status.setObjectName("label_save_status")
-        self.label_save_status.setStyleSheet("font-weight: bold; margin-left: 8px; margin-right: 4px;")
+        self.label_save_status.setStyleSheet("font-weight: bold; margin-left: 6px; margin-right: 4px;")
+        self.label_save_status.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
+        self.label_save_status.setMinimumWidth(0)
         self.ui.horizontalLayout_3.addWidget(self.label_save_status)
 
         self.label_autosave_status = QLabel(self.ui.tw_statusbar)
         self.label_autosave_status.setObjectName("label_autosave_status")
-        self.label_autosave_status.setStyleSheet("color: gray; margin-left: 4px; margin-right: 8px;")
+        self.label_autosave_status.setStyleSheet("color: gray; margin-left: 4px; margin-right: 6px;")
+        self.label_autosave_status.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Fixed)
+        self.label_autosave_status.setMinimumWidth(0)
         self.ui.horizontalLayout_3.addWidget(self.label_autosave_status)
+
+        # Allow statusbar controls to flex on narrow screens (e.g. half-screen tiling)
+        if hasattr(self.ui, "pb_dsp_load") and self.ui.pb_dsp_load is not None:
+            self.ui.pb_dsp_load.setMinimumWidth(40)
+            self.ui.pb_dsp_load.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        if hasattr(self.ui, "cb_buffer_size") and self.ui.cb_buffer_size is not None:
+            self.ui.cb_buffer_size.setMinimumWidth(40)
+            self.ui.cb_buffer_size.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+        if hasattr(self.ui, "cb_sample_rate") and self.ui.cb_sample_rate is not None:
+            self.ui.cb_sample_rate.setMinimumWidth(40)
+            self.ui.cb_sample_rate.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+        if hasattr(self.ui, "b_xruns") and self.ui.b_xruns is not None:
+            self.ui.b_xruns.setMinimumWidth(40)
+            self.ui.b_xruns.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+        if hasattr(self.ui, "tw_statusbar") and self.ui.tw_statusbar is not None:
+            self.ui.tw_statusbar.setMinimumWidth(0)
+
         self.updateSessionStatusIndicators()
 
         # For NSM we wait for the open message
