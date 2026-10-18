@@ -547,6 +547,15 @@ elif qt_config == 6:
     Qt.ScrollBarAsNeeded = Qt.ScrollBarPolicy.ScrollBarAsNeeded
 
     # --------------------------------------------------------------------------------------------------------
+    # Qt.ShortcutContext
+    # --------------------------------------------------------------------------------------------------------
+
+    Qt.WidgetShortcut = Qt.ShortcutContext.WidgetShortcut
+    Qt.WidgetWithChildrenShortcut = Qt.ShortcutContext.WidgetWithChildrenShortcut
+    Qt.WindowShortcut = Qt.ShortcutContext.WindowShortcut
+    Qt.ApplicationShortcut = Qt.ShortcutContext.ApplicationShortcut
+
+    # --------------------------------------------------------------------------------------------------------
     # Qt.SortOrder
     # --------------------------------------------------------------------------------------------------------
 

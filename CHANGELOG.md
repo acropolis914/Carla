@@ -20,6 +20,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-18 08:38:00
+- **fix(shortcuts)**: restore `Ctrl+S` and `Ctrl+Shift+S` save functionality across all focus contexts
+  - Registered window-level actions and dedicated `QShortcut` bindings with `Qt.ApplicationShortcut` context so saving triggers even when the menubar is hidden (Modern UI Mode / `Ctrl+M`).
+  - Added `Qt.ShortcutContext` compatibility aliases in `qt_compat.py` for PyQt6.
+  - Kept project save and open actions active during startup and engine stopped states instead of disabling them.
+  - Added `Ctrl+S` / `Ctrl+Shift+S` event interception in `DraggableGraphicsView`, `QGraphicsScene`, and `RackListWidget` to prevent canvas/rack focus from swallowing save events.
+
 ### 2026-10-18 08:18:00
 - **fix(ui)**: resolve `Qt.WaitCursor` PyQt6 compatibility alias
   - Added `WaitCursor`, `BusyCursor`, `IBeamCursor`, and `ForbiddenCursor` to `qt_compat.py` `Qt.CursorShape` compatibility aliases for PyQt6.

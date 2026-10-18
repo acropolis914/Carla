@@ -373,6 +373,16 @@ class PatchScene(QGraphicsScene):
             return
 
         if event.modifiers() & Qt.ControlModifier:
+            if event.key() == Qt.Key_S:
+                import carla_shared
+                if hasattr(carla_shared.gCarla, "gui") and hasattr(carla_shared.gCarla.gui, "slot_fileSave"):
+                    event.accept()
+                    if event.modifiers() & Qt.ShiftModifier:
+                        carla_shared.gCarla.gui.slot_fileSaveAs()
+                    else:
+                        carla_shared.gCarla.gui.slot_fileSave()
+                    return
+
             if event.key() == Qt.Key_F:
                 if hasattr(self.m_view, "toggleSearch"):
                     event.accept()

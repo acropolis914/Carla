@@ -110,6 +110,14 @@ class DraggableGraphicsView(QGraphicsView):
                 event.accept()
                 self.toggleSearch()
                 return
+            elif event.key() == Qt.Key_S:
+                event.accept()
+                if hasattr(gCarla, "gui") and hasattr(gCarla.gui, "slot_fileSave"):
+                    if event.modifiers() & Qt.ShiftModifier:
+                        gCarla.gui.slot_fileSaveAs()
+                    else:
+                        gCarla.gui.slot_fileSave()
+                return
 
         # Modal shortcuts: V = Select, H = Hand, Q/Esc = Pointer
         if not (event.modifiers() & (Qt.ControlModifier | Qt.AltModifier)):

@@ -464,6 +464,14 @@ class RackListWidget(QListWidget):
                 gCarla.gui.switchPlugins(pluginId, pluginId + 1)
                 event.accept()
                 return
+            elif event.key() == Qt.Key_S:
+                if hasattr(gCarla, "gui") and hasattr(gCarla.gui, "slot_fileSave"):
+                    event.accept()
+                    if event.modifiers() & Qt.ShiftModifier:
+                        gCarla.gui.slot_fileSaveAs()
+                    else:
+                        gCarla.gui.slot_fileSave()
+                    return
 
         QListWidget.keyPressEvent(self, event)
 

@@ -344,9 +344,9 @@ class HostWindow(QMainWindow):
         if self.fSessionManagerName and not self.host.isPlugin:
             self.ui.act_file_new.setEnabled(False)
 
-        self.ui.act_file_open.setEnabled(False)
-        self.ui.act_file_save.setEnabled(False)
-        self.ui.act_file_save_as.setEnabled(False)
+        self.ui.act_file_open.setEnabled(True)
+        self.ui.act_file_save.setEnabled(not self.host.isPlugin)
+        self.ui.act_file_save_as.setEnabled(not self.host.isPlugin)
         self.ui.act_engine_stop.setEnabled(False)
         self.ui.act_plugin_remove_all.setEnabled(False)
 
@@ -608,6 +608,22 @@ class HostWindow(QMainWindow):
 
         self.addAction(self.act_settings_show_menubar)
         self.addAction(self.act_settings_show_statusbar)
+        self.addAction(self.ui.act_file_save)
+        self.addAction(self.ui.act_file_save_as)
+        self.addAction(self.ui.act_file_open)
+        self.addAction(self.ui.act_file_new)
+
+        sc_app = getattr(Qt, "ApplicationShortcut", getattr(Qt.ShortcutContext, "ApplicationShortcut", Qt.WindowShortcut))
+        self.ui.act_file_save.setShortcutContext(sc_app)
+        self.ui.act_file_save_as.setShortcutContext(sc_app)
+
+        self.sc_file_save = QShortcut(QKeySequence("Ctrl+S"), self)
+        self.sc_file_save.setContext(sc_app)
+        self.sc_file_save.activated.connect(self.slot_fileSave)
+
+        self.sc_file_save_as = QShortcut(QKeySequence("Ctrl+Shift+S"), self)
+        self.sc_file_save_as.setContext(sc_app)
+        self.sc_file_save_as.activated.connect(self.slot_fileSaveAs)
 
         self.ui.act_help_about.setText(self.tr("&About Clara"))
 
@@ -2152,10 +2168,7 @@ class HostWindow(QMainWindow):
         self.ui.act_canvas_show_external.blockSignals(False)
 
         if not (self.host.isControl or self.host.isPlugin):
-            canSave = (
-                self.fProjectFilename and os.path.exists(self.fProjectFilename)
-            ) or not self.fSessionManagerName
-            self.ui.act_file_save.setEnabled(canSave)
+            self.ui.act_file_save.setEnabled(True)
             self.ui.act_engine_start.setEnabled(False)
             self.ui.act_engine_stop.setEnabled(True)
 
@@ -2207,13 +2220,13 @@ class HostWindow(QMainWindow):
         self.ui.w_transport.setEnabled(False)
 
         if not (self.host.isControl or self.host.isPlugin):
-            self.ui.act_file_save.setEnabled(False)
             self.ui.act_engine_start.setEnabled(True)
             self.ui.act_engine_stop.setEnabled(False)
 
-        if self.host.isPlugin or not self.fSessionManagerName:
-            self.ui.act_file_open.setEnabled(False)
-            self.ui.act_file_save_as.setEnabled(False)
+        if not self.host.isPlugin:
+            self.ui.act_file_open.setEnabled(True)
+            self.ui.act_file_save.setEnabled(True)
+            self.ui.act_file_save_as.setEnabled(True)
 
     @pyqtSlot(int, str)
     def slot_handleTransportModeChangedCallback(self, transportMode, transportExtra):
