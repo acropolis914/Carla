@@ -321,9 +321,9 @@ QFrame#canvasToolbarSeparator {
 
 /* Add Plugin Dialog Pill Filters */
 QPushButton[pill="true"] {
-    padding: 3px 8px;
-    font-size: 11px;
-    border-radius: 4px;
+    padding: 2px 7px;
+    font-size: 10px;
+    border-radius: 9px;
     background-color: #e6e9ef;
     border: 1px solid #ccd0da;
     color: #4c4f69;
@@ -337,7 +337,7 @@ QPushButton[pill="true"]:hover {
 QPushButton[pill="true"]:checked {
     background-color: #1e66f5;
     color: #ffffff;
-    border: 2px solid #04a5e5;
+    border: 1.5px solid #04a5e5;
     font-weight: bold;
 }
 

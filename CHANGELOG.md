@@ -20,6 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-19 06:14:00
+- **style(pluginlist)**: compact capsule styling for filter pills
+  - Reduced filter pill padding to `2px 7px` and font size to `10px` for tighter spatial density.
+  - Increased pill border-radius to `9px` (capsule shape) across all Catppuccin and Classic Dark stylesheets and prototype HTML.
+
 ### 2026-10-19 06:10:00
 - **feat(pluginlist)**: added 3 center browser presentation modes (Rack, Cards, Table) and high-visibility pill highlights
   - Implemented 3 switchable center presentation modes via `QStackedWidget`: **Rack Mode** (new default sleek horizontal capsule slots with category color strips, favorite stars, and I/O tags), **Cards Mode** (modular responsive grid cards), and **Table Mode** (classic sortable `QTableWidget`).
