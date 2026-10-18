@@ -3896,9 +3896,6 @@ class HostWindow(QMainWindow):
             CARLA_KEY_MAIN_CLASSIC_SKIN: settings.value(
                 CARLA_KEY_MAIN_CLASSIC_SKIN, CARLA_DEFAULT_MAIN_CLASSIC_SKIN, bool
             ),
-            CARLA_KEY_MAIN_MINI_RACK_MODE: settings.value(
-                CARLA_KEY_MAIN_MINI_RACK_MODE, CARLA_DEFAULT_MAIN_MINI_RACK_MODE, bool
-            ),
             CARLA_KEY_MAIN_REFRESH_INTERVAL: settings.value(
                 CARLA_KEY_MAIN_REFRESH_INTERVAL,
                 CARLA_DEFAULT_MAIN_REFRESH_INTERVAL,
@@ -4156,17 +4153,6 @@ class HostWindow(QMainWindow):
                 if pitem is None:
                     continue
                 pitem.recreateWidget(newSkin=newSkin)
-
-        if oldSettings.get(CARLA_KEY_MAIN_MINI_RACK_MODE, None) not in (
-            self.fSavedSettings[CARLA_KEY_MAIN_MINI_RACK_MODE],
-            None,
-        ):
-            new_layer = bool(self.fSavedSettings[CARLA_KEY_MAIN_MINI_RACK_MODE])
-            for pitem in self.fPluginList:
-                if pitem is None:
-                    continue
-                if hasattr(pitem, "fWidget") and pitem.fWidget is not None and hasattr(pitem.fWidget, "setLayerMode"):
-                    pitem.fWidget.setLayerMode(new_layer)
 
         return settings
 

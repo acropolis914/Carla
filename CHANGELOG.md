@@ -20,6 +20,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-19 01:45:00
+- **feat(rack)**: unified dynamic adaptive rack slot layout and specification manifest
+  - Authored comprehensive specification and parity checklist in `docs/DYNAMIC_RACK_SPEC.md` defining 3 responsive width tiers (Ultra-Thin `< 230px`, Medium `230px–440px`, Wide `≥ 440px`).
+  - Decommissioned rigid "Mini Rack Mode" global setting and per-plugin layer toggles in favor of automatic responsive reflow.
+  - Implemented universal title double-click to toggle rack slot expansion/collapse across all viewport widths.
+  - Enforced strictly square 18×18px 2×2 I/O LED grid with 8×8 square pixel tiles and 18px vertical peak meters.
+  - Added stacked parameter card layout (label/value on row 1, 100% width slider on row 2) for narrow sidebars `< 320px` to guarantee full scrub travel and prevent label clipping.
+  - Guaranteed 150px+ dedicated breathing room for plugin title in medium viewport by retaining presets on subrow.
+
 ### 2026-10-19 01:15:00
 - **fix(shortcuts)**: resolve ambiguous `Ctrl+S` and `Ctrl+Shift+S` shortcut overload
   - Removed duplicate `QShortcut` instances that conflicted with window-level `ui.act_file_save` and `ui.act_file_save_as` actions.
