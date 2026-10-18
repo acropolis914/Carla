@@ -20,6 +20,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-19 06:10:00
+- **feat(pluginlist)**: added 3 center browser presentation modes (Rack, Cards, Table) and high-visibility pill highlights
+  - Implemented 3 switchable center presentation modes via `QStackedWidget`: **Rack Mode** (new default sleek horizontal capsule slots with category color strips, favorite stars, and I/O tags), **Cards Mode** (modular responsive grid cards), and **Table Mode** (classic sortable `QTableWidget`).
+  - Added 3-button mode switcher in the search header with preference persistence in `PluginDatabase/ViewMode`.
+  - Maintained 1:1 bidirectional selection, favorite starring, and filter synchronization across all three presentation modes.
+  - Upgraded selected pill highlights across all theme stylesheets (`catppuccin_mocha.qss`, `catppuccin_macchiato.qss`, `catppuccin_latte.qss`, `classic_dark.qss`) and prototype HTML to vibrant high-contrast filled accent pills (`#1e66f5`/`#1976d2`, bold white text `#ffffff`, 2px accent border).
+- **feat(pluginlist)**: modernized Add Plugin browser with grouped multiselect pill filters and card-based inspector
+  - Added [SPEC_ADD_PLUGIN.md](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/pluginlist/SPEC_ADD_PLUGIN.md) detailing UI parity matrix and interaction spec.
+  - Replaced legacy `QToolBox` accordion with a dedicated left filter sidebar containing grouped checkable `QPushButton` pills for Format, Type, Category, Architecture, and Requirements.
+  - Implemented bidirectional `[All]` / `[Any]` toggle logic with multi-selection support (union filtering within groups, intersection across groups).
+  - Replaced legacy text-label grid in the right pane with a modern card-based Information Inspector featuring structured title/maker card, format badge, architecture, I/O & signals, dynamic requirement tags, and copyable binary path.
+  - Refined pill check highlights from harsh solid neon blocks to a polished dark-tinted fill with accent borders and matching typography across all Catppuccin and Classic Dark themes.
+  - Relocated Reset Filters to the bottom of the sidebar and added prominent Favorites toggle in the sidebar header.
+
 ### 2026-10-19 04:59:00
 - **fix(settings)**: bold legible typography for sidebar page navigation tabs
   - Replaced thin 10pt/400-weight sidebar font with bold 11pt typography across all page tabs (General, Patchbay, Engine, OSC, etc.).

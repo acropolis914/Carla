@@ -32,6 +32,7 @@ from qt_compat import (
     QCheckBox,
     QDialog,
     QFileInfo,
+    QFrame,
     QGridLayout,
     QGroupBox,
     QHBoxLayout,
@@ -39,11 +40,16 @@ from qt_compat import (
     QIcon,
     QLabel,
     QLineEdit,
+    QListWidget,
+    QListWidgetItem,
     QMenu,
     QProgressBar,
     QPushButton,
+    QScrollArea,
     QSettings,
+    QSize,
     QSizePolicy,
+    QStackedWidget,
     QTabWidget,
     QTableWidget,
     QTableWidgetItem,
@@ -57,10 +63,10 @@ from qt_compat import (
 
 try:
     from PyQt6.QtCore import QByteArray
-    from PyQt6.QtWidgets import QRadioButton, QToolBox  # noqa: F811
+    from PyQt6.QtWidgets import QListView, QRadioButton, QToolBox  # noqa: F811
 except ImportError:  # pragma: no cover - Qt5 fallback
     from PyQt5.QtCore import QByteArray
-    from PyQt5.QtWidgets import QRadioButton, QToolBox  # noqa: F811
+    from PyQt5.QtWidgets import QListView, QRadioButton, QToolBox  # noqa: F811
 
 # ------------------------------------------------------------------------------------------------------------
 # Imports (Custom)
@@ -101,6 +107,11 @@ from carla_shared import getIcon
 from carla_utils import getPluginCategoryAsString, getPluginTypeAsString
 
 from utils import QSafeSettings
+
+try:
+    from carla_skin import FlowLayout
+except ImportError:
+    from ..carla_skin import FlowLayout
 
 try:
     from .discovery_py import PluginDiscovery, get_library_folder, set_option
@@ -153,6 +164,22 @@ if _SINGLE_SELECTION is None:
 _EXTENDED_SELECTION = getattr(QAbstractItemView, "ExtendedSelection", None)
 if _EXTENDED_SELECTION is None:
     _EXTENDED_SELECTION = QAbstractItemView.SelectionMode.ExtendedSelection
+
+_SCROLL_PER_PIXEL = getattr(QAbstractItemView, "ScrollPerPixel", None)
+if _SCROLL_PER_PIXEL is None:
+    _SCROLL_PER_PIXEL = QAbstractItemView.ScrollMode.ScrollPerPixel
+
+_ICON_MODE = getattr(QListView, "IconMode", None)
+if _ICON_MODE is None:
+    _ICON_MODE = QListView.ViewMode.IconMode
+
+_ADJUST = getattr(QListView, "Adjust", None)
+if _ADJUST is None:
+    _ADJUST = QListView.ResizeMode.Adjust
+
+_STATIC = getattr(QListView, "Static", None)
+if _STATIC is None:
+    _STATIC = QListView.Movement.Static
 
 _ALIGN_RIGHT = getattr(Qt, "AlignRight", None)
 if _ALIGN_RIGHT is None:
@@ -289,6 +316,19 @@ def _getStr(settings, key, default):
     if value is None:
         return default
     return str(value)
+
+
+def _getInt(settings, key, default):
+    try:
+        value = settings.value(key, default)
+    except Exception:
+        return default
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except Exception:
+        return default
 
 
 def _getBytes(settings, key):
@@ -485,6 +525,260 @@ class _PluginRefreshDialog(QDialog):
         settings.setValue("PluginRefreshDialog/SearchSFZ", self.ch_sfz.isChecked())
 
 # ------------------------------------------------------------------------------------------------------------
+# Pill Filter Group (Modern left-sidebar multiselect toggle pills)
+
+class PillFilterGroup(QWidget):
+    """Group of checkable QPushButton pills with [All] mutual exclusion and multiselect."""
+    changed = pyqtSignal()
+
+    def __init__(self, title, pills, parent=None, all_label="All"):
+        super().__init__(parent)
+        self._block_updates = False
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 3, 0, 3)
+        layout.setSpacing(3)
+
+        # Header with title
+        headerLayout = QHBoxLayout()
+        headerLayout.setContentsMargins(0, 0, 0, 0)
+        self.label = QLabel(title.upper(), self)
+        font = self.label.font()
+        font.setPointSize(max(8, font.pointSize() - 1))
+        font.setBold(True)
+        self.label.setFont(font)
+        headerLayout.addWidget(self.label)
+        headerLayout.addStretch(1)
+        layout.addLayout(headerLayout)
+
+        # Pills container with FlowLayout
+        pillContainer = QWidget(self)
+        self.flow = FlowLayout(pillContainer, hSpacing=4, vSpacing=4)
+        self.flow.setContentsMargins(0, 0, 0, 0)
+
+        # "All" master pill
+        self.btn_all = QPushButton(all_label, pillContainer)
+        self.btn_all.setCheckable(True)
+        self.btn_all.setChecked(True)
+        self.btn_all.setProperty("pill", True)
+        self.btn_all.clicked.connect(self._onAllClicked)
+        self.flow.addWidget(self.btn_all)
+
+        # Specific pills
+        self.buttons = {}
+        for key, btn in pills:
+            btn.setParent(pillContainer)
+            btn.setCheckable(True)
+            btn.setChecked(False)
+            btn.setProperty("pill", True)
+            btn.clicked.connect(lambda _checked=False, k=key: self._onPillClicked(k))
+            self.flow.addWidget(btn)
+            self.buttons[key] = btn
+
+        layout.addWidget(pillContainer)
+
+    def _onAllClicked(self):
+        if self._block_updates:
+            return
+        self._block_updates = True
+        self.btn_all.setChecked(True)
+        for btn in self.buttons.values():
+            btn.setChecked(False)
+        self._block_updates = False
+        self.changed.emit()
+
+    def _onPillClicked(self, key):
+        if self._block_updates:
+            return
+        self._block_updates = True
+        active = [b for b in self.buttons.values() if b.isChecked()]
+        if not active:
+            self.btn_all.setChecked(True)
+        else:
+            self.btn_all.setChecked(False)
+        self._block_updates = False
+        self.changed.emit()
+
+    def isAllChecked(self):
+        return self.btn_all.isChecked()
+
+    def setAll(self, all_active):
+        self._block_updates = True
+        self.btn_all.setChecked(all_active)
+        if all_active:
+            for b in self.buttons.values():
+                b.setChecked(False)
+        self._block_updates = False
+
+    def syncFromPills(self):
+        """Called after programmatic setChecked on specific pills."""
+        self._block_updates = True
+        active = [b for b in self.buttons.values() if b.isChecked()]
+        if not active:
+            self.btn_all.setChecked(True)
+        else:
+            self.btn_all.setChecked(False)
+        self._block_updates = False
+
+# ------------------------------------------------------------------------------------------------------------
+# Helper for category indicator colors
+
+def _getCategoryColor(category, isSynth=False):
+    c = (category or "").lower()
+    if isSynth or "synth" in c:
+        return "#a6e3a1"  # Green
+    if "reverb" in c or "delay" in c:
+        return "#cba6f7"  # Mauve
+    if "distortion" in c or "drive" in c:
+        return "#f38ba8"  # Red
+    if "dynamic" in c or "compress" in c or "limiter" in c:
+        return "#89b4fa"  # Blue
+    if "eq" in c or "filter" in c:
+        return "#fab387"  # Peach
+    if "modulat" in c or "chorus" in c or "flanger" in c or "phaser" in c:
+        return "#89dceb"  # Cyan
+    return "#6c7086"      # Subdued Slate
+
+# ------------------------------------------------------------------------------------------------------------
+# Rack-style Plugin Item Widget (Default View)
+
+class RackPluginItemWidget(QFrame):
+    """Sleek horizontal rack capsule item (~44px) matching Clara rack items."""
+
+    def __init__(self, info, isFav=False, parent=None):
+        super().__init__(parent)
+        self.setObjectName("rackPluginItem")
+        self.setFrameShape(QFrame.NoFrame)
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(4, 3, 8, 3)
+        layout.setSpacing(8)
+
+        # Left Accent Color Strip
+        isSynth = bool(info.get("hints", 0) & PLUGIN_IS_SYNTH)
+        color = _getCategoryColor(info.get("category", ""), isSynth)
+        self.strip = QFrame(self)
+        self.strip.setFixedWidth(4)
+        self.strip.setFixedHeight(30)
+        self.strip.setStyleSheet(f"background-color: {color}; border-radius: 2px;")
+        layout.addWidget(self.strip)
+
+        # Star Favorite icon
+        self.lbl_star = QLabel("★" if isFav else "☆", self)
+        self.lbl_star.setObjectName("itemStar")
+        self.lbl_star.setFixedWidth(16)
+        if isFav:
+            self.lbl_star.setStyleSheet("color: #eed49f; font-size: 13px;")
+        else:
+            self.lbl_star.setStyleSheet("color: #6e738d; font-size: 13px;")
+        layout.addWidget(self.lbl_star)
+
+        # Format Badge
+        fmt = getPluginTypeAsString(info.get("type", PLUGIN_NONE))
+        self.lbl_badge = QLabel(fmt, self)
+        self.lbl_badge.setObjectName("infoBadge")
+        layout.addWidget(self.lbl_badge)
+
+        # Name & Subtitle
+        textLayout = QVBoxLayout()
+        textLayout.setContentsMargins(0, 0, 0, 0)
+        textLayout.setSpacing(1)
+
+        self.lbl_name = QLabel(info.get("name", "---"), self)
+        f_name = self.lbl_name.font()
+        f_name.setBold(True)
+        self.lbl_name.setFont(f_name)
+
+        maker = info.get("maker") or "---"
+        cat = info.get("category") or ("Synth" if isSynth else "Plugin")
+        self.lbl_sub = QLabel(f"{maker}  •  {cat}", self)
+        self.lbl_sub.setObjectName("infoCategory")
+        textLayout.addWidget(self.lbl_name)
+        textLayout.addWidget(self.lbl_sub)
+        layout.addLayout(textLayout, 1)
+
+        # Right: I/O Pill
+        ains = info.get("audioIns", 0)
+        aouts = info.get("audioOuts", 0)
+        self.lbl_io = QLabel(f"{ains} in / {aouts} out", self)
+        self.lbl_io.setObjectName("infoTag")
+        layout.addWidget(self.lbl_io)
+
+    def setFavorite(self, isFav):
+        self.lbl_star.setText("★" if isFav else "☆")
+        self.lbl_star.setStyleSheet("color: #eed49f; font-size: 13px;" if isFav else "color: #6e738d; font-size: 13px;")
+
+# ------------------------------------------------------------------------------------------------------------
+# Card-style Plugin Item Widget
+
+class CardPluginItemWidget(QFrame):
+    """Modular card item (~180x105px) for grid view."""
+
+    def __init__(self, info, isFav=False, parent=None):
+        super().__init__(parent)
+        self.setObjectName("cardPluginItem")
+        self.setFrameShape(QFrame.NoFrame)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(8, 6, 8, 6)
+        layout.setSpacing(4)
+
+        isSynth = bool(info.get("hints", 0) & PLUGIN_IS_SYNTH)
+        color = _getCategoryColor(info.get("category", ""), isSynth)
+
+        # Top Bar: Badge + Star
+        topBar = QHBoxLayout()
+        topBar.setContentsMargins(0, 0, 0, 0)
+        fmt = getPluginTypeAsString(info.get("type", PLUGIN_NONE))
+        self.lbl_badge = QLabel(fmt, self)
+        self.lbl_badge.setObjectName("infoBadge")
+        topBar.addWidget(self.lbl_badge)
+        topBar.addStretch(1)
+
+        self.lbl_star = QLabel("★" if isFav else "☆", self)
+        self.lbl_star.setObjectName("itemStar")
+        if isFav:
+            self.lbl_star.setStyleSheet("color: #eed49f; font-size: 12px;")
+        else:
+            self.lbl_star.setStyleSheet("color: #6e738d; font-size: 12px;")
+        topBar.addWidget(self.lbl_star)
+        layout.addLayout(topBar)
+
+        # Center: Name & Maker
+        self.lbl_name = QLabel(info.get("name", "---"), self)
+        f_name = self.lbl_name.font()
+        f_name.setBold(True)
+        self.lbl_name.setFont(f_name)
+        self.lbl_name.setWordWrap(True)
+        layout.addWidget(self.lbl_name, 1)
+
+        self.lbl_maker = QLabel(info.get("maker") or "---", self)
+        self.lbl_maker.setObjectName("infoMaker")
+        layout.addWidget(self.lbl_maker)
+
+        # Bottom: Category & I/O
+        botBar = QHBoxLayout()
+        botBar.setContentsMargins(0, 0, 0, 0)
+        cat = info.get("category") or ("Synth" if isSynth else "Plugin")
+        self.lbl_cat = QLabel(cat, self)
+        self.lbl_cat.setObjectName("infoCategory")
+        botBar.addWidget(self.lbl_cat)
+        botBar.addStretch(1)
+
+        ains = info.get("audioIns", 0)
+        aouts = info.get("audioOuts", 0)
+        self.lbl_io = QLabel(f"{ains}/{aouts}", self)
+        self.lbl_io.setObjectName("infoTag")
+        botBar.addWidget(self.lbl_io)
+        layout.addLayout(botBar)
+
+        self.setStyleSheet(f"QFrame#cardPluginItem {{ border-top: 3px solid {color}; }}")
+
+    def setFavorite(self, isFav):
+        self.lbl_star.setText("★" if isFav else "☆")
+        self.lbl_star.setStyleSheet("color: #eed49f; font-size: 12px;" if isFav else "color: #6e738d; font-size: 12px;")
+
+# ------------------------------------------------------------------------------------------------------------
 # The main dialog
 
 class PyPluginListDialog(QDialog):
@@ -550,22 +844,20 @@ class PyPluginListDialog(QDialog):
 
         self.lineEdit.textChanged.connect(lambda _text: self._searchDebounceTimer.start())
         self.table.itemSelectionChanged.connect(self._updateSelectionState)
-        self.table.currentCellChanged.connect(lambda r, c, pr, pc: self._checkPlugin(r))
+        self.table.currentCellChanged.connect(self._onTableCurrentCellChanged)
         self.table.cellClicked.connect(self._cellClicked)
         self.table.cellDoubleClicked.connect(self._cellDoubleClicked)
 
-        for ch in (self.ch_internal, self.ch_ladspa, self.ch_dssi, self.ch_lv2, self.ch_vst, self.ch_vst3,
-                   self.ch_clap, self.ch_au, self.ch_jsfx, self.ch_kits, self.ch_effects,
-                   self.ch_instruments, self.ch_midi, self.ch_other, self.ch_native, self.ch_bridged,
-                   self.ch_bridged_wine, self.ch_favorites, self.ch_rtsafe, self.ch_cv, self.ch_gui,
-                   self.ch_inline_display, self.ch_stereo):
-            ch.clicked.connect(lambda _checked=False: self._checkFilters())
+        self.list_rack.itemSelectionChanged.connect(self._onListSelectionChanged)
+        self.list_cards.itemSelectionChanged.connect(self._onListSelectionChanged)
+        self.list_rack.currentItemChanged.connect(self._onRackCurrentItemChanged)
+        self.list_cards.currentItemChanged.connect(self._onCardsCurrentItemChanged)
+        self.list_rack.itemDoubleClicked.connect(lambda _it: self._slotAddClicked())
+        self.list_cards.itemDoubleClicked.connect(lambda _it: self._slotAddClicked())
 
-        self.ch_cat_all.clicked.connect(self._checkFiltersCategoryAll)
-        for ch in (self.ch_cat_delay, self.ch_cat_distortion, self.ch_cat_dynamics, self.ch_cat_eq,
-                   self.ch_cat_filter, self.ch_cat_modulator, self.ch_cat_synth, self.ch_cat_utility,
-                   self.ch_cat_other):
-            ch.clicked.connect(self._checkFiltersCategorySpecific)
+        for grp in (self.group_format, self.group_type, self.group_cat, self.group_arch, self.group_req):
+            grp.changed.connect(self._checkFilters)
+        self.ch_favorites.clicked.connect(lambda _checked=False: self._checkFilters())
 
         # Ctrl+F focus search
         self.act_focus_search = QAction(self.tr("Focus Text Search"), self)
@@ -610,11 +902,36 @@ class PyPluginListDialog(QDialog):
     def _buildUi(self, hostSettings):
         grid = QGridLayout(self)
 
-        # row 0: search + refresh + reset
+        # row 0: search + view mode switcher + refresh
         searchRow = QHBoxLayout()
         self.lineEdit = QLineEdit(self)
         self.lineEdit.setClearButtonEnabled(True)
         searchRow.addWidget(self.lineEdit)
+
+        # View Mode Switcher (Rack default, Cards, Table)
+        self.btn_mode_rack = QPushButton(self.tr("Rack"), self)
+        self.btn_mode_rack.setCheckable(True)
+        self.btn_mode_rack.setChecked(True)
+        self.btn_mode_rack.setProperty("pill", True)
+        self.btn_mode_rack.setToolTip(self.tr("Rack view (compact slots, default)"))
+
+        self.btn_mode_cards = QPushButton(self.tr("Cards"), self)
+        self.btn_mode_cards.setCheckable(True)
+        self.btn_mode_cards.setProperty("pill", True)
+        self.btn_mode_cards.setToolTip(self.tr("Cards grid view"))
+
+        self.btn_mode_table = QPushButton(self.tr("Table"), self)
+        self.btn_mode_table.setCheckable(True)
+        self.btn_mode_table.setProperty("pill", True)
+        self.btn_mode_table.setToolTip(self.tr("Detailed table view"))
+
+        self.btn_mode_rack.clicked.connect(lambda: self._setViewMode(0))
+        self.btn_mode_cards.clicked.connect(lambda: self._setViewMode(1))
+        self.btn_mode_table.clicked.connect(lambda: self._setViewMode(2))
+
+        searchRow.addWidget(self.btn_mode_rack)
+        searchRow.addWidget(self.btn_mode_cards)
+        searchRow.addWidget(self.btn_mode_table)
 
         self.b_refresh = QToolButton(self)
         self.b_refresh.setText(self.tr("Rescan"))
@@ -636,11 +953,7 @@ class PyPluginListDialog(QDialog):
         self.b_refresh.setDefaultAction(act_quick)
         searchRow.addWidget(self.b_refresh)
 
-        self.b_clear_filters = QPushButton(self.tr("Reset filters"), self)
-        self.b_clear_filters.setIcon(getIcon("edit-clear", 16, "svgz"))
-        searchRow.addWidget(self.b_clear_filters)
-
-        grid.addLayout(searchRow, 0, 0, 1, 3)
+        grid.addLayout(searchRow, 0, 1, 1, 1)
 
         # row 1: inline scan status bar (hidden by default)
         self.scanBar = QWidget(self)
@@ -657,11 +970,37 @@ class PyPluginListDialog(QDialog):
         scanLayout.addWidget(self.scanProgressBar, 1)
         scanLayout.addWidget(self.b_scan_stop)
         self.scanBar.hide()
-        grid.addWidget(self.scanBar, 1, 0, 1, 3)
+        grid.addWidget(self.scanBar, 1, 1, 1, 1)
 
-        # row 2..4: filters (toolbox) | table | info
+        # col 0: filters sidebar (spans rows 0..4)
         self._buildFilters()
+        grid.addWidget(self.filterSidebar, 0, 0, 5, 1)
 
+        # col 1: center stack (0: Rack, 1: Cards, 2: Table)
+        self.stackCenter = QStackedWidget(self)
+        self.stackCenter.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
+        # Mode 0: Rack Mode (Default)
+        self.list_rack = QListWidget(self)
+        self.list_rack.setObjectName("rackListWidget")
+        self.list_rack.setSelectionMode(_EXTENDED_SELECTION)
+        self.list_rack.setVerticalScrollMode(_SCROLL_PER_PIXEL)
+        self.list_rack.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.list_rack.setSpacing(2)
+        self.stackCenter.addWidget(self.list_rack)
+
+        # Mode 1: Cards Mode
+        self.list_cards = QListWidget(self)
+        self.list_cards.setObjectName("cardsListWidget")
+        self.list_cards.setViewMode(_ICON_MODE)
+        self.list_cards.setResizeMode(_ADJUST)
+        self.list_cards.setMovement(_STATIC)
+        self.list_cards.setSelectionMode(_EXTENDED_SELECTION)
+        self.list_cards.setVerticalScrollMode(_SCROLL_PER_PIXEL)
+        self.list_cards.setSpacing(6)
+        self.stackCenter.addWidget(self.list_cards)
+
+        # Mode 2: Table Mode
         self.table = QTableWidget(0, _TABLE_COLUMNS, self)
         self.table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.table.setEditTriggers(_NO_EDIT_TRIGGERS)
@@ -681,10 +1020,14 @@ class PyPluginListDialog(QDialog):
         self.table.setColumnWidth(TW_NAME, 250)
         self.table.setColumnWidth(TW_LABEL, 200)
         self.table.setColumnWidth(TW_MAKER, 150)
-        grid.addWidget(self.table, 2, 1, 3, 1)
+        self.stackCenter.addWidget(self.table)
 
+        self.stackCenter.setCurrentIndex(0)
+        grid.addWidget(self.stackCenter, 2, 1, 3, 1)
+
+        # col 2: info inspector panel (spans rows 0..4)
         self._buildInfoPanel()
-        grid.addWidget(self.tab_info, 2, 2, 3, 1)
+        grid.addWidget(self.infoPanel, 0, 2, 5, 1)
 
         # row 5: status + buttons
         bottomRow = QHBoxLayout()
@@ -707,146 +1050,322 @@ class PyPluginListDialog(QDialog):
 
         grid.addLayout(bottomRow, 5, 0, 1, 3)
 
+        grid.setColumnStretch(0, 0)
+        grid.setColumnStretch(1, 1)
+        grid.setColumnStretch(2, 0)
+        grid.setRowStretch(2, 1)
+
     def _buildFilters(self):
-        self.filterBox = QToolBox(self)
+        self.filterSidebar = QWidget(self)
+        self.filterSidebar.setObjectName("filterSidebar")
+        self.filterSidebar.setMinimumWidth(210)
+        self.filterSidebar.setMaximumWidth(270)
 
-        # Format page
-        pageFormat = QWidget(self)
-        lf = QVBoxLayout(pageFormat)
-        self.ch_internal = QCheckBox(self.tr("Internal"), self)
-        self.ch_ladspa = QCheckBox("LADSPA", self)
-        self.ch_dssi = QCheckBox("DSSI", self)
-        self.ch_lv2 = QCheckBox("LV2", self)
-        self.ch_vst = QCheckBox("VST2", self)
-        self.ch_vst3 = QCheckBox("VST3", self)
-        self.ch_clap = QCheckBox("CLAP", self)
-        self.ch_au = QCheckBox("AU", self)
-        self.ch_jsfx = QCheckBox("JSFX", self)
-        self.ch_kits = QCheckBox(self.tr("Sound Kits"), self)
-        for ch in (self.ch_internal, self.ch_ladspa, self.ch_dssi, self.ch_lv2, self.ch_vst, self.ch_vst3,
-                   self.ch_clap, self.ch_au, self.ch_jsfx, self.ch_kits):
-            lf.addWidget(ch)
-        lf.addStretch(1)
-        self.filterBox.addItem(pageFormat, self.tr("Format"))
+        sidebarLayout = QVBoxLayout(self.filterSidebar)
+        sidebarLayout.setContentsMargins(4, 2, 4, 2)
+        sidebarLayout.setSpacing(6)
 
-        # Type page
-        pageType = QWidget(self)
-        lt = QVBoxLayout(pageType)
-        self.ch_effects = QCheckBox(self.tr("Effects"), self)
-        self.ch_instruments = QCheckBox(self.tr("Instruments"), self)
-        self.ch_midi = QCheckBox(self.tr("MIDI Plugins"), self)
-        self.ch_other = QCheckBox(self.tr("Other/Misc"), self)
-        for ch in (self.ch_effects, self.ch_instruments, self.ch_midi, self.ch_other):
-            lt.addWidget(ch)
-        lt.addStretch(1)
-        self.filterBox.addItem(pageType, self.tr("Type"))
+        # Header: Filters label + Favorites pill
+        headerRow = QHBoxLayout()
+        headerRow.setContentsMargins(0, 0, 0, 0)
+        lbl_filters = QLabel(self.tr("FILTERS"), self.filterSidebar)
+        font_hf = lbl_filters.font()
+        font_hf.setPointSize(max(8, font_hf.pointSize() - 1))
+        font_hf.setBold(True)
+        lbl_filters.setFont(font_hf)
+        headerRow.addWidget(lbl_filters)
+        headerRow.addStretch(1)
 
-        # Category page
-        pageCat = QWidget(self)
-        lc = QVBoxLayout(pageCat)
-        self.ch_cat_all = QCheckBox(self.tr("All"), self)
-        self.ch_cat_delay = QCheckBox(self.tr("Delay"), self)
-        self.ch_cat_distortion = QCheckBox(self.tr("Distortion"), self)
-        self.ch_cat_dynamics = QCheckBox(self.tr("Dynamics"), self)
-        self.ch_cat_eq = QCheckBox(self.tr("EQ"), self)
-        self.ch_cat_filter = QCheckBox(self.tr("Filter"), self)
-        self.ch_cat_modulator = QCheckBox(self.tr("Modulator"), self)
-        self.ch_cat_synth = QCheckBox(self.tr("Synth"), self)
-        self.ch_cat_utility = QCheckBox(self.tr("Utility"), self)
-        self.ch_cat_other = QCheckBox(self.tr("Other"), self)
-        for ch in (self.ch_cat_all, self.ch_cat_delay, self.ch_cat_distortion, self.ch_cat_dynamics,
-                   self.ch_cat_eq, self.ch_cat_filter, self.ch_cat_modulator, self.ch_cat_synth,
-                   self.ch_cat_utility, self.ch_cat_other):
-            lc.addWidget(ch)
-        lc.addStretch(1)
-        self.filterBox.addItem(pageCat, self.tr("Category"))
+        self.ch_favorites = QPushButton(self.tr("★ Favorites"), self.filterSidebar)
+        self.ch_favorites.setCheckable(True)
+        self.ch_favorites.setProperty("pill", True)
+        self.ch_favorites.setToolTip(self.tr("Show favorites only"))
+        headerRow.addWidget(self.ch_favorites)
+        sidebarLayout.addLayout(headerRow)
 
-        # Architecture page
-        pageArch = QWidget(self)
-        la = QVBoxLayout(pageArch)
-        self.ch_native = QCheckBox(self.tr("Native"), self)
-        self.ch_bridged = QCheckBox(self.tr("Bridged"), self)
-        self.ch_bridged_wine = QCheckBox(self.tr("Bridged (Wine)"), self)
-        for ch in (self.ch_native, self.ch_bridged, self.ch_bridged_wine):
-            la.addWidget(ch)
-        la.addStretch(1)
-        self.filterBox.addItem(pageArch, self.tr("Architecture"))
+        # Scroll area for the filter pill groups
+        scrollArea = QScrollArea(self.filterSidebar)
+        scrollArea.setWidgetResizable(True)
+        scrollArea.setFrameShape(QScrollArea.NoFrame)
+        scrollArea.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
-        # Requirements page (ported from tab_reqs)
-        pageReq = QWidget(self)
-        lr = QVBoxLayout(pageReq)
-        self.ch_favorites = QCheckBox(self.tr("Favorites only"), self)
-        self.ch_rtsafe = QCheckBox(self.tr("Real-time safe only"), self)
-        self.ch_stereo = QCheckBox(self.tr("Stereo only"), self)
-        self.ch_cv = QCheckBox(self.tr("With CV Ports"), self)
-        self.ch_gui = QCheckBox(self.tr("With Custom GUI"), self)
-        self.ch_inline_display = QCheckBox(self.tr("With Inline Display"), self)
-        for ch in (self.ch_favorites, self.ch_rtsafe, self.ch_stereo, self.ch_cv, self.ch_gui,
-                   self.ch_inline_display):
-            lr.addWidget(ch)
-        lr.addStretch(1)
-        self.filterBox.addItem(pageReq, self.tr("Requirements"))
+        scrollWidget = QWidget(scrollArea)
+        scrollLayout = QVBoxLayout(scrollWidget)
+        scrollLayout.setContentsMargins(0, 0, 2, 0)
+        scrollLayout.setSpacing(8)
 
-        self.filterBox.setCurrentIndex(0)
-        self.filterBox.setMinimumWidth(150)
-        self._grid_placeholder = self.filterBox
-        self.layout().addWidget(self.filterBox, 2, 0, 3, 1)
+        # 1. Format
+        self.ch_clap = QPushButton("CLAP", self)
+        self.ch_vst3 = QPushButton("VST3", self)
+        self.ch_lv2 = QPushButton("LV2", self)
+        self.ch_vst = QPushButton("VST2", self)
+        self.ch_jsfx = QPushButton("JSFX", self)
+        self.ch_internal = QPushButton(self.tr("Internal"), self)
+        self.ch_ladspa = QPushButton("LADSPA", self)
+        self.ch_dssi = QPushButton("DSSI", self)
+        self.ch_kits = QPushButton(self.tr("Sound Kits"), self)
+        self.ch_au = QPushButton("AU", self)
+        if not CARLA_OS_MAC:
+            self.ch_au.setEnabled(False)
+
+        format_pills = [
+            ("clap", self.ch_clap),
+            ("vst3", self.ch_vst3),
+            ("lv2", self.ch_lv2),
+            ("vst2", self.ch_vst),
+            ("jsfx", self.ch_jsfx),
+            ("internal", self.ch_internal),
+            ("ladspa", self.ch_ladspa),
+            ("dssi", self.ch_dssi),
+            ("kits", self.ch_kits),
+        ]
+        if CARLA_OS_MAC:
+            format_pills.append(("au", self.ch_au))
+
+        self.group_format = PillFilterGroup(self.tr("Format"), format_pills, scrollWidget)
+        self.ch_format_all = self.group_format.btn_all
+        scrollLayout.addWidget(self.group_format)
+
+        # 2. Type
+        self.ch_instruments = QPushButton(self.tr("Instruments"), self)
+        self.ch_effects = QPushButton(self.tr("Effects"), self)
+        self.ch_midi = QPushButton(self.tr("MIDI Tools"), self)
+        self.ch_other = QPushButton(self.tr("Other/Misc"), self)
+
+        type_pills = [
+            ("instruments", self.ch_instruments),
+            ("effects", self.ch_effects),
+            ("midi", self.ch_midi),
+            ("other", self.ch_other),
+        ]
+        self.group_type = PillFilterGroup(self.tr("Type"), type_pills, scrollWidget)
+        self.ch_type_all = self.group_type.btn_all
+        scrollLayout.addWidget(self.group_type)
+
+        # 3. Category
+        self.ch_cat_synth = QPushButton(self.tr("Synth"), self)
+        self.ch_cat_delay = QPushButton(self.tr("Delay"), self)
+        self.ch_cat_distortion = QPushButton(self.tr("Distortion"), self)
+        self.ch_cat_dynamics = QPushButton(self.tr("Dynamics"), self)
+        self.ch_cat_eq = QPushButton(self.tr("EQ"), self)
+        self.ch_cat_filter = QPushButton(self.tr("Filter"), self)
+        self.ch_cat_modulator = QPushButton(self.tr("Modulator"), self)
+        self.ch_cat_utility = QPushButton(self.tr("Utility"), self)
+        self.ch_cat_other = QPushButton(self.tr("Other"), self)
+
+        cat_pills = [
+            ("synth", self.ch_cat_synth),
+            ("delay", self.ch_cat_delay),
+            ("distortion", self.ch_cat_distortion),
+            ("dynamics", self.ch_cat_dynamics),
+            ("eq", self.ch_cat_eq),
+            ("filter", self.ch_cat_filter),
+            ("modulator", self.ch_cat_modulator),
+            ("utility", self.ch_cat_utility),
+            ("other", self.ch_cat_other),
+        ]
+        self.group_cat = PillFilterGroup(self.tr("Category"), cat_pills, scrollWidget)
+        self.ch_cat_all = self.group_cat.btn_all
+        scrollLayout.addWidget(self.group_cat)
+
+        # 4. Architecture
+        self.ch_native = QPushButton(self.tr("Native"), self)
+        self.ch_bridged = QPushButton(self.tr("Bridged"), self)
+        self.ch_bridged_wine = QPushButton(self.tr("Bridged (Wine)"), self)
+
+        arch_pills = [
+            ("native", self.ch_native),
+            ("bridged", self.ch_bridged),
+            ("bridged_wine", self.ch_bridged_wine),
+        ]
+        self.group_arch = PillFilterGroup(self.tr("Architecture"), arch_pills, scrollWidget)
+        self.ch_arch_all = self.group_arch.btn_all
+        scrollLayout.addWidget(self.group_arch)
+
+        # 5. Requirements
+        self.ch_rtsafe = QPushButton(self.tr("RT-Safe"), self)
+        self.ch_stereo = QPushButton(self.tr("Stereo"), self)
+        self.ch_cv = QPushButton(self.tr("CV Ports"), self)
+        self.ch_gui = QPushButton(self.tr("Custom GUI"), self)
+        self.ch_inline_display = QPushButton(self.tr("Inline Display"), self)
+
+        req_pills = [
+            ("rtsafe", self.ch_rtsafe),
+            ("stereo", self.ch_stereo),
+            ("cv", self.ch_cv),
+            ("gui", self.ch_gui),
+            ("inline_display", self.ch_inline_display),
+        ]
+        self.group_req = PillFilterGroup(self.tr("Requirements"), req_pills, scrollWidget, all_label=self.tr("Any"))
+        self.ch_req_all = self.group_req.btn_all
+        scrollLayout.addWidget(self.group_req)
+
+        scrollLayout.addStretch(1)
+        scrollArea.setWidget(scrollWidget)
+        sidebarLayout.addWidget(scrollArea, 1)
+
+        # Reset filters button anchored at the bottom
+        self.b_clear_filters = QPushButton(self.tr("Reset filters"), self.filterSidebar)
+        self.b_clear_filters.setIcon(getIcon("edit-clear", 16, "svgz"))
+        sidebarLayout.addWidget(self.b_clear_filters)
+
+        self.filterBox = self.filterSidebar
 
     def _buildInfoPanel(self):
-        self.tab_info = QTabWidget(self)
-        self.tab_info.tabBar().hide()
-        page = QWidget(self)
-        infoLayout = QGridLayout(page)
+        self.infoPanel = QWidget(self)
+        self.infoPanel.setObjectName("infoPanel")
+        self.infoPanel.setMinimumWidth(250)
+        self.infoPanel.setMaximumWidth(310)
 
-        header = QLabel(self.tr("Information"), self)
-        font = header.font()
-        font.setBold(True)
-        header.setFont(font)
-        infoLayout.addWidget(header, 0, 0, 1, 2)
+        mainLayout = QVBoxLayout(self.infoPanel)
+        mainLayout.setContentsMargins(6, 2, 4, 2)
+        mainLayout.setSpacing(6)
 
-        self.l_format = QLabel("TextLabel")
-        self.l_type = QLabel("TextLabel")
-        self.l_arch = QLabel("TextLabel")
-        self.l_id = QLabel("TextLabel")
-        self.l_ains = QLabel("TextLabel")
-        self.l_aouts = QLabel("TextLabel")
-        self.l_cvins = QLabel("TextLabel")
-        self.l_cvouts = QLabel("TextLabel")
-        self.l_mins = QLabel("TextLabel")
-        self.l_mouts = QLabel("TextLabel")
-        self.l_pins = QLabel("TextLabel")
-        self.l_pouts = QLabel("TextLabel")
-        self.l_gui = QLabel("TextLabel")
-        self.l_idisp = QLabel("TextLabel")
-        self.l_bridged = QLabel("TextLabel")
-        self.l_synth = QLabel("TextLabel")
+        # Header: INFORMATION + Format Badge
+        headerRow = QHBoxLayout()
+        headerRow.setContentsMargins(0, 0, 0, 0)
+        lbl_info = QLabel(self.tr("INFORMATION"), self.infoPanel)
+        font_h = lbl_info.font()
+        font_h.setPointSize(max(8, font_h.pointSize() - 1))
+        font_h.setBold(True)
+        lbl_info.setFont(font_h)
+        headerRow.addWidget(lbl_info)
+        headerRow.addStretch(1)
 
-        rows = [
-            (self.tr("Format:"), self.l_format),
-            (self.tr("Type:"), self.l_type),
-            (self.tr("Architecture:"), self.l_arch),
-            (self.tr("UniqueID:"), self.l_id),
-            (self.tr("Audio Ins:"), self.l_ains),
-            (self.tr("Audio Outs:"), self.l_aouts),
-            (self.tr("CV Ins:"), self.l_cvins),
-            (self.tr("CV Outs:"), self.l_cvouts),
-            (self.tr("MIDI Ins:"), self.l_mins),
-            (self.tr("MIDI Outs:"), self.l_mouts),
-            (self.tr("Parameter Ins:"), self.l_pins),
-            (self.tr("Parameter Outs:"), self.l_pouts),
-            (self.tr("Has Custom GUI:"), self.l_gui),
-            (self.tr("Has Inline Display:"), self.l_idisp),
-            (self.tr("Is Bridged:"), self.l_bridged),
-            (self.tr("Is Synth:"), self.l_synth),
-        ]
-        for i, (caption, value) in enumerate(rows, start=1):
-            label = QLabel(caption)
-            label.setAlignment(_ALIGN_RIGHT | getattr(Qt, "AlignVCenter",
-                                                       getattr(Qt.AlignmentFlag, "AlignVCenter", 0)))
-            infoLayout.addWidget(label, i, 0)
-            infoLayout.addWidget(value, i, 1)
+        self.l_badge = QLabel("---", self.infoPanel)
+        self.l_badge.setObjectName("infoBadge")
+        headerRow.addWidget(self.l_badge)
+        mainLayout.addLayout(headerRow)
 
-        self.tab_info.addTab(page, "")
+        # Scroll Area for the inspector cards
+        scrollArea = QScrollArea(self.infoPanel)
+        scrollArea.setWidgetResizable(True)
+        scrollArea.setFrameShape(QScrollArea.NoFrame)
+        scrollArea.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
+        scrollWidget = QWidget(scrollArea)
+        scrollLayout = QVBoxLayout(scrollWidget)
+        scrollLayout.setContentsMargins(0, 0, 2, 0)
+        scrollLayout.setSpacing(8)
+
+        # 1. Title & Maker Card
+        cardName = QFrame(scrollWidget)
+        cardName.setObjectName("infoCard")
+        l_cardName = QVBoxLayout(cardName)
+        l_cardName.setContentsMargins(8, 8, 8, 8)
+        l_cardName.setSpacing(2)
+
+        self.l_name = QLabel(self.tr("No plugin selected"), cardName)
+        font_name = self.l_name.font()
+        font_name.setPointSize(font_name.pointSize() + 2)
+        font_name.setBold(True)
+        self.l_name.setFont(font_name)
+        self.l_name.setWordWrap(True)
+
+        self.l_maker = QLabel("---", cardName)
+        self.l_maker.setObjectName("infoMaker")
+
+        self.l_category = QLabel("---", cardName)
+        self.l_category.setObjectName("infoCategory")
+
+        l_cardName.addWidget(self.l_name)
+        l_cardName.addWidget(self.l_maker)
+        l_cardName.addWidget(self.l_category)
+        scrollLayout.addWidget(cardName)
+
+        # 2. Architecture Card
+        lbl_arch_hdr = QLabel(self.tr("ARCHITECTURE"), scrollWidget)
+        lbl_arch_hdr.setFont(font_h)
+        scrollLayout.addWidget(lbl_arch_hdr)
+
+        cardArch = QFrame(scrollWidget)
+        cardArch.setObjectName("infoCard")
+        l_cardArch = QGridLayout(cardArch)
+        l_cardArch.setContentsMargins(8, 6, 8, 6)
+        l_cardArch.setVerticalSpacing(4)
+
+        self.l_arch = QLabel("---", cardArch)
+        self.l_exec = QLabel("---", cardArch)
+        self.l_bridged = QLabel("---", cardArch)
+
+        l_cardArch.addWidget(QLabel(self.tr("Binary Arch:"), cardArch), 0, 0)
+        l_cardArch.addWidget(self.l_arch, 0, 1)
+        l_cardArch.addWidget(QLabel(self.tr("Execution:"), cardArch), 1, 0)
+        l_cardArch.addWidget(self.l_exec, 1, 1)
+        l_cardArch.addWidget(QLabel(self.tr("Bridged:"), cardArch), 2, 0)
+        l_cardArch.addWidget(self.l_bridged, 2, 1)
+        scrollLayout.addWidget(cardArch)
+
+        # 3. I/O & Signals Card
+        lbl_io_hdr = QLabel(self.tr("I/O & SIGNALS"), scrollWidget)
+        lbl_io_hdr.setFont(font_h)
+        scrollLayout.addWidget(lbl_io_hdr)
+
+        cardIO = QFrame(scrollWidget)
+        cardIO.setObjectName("infoCard")
+        l_cardIO = QGridLayout(cardIO)
+        l_cardIO.setContentsMargins(8, 6, 8, 6)
+        l_cardIO.setVerticalSpacing(4)
+
+        self.l_audio_io = QLabel("---", cardIO)
+        self.l_midi_io = QLabel("---", cardIO)
+        self.l_pins = QLabel("---", cardIO)
+        self.l_cv_io = QLabel("---", cardIO)
+
+        l_cardIO.addWidget(QLabel(self.tr("Audio Ins/Outs:"), cardIO), 0, 0)
+        l_cardIO.addWidget(self.l_audio_io, 0, 1)
+        l_cardIO.addWidget(QLabel(self.tr("MIDI Ins/Outs:"), cardIO), 1, 0)
+        l_cardIO.addWidget(self.l_midi_io, 1, 1)
+        l_cardIO.addWidget(QLabel(self.tr("Parameters:"), cardIO), 2, 0)
+        l_cardIO.addWidget(self.l_pins, 2, 1)
+        l_cardIO.addWidget(QLabel(self.tr("CV Ins/Outs:"), cardIO), 3, 0)
+        l_cardIO.addWidget(self.l_cv_io, 3, 1)
+        scrollLayout.addWidget(cardIO)
+
+        # 4. Requirements & Features Card
+        lbl_feat_hdr = QLabel(self.tr("FEATURES & REQUIREMENTS"), scrollWidget)
+        lbl_feat_hdr.setFont(font_h)
+        scrollLayout.addWidget(lbl_feat_hdr)
+
+        self.cardFeat = QFrame(scrollWidget)
+        self.cardFeat.setObjectName("infoCard")
+        self.flowFeat = FlowLayout(self.cardFeat, hSpacing=4, vSpacing=4)
+        self.flowFeat.setContentsMargins(6, 6, 6, 6)
+        tagNone = QLabel(self.tr("None"), self.cardFeat)
+        tagNone.setObjectName("infoTag")
+        self.flowFeat.addWidget(tagNone)
+        scrollLayout.addWidget(self.cardFeat)
+
+        # 5. File Location
+        lbl_file_hdr = QLabel(self.tr("FILE LOCATION"), scrollWidget)
+        lbl_file_hdr.setFont(font_h)
+        scrollLayout.addWidget(lbl_file_hdr)
+
+        self.l_binary = QLineEdit(scrollWidget)
+        self.l_binary.setReadOnly(True)
+        self.l_binary.setPlaceholderText("---")
+        scrollLayout.addWidget(self.l_binary)
+
+        scrollLayout.addStretch(1)
+        scrollArea.setWidget(scrollWidget)
+        mainLayout.addWidget(scrollArea, 1)
+
+        # Legacy label references for backward compatibility
+        self.l_format = self.l_badge
+        self.l_type = self.l_category
+        self.l_id = QLabel("---", self.infoPanel)
+        self.l_ains = QLabel("---", self.infoPanel)
+        self.l_aouts = QLabel("---", self.infoPanel)
+        self.l_cvins = QLabel("---", self.infoPanel)
+        self.l_cvouts = QLabel("---", self.infoPanel)
+        self.l_mins = QLabel("---", self.infoPanel)
+        self.l_mouts = QLabel("---", self.infoPanel)
+        self.l_pouts = QLabel("---", self.infoPanel)
+        self.l_gui = QLabel("---", self.infoPanel)
+        self.l_idisp = QLabel("---", self.infoPanel)
+        self.l_synth = QLabel("---", self.infoPanel)
+
+        self.tab_info = self.infoPanel
 
     # ----------------------------------------------------------------------------------------------------
     # public API
@@ -908,6 +1427,9 @@ class PyPluginListDialog(QDialog):
         settings = _newSettings()
         self.ch_keep_open.setChecked(_getBool(settings, "PluginDatabase/KeepOpen", False))
 
+        mode = _getInt(settings, "PluginDatabase/ViewMode", 0)
+        self._setViewMode(mode)
+
         geo = _getBytes(settings, "PluginDatabase/Geometry")
         if geo:
             self.restoreGeometry(QByteArray(geo))
@@ -940,13 +1462,8 @@ class PyPluginListDialog(QDialog):
 
         categories = _getStr(settings, "PluginDatabase/ShowCategory", "all")
         if categories == "all" or len(categories) < 2:
-            self.ch_cat_all.setChecked(True)
-            for ch in (self.ch_cat_delay, self.ch_cat_distortion, self.ch_cat_dynamics, self.ch_cat_eq,
-                       self.ch_cat_filter, self.ch_cat_modulator, self.ch_cat_synth, self.ch_cat_utility,
-                       self.ch_cat_other):
-                ch.setChecked(False)
+            self.group_cat.setAll(True)
         else:
-            self.ch_cat_all.setChecked(False)
             self.ch_cat_delay.setChecked(":delay:" in categories)
             self.ch_cat_distortion.setChecked(":distortion:" in categories)
             self.ch_cat_dynamics.setChecked(":dynamics:" in categories)
@@ -956,6 +1473,25 @@ class PyPluginListDialog(QDialog):
             self.ch_cat_synth.setChecked(":synth:" in categories)
             self.ch_cat_utility.setChecked(":utility:" in categories)
             self.ch_cat_other.setChecked(":other:" in categories)
+            self.group_cat.syncFromPills()
+
+        # Sync pill groups state from loaded settings
+        if all(b.isChecked() for b in self.group_format.buttons.values()):
+            self.group_format.setAll(True)
+        else:
+            self.group_format.syncFromPills()
+
+        if all(b.isChecked() for b in self.group_type.buttons.values()):
+            self.group_type.setAll(True)
+        else:
+            self.group_type.syncFromPills()
+
+        if all(b.isChecked() for b in self.group_arch.buttons.values()):
+            self.group_arch.setAll(True)
+        else:
+            self.group_arch.syncFromPills()
+
+        self.group_req.syncFromPills()
 
         tableGeometry = _getBytes(settings, "PluginDatabase/TableGeometry")
         hh = self.table.horizontalHeader()
@@ -991,26 +1527,34 @@ class PyPluginListDialog(QDialog):
     def _saveSettings(self, *args):
         settings = _newSettings()
 
+        settings.setValue("PluginDatabase/ViewMode", self.stackCenter.currentIndex())
         settings.setValue("PluginDatabase/Geometry", self.saveGeometry())
         settings.setValue("PluginDatabase/TableGeometry", self.table.horizontalHeader().saveState())
         settings.setValue("PluginDatabase/KeepOpen", self.ch_keep_open.isChecked())
-        settings.setValue("PluginDatabase/ShowEffects", self.ch_effects.isChecked())
-        settings.setValue("PluginDatabase/ShowInstruments", self.ch_instruments.isChecked())
-        settings.setValue("PluginDatabase/ShowMIDI", self.ch_midi.isChecked())
-        settings.setValue("PluginDatabase/ShowOther", self.ch_other.isChecked())
-        settings.setValue("PluginDatabase/ShowInternal", self.ch_internal.isChecked())
-        settings.setValue("PluginDatabase/ShowLADSPA", self.ch_ladspa.isChecked())
-        settings.setValue("PluginDatabase/ShowDSSI", self.ch_dssi.isChecked())
-        settings.setValue("PluginDatabase/ShowLV2", self.ch_lv2.isChecked())
-        settings.setValue("PluginDatabase/ShowVST2", self.ch_vst.isChecked())
-        settings.setValue("PluginDatabase/ShowVST3", self.ch_vst3.isChecked())
-        settings.setValue("PluginDatabase/ShowCLAP", self.ch_clap.isChecked())
-        settings.setValue("PluginDatabase/ShowAU", self.ch_au.isChecked())
-        settings.setValue("PluginDatabase/ShowJSFX", self.ch_jsfx.isChecked())
-        settings.setValue("PluginDatabase/ShowKits", self.ch_kits.isChecked())
-        settings.setValue("PluginDatabase/ShowNative", self.ch_native.isChecked())
-        settings.setValue("PluginDatabase/ShowBridged", self.ch_bridged.isChecked())
-        settings.setValue("PluginDatabase/ShowBridgedWine", self.ch_bridged_wine.isChecked())
+
+        fmtAll = self.group_format.isAllChecked()
+        settings.setValue("PluginDatabase/ShowInternal", True if fmtAll else self.ch_internal.isChecked())
+        settings.setValue("PluginDatabase/ShowLADSPA", True if fmtAll else self.ch_ladspa.isChecked())
+        settings.setValue("PluginDatabase/ShowDSSI", True if fmtAll else self.ch_dssi.isChecked())
+        settings.setValue("PluginDatabase/ShowLV2", True if fmtAll else self.ch_lv2.isChecked())
+        settings.setValue("PluginDatabase/ShowVST2", True if fmtAll else self.ch_vst.isChecked())
+        settings.setValue("PluginDatabase/ShowVST3", True if fmtAll else self.ch_vst3.isChecked())
+        settings.setValue("PluginDatabase/ShowCLAP", True if fmtAll else self.ch_clap.isChecked())
+        settings.setValue("PluginDatabase/ShowAU", True if fmtAll else self.ch_au.isChecked())
+        settings.setValue("PluginDatabase/ShowJSFX", True if fmtAll else self.ch_jsfx.isChecked())
+        settings.setValue("PluginDatabase/ShowKits", True if fmtAll else self.ch_kits.isChecked())
+
+        typeAll = self.group_type.isAllChecked()
+        settings.setValue("PluginDatabase/ShowEffects", True if typeAll else self.ch_effects.isChecked())
+        settings.setValue("PluginDatabase/ShowInstruments", True if typeAll else self.ch_instruments.isChecked())
+        settings.setValue("PluginDatabase/ShowMIDI", True if typeAll else self.ch_midi.isChecked())
+        settings.setValue("PluginDatabase/ShowOther", True if typeAll else self.ch_other.isChecked())
+
+        archAll = self.group_arch.isAllChecked()
+        settings.setValue("PluginDatabase/ShowNative", True if archAll else self.ch_native.isChecked())
+        settings.setValue("PluginDatabase/ShowBridged", True if archAll else self.ch_bridged.isChecked())
+        settings.setValue("PluginDatabase/ShowBridgedWine", True if archAll else self.ch_bridged_wine.isChecked())
+
         settings.setValue("PluginDatabase/ShowFavorites", self.ch_favorites.isChecked())
         settings.setValue("PluginDatabase/ShowRtSafe", self.ch_rtsafe.isChecked())
         settings.setValue("PluginDatabase/ShowHasCV", self.ch_cv.isChecked())
@@ -1019,7 +1563,7 @@ class PyPluginListDialog(QDialog):
         settings.setValue("PluginDatabase/ShowStereoOnly", self.ch_stereo.isChecked())
         settings.setValue("PluginDatabase/SearchText", self.lineEdit.text())
 
-        if self.ch_cat_all.isChecked():
+        if self.group_cat.isAllChecked():
             settings.setValue("PluginDatabase/ShowCategory", "all")
         else:
             categories = ""
@@ -1139,7 +1683,10 @@ class PyPluginListDialog(QDialog):
     # discovery
 
     def _libraryFolder(self):
-        folder = get_library_folder()
+        try:
+            folder = get_library_folder()
+        except Exception:
+            folder = ""
         if not folder:
             try:
                 from carla_shared import gCarla
@@ -1458,6 +2005,8 @@ class PyPluginListDialog(QDialog):
     def _addPluginsToTable(self):
         self.table.setSortingEnabled(False)
         self.table.clearContents()
+        self.list_rack.clear()
+        self.list_cards.clear()
         self._rowPluginData.clear()
 
         total = sum(len(v) for v in self._plugins.values())
@@ -1560,15 +2109,120 @@ class PyPluginListDialog(QDialog):
         data = self._cacheRowData(index, info, pluginText)
         itemName.setData(int(Qt.UserRole) + 50, data)
 
+        # Rack Item
+        rackItem = QListWidgetItem()
+        rackItem.setSizeHint(QSize(0, 44))
+        rackWidget = RackPluginItemWidget(info, isFav, self.list_rack)
+        rackWidget.lbl_star.mousePressEvent = lambda _ev, r=index: self._cellClicked(r, TW_FAVORITE)
+        if index < self.list_rack.count():
+            self.list_rack.insertItem(index, rackItem)
+        else:
+            self.list_rack.addItem(rackItem)
+        self.list_rack.setItemWidget(rackItem, rackWidget)
+
+        # Cards Item
+        cardItem = QListWidgetItem()
+        cardItem.setSizeHint(QSize(180, 105))
+        cardWidget = CardPluginItemWidget(info, isFav, self.list_cards)
+        cardWidget.lbl_star.mousePressEvent = lambda _ev, r=index: self._cellClicked(r, TW_FAVORITE)
+        if index < self.list_cards.count():
+            self.list_cards.insertItem(index, cardItem)
+        else:
+            self.list_cards.addItem(cardItem)
+        self.list_cards.setItemWidget(cardItem, cardWidget)
+
     # ----------------------------------------------------------------------------------------------------
     # slots
 
+    def _setViewMode(self, mode):
+        self.btn_mode_rack.blockSignals(True)
+        self.btn_mode_cards.blockSignals(True)
+        self.btn_mode_table.blockSignals(True)
+        self.btn_mode_rack.setChecked(mode == 0)
+        self.btn_mode_cards.setChecked(mode == 1)
+        self.btn_mode_table.setChecked(mode == 2)
+        self.btn_mode_rack.blockSignals(False)
+        self.btn_mode_cards.blockSignals(False)
+        self.btn_mode_table.blockSignals(False)
+
+        self.stackCenter.setCurrentIndex(mode)
+
+        cur_row = self.table.currentRow()
+        if cur_row >= 0:
+            if mode == 0 and cur_row < self.list_rack.count():
+                self.list_rack.setCurrentRow(cur_row)
+            elif mode == 1 and cur_row < self.list_cards.count():
+                self.list_cards.setCurrentRow(cur_row)
+
+    def _onRackCurrentItemChanged(self, current, previous):
+        if not current:
+            return
+        row = self.list_rack.row(current)
+        if row >= 0:
+            if self.table.currentRow() != row:
+                self.table.blockSignals(True)
+                self.table.setCurrentCell(row, TW_NAME)
+                self.table.blockSignals(False)
+            self._checkPlugin(row)
+            self._updateSelectionState()
+
+    def _onCardsCurrentItemChanged(self, current, previous):
+        if not current:
+            return
+        row = self.list_cards.row(current)
+        if row >= 0:
+            if self.table.currentRow() != row:
+                self.table.blockSignals(True)
+                self.table.setCurrentCell(row, TW_NAME)
+                self.table.blockSignals(False)
+            self._checkPlugin(row)
+            self._updateSelectionState()
+
+    def _onTableCurrentCellChanged(self, r, c, pr, pc):
+        self._checkPlugin(r)
+        if r >= 0:
+            if r < self.list_rack.count() and self.list_rack.currentRow() != r:
+                self.list_rack.blockSignals(True)
+                self.list_rack.setCurrentRow(r)
+                self.list_rack.blockSignals(False)
+            if r < self.list_cards.count() and self.list_cards.currentRow() != r:
+                self.list_cards.blockSignals(True)
+                self.list_cards.setCurrentRow(r)
+                self.list_cards.blockSignals(False)
+
+    def _onListSelectionChanged(self):
+        self._updateSelectionState()
+
+    def _hideRow(self, row):
+        self.table.hideRow(row)
+        if row < self.list_rack.count():
+            self.list_rack.setRowHidden(row, True)
+        if row < self.list_cards.count():
+            self.list_cards.setRowHidden(row, True)
+
+    def _showRow(self, row):
+        self.table.showRow(row)
+        if row < self.list_rack.count():
+            self.list_rack.setRowHidden(row, False)
+        if row < self.list_cards.count():
+            self.list_cards.setRowHidden(row, False)
+
     def _updateSelectionState(self):
-        selected_rows = set(idx.row() for idx in self.table.selectedIndexes())
+        curr_mode = self.stackCenter.currentIndex()
+        if curr_mode == 0:
+            selected_rows = set(self.list_rack.row(it) for it in self.list_rack.selectedItems())
+            cur = self.list_rack.currentRow()
+        elif curr_mode == 1:
+            selected_rows = set(self.list_cards.row(it) for it in self.list_cards.selectedItems())
+            cur = self.list_cards.currentRow()
+        else:
+            selected_rows = set(idx.row() for idx in self.table.selectedIndexes())
+            cur = self.table.currentRow()
+
         count = len(selected_rows)
         if count == 0:
             self.b_add.setText(self.tr("&Add Plugin"))
-            self.b_add.setEnabled(self.table.currentRow() >= 0)
+            self.b_add.setEnabled(cur >= 0)
         elif count == 1:
             self.b_add.setText(self.tr("&Add Plugin"))
             self.b_add.setEnabled(True)
@@ -1577,9 +2231,19 @@ class PyPluginListDialog(QDialog):
             self.b_add.setEnabled(True)
 
     def _slotAddClicked(self):
-        selected_rows = sorted(set(idx.row() for idx in self.table.selectedIndexes()))
-        if not selected_rows and self.table.currentRow() >= 0:
-            selected_rows = [self.table.currentRow()]
+        curr_mode = self.stackCenter.currentIndex()
+        if curr_mode == 0:
+            selected_rows = sorted(set(self.list_rack.row(it) for it in self.list_rack.selectedItems()))
+            if not selected_rows and self.list_rack.currentRow() >= 0:
+                selected_rows = [self.list_rack.currentRow()]
+        elif curr_mode == 1:
+            selected_rows = sorted(set(self.list_cards.row(it) for it in self.list_cards.selectedItems()))
+            if not selected_rows and self.list_cards.currentRow() >= 0:
+                selected_rows = [self.list_cards.currentRow()]
+        else:
+            selected_rows = sorted(set(idx.row() for idx in self.table.selectedIndexes()))
+            if not selected_rows and self.table.currentRow() >= 0:
+                selected_rows = [self.table.currentRow()]
 
         if not selected_rows:
             return
@@ -1623,16 +2287,35 @@ class PyPluginListDialog(QDialog):
 
         fav = self._favoriteFromInfo(info)
         isFavorite = fav in self.favorites
-        checked = _checkstate_checked(self.table.item(row, TW_FAVORITE))
 
-        if checked:
-            if not isFavorite:
-                self.favorites.append(fav)
-        elif isFavorite:
+        # Toggle favorite
+        itemFav = self.table.item(row, TW_FAVORITE)
+        newFav = not isFavorite
+        if itemFav:
+            self.table.blockSignals(True)
+            itemFav.setCheckState(_qt_checkstate(newFav))
+            self.table.blockSignals(False)
+
+        if newFav and not isFavorite:
+            self.favorites.append(fav)
+        elif not newFav and isFavorite:
             self.favorites = [f for f in self.favorites if f != fav]
+
+        # Update rack and cards star widgets
+        if 0 <= row < self.list_rack.count():
+            w_r = self.list_rack.itemWidget(self.list_rack.item(row))
+            if w_r and hasattr(w_r, "setFavorite"):
+                w_r.setFavorite(newFav)
+        if 0 <= row < self.list_cards.count():
+            w_c = self.list_cards.itemWidget(self.list_cards.item(row))
+            if w_c and hasattr(w_c, "setFavorite"):
+                w_c.setFavorite(newFav)
 
         settings = _newSettings()
         settings.setValue("PluginListDialog/Favorites", self._favoritesToBytes(self.favorites))
+
+        if self.ch_favorites.isChecked():
+            self._checkFilters()
 
     def _cellDoubleClicked(self, _row, column):
         if column != TW_FAVORITE:
@@ -1658,123 +2341,145 @@ class PyPluginListDialog(QDialog):
         text = self.lineEdit.text().lower().strip()
         tokens = [t for t in text.split() if t]
         if tokens and not all(tok in data["text"] for tok in tokens):
-            self.table.hideRow(row)
+            self._hideRow(row)
             return
 
-        if not self.ch_effects.isChecked() and data["isEffect"]:
-            self.table.hideRow(row)
-            return
-        if not self.ch_instruments.isChecked() and data["isSynth"]:
-            self.table.hideRow(row)
-            return
-        if not self.ch_midi.isChecked() and data["isMidi"]:
-            self.table.hideRow(row)
-            return
-        if not self.ch_other.isChecked() and data["isOther"]:
-            self.table.hideRow(row)
-            return
-        if not self.ch_kits.isChecked() and data["isKit"]:
-            self.table.hideRow(row)
-            return
-        if not self.ch_internal.isChecked() and data["type"] == PLUGIN_INTERNAL:
-            self.table.hideRow(row)
-            return
-        if not self.ch_ladspa.isChecked() and data["type"] == PLUGIN_LADSPA:
-            self.table.hideRow(row)
-            return
-        if not self.ch_dssi.isChecked() and data["type"] == PLUGIN_DSSI:
-            self.table.hideRow(row)
-            return
-        if not self.ch_lv2.isChecked() and data["type"] == PLUGIN_LV2:
-            self.table.hideRow(row)
-            return
-        if not self.ch_vst.isChecked() and data["type"] == PLUGIN_VST2:
-            self.table.hideRow(row)
-            return
-        if not self.ch_vst3.isChecked() and data["type"] == PLUGIN_VST3:
-            self.table.hideRow(row)
-            return
-        if not self.ch_clap.isChecked() and data["type"] == PLUGIN_CLAP:
-            self.table.hideRow(row)
-            return
-        if not self.ch_jsfx.isChecked() and data["type"] == PLUGIN_JSFX:
-            self.table.hideRow(row)
-            return
-        if not self.ch_native.isChecked() and data["isNative"]:
-            self.table.hideRow(row)
-            return
-        if not self.ch_bridged.isChecked() and data["isBridged"]:
-            self.table.hideRow(row)
-            return
-        if not self.ch_bridged_wine.isChecked() and data["isBridgedWine"]:
-            self.table.hideRow(row)
-            return
+        # Format (OR within group, bypassed if [All] is active)
+        if not self.group_format.isAllChecked():
+            fmt_match = False
+            t = data["type"]
+            if self.ch_clap.isChecked() and t == PLUGIN_CLAP:
+                fmt_match = True
+            elif self.ch_vst3.isChecked() and t == PLUGIN_VST3:
+                fmt_match = True
+            elif self.ch_lv2.isChecked() and t == PLUGIN_LV2:
+                fmt_match = True
+            elif self.ch_vst.isChecked() and t == PLUGIN_VST2:
+                fmt_match = True
+            elif self.ch_jsfx.isChecked() and t == PLUGIN_JSFX:
+                fmt_match = True
+            elif self.ch_internal.isChecked() and t == PLUGIN_INTERNAL:
+                fmt_match = True
+            elif self.ch_ladspa.isChecked() and t == PLUGIN_LADSPA:
+                fmt_match = True
+            elif self.ch_dssi.isChecked() and t == PLUGIN_DSSI:
+                fmt_match = True
+            elif self.ch_kits.isChecked() and data["isKit"]:
+                fmt_match = True
+            elif self.ch_au.isChecked() and t == PLUGIN_AU:
+                fmt_match = True
+            if not fmt_match:
+                self._hideRow(row)
+                return
+
+        # Type (OR within group, bypassed if [All] is active)
+        if not self.group_type.isAllChecked():
+            type_match = False
+            if self.ch_instruments.isChecked() and data["isSynth"]:
+                type_match = True
+            elif self.ch_effects.isChecked() and data["isEffect"]:
+                type_match = True
+            elif self.ch_midi.isChecked() and data["isMidi"]:
+                type_match = True
+            elif self.ch_other.isChecked() and data["isOther"]:
+                type_match = True
+            if not type_match:
+                self._hideRow(row)
+                return
+
+        # Architecture (OR within group, bypassed if [All] is active)
+        if not self.group_arch.isAllChecked():
+            arch_match = False
+            if self.ch_native.isChecked() and data["isNative"]:
+                arch_match = True
+            elif self.ch_bridged.isChecked() and data["isBridged"]:
+                arch_match = True
+            elif self.ch_bridged_wine.isChecked() and data["isBridgedWine"]:
+                arch_match = True
+            if not arch_match:
+                self._hideRow(row)
+                return
+
+        # Requirements (AND: must satisfy all checked requirements)
+        if not self.group_req.isAllChecked():
+            if self.ch_rtsafe.isChecked() and not data["isRtSafe"]:
+                self._hideRow(row)
+                return
+            if self.ch_cv.isChecked() and not data["hasCV"]:
+                self._hideRow(row)
+                return
+            if self.ch_gui.isChecked() and not data["hasGui"]:
+                self._hideRow(row)
+                return
+            if self.ch_inline_display.isChecked() and not data["hasIDisp"]:
+                self._hideRow(row)
+                return
+            if self.ch_stereo.isChecked() and not data["isStereo"]:
+                self._hideRow(row)
+                return
+
+        # Favorites
         if self.ch_favorites.isChecked() and not self._isFavorite(data["info"]):
-            self.table.hideRow(row)
-            return
-        if self.ch_rtsafe.isChecked() and not data["isRtSafe"]:
-            self.table.hideRow(row)
-            return
-        if self.ch_cv.isChecked() and not data["hasCV"]:
-            self.table.hideRow(row)
-            return
-        if self.ch_gui.isChecked() and not data["hasGui"]:
-            self.table.hideRow(row)
-            return
-        if self.ch_inline_display.isChecked() and not data["hasIDisp"]:
-            self.table.hideRow(row)
-            return
-        if self.ch_stereo.isChecked() and not data["isStereo"]:
-            self.table.hideRow(row)
+            self._hideRow(row)
             return
 
-        categ = data["category"]
-        if (self.ch_cat_all.isChecked()
-              or (self.ch_cat_delay.isChecked() and categ == "delay")
-              or (self.ch_cat_distortion.isChecked() and categ == "distortion")
-              or (self.ch_cat_dynamics.isChecked() and categ == "dynamics")
-              or (self.ch_cat_eq.isChecked() and categ == "eq")
-              or (self.ch_cat_filter.isChecked() and categ == "filter")
-              or (self.ch_cat_modulator.isChecked() and categ == "modulator")
-              or (self.ch_cat_synth.isChecked() and categ == "synth")
-              or (self.ch_cat_utility.isChecked() and categ == "utility")
-              or (self.ch_cat_other.isChecked() and categ == "other")):
-            self.table.showRow(row)
-        else:
-            self.table.hideRow(row)
+        # Category (OR within group, bypassed if [All] is active)
+        if not self.group_cat.isAllChecked():
+            categ = data["category"]
+            cat_match = (
+                (self.ch_cat_delay.isChecked() and categ == "delay")
+                or (self.ch_cat_distortion.isChecked() and categ == "distortion")
+                or (self.ch_cat_dynamics.isChecked() and categ == "dynamics")
+                or (self.ch_cat_eq.isChecked() and categ == "eq")
+                or (self.ch_cat_filter.isChecked() and categ == "filter")
+                or (self.ch_cat_modulator.isChecked() and categ == "modulator")
+                or (self.ch_cat_synth.isChecked() and categ == "synth")
+                or (self.ch_cat_utility.isChecked() and categ == "utility")
+                or (self.ch_cat_other.isChecked() and categ == "other")
+            )
+            if not cat_match:
+                self._hideRow(row)
+                return
+
+        self._showRow(row)
 
     def _checkFilters(self):
         text = self.lineEdit.text().lower().strip()
         tokens = [t for t in text.split() if t]
 
-        hideEffects = not self.ch_effects.isChecked()
-        hideInstruments = not self.ch_instruments.isChecked()
-        hideMidi = not self.ch_midi.isChecked()
-        hideOther = not self.ch_other.isChecked()
+        fmtAll = self.group_format.isAllChecked()
+        fmtClap = self.ch_clap.isChecked()
+        fmtVst3 = self.ch_vst3.isChecked()
+        fmtLv2 = self.ch_lv2.isChecked()
+        fmtVst = self.ch_vst.isChecked()
+        fmtJsfx = self.ch_jsfx.isChecked()
+        fmtInternal = self.ch_internal.isChecked()
+        fmtLadspa = self.ch_ladspa.isChecked()
+        fmtDssi = self.ch_dssi.isChecked()
+        fmtKits = self.ch_kits.isChecked()
+        fmtAu = self.ch_au.isChecked()
 
-        hideInternal = not self.ch_internal.isChecked()
-        hideLadspa = not self.ch_ladspa.isChecked()
-        hideDSSI = not self.ch_dssi.isChecked()
-        hideLV2 = not self.ch_lv2.isChecked()
-        hideVST2 = not self.ch_vst.isChecked()
-        hideVST3 = not self.ch_vst3.isChecked()
-        hideCLAP = not self.ch_clap.isChecked()
-        hideAU = not self.ch_au.isChecked()
-        hideJSFX = not self.ch_jsfx.isChecked()
-        hideKits = not self.ch_kits.isChecked()
+        typeAll = self.group_type.isAllChecked()
+        typeInst = self.ch_instruments.isChecked()
+        typeFx = self.ch_effects.isChecked()
+        typeMidi = self.ch_midi.isChecked()
+        typeOther = self.ch_other.isChecked()
 
-        hideNative = not self.ch_native.isChecked()
-        hideBridged = not self.ch_bridged.isChecked()
-        hideBridgedWine = not self.ch_bridged_wine.isChecked()
+        archAll = self.group_arch.isAllChecked()
+        archNative = self.ch_native.isChecked()
+        archBridged = self.ch_bridged.isChecked()
+        archWine = self.ch_bridged_wine.isChecked()
 
-        hideNonFavs = self.ch_favorites.isChecked()
-        hideNonRtSafe = self.ch_rtsafe.isChecked()
-        hideNonCV = self.ch_cv.isChecked()
-        hideNonGui = self.ch_gui.isChecked()
-        hideNonIDisp = self.ch_inline_display.isChecked()
-        hideNonStereo = self.ch_stereo.isChecked()
+        reqAll = self.group_req.isAllChecked()
+        reqRt = self.ch_rtsafe.isChecked()
+        reqCv = self.ch_cv.isChecked()
+        reqGui = self.ch_gui.isChecked()
+        reqIdisp = self.ch_inline_display.isChecked()
+        reqStereo = self.ch_stereo.isChecked()
 
-        catAll = self.ch_cat_all.isChecked()
+        favOnly = self.ch_favorites.isChecked()
+
+        catAll = self.group_cat.isAllChecked()
         catDelay = self.ch_cat_delay.isChecked()
         catDist = self.ch_cat_distortion.isChecked()
         catDyn = self.ch_cat_dynamics.isChecked()
@@ -1786,6 +2491,8 @@ class PyPluginListDialog(QDialog):
         catOther = self.ch_cat_other.isChecked()
 
         self.table.setUpdatesEnabled(False)
+        self.list_rack.setUpdatesEnabled(False)
+        self.list_cards.setUpdatesEnabled(False)
         try:
             for i in range(self.table.rowCount()):
                 item = self.table.item(i, TW_NAME)
@@ -1796,127 +2503,104 @@ class PyPluginListDialog(QDialog):
                     raw = item.data(int(Qt.UserRole) + UR_PLUGIN_INFO)
                     info, _ = _bytesToInfo(bytes(raw)) if raw else (None, 0)
                     if not info:
-                        self.table.hideRow(i)
+                        self._hideRow(i)
                         continue
                     data = self._cacheRowData(i, info)
                     item.setData(int(Qt.UserRole) + 50, data)
 
                 if tokens and not all(tok in data["text"] for tok in tokens):
-                    self.table.hideRow(i)
+                    self._hideRow(i)
                     continue
 
-                if hideEffects and data["isEffect"]:
-                    self.table.hideRow(i)
-                elif hideInstruments and data["isSynth"]:
-                    self.table.hideRow(i)
-                elif hideMidi and data["isMidi"]:
-                    self.table.hideRow(i)
-                elif hideOther and data["isOther"]:
-                    self.table.hideRow(i)
-                elif hideKits and data["isKit"]:
-                    self.table.hideRow(i)
-                elif hideInternal and data["type"] == PLUGIN_INTERNAL:
-                    self.table.hideRow(i)
-                elif hideLadspa and data["type"] == PLUGIN_LADSPA:
-                    self.table.hideRow(i)
-                elif hideDSSI and data["type"] == PLUGIN_DSSI:
-                    self.table.hideRow(i)
-                elif hideLV2 and data["type"] == PLUGIN_LV2:
-                    self.table.hideRow(i)
-                elif hideVST2 and data["type"] == PLUGIN_VST2:
-                    self.table.hideRow(i)
-                elif hideVST3 and data["type"] == PLUGIN_VST3:
-                    self.table.hideRow(i)
-                elif hideCLAP and data["type"] == PLUGIN_CLAP:
-                    self.table.hideRow(i)
-                elif hideAU and data["type"] == PLUGIN_AU:
-                    self.table.hideRow(i)
-                elif hideJSFX and data["type"] == PLUGIN_JSFX:
-                    self.table.hideRow(i)
-                elif hideNative and data["isNative"]:
-                    self.table.hideRow(i)
-                elif hideBridged and data["isBridged"]:
-                    self.table.hideRow(i)
-                elif hideBridgedWine and data["isBridgedWine"]:
-                    self.table.hideRow(i)
-                elif hideNonRtSafe and not data["isRtSafe"]:
-                    self.table.hideRow(i)
-                elif hideNonCV and not data["hasCV"]:
-                    self.table.hideRow(i)
-                elif hideNonGui and not data["hasGui"]:
-                    self.table.hideRow(i)
-                elif hideNonIDisp and not data["hasIDisp"]:
-                    self.table.hideRow(i)
-                elif hideNonStereo and not data["isStereo"]:
-                    self.table.hideRow(i)
-                elif hideNonFavs and not self._isFavorite(data["info"]):
-                    self.table.hideRow(i)
-                else:
+                if not fmtAll:
+                    t = data["type"]
+                    if not ((fmtClap and t == PLUGIN_CLAP)
+                            or (fmtVst3 and t == PLUGIN_VST3)
+                            or (fmtLv2 and t == PLUGIN_LV2)
+                            or (fmtVst and t == PLUGIN_VST2)
+                            or (fmtJsfx and t == PLUGIN_JSFX)
+                            or (fmtInternal and t == PLUGIN_INTERNAL)
+                            or (fmtLadspa and t == PLUGIN_LADSPA)
+                            or (fmtDssi and t == PLUGIN_DSSI)
+                            or (fmtKits and data["isKit"])
+                            or (fmtAu and t == PLUGIN_AU)):
+                        self._hideRow(i)
+                        continue
+
+                if not typeAll:
+                    if not ((typeInst and data["isSynth"])
+                            or (typeFx and data["isEffect"])
+                            or (typeMidi and data["isMidi"])
+                            or (typeOther and data["isOther"])):
+                        self._hideRow(i)
+                        continue
+
+                if not archAll:
+                    if not ((archNative and data["isNative"])
+                            or (archBridged and data["isBridged"])
+                            or (archWine and data["isBridgedWine"])):
+                        self._hideRow(i)
+                        continue
+
+                if not reqAll:
+                    if reqRt and not data["isRtSafe"]:
+                        self._hideRow(i)
+                        continue
+                    if reqCv and not data["hasCV"]:
+                        self._hideRow(i)
+                        continue
+                    if reqGui and not data["hasGui"]:
+                        self._hideRow(i)
+                        continue
+                    if reqIdisp and not data["hasIDisp"]:
+                        self._hideRow(i)
+                        continue
+                    if reqStereo and not data["isStereo"]:
+                        self._hideRow(i)
+                        continue
+
+                if favOnly and not self._isFavorite(data["info"]):
+                    self._hideRow(i)
+                    continue
+
+                if not catAll:
                     categ = data["category"]
-                    if (catAll
-                          or (catDelay and categ == "delay")
-                          or (catDist and categ == "distortion")
-                          or (catDyn and categ == "dynamics")
-                          or (catEq and categ == "eq")
-                          or (catFilt and categ == "filter")
-                          or (catMod and categ == "modulator")
-                          or (catSynth and categ == "synth")
-                          or (catUtil and categ == "utility")
-                          or (catOther and categ == "other")):
-                        self.table.showRow(i)
-                    else:
-                        self.table.hideRow(i)
+                    if not ((catDelay and categ == "delay")
+                            or (catDist and categ == "distortion")
+                            or (catDyn and categ == "dynamics")
+                            or (catEq and categ == "eq")
+                            or (catFilt and categ == "filter")
+                            or (catMod and categ == "modulator")
+                            or (catSynth and categ == "synth")
+                            or (catUtil and categ == "utility")
+                            or (catOther and categ == "other")):
+                        self._hideRow(i)
+                        continue
+
+                self._showRow(i)
         finally:
             self.table.setUpdatesEnabled(True)
+            self.list_rack.setUpdatesEnabled(True)
+            self.list_cards.setUpdatesEnabled(True)
 
     def _checkFiltersCategoryAll(self, clicked=False):
-        notClicked = not clicked
-        for ch in (self.ch_cat_delay, self.ch_cat_distortion, self.ch_cat_dynamics, self.ch_cat_eq,
-                   self.ch_cat_filter, self.ch_cat_modulator, self.ch_cat_synth, self.ch_cat_utility,
-                   self.ch_cat_other):
-            ch.setChecked(notClicked)
+        self.group_cat.setAll(True)
         self._checkFilters()
 
     def _checkFiltersCategorySpecific(self, clicked=False):
-        if clicked:
-            self.ch_cat_all.setChecked(False)
-        elif not (self.ch_cat_delay.isChecked() or self.ch_cat_distortion.isChecked()
-                  or self.ch_cat_dynamics.isChecked() or self.ch_cat_eq.isChecked()
-                  or self.ch_cat_filter.isChecked() or self.ch_cat_modulator.isChecked()
-                  or self.ch_cat_synth.isChecked() or self.ch_cat_utility.isChecked()
-                  or self.ch_cat_other.isChecked()):
-            self.ch_cat_all.setChecked(True)
+        self.group_cat.syncFromPills()
         self._checkFilters()
 
     def _clearFilters(self):
-        def setCheckedNoSignal(w, checked):
-            w.blockSignals(True)
-            w.setChecked(checked)
-            w.blockSignals(False)
+        self.group_format.setAll(True)
+        self.group_type.setAll(True)
+        self.group_cat.setAll(True)
+        self.group_arch.setAll(True)
+        self.group_req.setAll(True)
 
-        for ch in (self.ch_internal, self.ch_ladspa, self.ch_dssi, self.ch_lv2, self.ch_vst,
-                   self.ch_vst3, self.ch_clap, self.ch_jsfx, self.ch_kits,
-                   self.ch_instruments, self.ch_effects, self.ch_midi, self.ch_other,
-                   self.ch_native):
-            setCheckedNoSignal(ch, True)
-
-        setCheckedNoSignal(self.ch_bridged, False)
-        setCheckedNoSignal(self.ch_bridged_wine, False)
-        setCheckedNoSignal(self.ch_favorites, False)
-        setCheckedNoSignal(self.ch_rtsafe, False)
-        setCheckedNoSignal(self.ch_stereo, False)
-        setCheckedNoSignal(self.ch_cv, False)
-        setCheckedNoSignal(self.ch_gui, False)
-        setCheckedNoSignal(self.ch_inline_display, False)
-
-        if self.ch_au.isEnabled():
-            setCheckedNoSignal(self.ch_au, True)
-
-        setCheckedNoSignal(self.ch_cat_all, True)
-        for ch in (self.ch_cat_delay, self.ch_cat_distortion, self.ch_cat_dynamics, self.ch_cat_eq,
-                   self.ch_cat_filter, self.ch_cat_modulator, self.ch_cat_synth, self.ch_cat_utility,
-                   self.ch_cat_other):
-            setCheckedNoSignal(ch, False)
+        self.ch_favorites.blockSignals(True)
+        self.ch_favorites.setChecked(False)
+        self.ch_favorites.blockSignals(False)
 
         self.lineEdit.blockSignals(True)
         self.lineEdit.clear()
@@ -1934,7 +2618,7 @@ class PyPluginListDialog(QDialog):
             if info is None:
                 info = {"hints": 0, "audioIns": 0, "audioOuts": 0, "midiIns": 0, "midiOuts": 0,
                         "build": BINARY_NONE, "type": PLUGIN_NONE, "uniqueId": 0, "cvIns": 0, "cvOuts": 0,
-                        "parameterIns": 0, "parameterOuts": 0}
+                        "parameterIns": 0, "parameterOuts": 0, "name": "", "maker": "", "category": "", "filename": ""}
 
             isSynth = bool(info["hints"] & PLUGIN_IS_SYNTH)
             isEffect = info["audioIns"] > 0 and info["audioOuts"] > 0 and not isSynth
@@ -1949,43 +2633,93 @@ class PyPluginListDialog(QDialog):
             else:
                 ptypeStr = self.tr("Other")
 
+            fmtStr = getPluginTypeAsString(info["type"])
+            self.l_badge.setText(fmtStr)
+
+            name = info.get("name") or (item.text() if item else "")
+            maker = info.get("maker") or "---"
+            cat = info.get("category") or ptypeStr
+            self.l_name.setText(name)
+            self.l_maker.setText(maker)
+            self.l_category.setText(f"{cat} • {ptypeStr}" if cat and cat != ptypeStr else cat)
+
             if info["build"] == BINARY_NATIVE:
-                parch = self.tr("Native")
+                parch = self.tr("Native (64-bit)" if CARLA_OS_64BIT else "Native (32-bit)")
             elif info["build"] == BINARY_POSIX32:
-                parch = "posix32"
+                parch = "POSIX 32-bit"
             elif info["build"] == BINARY_POSIX64:
-                parch = "posix64"
+                parch = "POSIX 64-bit"
             elif info["build"] == BINARY_WIN32:
-                parch = "win32"
+                parch = "Windows 32-bit"
             elif info["build"] == BINARY_WIN64:
-                parch = "win64"
+                parch = "Windows 64-bit"
             elif info["build"] == BINARY_OTHER:
                 parch = self.tr("Other")
             else:
                 parch = self.tr("Unknown")
 
-            self.l_format.setText(getPluginTypeAsString(info["type"]))
-            self.l_type.setText(ptypeStr)
+            isBridged = bool(info["hints"] & PLUGIN_IS_BRIDGE)
             self.l_arch.setText(parch)
-            self.l_id.setText(str(info["uniqueId"]))
-            self.l_ains.setText(str(info["audioIns"]))
-            self.l_aouts.setText(str(info["audioOuts"]))
-            self.l_cvins.setText(str(info["cvIns"]))
-            self.l_cvouts.setText(str(info["cvOuts"]))
-            self.l_mins.setText(str(info["midiIns"]))
-            self.l_mouts.setText(str(info["midiOuts"]))
+            self.l_exec.setText(self.tr("Bridged Out-of-Process") if isBridged else self.tr("Native In-Process"))
+            self.l_bridged.setText(self.tr("Yes") if isBridged else self.tr("No"))
+
+            self.l_audio_io.setText(f"{info['audioIns']} in / {info['audioOuts']} out")
+            self.l_midi_io.setText(f"{info['midiIns']} in / {info['midiOuts']} out")
             self.l_pins.setText(str(info["parameterIns"]))
-            self.l_pouts.setText(str(info["parameterOuts"]))
-            self.l_gui.setText(self.tr("Yes") if info["hints"] & PLUGIN_HAS_CUSTOM_UI else self.tr("No"))
-            self.l_idisp.setText(self.tr("Yes") if info["hints"] & PLUGIN_HAS_INLINE_DISPLAY else self.tr("No"))
-            self.l_bridged.setText(self.tr("Yes") if info["hints"] & PLUGIN_IS_BRIDGE else self.tr("No"))
-            self.l_synth.setText(self.tr("Yes") if isSynth else self.tr("No"))
+            self.l_cv_io.setText(f"{info['cvIns']} in / {info['cvOuts']} out")
+
+            # Update feature badges in flow layout
+            while self.flowFeat.count() > 0:
+                child = self.flowFeat.takeAt(0)
+                if child and child.widget():
+                    child.widget().deleteLater()
+
+            features = []
+            if info["hints"] & PLUGIN_HAS_CUSTOM_UI:
+                features.append(self.tr("Custom GUI"))
+            if info["hints"] & PLUGIN_HAS_INLINE_DISPLAY:
+                features.append(self.tr("Inline Display"))
+            if info["hints"] & PLUGIN_IS_RTSAFE:
+                features.append(self.tr("Realtime Safe"))
+            if isSynth:
+                features.append(self.tr("Synth"))
+            if info["cvIns"] > 0 or info["cvOuts"] > 0:
+                features.append(self.tr("CV Ports"))
+            if info["audioIns"] >= 2 or info["audioOuts"] >= 2:
+                features.append(self.tr("Stereo"))
+
+            if features:
+                for feat in features:
+                    tag = QLabel(feat, self.cardFeat)
+                    tag.setObjectName("infoTag")
+                    self.flowFeat.addWidget(tag)
+            else:
+                tag = QLabel(self.tr("None"), self.cardFeat)
+                tag.setObjectName("infoTag")
+                self.flowFeat.addWidget(tag)
+
+            self.l_binary.setText(info.get("filename") or "")
         else:
             self.b_add.setEnabled(False)
-            for label in (self.l_format, self.l_type, self.l_arch, self.l_id, self.l_ains, self.l_aouts,
-                          self.l_cvins, self.l_cvouts, self.l_mins, self.l_mouts, self.l_pins, self.l_pouts,
-                          self.l_gui, self.l_idisp, self.l_bridged, self.l_synth):
-                label.setText("---")
+            self.l_badge.setText("---")
+            self.l_name.setText(self.tr("No plugin selected"))
+            self.l_maker.setText("---")
+            self.l_category.setText("---")
+            self.l_arch.setText("---")
+            self.l_exec.setText("---")
+            self.l_bridged.setText("---")
+            self.l_audio_io.setText("---")
+            self.l_midi_io.setText("---")
+            self.l_pins.setText("---")
+            self.l_cv_io.setText("---")
+            self.l_binary.clear()
+            while self.flowFeat.count() > 0:
+                child = self.flowFeat.takeAt(0)
+                if child and child.widget():
+                    child.widget().deleteLater()
+            tag = QLabel(self.tr("None"), self.cardFeat)
+            tag.setObjectName("infoTag")
+            self.flowFeat.addWidget(tag)
 
     # ----------------------------------------------------------------------------------------------------
     # CSV export
