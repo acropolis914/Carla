@@ -20,6 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-19 02:35:00
+- **fix(rack)**: dynamic 5-character minimum width and frameless spinbox line edits
+  - Calculated font-metrics-based 5-character minimum width (`"00000"`) and applied it dynamically to both `QDoubleSpinBox` and its inner `QLineEdit`.
+  - Set `setFrame(False)` on `QDoubleSpinBox` to strip native frame overhead and removed rigid fixed-width constraints.
+
 ### 2026-10-19 02:27:00
 - **fix(rack)**: clean borderless parameter readouts and minimum slider travel width
   - Removed borders, outlines, and box backgrounds from `QDoubleSpinBox` for clean, modern DAW-style value text with subtle hover highlight.
