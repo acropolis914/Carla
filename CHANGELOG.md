@@ -20,6 +20,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-19 00:40:00
+- **fix(rack)**: fix `get_custom_data_value` method call in `createPluginSlot`
+  - Fixed `host.get_custom_data` call which expected a numeric index instead of type and key, causing a traceback when creating plugin slots.
+
 ### 2026-10-19 00:15:00
 - **feat(rack)**: Photoshop-layer style minified rack view with collapsible mini parameter sliders
   - Introduced minified "Layer View" in `PluginSlot_Minimal` rendering plugins as ultra-compact 36px strips with left-aligned power, bypass, type badge, and title.

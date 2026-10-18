@@ -3719,7 +3719,7 @@ def createPluginSlot(parent, host, pluginId, options):
     is_compact = bool("compact" in skinStyle or options.get('compact', False))
     is_layer = bool(
         options.get('layer_mode', False)
-        or host.get_custom_data(pluginId, CUSTOM_DATA_TYPE_PROPERTY, "CarlaSkinLayerMode") == "true"
+        or host.get_custom_data_value(pluginId, CUSTOM_DATA_TYPE_PROPERTY, "CarlaSkinLayerMode") == "true"
     )
 
     if skinStyle.startswith("sliders"):
