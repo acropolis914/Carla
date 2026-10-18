@@ -2389,23 +2389,6 @@ class SliderParamWidget(QWidget):
             gCarla.gui.fHasUnsavedChanges = True
         self.realValueChanged.emit(self.fRealValue)
 
-    def wheelEvent(self, event):
-        delta = event.angleDelta().y() if hasattr(event, "angleDelta") else event.delta()
-        if delta == 0:
-            event.ignore()
-            return
-        steps = float(delta) / 120.0
-        range_span = self.fMaximum - self.fMinimum
-        step_size = max(1.0, round(range_span / 50.0)) if self.fIsInteger else range_span / 50.0
-        new_val = self.fRealValue + (steps * step_size)
-        new_val = max(self.fMinimum, min(new_val, self.fMaximum))
-        if self.fIsInteger:
-            new_val = float(round(new_val))
-        self.setValue(new_val, True)
-        if hasattr(gCarla, "gui") and gCarla.gui is not None:
-            gCarla.gui.fHasUnsavedChanges = True
-        event.accept()
-
 # ------------------------------------------------------------------------------------------------------------
 
 class PluginSlot_Minimal(PluginSlot_Default):
@@ -3180,15 +3163,21 @@ class PluginSlot_Minimal(PluginSlot_Default):
                 if isinstance(pWidget, ScalableDial):
                     pWidget.setFixedSize(dial_w, dial_h)
 
+        is_sliders = getattr(self, 'is_slider_mode', False)
+
         if hasattr(self, 'w_knobs_left') and self.w_knobs_left is not None:
-            kLayout = self.w_knobs_left.layout()
-            if kLayout is not None:
-                kLayout.setSpacing(3 if w < 260 else 5)
-                kLayout.setContentsMargins(1, 2, 1, 2)
-            self.w_knobs_left.setMinimumWidth(0)
+            if is_sliders:
+                self.w_knobs_left.setVisible(False)
+            else:
+                self.w_knobs_left.setVisible(not is_compact)
+                kLayout = self.w_knobs_left.layout()
+                if kLayout is not None:
+                    kLayout.setSpacing(3 if w < 260 else 5)
+                    kLayout.setContentsMargins(1, 2, 1, 2)
+                self.w_knobs_left.setMinimumWidth(0)
 
         if hasattr(self, 'w_knobs_right') and self.w_knobs_right is not None:
-            show_right = (w >= 320) and not is_compact
+            show_right = (w >= 320) and not is_compact and not is_sliders
             self.w_knobs_right.setVisible(show_right)
             if hasattr(self, 'spacer_knobs') and self.spacer_knobs is not None:
                 pref_policy = getattr(QSizePolicy, "Preferred", None) or getattr(getattr(QSizePolicy, "Policy", None), "Preferred", None)

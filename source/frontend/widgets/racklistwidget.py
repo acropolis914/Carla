@@ -481,22 +481,34 @@ class RackListWidget(QListWidget):
 
     def wheelEvent(self, event):
         pos = event.pos() if hasattr(event, "pos") else event.position().toPoint()
-        w = self.childAt(pos)
-        while w is not None and w != self and w != self.viewport():
-            from widgets.commondial import CommonDial
-            from widgets.scalabledial import ScalableDial
-            from qt_compat import QSlider, QAbstractSpinBox, QComboBox
-            if isinstance(w, (CommonDial, ScalableDial, QSlider, QAbstractSpinBox, QComboBox)):
-                w.wheelEvent(event)
-                event.accept()
-                return
-            w = w.parentWidget()
-
         delta = 0
         if hasattr(event, "angleDelta"):
             delta = event.angleDelta().y()
         elif hasattr(event, "delta"):
             delta = event.delta()
+
+        w = self.childAt(pos)
+        target_scroll_area = None
+        while w is not None and w != self and w != self.viewport():
+            from widgets.commondial import CommonDial
+            from widgets.scalabledial import ScalableDial
+            from qt_compat import QSlider, QAbstractSpinBox, QComboBox, QScrollArea
+            if isinstance(w, (CommonDial, ScalableDial, QSlider, QAbstractSpinBox, QComboBox)):
+                w.wheelEvent(event)
+                event.accept()
+                return
+            if isinstance(w, QScrollArea) and target_scroll_area is None:
+                target_scroll_area = w
+            w = w.parentWidget()
+
+        if target_scroll_area is not None:
+            vsb = target_scroll_area.verticalScrollBar()
+            if vsb and vsb.maximum() > vsb.minimum():
+                pixel_step = int((delta / 120.0) * -40) if delta != 0 else 0
+                if pixel_step != 0:
+                    vsb.setValue(max(vsb.minimum(), min(vsb.maximum(), vsb.value() + pixel_step)))
+                event.accept()
+                return
 
         if delta != 0:
             vsb = self.verticalScrollBar()

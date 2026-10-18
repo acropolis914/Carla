@@ -20,6 +20,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-19 02:45:00
+- **fix(rack)**: suppress general knobs in slider mode and enable parameter label container scrolling
+  - Enforced complete hiding of bottom knob columns (`w_knobs_left` and `w_knobs_right`) in `_reflowResponsiveLayout` while slider mode is active, relying exclusively on dedicated Dry/Wet and Volume sliders.
+  - Forwarded mouse wheel scrolling over parameter labels, backgrounds, and whitespace to the active plugin parameter `QScrollArea` instead of scrolling the outer rack.
+  - Preserved independent mouse wheel control directly on sliders and spinboxes while removing outer-card wheel hijacking.
+
 ### 2026-10-19 02:35:00
 - **fix(rack)**: dynamic 5-character minimum width and frameless spinbox line edits
   - Calculated font-metrics-based 5-character minimum width (`"00000"`) and applied it dynamically to both `QDoubleSpinBox` and its inner `QLineEdit`.
