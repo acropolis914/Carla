@@ -8,11 +8,7 @@
 - [x] `[Diff: 1]` Fix: Rack item remove button still does not delete or show confirmation dialog (reopened: calf skin vs other skins / context menu / delete key)
 - [x] `[Diff: 1]` Fix: Left-click drag on empty canvas does not pan the UI
 - [x] `[Diff: 1]` Fix: Patchbay canvas node power button (`⏻`) does not toggle plugin processing state reliably
-- [x] `[Diff: 1]` Fix: Patchbay minimap looks cut off on unloaded canvas areas (works now, but visually cut off/janky boundary clipping)
-
-
-
-
+- [x] `[Diff: 1]` Fix: Patchbay canvasbox selected text color is inverted or unreadable against header background
 ---
 
 ## 🎛️ Patchbay Canvas & Navigation

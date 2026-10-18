@@ -1922,9 +1922,7 @@ class CanvasBox(QGraphicsObject):
         # Draw text (Truncated with Ellipsis)
         painter.setFont(self.m_font_name)
 
-        if self.isSelected():
-            painter.setPen(canvas.theme.box_text_sel)
-        elif self.m_custom_color:
+        if self.m_custom_color:
             # High-contrast readable title text against tinted header
             base_h = canvas.theme.box_bg_2 if canvas.theme.box_bg_2 else QColor(36, 39, 58)
             c = self.m_custom_color
@@ -1933,6 +1931,8 @@ class CanvasBox(QGraphicsObject):
                    0.114 * (0.65 * base_h.blue() + 0.35 * c.blue()))
             text_color = QColor(20, 20, 20) if lum > 145 else QColor(245, 245, 250)
             painter.setPen(QPen(text_color))
+        elif self.isSelected():
+            painter.setPen(canvas.theme.box_text_sel if canvas.theme.box_text_sel else canvas.theme.box_text)
         else:
             painter.setPen(canvas.theme.box_text)
 
