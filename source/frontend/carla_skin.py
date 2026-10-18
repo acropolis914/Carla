@@ -2249,83 +2249,75 @@ class SliderParamWidget(QWidget):
         self.fMinimum = min_val
         self.fMaximum = max_val
         self.fIsInteger = is_integer
-        self.fIsMini = is_mini
+        self.fIsMini = None
 
-        if is_mini:
-            layout = QVBoxLayout(self)
-            layout.setContentsMargins(4, 2, 4, 2)
-            layout.setSpacing(2)
-            self.setFixedHeight(34)
+        self.grid_layout = QGridLayout(self)
+        self.grid_layout.setContentsMargins(3, 1, 3, 1)
+        self.grid_layout.setSpacing(4)
 
-            self.header_widget = QWidget(self)
-            self.header_layout = QHBoxLayout(self.header_widget)
-            self.header_layout.setContentsMargins(0, 0, 0, 0)
-            self.header_layout.setSpacing(4)
+        self.label = QLabel(name)
+        self.label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        f = self.label.font()
+        f.setPointSize(8)
+        f.setBold(True)
+        self.label.setFont(f)
 
-            self.label = QLabel(name)
-            f = self.label.font()
-            f.setPointSize(8)
-            f.setBold(True)
-            self.label.setFont(f)
-            self.header_layout.addWidget(self.label)
+        self.slider = QSlider(Qt.Horizontal)
+        self.slider.setMinimum(0)
+        self.slider.setMaximum(1000)
+        self.slider.setMaximumHeight(14)
 
-            self.header_spacer = QSpacerItem(4, 1, QSizePolicy.Expanding, QSizePolicy.Minimum)
-            self.header_layout.addItem(self.header_spacer)
-
-            self.spinbox = QDoubleSpinBox()
-            self.spinbox.setMinimum(min_val)
-            self.spinbox.setMaximum(max_val)
-            self.spinbox.setDecimals(0 if is_integer else 2)
-            self.spinbox.setButtonSymbols(QAbstractSpinBox.NoButtons)
-            self.spinbox.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            self.spinbox.setFixedWidth(46)
-            self.spinbox.setMaximumHeight(16)
-            self.spinbox.setFont(f)
-            self.header_layout.addWidget(self.spinbox)
-
-            self.slider = QSlider(Qt.Horizontal)
-            self.slider.setMinimum(0)
-            self.slider.setMaximum(1000)
-            self.slider.setMaximumHeight(12)
-
-            layout.addWidget(self.header_widget)
-            layout.addWidget(self.slider)
-        else:
-            layout = QHBoxLayout(self)
-            layout.setContentsMargins(6, 2, 6, 2)
-            layout.setSpacing(8)
-            self.setFixedHeight(22)
-
-            self.label = QLabel(name)
-            self.label.setFixedWidth(90)
-            self.label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-            f = self.label.font()
-            f.setPointSize(9)
-            f.setBold(True)
-            self.label.setFont(f)
-            layout.addWidget(self.label)
-
-            self.slider = QSlider(Qt.Horizontal)
-            self.slider.setMinimum(0)
-            self.slider.setMaximum(1000)
-            self.slider.setMaximumHeight(16)
-            layout.addWidget(self.slider)
-
-            self.spinbox = QDoubleSpinBox()
-            self.spinbox.setMinimum(min_val)
-            self.spinbox.setMaximum(max_val)
-            self.spinbox.setDecimals(0 if is_integer else 2)
-            self.spinbox.setButtonSymbols(QAbstractSpinBox.NoButtons)
-            self.spinbox.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            self.spinbox.setFixedWidth(52)
-            self.spinbox.setMaximumHeight(20)
-            self.spinbox.setFont(f)
-            layout.addWidget(self.spinbox)
+        self.spinbox = QDoubleSpinBox()
+        self.spinbox.setMinimum(min_val)
+        self.spinbox.setMaximum(max_val)
+        self.spinbox.setDecimals(0 if is_integer else 2)
+        self.spinbox.setButtonSymbols(QAbstractSpinBox.NoButtons)
+        self.spinbox.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        if hasattr(self.spinbox, "lineEdit") and self.spinbox.lineEdit() is not None:
+            self.spinbox.lineEdit().setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            self.spinbox.lineEdit().setContentsMargins(0, 0, 0, 0)
+        step = 1.0 if is_integer else max(0.01, (max_val - min_val) / 100.0)
+        self.spinbox.setSingleStep(step)
+        self.spinbox.setFixedHeight(18)
+        self.spinbox.setFixedWidth(40 if is_integer else 44)
+        self.spinbox.setFont(f)
 
         self.slider.valueChanged.connect(self._on_slider)
         self.spinbox.valueChanged.connect(self._on_spinbox)
 
         self.fRealValue = min_val
+        self.setIsMini(is_mini)
+        self._updateTooltip()
+
+    def setIsMini(self, is_mini):
+        is_mini = bool(is_mini)
+        if self.fIsMini == is_mini:
+            return
+        self.fIsMini = is_mini
+
+        self.grid_layout.removeWidget(self.label)
+        self.grid_layout.removeWidget(self.slider)
+        self.grid_layout.removeWidget(self.spinbox)
+
+        if self.fIsMini:
+            self.setFixedHeight(34)
+            self.label.setMinimumWidth(0)
+            self.label.setMaximumWidth(16777215)
+            self.grid_layout.setColumnStretch(0, 1)
+            self.grid_layout.setColumnStretch(1, 0)
+            self.grid_layout.setColumnStretch(2, 0)
+            self.grid_layout.addWidget(self.label, 0, 0, 1, 1, Qt.AlignLeft | Qt.AlignVCenter)
+            self.grid_layout.addWidget(self.spinbox, 0, 1, 1, 1, Qt.AlignRight | Qt.AlignVCenter)
+            self.grid_layout.addWidget(self.slider, 1, 0, 1, 2)
+        else:
+            self.setFixedHeight(22)
+            self.label.setFixedWidth(75)
+            self.grid_layout.setColumnStretch(0, 0)
+            self.grid_layout.setColumnStretch(1, 1)
+            self.grid_layout.setColumnStretch(2, 0)
+            self.grid_layout.addWidget(self.label, 0, 0, 1, 1, Qt.AlignLeft | Qt.AlignVCenter)
+            self.grid_layout.addWidget(self.slider, 0, 1, 1, 1)
+            self.grid_layout.addWidget(self.spinbox, 0, 2, 1, 1, Qt.AlignRight | Qt.AlignVCenter)
         self._updateTooltip()
 
     def _updateTooltip(self):
@@ -2974,13 +2966,30 @@ class PluginSlot_Minimal(PluginSlot_Default):
                 background: {p['surface0']};
                 border: 1px solid {p['surface1']};
                 color: {p['text']};
-                border-radius: 4px;
-                padding: 1px 2px;
-                font-size: 10px;
+                border-radius: 3px;
+                padding: 0px 2px;
+                font-size: 9px;
                 font-weight: 600;
+                min-height: 18px;
+                max-height: 18px;
             }}
             QDoubleSpinBox:hover, QDoubleSpinBox:focus {{
                 border-color: {p['blue']};
+            }}
+            QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {{
+                width: 0px;
+                height: 0px;
+                border: none;
+            }}
+            QDoubleSpinBox QLineEdit {{
+                background: transparent;
+                border: none;
+                color: {p['text']};
+                padding: 0px 1px;
+                margin: 0px;
+                font-size: 9px;
+                font-weight: 600;
+                selection-background-color: {p['lavender']};
             }}
             QSlider::groove:horizontal {{
                 background: {slider_groove};
@@ -3146,6 +3155,14 @@ class PluginSlot_Minimal(PluginSlot_Default):
             for _, sWidget in self.fSliderParameterList:
                 if hasattr(sWidget, 'setIsMini'):
                     sWidget.setIsMini(stacked)
+
+        if hasattr(self, 'sliders_layout') and self.sliders_layout is not None:
+            if w < 260:
+                self.sliders_layout.setContentsMargins(2, 2, 2, 2)
+                self.sliders_layout.setSpacing(2)
+            else:
+                self.sliders_layout.setContentsMargins(6, 4, 6, 4)
+                self.sliders_layout.setSpacing(3)
 
         # Responsive knobs layout: adapt dial size, spacing, and right knob column
         if hasattr(self, 'fParameterList'):
@@ -3387,6 +3404,7 @@ class PluginSlot_Minimal(PluginSlot_Default):
 
         if self.is_slider_mode:
             self._ensure_sliders_created()
+            self._reflowResponsiveLayout()
             if self.w_knobs_left is not None:
                 self.w_knobs_left.setVisible(False)
             if self.w_knobs_right is not None:

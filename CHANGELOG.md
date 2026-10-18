@@ -20,6 +20,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-19 02:20:00
+- **fix(rack)**: compact slider textboxes and dynamic responsive slider card reflow
+  - Implemented dynamic `setIsMini` layout switching on `SliderParamWidget` between inline (1-row) and stacked (2-row) card views with `QGridLayout`.
+  - In ultra-thin viewports (< 320px), stacked mode gives the horizontal slider 100% full width of the card and places the label and spinbox cleanly on row 1.
+  - Compacted `QDoubleSpinBox` dimensions (height 18px, width 40-44px), eliminated hidden subcontrol buttons and internal `QLineEdit` padding, ensuring numerical text is completely readable and unclipped.
+  - Dynamically tightened `sliders_layout` margins and spacing in ultra-thin viewports (< 260px).
+
 ### 2026-10-19 02:10:00
 - **fix(rack)**: isolate knob wheel scrolling and compact responsive knob sizing
   - Implemented `wheelEvent` handling on `CommonDial` and `SliderParamWidget` with event acceptance to directly adjust values without bubbling to the rack list.
