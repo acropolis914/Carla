@@ -20,6 +20,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-19 02:10:00
+- **fix(rack)**: isolate knob wheel scrolling and compact responsive knob sizing
+  - Implemented `wheelEvent` handling on `CommonDial` and `SliderParamWidget` with event acceptance to directly adjust values without bubbling to the rack list.
+  - Intercepted mouse wheel events in `RackListWidget.wheelEvent` over dials, sliders, spinboxes, and comboboxes to prevent rack viewport jumping.
+  - Added text elision to `CommonDial.paintEvent` to prevent dial label clipping and overflow in narrow columns.
+  - Dynamically scaled dial size (from 58×50px down to 46×44px in `< 260px`) and reduced spacing/margins in `_reflowResponsiveLayout`.
+  - Automatically hid secondary right knob column (Dry/Wet/Volume) below 320px width to grant primary plugin controls full breathing room.
+
 ### 2026-10-19 01:55:00
 - **fix(rack)**: complete 100% visual parity with responsive rack prototype
   - Re-implemented `LEDButton._paintMinimalLed` to paint crisp 1:1 square pixel tiles with specular edge highlights instead of round ellipses.

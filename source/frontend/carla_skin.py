@@ -2388,6 +2388,23 @@ class SliderParamWidget(QWidget):
             gCarla.gui.fHasUnsavedChanges = True
         self.realValueChanged.emit(self.fRealValue)
 
+    def wheelEvent(self, event):
+        delta = event.angleDelta().y() if hasattr(event, "angleDelta") else event.delta()
+        if delta == 0:
+            event.ignore()
+            return
+        steps = float(delta) / 120.0
+        range_span = self.fMaximum - self.fMinimum
+        step_size = max(1.0, round(range_span / 50.0)) if self.fIsInteger else range_span / 50.0
+        new_val = self.fRealValue + (steps * step_size)
+        new_val = max(self.fMinimum, min(new_val, self.fMaximum))
+        if self.fIsInteger:
+            new_val = float(round(new_val))
+        self.setValue(new_val, True)
+        if hasattr(gCarla, "gui") and gCarla.gui is not None:
+            gCarla.gui.fHasUnsavedChanges = True
+        event.accept()
+
 # ------------------------------------------------------------------------------------------------------------
 
 class PluginSlot_Minimal(PluginSlot_Default):
@@ -2698,7 +2715,7 @@ class PluginSlot_Minimal(PluginSlot_Default):
         self.spacer_subrow = QSpacerItem(8, 1, QSizePolicy.Expanding, QSizePolicy.Minimum)
         self.layout_subrow.addItem(self.spacer_subrow)
 
-        self.ui.verticalLayout.setContentsMargins(14, 5, 6, 5)
+        self.ui.verticalLayout.setContentsMargins(8, 4, 6, 4)
         self.ui.verticalLayout.setSpacing(2)
 
         styleSheet = f"""
@@ -3129,6 +3146,31 @@ class PluginSlot_Minimal(PluginSlot_Default):
             for _, sWidget in self.fSliderParameterList:
                 if hasattr(sWidget, 'setIsMini'):
                     sWidget.setIsMini(stacked)
+
+        # Responsive knobs layout: adapt dial size, spacing, and right knob column
+        if hasattr(self, 'fParameterList'):
+            dial_w = 46 if w < 260 else (52 if w < 440 else 58)
+            dial_h = 44 if w < 260 else (48 if w < 440 else 50)
+            for _, pWidget in self.fParameterList:
+                if isinstance(pWidget, ScalableDial):
+                    pWidget.setFixedSize(dial_w, dial_h)
+
+        if hasattr(self, 'w_knobs_left') and self.w_knobs_left is not None:
+            kLayout = self.w_knobs_left.layout()
+            if kLayout is not None:
+                kLayout.setSpacing(3 if w < 260 else 5)
+                kLayout.setContentsMargins(1, 2, 1, 2)
+            self.w_knobs_left.setMinimumWidth(0)
+
+        if hasattr(self, 'w_knobs_right') and self.w_knobs_right is not None:
+            show_right = (w >= 320) and not is_compact
+            self.w_knobs_right.setVisible(show_right)
+            if hasattr(self, 'spacer_knobs') and self.spacer_knobs is not None:
+                pref_policy = getattr(QSizePolicy, "Preferred", None) or getattr(getattr(QSizePolicy, "Policy", None), "Preferred", None)
+                if show_right and pref_policy is not None:
+                    self.spacer_knobs.changeSize(6, 1, pref_policy, pref_policy)
+                elif pref_policy is not None:
+                    self.spacer_knobs.changeSize(0, 0, pref_policy, pref_policy)
 
         # Notify rack item size if fixed height changed
         new_h = self.getFixedHeight()

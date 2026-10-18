@@ -286,15 +286,38 @@ class CommonDial(QDial):
             line_height = fm.lineSpacing() if hasattr(fm, 'lineSpacing') else fm.height()
             
             y = self.fLabelPos.y()
-            for line in (self.fLabel, f"({val_str})"):
-                w = fm.horizontalAdvance(line) if hasattr(fm, 'horizontalAdvance') else fm.width(line)
-                x = (self.width() - w) / 2.0
-                painter.drawText(QPointF(x, y), line)
+            for i, line in enumerate((self.fLabel, f"({val_str})")):
+                max_w = int(max(20, self.width() - 2))
+                elided_line = fm.elidedText(line, Qt.ElideRight, max_w) if i == 0 else line
+                w = fm.horizontalAdvance(elided_line) if hasattr(fm, 'horizontalAdvance') else fm.width(elided_line)
+                x = max(1.0, (self.width() - w) / 2.0)
+                painter.drawText(QPointF(x, y), elided_line)
                 y += line_height
 
         self.paintDial(painter)
 
         painter.restore()
+
+    def wheelEvent(self, event):
+        delta = event.angleDelta().y() if hasattr(event, "angleDelta") else event.delta()
+        if delta == 0:
+            event.ignore()
+            return
+
+        steps = float(delta) / 120.0
+        range_span = self.fMaximum - self.fMinimum
+        if self.fIsInteger:
+            step_size = max(1.0, round(range_span / 50.0))
+        else:
+            step_size = range_span / 50.0
+
+        new_val = self.fRealValue + (steps * step_size)
+        new_val = max(self.fMinimum, min(new_val, self.fMaximum))
+        if self.fIsInteger:
+            new_val = float(round(new_val))
+
+        self.setValue(new_val, True)
+        event.accept()
 
     def resizeEvent(self, event):
         QDial.resizeEvent(self, event)

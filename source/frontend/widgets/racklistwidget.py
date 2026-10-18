@@ -480,6 +480,18 @@ class RackListWidget(QListWidget):
         QListWidget.keyPressEvent(self, event)
 
     def wheelEvent(self, event):
+        pos = event.pos() if hasattr(event, "pos") else event.position().toPoint()
+        w = self.childAt(pos)
+        while w is not None and w != self and w != self.viewport():
+            from widgets.commondial import CommonDial
+            from widgets.scalabledial import ScalableDial
+            from qt_compat import QSlider, QAbstractSpinBox, QComboBox
+            if isinstance(w, (CommonDial, ScalableDial, QSlider, QAbstractSpinBox, QComboBox)):
+                w.wheelEvent(event)
+                event.accept()
+                return
+            w = w.parentWidget()
+
         delta = 0
         if hasattr(event, "angleDelta"):
             delta = event.angleDelta().y()
