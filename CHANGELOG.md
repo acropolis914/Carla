@@ -20,6 +20,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-19 04:28:00
+- **feat(ui)**: modern Catppuccin loading screen with active gradient progress animation
+  - Replaced legacy native loading dialog with a floating Catppuccin Macchiato modal card featuring translucent background, drop shadow, CLARA brand badges, and project file metadata.
+  - Implemented an active glowing gradient progress bar (`#89b4fa` -> `#cba6f7` -> `#f5c2e7`) with live percentage display.
+  - Added background crawl animation timer to ensure the loading bar stays alive and never freezes even when the Qt event loop is starved during heavy plugin initialization.
+  - Added Generative UI interactive simulation artifact for testing loading screen animations.
+
 ### 2026-10-19 04:15:00
 - **perf(settings)**: lazy tab building and dialog caching for fast cold start and instant reopen
   - Deferred declarative schema construction for Patchbay, OSC, Wine, and Experimental tabs until explicitly visited, avoiding construction of ~100 widgets on dialog open.
