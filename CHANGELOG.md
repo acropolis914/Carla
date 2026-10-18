@@ -20,6 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-18 08:18:00
+- **fix(ui)**: resolve `Qt.WaitCursor` PyQt6 compatibility alias
+  - Added `WaitCursor`, `BusyCursor`, `IBeamCursor`, and `ForbiddenCursor` to `qt_compat.py` `Qt.CursorShape` compatibility aliases for PyQt6.
+  - Added safe attribute fallback for cursor overrides in `carla_host.py:loadPluginFromData`.
+
 ### 2026-10-18 04:40:00
 - **feat(plugins)**: non-blocking startup scanner, inline live-streaming refresh, and persistent multi-add loading
   - Added low-priority non-blocking startup background scanner thread (`PluginScannerThread`) to pre-warm plugin cache without audio or UI lag.

@@ -2581,13 +2581,16 @@ class HostWindow(QMainWindow):
             print("HostWindow: startStartupPluginScanner failed:", exc)
 
     def loadPluginFromData(self, btype, ptype, filename, label, uniqueId, extraPtr):
-        QApplication.setOverrideCursor(Qt.WaitCursor)
+        cursor = getattr(Qt, "WaitCursor", None) or getattr(getattr(Qt, "CursorShape", object), "WaitCursor", None)
+        if cursor is not None:
+            QApplication.setOverrideCursor(cursor)
         try:
             ok = self.host.add_plugin(
                 btype, ptype, filename, None, label, uniqueId, extraPtr, PLUGIN_OPTIONS_NULL
             )
         finally:
-            QApplication.restoreOverrideCursor()
+            if cursor is not None:
+                QApplication.restoreOverrideCursor()
 
         if not ok:
             CustomMessageBox(

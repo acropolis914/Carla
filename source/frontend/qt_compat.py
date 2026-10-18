@@ -348,13 +348,17 @@ elif qt_config == 6:
     # --------------------------------------------------------------------------------------------------------
 
     Qt.ArrowCursor = Qt.CursorShape.ArrowCursor
+    Qt.BusyCursor = Qt.CursorShape.BusyCursor
     Qt.ClosedHandCursor = Qt.CursorShape.ClosedHandCursor
     Qt.CrossCursor = Qt.CursorShape.CrossCursor
+    Qt.ForbiddenCursor = Qt.CursorShape.ForbiddenCursor
+    Qt.IBeamCursor = Qt.CursorShape.IBeamCursor
     Qt.OpenHandCursor = Qt.CursorShape.OpenHandCursor
     Qt.PointingHandCursor = Qt.CursorShape.PointingHandCursor
     Qt.SizeAllCursor = Qt.CursorShape.SizeAllCursor
     Qt.SizeHorCursor = Qt.CursorShape.SizeHorCursor
     Qt.SizeVerCursor = Qt.CursorShape.SizeVerCursor
+    Qt.WaitCursor = Qt.CursorShape.WaitCursor
 
     # --------------------------------------------------------------------------------------------------------
     # Qt.GlobalColor
