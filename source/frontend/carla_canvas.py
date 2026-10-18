@@ -2087,10 +2087,9 @@ def canvasCallback(action, value1, value2, valueStr):
             gCarla.gui.fExternalPatchbay, gOut, pOut, gIn, pIn
         ):
             err = host.get_last_error()
-            log_carla(f"carla_canvas: Connection failed: {err}")
-            print("Connection failed:", err)
+            log_carla(f"carla_canvas: Connection failed: {err}", level="warn")
         else:
-            log_carla("carla_canvas: Connection request succeeded")
+            log_carla("carla_canvas: Connection request succeeded", level="debug")
             if hasattr(gCarla.gui, "markProjectModified"):
                 gCarla.gui.markProjectModified()
             if QApplication.keyboardModifiers() & Qt.AltModifier:
@@ -2099,7 +2098,8 @@ def canvasCallback(action, value1, value2, valueStr):
     elif action == patchcanvas.ACTION_PORTS_DISCONNECT:
         connectionId = value1
         log_carla(
-            f"carla_canvas: ACTION_PORTS_DISCONNECT connectionId={connectionId} (external={gCarla.gui.fExternalPatchbay})"
+            f"carla_canvas: ACTION_PORTS_DISCONNECT connectionId={connectionId} (external={gCarla.gui.fExternalPatchbay})",
+            level="debug"
         )
 
         alt_pressed = bool(QApplication.keyboardModifiers() & Qt.AltModifier)
@@ -2109,8 +2109,7 @@ def canvasCallback(action, value1, value2, valueStr):
 
         if not host.patchbay_disconnect(gCarla.gui.fExternalPatchbay, connectionId):
             err = host.get_last_error()
-            log_carla(f"carla_canvas: Disconnect failed: {err}")
-            print("Disconnect failed:", err)
+            log_carla(f"carla_canvas: Disconnect failed: {err}", level="warn")
         else:
             log_carla("carla_canvas: Disconnect request succeeded")
             if hasattr(gCarla.gui, "markProjectModified"):

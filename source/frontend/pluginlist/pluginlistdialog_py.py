@@ -103,7 +103,7 @@ from carla_backend import (
     PLUGIN_HAS_CUSTOM_UI,
     PLUGIN_HAS_INLINE_DISPLAY,
 )
-from carla_shared import getIcon
+from carla_shared import getIcon, log_carla
 from carla_utils import getPluginCategoryAsString, getPluginTypeAsString
 
 from utils import QSafeSettings
@@ -831,7 +831,7 @@ class PyPluginListDialog(QDialog):
                 set_option(ENGINE_OPTION_WINE_EXECUTABLE, 0, hostSettings.get("wineExecutable") or "")
                 set_option(ENGINE_OPTION_WINE_FALLBACK_PREFIX, 0, hostSettings.get("wineFallbackPrefix") or "")
             except Exception as exc:  # pragma: no cover
-                print("PyPluginListDialog: set_option failed:", exc)
+                log_carla(f"PyPluginListDialog: set_option failed: {exc}", level="debug")
 
         # -- build UI ------------------------------------------------------------------------------------
         self._buildUi(hostSettings)
@@ -1418,7 +1418,7 @@ class PyPluginListDialog(QDialog):
             else:
                 self.scanBar.hide()
         except Exception as exc:
-            print("PyPluginListDialog: Failed to check global scanner:", exc)
+            log_carla(f"PyPluginListDialog: Failed to check global scanner: {exc}", level="debug")
 
     # ----------------------------------------------------------------------------------------------------
     # settings

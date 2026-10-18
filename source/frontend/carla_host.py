@@ -1707,7 +1707,7 @@ class HostWindow(QMainWindow):
             except:
                 return False
 
-        print("NOTICE: loading old-style canvas group positions via legacy json file")
+        log_carla("NOTICE: loading old-style canvas group positions via legacy json file", level="debug")
         patchcanvas.restoreGroupPositions(canvasdata)
         QTimer.singleShot(1, self.slot_canvasRefresh)
         return True
@@ -2598,7 +2598,7 @@ class HostWindow(QMainWindow):
             scanner.configure(paths=paths)
             scanner.start()
         except Exception as exc:
-            print("HostWindow: startStartupPluginScanner failed:", exc)
+            log_carla(f"HostWindow: startStartupPluginScanner failed: {exc}", level="debug")
 
     def loadPluginFromData(self, btype, ptype, filename, label, uniqueId, extraPtr):
         cursor = getattr(Qt, "WaitCursor", None) or getattr(getattr(Qt, "CursorShape", object), "WaitCursor", None)
@@ -2832,7 +2832,8 @@ class HostWindow(QMainWindow):
     @pyqtSlot(int, int, str)
     def slot_handlePluginAddedCallback(self, pluginId, pluginType, pluginName):
         log_carla(
-            f"carla_host: slot_handlePluginAddedCallback id={pluginId}, type={pluginType}, name='{pluginName}'"
+            f"carla_host: slot_handlePluginAddedCallback id={pluginId}, type={pluginType}, name='{pluginName}'",
+            level="debug"
         )
 
         if getattr(self, "fLoadingDialog", None) is not None:
@@ -3565,7 +3566,7 @@ class HostWindow(QMainWindow):
                                         w.setCustomColor(hex_col, notify=False)
                                 break
             except Exception as e:
-                print("Error mapping plugin to canvas client:", clientName, e)
+                log_carla(f"Error mapping plugin to canvas client: {clientName} {e}", level="debug")
                 return
 
     @pyqtSlot(int)
@@ -5528,7 +5529,7 @@ class HostWindow(QMainWindow):
                 int(self.devicePixelRatioF() * 1000),
                 "",
             )
-            print("Frontend pixel ratio is", self.devicePixelRatioF())
+            log_carla(f"Frontend pixel ratio is {self.devicePixelRatioF()}", level="debug")
 
         # set our gui as parent for all plugins UIs
         if self.host.manageUIs and not self.host.isControl:
@@ -6138,15 +6139,17 @@ def engineCallback(host, action, pluginId, value1, value2, value3, valuef, value
         host.ReloadAllCallback.emit(pluginId)
     elif action == ENGINE_CALLBACK_PATCHBAY_CLIENT_ADDED:
         log_carla(
-            f"engineCallback: PATCHBAY_CLIENT_ADDED clientId={pluginId}, icon={value1}, pluginId={value2}, name='{valueStr}'"
+            f"engineCallback: PATCHBAY_CLIENT_ADDED clientId={pluginId}, icon={value1}, pluginId={value2}, name='{valueStr}'",
+            level="debug"
         )
         host.PatchbayClientAddedCallback.emit(pluginId, value1, value2, valueStr)
     elif action == ENGINE_CALLBACK_PATCHBAY_CLIENT_REMOVED:
-        log_carla(f"engineCallback: PATCHBAY_CLIENT_REMOVED clientId={pluginId}")
+        log_carla(f"engineCallback: PATCHBAY_CLIENT_REMOVED clientId={pluginId}", level="debug")
         host.PatchbayClientRemovedCallback.emit(pluginId)
     elif action == ENGINE_CALLBACK_PATCHBAY_CLIENT_RENAMED:
         log_carla(
-            f"engineCallback: PATCHBAY_CLIENT_RENAMED clientId={pluginId}, name='{valueStr}'"
+            f"engineCallback: PATCHBAY_CLIENT_RENAMED clientId={pluginId}, name='{valueStr}'",
+            level="debug"
         )
         host.PatchbayClientRenamedCallback.emit(pluginId, valueStr)
     elif action == ENGINE_CALLBACK_PATCHBAY_CLIENT_DATA_CHANGED:

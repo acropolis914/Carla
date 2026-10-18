@@ -20,6 +20,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-19 06:24:00
+- **refactor(logger)**: clean up dirty log spam and categorize benign callbacks to DEBUG
+  - Demoted high-volume engine callbacks (`PATCHBAY_CLIENT_ADDED/REMOVED/RENAMED`, `slot_handlePluginAddedCallback`, port mappings) to `DEBUG` level.
+  - Expanded `CarlaLogger.log_raw_string` benign noise filters to capture Qt platform/icon warnings (`kf.iconthemes`) and internal discovery checks.
+  - Replaced unformatted `print()` calls in canvas connections, project session autosave, and plugin list dialog with structured `log_carla()` calls.
+
 ### 2026-10-19 06:14:00
 - **style(pluginlist)**: compact capsule styling for filter pills
   - Reduced filter pill padding to `2px 7px` and font size to `10px` for tighter spatial density.

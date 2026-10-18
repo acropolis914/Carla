@@ -8,6 +8,7 @@ import time
 from datetime import datetime
 from qt_compat import QTimer
 from project_storage import storage_manager
+from carla_shared import log_carla
 
 class ProjectSessionManager:
     """
@@ -174,7 +175,7 @@ class ProjectSessionManager:
             self._prune_autosaves(autosave_dir)
             return autosave_file
         except Exception as e:
-            print("ProjectSessionManager::create_autosave failed:", e)
+            log_carla(f"ProjectSessionManager::create_autosave failed: {e}", level="warn")
             return None
 
     def queue_node_position_sync(self):
@@ -193,7 +194,7 @@ class ProjectSessionManager:
                 positions = patchcanvas.saveGroupPositions()
                 storage_manager.save_canvas_positions(target_file, positions)
             except Exception as e:
-                print("ProjectSessionManager::_sync_latest_autosave_positions failed:", e)
+                log_carla(f"ProjectSessionManager::_sync_latest_autosave_positions failed: {e}", level="debug")
         else:
             # If no autosave exists yet, create one now
             self.create_autosave(is_scheduled=False)
@@ -208,7 +209,7 @@ class ProjectSessionManager:
             self._last_autosave_file = None
             self.last_autosave_time = None
         except Exception as e:
-            print("ProjectSessionManager::prune_all_autosaves failed:", e)
+            log_carla(f"ProjectSessionManager::prune_all_autosaves failed: {e}", level="debug")
 
     def _prune_autosaves(self, autosave_dir):
         if not os.path.exists(autosave_dir):

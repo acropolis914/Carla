@@ -268,11 +268,34 @@ class CarlaLogger(QObject):
             "CARLAPLUGINBRIDGETHREAD::RUN() - BRIDGE AUTO-CLOSED",
             "REMAINING BUFFERS ON DESTRUCTION",
             "TOTAL SIZE: 0",
+            "KF.ICONTHEMES",
+            "ICON THEME",
+            "FRONTEND PIXEL RATIO IS",
+            "DEVICEPIXELRATIO",
+            "ENGINE_CALLBACK_PATCHBAY",
+            "PATCHBAY_CLIENT_ADDED",
+            "PATCHBAY_CLIENT_REMOVED",
+            "PATCHBAY_CLIENT_RENAMED",
+            "PATCHBAY_PORT_ADDED",
+            "PATCHBAY_PORT_REMOVED",
+            "PATCHBAY_CONNECTION_ADDED",
+            "PATCHBAY_CONNECTION_REMOVED",
+            "SLOT_HANDLEPATCHBAY",
+            "SLOT_HANDLEPLUGINADDEDCALLBACK",
+            "PYPLUGINLISTDIALOG: SET_OPTION FAILED",
+            "PYPLUGINLISTDIALOG: FAILED TO CHECK GLOBAL SCANNER",
         )
         if any(b in upper_text for b in benign_noise):
             level = LOG_LEVEL_DEBUG
             if tag == "APP":
-                tag = "BACKEND"
+                if "PATCHBAY" in upper_text:
+                    tag = "PATCHBAY"
+                elif "PLUGIN" in upper_text:
+                    tag = "PLUGIN"
+                elif "ENGINE" in upper_text:
+                    tag = "ENGINE"
+                else:
+                    tag = "BACKEND"
         elif explicit_level is None:
             if "ASSERTION FAILURE" in upper_text:
                 level = LOG_LEVEL_ERROR
@@ -296,12 +319,12 @@ class CarlaLogger(QObject):
                 if tag_candidate in KNOWN_TAGS or tag_candidate not in ("CARLA",):
                     tag = tag_candidate
                 clean_text = m.group(2)
-            elif "ENGINE" in upper_text:
-                tag = "ENGINE"
             elif "PATCH" in upper_text or "CANVAS" in upper_text:
                 tag = "PATCHBAY"
-            elif "PLUGIN" in upper_text or "SFIZZ" in upper_text or "VST" in upper_text:
+            elif "PLUGIN" in upper_text or "SFIZZ" in upper_text or "VST" in upper_text or "CLAP" in upper_text or "LV2" in upper_text:
                 tag = "PLUGIN"
+            elif "ENGINE" in upper_text:
+                tag = "ENGINE"
         self.log(level, tag, clean_text)
 
     def start_capturing_stderr(self):
