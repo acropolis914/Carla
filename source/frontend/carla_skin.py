@@ -2241,7 +2241,7 @@ class SliderParamWidget(QWidget):
     realValueChanged = pyqtSignal(float)
     dragStateChanged = pyqtSignal(bool)
 
-    def __init__(self, parent, index, name, min_val, max_val, is_integer, full_name="", is_mini=False):
+    def __init__(self, parent, index, name, min_val, max_val, is_integer, full_name="", is_mini=False, accent_color=None):
         QWidget.__init__(self, parent)
         self.fIndex = index
         self.fName = name
@@ -2250,6 +2250,7 @@ class SliderParamWidget(QWidget):
         self.fMaximum = max_val
         self.fIsInteger = is_integer
         self.fIsMini = None
+        self.fAccentColor = accent_color
 
         self.grid_layout = QGridLayout(self)
         self.grid_layout.setContentsMargins(3, 1, 3, 1)
@@ -2261,12 +2262,27 @@ class SliderParamWidget(QWidget):
         f.setPointSize(8)
         f.setBold(True)
         self.label.setFont(f)
+        if accent_color:
+            self.label.setStyleSheet(f"color: {accent_color}; font-weight: bold;")
 
         self.slider = QSlider(Qt.Horizontal)
         self.slider.setMinimum(0)
         self.slider.setMaximum(1000)
+        self.slider.setSingleStep(20)
+        self.slider.setPageStep(50)
         self.slider.setMinimumWidth(80)
         self.slider.setMaximumHeight(14)
+        if accent_color:
+            self.slider.setStyleSheet(f"""
+                QSlider::sub-page:horizontal {{
+                    background: {accent_color};
+                    height: 4px;
+                    border-radius: 2px;
+                }}
+                QSlider::handle:horizontal {{
+                    border: 1px solid {accent_color};
+                }}
+            """)
 
         self.spinbox = QDoubleSpinBox()
         self.spinbox.setFrame(False)
@@ -3351,6 +3367,31 @@ class PluginSlot_Minimal(PluginSlot_Default):
         self.fSliderParameterList = []
         parameterCount = self.host.get_parameter_count(self.fPluginId)
 
+        p = CATPPUCCIN_MOCHA if self.is_dark else CATPPUCCIN_LATTE
+        wet_color = p['peach']
+        vol_color = p['green']
+
+        # Master slot parameters pinned at top: Dry/Wet (Amber) & Volume (Emerald)
+        if self.fPluginInfo['hints'] & PLUGIN_CAN_DRYWET:
+            widget = SliderParamWidget(self.sliders_container, PARAMETER_DRYWET, "Dry/Wet", 0.0, 1.0, False, accent_color=wet_color)
+            self.fSliderParameterList.append([PARAMETER_DRYWET, widget])
+            self.sliders_layout.addWidget(widget)
+            widget.realValueChanged.connect(self.slot_parameterValueChanged)
+
+        if self.fPluginInfo['hints'] & PLUGIN_CAN_VOLUME:
+            widget = SliderParamWidget(self.sliders_container, PARAMETER_VOLUME, "Volume", 0.0, 1.27, False, accent_color=vol_color)
+            self.fSliderParameterList.append([PARAMETER_VOLUME, widget])
+            self.sliders_layout.addWidget(widget)
+            widget.realValueChanged.connect(self.slot_parameterValueChanged)
+
+        has_masters = bool((self.fPluginInfo['hints'] & PLUGIN_CAN_DRYWET) or (self.fPluginInfo['hints'] & PLUGIN_CAN_VOLUME))
+        if has_masters and parameterCount > 0:
+            sep = QFrame(self.sliders_container)
+            sep.setFrameShape(QFrame.HLine)
+            sep.setFixedHeight(1)
+            sep.setStyleSheet(f"background: {p['surface0']}; border: none; margin: 2px 2px;")
+            self.sliders_layout.addWidget(sep)
+
         for i in range(parameterCount):
             paramInfo   = self.host.get_parameter_info(self.fPluginId, i)
             paramData   = self.host.get_parameter_data(self.fPluginId, i)
@@ -3368,18 +3409,6 @@ class PluginSlot_Minimal(PluginSlot_Default):
             self.fSliderParameterList.append([i, widget])
             self.sliders_layout.addWidget(widget)
 
-            widget.realValueChanged.connect(self.slot_parameterValueChanged)
-
-        if self.fPluginInfo['hints'] & PLUGIN_CAN_DRYWET:
-            widget = SliderParamWidget(self.sliders_container, PARAMETER_DRYWET, "Dry/Wet", 0.0, 1.0, False)
-            self.fSliderParameterList.append([PARAMETER_DRYWET, widget])
-            self.sliders_layout.addWidget(widget)
-            widget.realValueChanged.connect(self.slot_parameterValueChanged)
-
-        if self.fPluginInfo['hints'] & PLUGIN_CAN_VOLUME:
-            widget = SliderParamWidget(self.sliders_container, PARAMETER_VOLUME, "Volume", 0.0, 1.27, False)
-            self.fSliderParameterList.append([PARAMETER_VOLUME, widget])
-            self.sliders_layout.addWidget(widget)
             widget.realValueChanged.connect(self.slot_parameterValueChanged)
 
         self.sliders_layout.addStretch()
@@ -3542,7 +3571,36 @@ class PluginSlot_Minimal(PluginSlot_Default):
         self.fMiniSliderParameterList = []
         parameterCount = self.host.get_parameter_count(self.fPluginId)
 
-        # Essential parameters: dry/wet, volume, or top active parameters
+        p = CATPPUCCIN_MOCHA if self.is_dark else CATPPUCCIN_LATTE
+        wet_color = p['peach']
+        vol_color = p['green']
+
+        # Master slot parameters pinned at top: Dry/Wet (Amber) & Volume (Emerald)
+        if self.fPluginInfo['hints'] & PLUGIN_CAN_DRYWET:
+            widget = SliderParamWidget(
+                self.mini_params_tray, PARAMETER_DRYWET, "Dry/Wet", 0.0, 1.0, False, is_mini=True, accent_color=wet_color
+            )
+            self.fMiniSliderParameterList.append([PARAMETER_DRYWET, widget])
+            self.mini_params_layout.addWidget(widget)
+            widget.realValueChanged.connect(self.slot_parameterValueChanged)
+
+        if self.fPluginInfo['hints'] & PLUGIN_CAN_VOLUME:
+            widget = SliderParamWidget(
+                self.mini_params_tray, PARAMETER_VOLUME, "Volume", 0.0, 1.27, False, is_mini=True, accent_color=vol_color
+            )
+            self.fMiniSliderParameterList.append([PARAMETER_VOLUME, widget])
+            self.mini_params_layout.addWidget(widget)
+            widget.realValueChanged.connect(self.slot_parameterValueChanged)
+
+        has_masters = bool((self.fPluginInfo['hints'] & PLUGIN_CAN_DRYWET) or (self.fPluginInfo['hints'] & PLUGIN_CAN_VOLUME))
+        if has_masters and parameterCount > 0:
+            sep = QFrame(self.mini_params_tray)
+            sep.setFrameShape(QFrame.HLine)
+            sep.setFixedHeight(1)
+            sep.setStyleSheet(f"background: {p['surface0']}; border: none; margin: 2px 2px;")
+            self.mini_params_layout.addWidget(sep)
+
+        # Essential parameters: top active parameters
         for i in range(parameterCount):
             paramInfo = self.host.get_parameter_info(self.fPluginId, i)
             paramData = self.host.get_parameter_data(self.fPluginId, i)
@@ -3570,22 +3628,6 @@ class PluginSlot_Minimal(PluginSlot_Default):
                 is_mini=True,
             )
             self.fMiniSliderParameterList.append([i, widget])
-            self.mini_params_layout.addWidget(widget)
-            widget.realValueChanged.connect(self.slot_parameterValueChanged)
-
-        if self.fPluginInfo['hints'] & PLUGIN_CAN_DRYWET:
-            widget = SliderParamWidget(
-                self.mini_params_tray, PARAMETER_DRYWET, "Dry/Wet", 0.0, 1.0, False, is_mini=True
-            )
-            self.fMiniSliderParameterList.append([PARAMETER_DRYWET, widget])
-            self.mini_params_layout.addWidget(widget)
-            widget.realValueChanged.connect(self.slot_parameterValueChanged)
-
-        if self.fPluginInfo['hints'] & PLUGIN_CAN_VOLUME:
-            widget = SliderParamWidget(
-                self.mini_params_tray, PARAMETER_VOLUME, "Volume", 0.0, 1.27, False, is_mini=True
-            )
-            self.fMiniSliderParameterList.append([PARAMETER_VOLUME, widget])
             self.mini_params_layout.addWidget(widget)
             widget.realValueChanged.connect(self.slot_parameterValueChanged)
 

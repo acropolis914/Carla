@@ -20,6 +20,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-19 03:55:00
+- **feat(rack)**: pin master Dry/Wet and Volume sliders at the top with distinct accent colors
+  - Moved Dry/Wet and Volume sliders to the top of the parameter slider lists in both full and mini slider views.
+  - Added Catppuccin Peach/Amber (`#fab387`) accent styling to Dry/Wet and Catppuccin Green/Emerald (`#a6e3a1`) to Volume.
+  - Added a clean 1px horizontal separator line between master controls and internal DSP parameters.
+
 ### 2026-10-19 02:45:00
 - **fix(rack)**: suppress general knobs in slider mode and enable parameter label container scrolling
   - Enforced complete hiding of bottom knob columns (`w_knobs_left` and `w_knobs_right`) in `_reflowResponsiveLayout` while slider mode is active, relying exclusively on dedicated Dry/Wet and Volume sliders.
