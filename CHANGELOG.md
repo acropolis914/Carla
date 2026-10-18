@@ -20,6 +20,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-19 04:53:00
+- **fix(canvas)**: visual and optical centering for floating toolbar glyph icons
+  - Introduced `CanvasToolButton` with cached ink bounding-box measurement to eliminate 2-4px horizontal and vertical asymmetry on Nerd Font and unicode glyphs.
+  - Render button bevel background and label text in separate passes to preserve native theme states (checked, hover, pressed) while centering glyphs to within 0.5px.
+  - Applied visual centering across all canvas navigation toolbar and contextual action toolbar buttons.
+
+
 ### 2026-10-19 04:37:00
 - **feat(ui)**: unified recent session prompt and loading dialog with autoload bypass
   - Merged recent session startup prompt (`QMessageBox`) directly into `ProjectLoadingDialog` in-place, eliminating jarring popups and window recreation.

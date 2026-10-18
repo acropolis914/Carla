@@ -30,6 +30,7 @@ from qt_compat import (
     QFrame,
     QHBoxLayout,
     QIcon,
+    QImage,
     QLabel,
     QLineEdit,
     QMenu,
@@ -42,6 +43,8 @@ from qt_compat import (
     QPointF,
     QPushButton,
     QRect,
+    QStyle,
+    QStyleOptionButton,
     Qt,
     QTimer,
     QVBoxLayout,
@@ -213,6 +216,102 @@ def _get_event_global_pos(event):
 
 from carla_shared import getBestNerdFont
 
+_GLYPH_OFFSET_CACHE = {}
+
+
+def get_glyph_visual_offset(glyph, font, size):
+    """Calculate the precise (dx, dy) pixel shift required to visually center a glyph."""
+    if not glyph:
+        return (0, 0)
+    family = font.family() if hasattr(font, "family") else ""
+    pt_size = font.pointSize() if hasattr(font, "pointSize") else 0
+    key = (glyph, family, pt_size, size)
+    if key in _GLYPH_OFFSET_CACHE:
+        return _GLYPH_OFFSET_CACHE[key]
+
+    W, H = size, size
+    img = QImage(W, H, QImage.Format_ARGB32)
+    img.fill(0)
+    p = QPainter(img)
+    p.setFont(font)
+    p.setPen(QColor(255, 255, 255))
+    p.drawText(QRect(0, 0, W, H), Qt.AlignCenter, glyph)
+    p.end()
+
+    min_x, max_x = W, -1
+    min_y, max_y = H, -1
+    for y in range(H):
+        for x in range(W):
+            if (img.pixel(x, y) >> 24) & 0xFF > 20:
+                if x < min_x:
+                    min_x = x
+                if x > max_x:
+                    max_x = x
+                if y < min_y:
+                    min_y = y
+                if y > max_y:
+                    max_y = y
+
+    if max_x == -1:
+        offset = (0, 0)
+    else:
+        cx = (min_x + max_x) / 2.0
+        cy = (min_y + max_y) / 2.0
+        offset = (int(round((W - 1) / 2.0 - cx)), int(round((H - 1) / 2.0 - cy)))
+
+    _GLYPH_OFFSET_CACHE[key] = offset
+    return offset
+
+
+class CanvasToolButton(QPushButton):
+    """Button that visually centers asymmetrical font and unicode glyph icons."""
+
+    def __init__(self, glyph="", parent=None):
+        super().__init__(glyph, parent)
+        self._glyph = glyph
+        self._cached_offset = None
+
+    def setText(self, text):
+        super().setText(text)
+        self._glyph = text
+        self._cached_offset = None
+        self.update()
+
+    def setGlyph(self, glyph):
+        self.setText(glyph)
+
+    def paintEvent(self, event):
+        if not self._glyph:
+            super().paintEvent(event)
+            return
+
+        p = QPainter(self)
+        opt = QStyleOptionButton()
+        self.initStyleOption(opt)
+
+        ce_bevel = getattr(QStyle, "CE_PushButtonBevel", None) or getattr(
+            getattr(QStyle, "ControlElement", object), "CE_PushButtonBevel", None
+        )
+        ce_label = getattr(QStyle, "CE_PushButtonLabel", None) or getattr(
+            getattr(QStyle, "ControlElement", object), "CE_PushButtonLabel", None
+        )
+
+        if ce_bevel is not None and ce_label is not None:
+            self.style().drawControl(ce_bevel, opt, p, self)
+
+            if self._cached_offset is None:
+                size = max(self.width(), self.height())
+                self._cached_offset = get_glyph_visual_offset(
+                    self._glyph, self.font(), size
+                )
+
+            dx, dy = self._cached_offset
+            if dx != 0 or dy != 0:
+                opt.rect = opt.rect.translated(dx, dy)
+            self.style().drawControl(ce_label, opt, p, self)
+        else:
+            super().paintEvent(event)
+
 
 class CanvasToolBarOverlay(QFrame):
     """Floating Photoshop-style vertical navigation/tool palette on the left of the patchbay canvas."""
@@ -245,7 +344,7 @@ class CanvasToolBarOverlay(QFrame):
         self.icon_flow    = "\uf21e" if font_family else "∿"   # nf-fa-heartbeat
         self.icon_help    = "\uf059" if font_family else "?"   # nf-fa-question-circle
         # Main Application Menu Button (Accessible when Menubar is hidden)
-        self.btnMenu = QPushButton("☰", self)
+        self.btnMenu = CanvasToolButton("☰", self)
         self.btnMenu.setObjectName("canvasMenuButton")
         self.btnMenu.setToolTip("Main Menu (Ctrl+M to toggle menubar)")
         self.btnMenu.setFont(font)
@@ -254,15 +353,15 @@ class CanvasToolBarOverlay(QFrame):
         layout.addWidget(self.btnMenu)
 
         # Mode Selection Buttons (Checkable, Mutually Exclusive)
-        self.btnPointer = QPushButton(self.icon_pointer, self)
+        self.btnPointer = CanvasToolButton(self.icon_pointer, self)
         self.btnPointer.setToolTip("Pointer Tool (Q / Esc)")
         self.btnPointer.setFont(font)
 
-        self.btnSelect = QPushButton(self.icon_select, self)
+        self.btnSelect = CanvasToolButton(self.icon_select, self)
         self.btnSelect.setToolTip("Marquee Selection (V)")
         self.btnSelect.setFont(font)
 
-        self.btnHand = QPushButton(self.icon_hand, self)
+        self.btnHand = CanvasToolButton(self.icon_hand, self)
         self.btnHand.setToolTip("Hand / Pan Canvas (H / Space)")
         self.btnHand.setFont(font)
 
@@ -286,21 +385,21 @@ class CanvasToolBarOverlay(QFrame):
         add_sep()
 
         # Zoom & View Tools
-        self.btnZoomIn = QPushButton(self.icon_zoomin, self)
+        self.btnZoomIn = CanvasToolButton(self.icon_zoomin, self)
         self.btnZoomIn.setToolTip("Zoom In (+)")
         self.btnZoomIn.setFont(font)
         self.btnZoomIn.setFixedSize(28, 28)
         self.btnZoomIn.clicked.connect(lambda: self._zoom(120))
         layout.addWidget(self.btnZoomIn)
 
-        self.btnZoomOut = QPushButton(self.icon_zoomout, self)
+        self.btnZoomOut = CanvasToolButton(self.icon_zoomout, self)
         self.btnZoomOut.setToolTip("Zoom Out (-)")
         self.btnZoomOut.setFont(font)
         self.btnZoomOut.setFixedSize(28, 28)
         self.btnZoomOut.clicked.connect(lambda: self._zoom(-120))
         layout.addWidget(self.btnZoomOut)
 
-        self.btnFit = QPushButton(self.icon_fit, self)
+        self.btnFit = CanvasToolButton(self.icon_fit, self)
         self.btnFit.setToolTip("Zoom to Fit All Nodes (F)")
         self.btnFit.setFont(font)
         self.btnFit.setFixedSize(28, 28)
@@ -310,7 +409,7 @@ class CanvasToolBarOverlay(QFrame):
         add_sep()
 
         # Canvas Dot Grid Toggle
-        self.btnGrid = QPushButton(self.icon_grid, self)
+        self.btnGrid = CanvasToolButton(self.icon_grid, self)
         self.btnGrid.setToolTip("Toggle Dot Grid Visibility")
         self.btnGrid.setFont(font)
         self.btnGrid.setFixedSize(28, 28)
@@ -320,7 +419,7 @@ class CanvasToolBarOverlay(QFrame):
         layout.addWidget(self.btnGrid)
 
         # Coordinate Snapping Toggle
-        self.btnSnap = QPushButton(self.icon_snap, self)
+        self.btnSnap = CanvasToolButton(self.icon_snap, self)
         self.btnSnap.setToolTip("Toggle Coordinate Snapping to Grid")
         self.btnSnap.setFont(font)
         self.btnSnap.setFixedSize(28, 28)
@@ -333,7 +432,7 @@ class CanvasToolBarOverlay(QFrame):
 
         # Signal / Event Flow Animation Toggle
         self._signalflow_external = True
-        self.btnSignalFlow = QPushButton(self.icon_flow, self)
+        self.btnSignalFlow = CanvasToolButton(self.icon_flow, self)
         self.btnSignalFlow.setToolTip("Toggle animated signal/event flow over the patchbay\n(right-click for options)")
         self.btnSignalFlow.setFont(font)
         self.btnSignalFlow.setFixedSize(28, 28)
@@ -346,7 +445,7 @@ class CanvasToolBarOverlay(QFrame):
         add_sep()
 
         # Patchbay Shortcuts Help Tooltip
-        self.btnHelp = QPushButton(self.icon_help, self)
+        self.btnHelp = CanvasToolButton(self.icon_help, self)
         self.btnHelp.setFont(font)
         self.btnHelp.setFixedSize(28, 28)
         self.btnHelp.setToolTip("""<b>Patchbay Shortcuts:</b><br/>
@@ -709,7 +808,7 @@ class CanvasContextToolBarOverlay(QFrame):
         self._items.append(line)
 
     def addButton(self, icon, tooltip, callback, checkable=False, checked=False):
-        btn = QPushButton(icon, self)
+        btn = CanvasToolButton(icon, self)
         btn.setToolTip(tooltip)
         btn.setFont(self.font)
         btn.setFixedSize(26, 26)
