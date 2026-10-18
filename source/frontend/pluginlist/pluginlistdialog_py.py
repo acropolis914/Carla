@@ -651,7 +651,7 @@ class RackPluginItemWidget(QFrame):
         self.setFrameShape(QFrame.NoFrame)
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(4, 3, 8, 3)
+        layout.setContentsMargins(6, 4, 10, 4)
         layout.setSpacing(8)
 
         # Left Accent Color Strip
@@ -667,10 +667,7 @@ class RackPluginItemWidget(QFrame):
         self.lbl_star = QLabel("★" if isFav else "☆", self)
         self.lbl_star.setObjectName("itemStar")
         self.lbl_star.setFixedWidth(16)
-        if isFav:
-            self.lbl_star.setStyleSheet("color: #eed49f; font-size: 13px;")
-        else:
-            self.lbl_star.setStyleSheet("color: #6e738d; font-size: 13px;")
+        self.lbl_star.setProperty("starred", bool(isFav))
         layout.addWidget(self.lbl_star)
 
         # Format Badge
@@ -685,6 +682,7 @@ class RackPluginItemWidget(QFrame):
         textLayout.setSpacing(1)
 
         self.lbl_name = QLabel(info.get("name", "---"), self)
+        self.lbl_name.setObjectName("rackPluginName")
         f_name = self.lbl_name.font()
         f_name.setBold(True)
         self.lbl_name.setFont(f_name)
@@ -706,7 +704,14 @@ class RackPluginItemWidget(QFrame):
 
     def setFavorite(self, isFav):
         self.lbl_star.setText("★" if isFav else "☆")
-        self.lbl_star.setStyleSheet("color: #eed49f; font-size: 13px;" if isFav else "color: #6e738d; font-size: 13px;")
+        self.lbl_star.setProperty("starred", bool(isFav))
+        self.lbl_star.style().unpolish(self.lbl_star)
+        self.lbl_star.style().polish(self.lbl_star)
+
+    def setSelected(self, isSelected):
+        self.setProperty("selected", bool(isSelected))
+        self.style().unpolish(self)
+        self.style().polish(self)
 
 # ------------------------------------------------------------------------------------------------------------
 # Card-style Plugin Item Widget
@@ -720,15 +725,21 @@ class CardPluginItemWidget(QFrame):
         self.setFrameShape(QFrame.NoFrame)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(8, 6, 8, 6)
+        layout.setContentsMargins(8, 0, 8, 8)
         layout.setSpacing(4)
 
         isSynth = bool(info.get("hints", 0) & PLUGIN_IS_SYNTH)
         color = _getCategoryColor(info.get("category", ""), isSynth)
 
+        # Top Category Accent Strip
+        self.top_strip = QFrame(self)
+        self.top_strip.setFixedHeight(3)
+        self.top_strip.setStyleSheet(f"background-color: {color}; border-top-left-radius: 4px; border-top-right-radius: 4px;")
+        layout.addWidget(self.top_strip)
+
         # Top Bar: Badge + Star
         topBar = QHBoxLayout()
-        topBar.setContentsMargins(0, 0, 0, 0)
+        topBar.setContentsMargins(0, 4, 0, 0)
         fmt = getPluginTypeAsString(info.get("type", PLUGIN_NONE))
         self.lbl_badge = QLabel(fmt, self)
         self.lbl_badge.setObjectName("infoBadge")
@@ -737,15 +748,13 @@ class CardPluginItemWidget(QFrame):
 
         self.lbl_star = QLabel("★" if isFav else "☆", self)
         self.lbl_star.setObjectName("itemStar")
-        if isFav:
-            self.lbl_star.setStyleSheet("color: #eed49f; font-size: 12px;")
-        else:
-            self.lbl_star.setStyleSheet("color: #6e738d; font-size: 12px;")
+        self.lbl_star.setProperty("starred", bool(isFav))
         topBar.addWidget(self.lbl_star)
         layout.addLayout(topBar)
 
         # Center: Name & Maker
         self.lbl_name = QLabel(info.get("name", "---"), self)
+        self.lbl_name.setObjectName("cardPluginName")
         f_name = self.lbl_name.font()
         f_name.setBold(True)
         self.lbl_name.setFont(f_name)
@@ -772,11 +781,16 @@ class CardPluginItemWidget(QFrame):
         botBar.addWidget(self.lbl_io)
         layout.addLayout(botBar)
 
-        self.setStyleSheet(f"QFrame#cardPluginItem {{ border-top: 3px solid {color}; }}")
-
     def setFavorite(self, isFav):
         self.lbl_star.setText("★" if isFav else "☆")
-        self.lbl_star.setStyleSheet("color: #eed49f; font-size: 12px;" if isFav else "color: #6e738d; font-size: 12px;")
+        self.lbl_star.setProperty("starred", bool(isFav))
+        self.lbl_star.style().unpolish(self.lbl_star)
+        self.lbl_star.style().polish(self.lbl_star)
+
+    def setSelected(self, isSelected):
+        self.setProperty("selected", bool(isSelected))
+        self.style().unpolish(self)
+        self.style().polish(self)
 
 # ------------------------------------------------------------------------------------------------------------
 # The main dialog
@@ -908,30 +922,38 @@ class PyPluginListDialog(QDialog):
         self.lineEdit.setClearButtonEnabled(True)
         searchRow.addWidget(self.lineEdit)
 
-        # View Mode Switcher (Rack default, Cards, Table)
-        self.btn_mode_rack = QPushButton(self.tr("Rack"), self)
+        # View Mode Switcher (Rack default, Cards, Table) in an enclosed segmented container
+        self.viewModeContainer = QFrame(self)
+        self.viewModeContainer.setObjectName("viewModeContainer")
+        modeLayout = QHBoxLayout(self.viewModeContainer)
+        modeLayout.setContentsMargins(2, 2, 2, 2)
+        modeLayout.setSpacing(2)
+
+        self.btn_mode_rack = QPushButton(self.tr("Rack"), self.viewModeContainer)
+        self.btn_mode_rack.setObjectName("btnViewMode")
         self.btn_mode_rack.setCheckable(True)
         self.btn_mode_rack.setChecked(True)
-        self.btn_mode_rack.setProperty("pill", True)
         self.btn_mode_rack.setToolTip(self.tr("Rack view (compact slots, default)"))
 
-        self.btn_mode_cards = QPushButton(self.tr("Cards"), self)
+        self.btn_mode_cards = QPushButton(self.tr("Cards"), self.viewModeContainer)
+        self.btn_mode_cards.setObjectName("btnViewMode")
         self.btn_mode_cards.setCheckable(True)
-        self.btn_mode_cards.setProperty("pill", True)
         self.btn_mode_cards.setToolTip(self.tr("Cards grid view"))
 
-        self.btn_mode_table = QPushButton(self.tr("Table"), self)
+        self.btn_mode_table = QPushButton(self.tr("Table"), self.viewModeContainer)
+        self.btn_mode_table.setObjectName("btnViewMode")
         self.btn_mode_table.setCheckable(True)
-        self.btn_mode_table.setProperty("pill", True)
         self.btn_mode_table.setToolTip(self.tr("Detailed table view"))
 
         self.btn_mode_rack.clicked.connect(lambda: self._setViewMode(0))
         self.btn_mode_cards.clicked.connect(lambda: self._setViewMode(1))
         self.btn_mode_table.clicked.connect(lambda: self._setViewMode(2))
 
-        searchRow.addWidget(self.btn_mode_rack)
-        searchRow.addWidget(self.btn_mode_cards)
-        searchRow.addWidget(self.btn_mode_table)
+        modeLayout.addWidget(self.btn_mode_rack)
+        modeLayout.addWidget(self.btn_mode_cards)
+        modeLayout.addWidget(self.btn_mode_table)
+
+        searchRow.addWidget(self.viewModeContainer)
 
         self.b_refresh = QToolButton(self)
         self.b_refresh.setText(self.tr("Rescan"))
@@ -982,7 +1004,7 @@ class PyPluginListDialog(QDialog):
 
         # Mode 0: Rack Mode (Default)
         self.list_rack = QListWidget(self)
-        self.list_rack.setObjectName("rackListWidget")
+        self.list_rack.setObjectName("pluginRackListWidget")
         self.list_rack.setSelectionMode(_EXTENDED_SELECTION)
         self.list_rack.setVerticalScrollMode(_SCROLL_PER_PIXEL)
         self.list_rack.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -991,7 +1013,7 @@ class PyPluginListDialog(QDialog):
 
         # Mode 1: Cards Mode
         self.list_cards = QListWidget(self)
-        self.list_cards.setObjectName("cardsListWidget")
+        self.list_cards.setObjectName("pluginCardsListWidget")
         self.list_cards.setViewMode(_ICON_MODE)
         self.list_cards.setResizeMode(_ADJUST)
         self.list_cards.setMovement(_STATIC)
@@ -2153,6 +2175,7 @@ class PyPluginListDialog(QDialog):
                 self.list_rack.setCurrentRow(cur_row)
             elif mode == 1 and cur_row < self.list_cards.count():
                 self.list_cards.setCurrentRow(cur_row)
+        self._updateSelectionState()
 
     def _onRackCurrentItemChanged(self, current, previous):
         if not current:
@@ -2209,6 +2232,39 @@ class PyPluginListDialog(QDialog):
 
     def _updateSelectionState(self):
         curr_mode = self.stackCenter.currentIndex()
+
+        # Update rack widgets selection highlight
+        selected_rack = set(self.list_rack.selectedItems()) if curr_mode == 0 else set()
+        if curr_mode == 0 and not selected_rack and self.list_rack.currentItem():
+            selected_rack = {self.list_rack.currentItem()}
+        old_rack = getattr(self, "_selected_rack_widgets", set())
+        new_rack = set()
+        for it in selected_rack:
+            w = self.list_rack.itemWidget(it)
+            if w and hasattr(w, "setSelected"):
+                new_rack.add(w)
+        for w in old_rack - new_rack:
+            w.setSelected(False)
+        for w in new_rack - old_rack:
+            w.setSelected(True)
+        self._selected_rack_widgets = new_rack
+
+        # Update cards widgets selection highlight
+        selected_cards = set(self.list_cards.selectedItems()) if curr_mode == 1 else set()
+        if curr_mode == 1 and not selected_cards and self.list_cards.currentItem():
+            selected_cards = {self.list_cards.currentItem()}
+        old_cards = getattr(self, "_selected_cards_widgets", set())
+        new_cards = set()
+        for it in selected_cards:
+            w = self.list_cards.itemWidget(it)
+            if w and hasattr(w, "setSelected"):
+                new_cards.add(w)
+        for w in old_cards - new_cards:
+            w.setSelected(False)
+        for w in new_cards - old_cards:
+            w.setSelected(True)
+        self._selected_cards_widgets = new_cards
+
         if curr_mode == 0:
             selected_rows = set(self.list_rack.row(it) for it in self.list_rack.selectedItems())
             cur = self.list_rack.currentRow()

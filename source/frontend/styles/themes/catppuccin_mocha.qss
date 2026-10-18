@@ -148,7 +148,7 @@ QComboBox QAbstractItemView {
 }
 
 /* List, Tree & Table Views */
-QListView, QTreeView, QTableView {
+QListView, QTreeView, QTableView, QListWidget {
     background-color: #181825;
     color: #cdd6f4;
     border: 1px solid #313244;
@@ -158,11 +158,11 @@ QListView, QTreeView, QTableView {
     selection-color: #11111b;
 }
 
-QListView::item:hover, QTreeView::item:hover, QTableView::item:hover {
+QListView::item:hover, QTreeView::item:hover, QTableView::item:hover, QListWidget::item:hover {
     background-color: #313244;
 }
 
-QListView::item:selected, QTreeView::item:selected, QTableView::item:selected {
+QListView::item:selected, QTreeView::item:selected, QTableView::item:selected, QListWidget::item:selected {
     background-color: #89b4fa;
     color: #11111b;
 }
@@ -548,5 +548,101 @@ QLabel#infoTag {
     font-size: 10px;
     border-radius: 3px;
     padding: 2px 6px;
+}
+
+/* Add Plugin Dialog View Mode Switcher */
+QFrame#viewModeContainer {
+    background-color: #181825;
+    border: 1px solid #313244;
+    border-radius: 6px;
+}
+
+QFrame#viewModeContainer QPushButton#btnViewMode {
+    background-color: transparent;
+    border: none;
+    border-radius: 4px;
+    padding: 3px 10px;
+    font-size: 11px;
+    color: #a6adc8;
+    font-weight: 500;
+}
+
+QFrame#viewModeContainer QPushButton#btnViewMode:hover {
+    background-color: #1e1e2e;
+    color: #cdd6f4;
+}
+
+QFrame#viewModeContainer QPushButton#btnViewMode:checked {
+    background-color: #89b4fa;
+    color: #11111b;
+    font-weight: bold;
+}
+
+/* Add Plugin Dialog List & Item Views */
+QListWidget#pluginRackListWidget, QListWidget#pluginCardsListWidget {
+    background-color: #181825;
+    border: none;
+    outline: none;
+    padding: 6px;
+}
+
+QListWidget#pluginRackListWidget::item, QListWidget#pluginCardsListWidget::item {
+    background: transparent;
+    border: none;
+    margin: 2px;
+}
+
+QListWidget#pluginRackListWidget::item:selected, QListWidget#pluginCardsListWidget::item:selected {
+    background: transparent;
+    border: none;
+}
+
+/* Rack Plugin Item */
+QFrame#rackPluginItem {
+    background-color: #181825;
+    border: 1px solid #313244;
+    border-radius: 6px;
+}
+
+QFrame#rackPluginItem:hover {
+    background-color: #1e1e2e;
+    border-color: #45475a;
+}
+
+QFrame#rackPluginItem[selected="true"] {
+    background-color: rgba(137, 180, 250, 0.18);
+    border: 1.5px solid #89b4fa;
+}
+
+/* Card Plugin Item */
+QFrame#cardPluginItem {
+    background-color: #181825;
+    border: 1px solid #313244;
+    border-radius: 6px;
+}
+
+QFrame#cardPluginItem:hover {
+    background-color: #1e1e2e;
+    border-color: #45475a;
+}
+
+QFrame#cardPluginItem[selected="true"] {
+    background-color: rgba(137, 180, 250, 0.18);
+    border: 1.5px solid #89b4fa;
+}
+
+/* Favorite Star in Plugin Browser */
+QLabel#itemStar {
+    font-size: 13px;
+    color: #6c7086;
+}
+
+QLabel#itemStar[starred="true"] {
+    color: #f9e2af;
+}
+
+/* Helper Text */
+QLabel[role="help"] {
+    color: #a6adc8;
 }
 

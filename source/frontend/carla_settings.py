@@ -608,7 +608,10 @@ class CarlaSettingsW(QDialog):
     # -----------------------------------------------------------------------------------------------------------------
 
     @staticmethod
-    def _make_glyph_icon(glyph, size=18, color="#89b4fa"):
+    def _make_glyph_icon(glyph, size=18, color=None):
+        if color is None:
+            app = QApplication.instance()
+            color = app.palette().color(QPalette.Highlight).name() if app else "#89b4fa"
         from carla_shared import getBestNerdFont
         nerd_family = getBestNerdFont()
         cache_key = (glyph, size, nerd_family, color)
@@ -771,7 +774,7 @@ class CarlaSettingsW(QDialog):
                 _pol = lbl.sizePolicy()
                 _pol.setHeightForWidth(True)
                 lbl.setSizePolicy(_pol)
-                lbl.setStyleSheet("color: #7f849c;")
+                lbl.setProperty("role", "help")
 
         # Dialog inherits theme from ThemeManager / QApplication stylesheet
 

@@ -105,7 +105,7 @@ QToolButton:pressed, QToolButton:checked {
 }
 
 /* LineEdit & SpinBox */
-QLineEdit, QSpinBox, QDoubleSpinBox {
+QLineEdit, QTextEdit, QPlainTextEdit, QSpinBox, QDoubleSpinBox {
     background-color: #1e2030;
     color: #cad3f5;
     border: 1px solid #363a4f;
@@ -113,11 +113,11 @@ QLineEdit, QSpinBox, QDoubleSpinBox {
     padding: 5px 8px;
 }
 
-QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus {
+QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus {
     border-color: #8aadf4;
 }
 
-QLineEdit:disabled, QSpinBox:disabled, QDoubleSpinBox:disabled {
+QLineEdit:disabled, QTextEdit:disabled, QPlainTextEdit:disabled, QSpinBox:disabled, QDoubleSpinBox:disabled {
     background-color: #181926;
     color: #5b6078;
     border-color: #24273a;
@@ -154,7 +154,7 @@ QComboBox QAbstractItemView {
 }
 
 /* Item Views: Trees, Tables, Lists */
-QTreeView, QTableView, QListWidget {
+QTreeView, QTableView, QListView, QListWidget {
     background-color: #1e2030;
     color: #cad3f5;
     border: 1px solid #363a4f;
@@ -163,17 +163,17 @@ QTreeView, QTableView, QListWidget {
     outline: none;
 }
 
-QTreeView::item, QTableView::item, QListWidget::item {
+QTreeView::item, QTableView::item, QListView::item, QListWidget::item {
     padding: 4px 6px;
     border-radius: 5px;
 }
 
-QTreeView::item:hover, QTableView::item:hover, QListWidget::item:hover {
+QTreeView::item:hover, QTableView::item:hover, QListView::item:hover, QListWidget::item:hover {
     background-color: #363a4f;
     color: #cad3f5;
 }
 
-QTreeView::item:selected, QTableView::item:selected, QListWidget::item:selected {
+QTreeView::item:selected, QTableView::item:selected, QListView::item:selected, QListWidget::item:selected {
     background-color: #8aadf4;
     color: #181926;
 }
@@ -558,5 +558,101 @@ QLabel#infoTag {
     font-size: 10px;
     border-radius: 3px;
     padding: 2px 6px;
+}
+
+/* Add Plugin Dialog View Mode Switcher */
+QFrame#viewModeContainer {
+    background-color: #181926;
+    border: 1px solid #363a4f;
+    border-radius: 6px;
+}
+
+QFrame#viewModeContainer QPushButton#btnViewMode {
+    background-color: transparent;
+    border: none;
+    border-radius: 4px;
+    padding: 3px 10px;
+    font-size: 11px;
+    color: #a5adcb;
+    font-weight: 500;
+}
+
+QFrame#viewModeContainer QPushButton#btnViewMode:hover {
+    background-color: #24273a;
+    color: #cad3f5;
+}
+
+QFrame#viewModeContainer QPushButton#btnViewMode:checked {
+    background-color: #8aadf4;
+    color: #181926;
+    font-weight: bold;
+}
+
+/* Add Plugin Dialog List & Item Views */
+QListWidget#pluginRackListWidget, QListWidget#pluginCardsListWidget {
+    background-color: #1e2030;
+    border: none;
+    outline: none;
+    padding: 6px;
+}
+
+QListWidget#pluginRackListWidget::item, QListWidget#pluginCardsListWidget::item {
+    background: transparent;
+    border: none;
+    margin: 2px;
+}
+
+QListWidget#pluginRackListWidget::item:selected, QListWidget#pluginCardsListWidget::item:selected {
+    background: transparent;
+    border: none;
+}
+
+/* Rack Plugin Item */
+QFrame#rackPluginItem {
+    background-color: #181926;
+    border: 1px solid #363a4f;
+    border-radius: 6px;
+}
+
+QFrame#rackPluginItem:hover {
+    background-color: #24273a;
+    border-color: #494d64;
+}
+
+QFrame#rackPluginItem[selected="true"] {
+    background-color: rgba(138, 173, 244, 0.18);
+    border: 1.5px solid #8aadf4;
+}
+
+/* Card Plugin Item */
+QFrame#cardPluginItem {
+    background-color: #181926;
+    border: 1px solid #363a4f;
+    border-radius: 6px;
+}
+
+QFrame#cardPluginItem:hover {
+    background-color: #24273a;
+    border-color: #494d64;
+}
+
+QFrame#cardPluginItem[selected="true"] {
+    background-color: rgba(138, 173, 244, 0.18);
+    border: 1.5px solid #8aadf4;
+}
+
+/* Favorite Star in Plugin Browser */
+QLabel#itemStar {
+    font-size: 13px;
+    color: #6e738d;
+}
+
+QLabel#itemStar[starred="true"] {
+    color: #eed49f;
+}
+
+/* Helper Text */
+QLabel[role="help"] {
+    color: #a5adcb;
 }
 

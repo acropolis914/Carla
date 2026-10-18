@@ -20,6 +20,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-19 06:47:00
+- **fix(ui)**: complete 4-theme QSS parity, style plugin browser presentation modes, and fix selection collisions
+  - Achieved 100% selector parity across all 4 themes (`catppuccin_latte.qss`, `classic_dark.qss`, `catppuccin_macchiato.qss`, `catppuccin_mocha.qss`), adding complete styling for checkboxes, radio buttons, combo box popups, text edits, sliders, tab bars, and item views.
+  - Resolved objectName collision on `list_rack` in Add Plugin dialog (`pluginRackListWidget`), ensuring items render with proper card background, borders, and hover/selection highlights instead of host rack transparent defaults.
+  - Enclosed `Rack`, `Cards`, and `Table` view mode buttons into a segmented container frame (`#viewModeContainer`) matching the prototype UI.
+  - Added dynamic item-level selection updates for `RackPluginItemWidget` and `CardPluginItemWidget` (`[selected="true"]`).
+  - Converted favorite stars to theme-adaptive QSS property styling (`QLabel#itemStar[starred="true"]`) and replaced hardcoded hex colors on settings helper text with `QLabel[role="help"]`.
+
 ### 2026-10-19 06:30:00
 - **refactor(logger)**: filter background noise and demote repetitive bridge/engine/scanner logs to DEBUG
   - Expanded `CarlaLogger` benign noise rules to catch high-frequency Sfizz CC parameter queries, CLAP extension checks, and Wine/yabridge driver probing.
