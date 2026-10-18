@@ -20,6 +20,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-19 02:27:00
+- **fix(rack)**: clean borderless parameter readouts and minimum slider travel width
+  - Removed borders, outlines, and box backgrounds from `QDoubleSpinBox` for clean, modern DAW-style value text with subtle hover highlight.
+  - Expanded value text box width (56px inline, 62px stacked) and height (20px) to eliminate horizontal and vertical digit clipping on multi-digit and decimal values.
+  - Enforced 80px minimum width (`setMinimumWidth(80)`) on horizontal parameter sliders to prevent excessive compression.
+
 ### 2026-10-19 02:20:00
 - **fix(rack)**: compact slider textboxes and dynamic responsive slider card reflow
   - Implemented dynamic `setIsMini` layout switching on `SliderParamWidget` between inline (1-row) and stacked (2-row) card views with `QGridLayout`.

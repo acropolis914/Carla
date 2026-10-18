@@ -2265,6 +2265,7 @@ class SliderParamWidget(QWidget):
         self.slider = QSlider(Qt.Horizontal)
         self.slider.setMinimum(0)
         self.slider.setMaximum(1000)
+        self.slider.setMinimumWidth(80)
         self.slider.setMaximumHeight(14)
 
         self.spinbox = QDoubleSpinBox()
@@ -2278,8 +2279,8 @@ class SliderParamWidget(QWidget):
             self.spinbox.lineEdit().setContentsMargins(0, 0, 0, 0)
         step = 1.0 if is_integer else max(0.01, (max_val - min_val) / 100.0)
         self.spinbox.setSingleStep(step)
-        self.spinbox.setFixedHeight(18)
-        self.spinbox.setFixedWidth(40 if is_integer else 44)
+        self.spinbox.setFixedHeight(20)
+        self.spinbox.setFixedWidth(56)
         self.spinbox.setFont(f)
 
         self.slider.valueChanged.connect(self._on_slider)
@@ -2303,6 +2304,7 @@ class SliderParamWidget(QWidget):
             self.setFixedHeight(34)
             self.label.setMinimumWidth(0)
             self.label.setMaximumWidth(16777215)
+            self.spinbox.setFixedWidth(62)
             self.grid_layout.setColumnStretch(0, 1)
             self.grid_layout.setColumnStretch(1, 0)
             self.grid_layout.setColumnStretch(2, 0)
@@ -2311,7 +2313,8 @@ class SliderParamWidget(QWidget):
             self.grid_layout.addWidget(self.slider, 1, 0, 1, 2)
         else:
             self.setFixedHeight(22)
-            self.label.setFixedWidth(75)
+            self.label.setFixedWidth(70)
+            self.spinbox.setFixedWidth(56)
             self.grid_layout.setColumnStretch(0, 0)
             self.grid_layout.setColumnStretch(1, 1)
             self.grid_layout.setColumnStretch(2, 0)
@@ -2963,18 +2966,17 @@ class PluginSlot_Minimal(PluginSlot_Default):
                 border-color: {p['blue']};
             }}
             QDoubleSpinBox {{
-                background: {p['surface0']};
-                border: 1px solid {p['surface1']};
+                background: transparent;
+                border: none;
                 color: {p['text']};
-                border-radius: 3px;
-                padding: 0px 2px;
-                font-size: 9px;
+                padding: 0px;
+                font-size: 10px;
                 font-weight: 600;
-                min-height: 18px;
-                max-height: 18px;
             }}
             QDoubleSpinBox:hover, QDoubleSpinBox:focus {{
-                border-color: {p['blue']};
+                background: {"rgba(255, 255, 255, 0.08)" if self.is_dark else "rgba(0, 0, 0, 0.06)"};
+                border: none;
+                border-radius: 2px;
             }}
             QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {{
                 width: 0px;
@@ -2985,9 +2987,9 @@ class PluginSlot_Minimal(PluginSlot_Default):
                 background: transparent;
                 border: none;
                 color: {p['text']};
-                padding: 0px 1px;
+                padding: 0px;
                 margin: 0px;
-                font-size: 9px;
+                font-size: 10px;
                 font-weight: 600;
                 selection-background-color: {p['lavender']};
             }}
