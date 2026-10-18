@@ -307,8 +307,24 @@ class CarlaLogger(QObject):
             "STATE SAVED. TOTAL SIZE",
             "[CLAP SCANNER] FOUND",
             "[SCANNER] FOUND",
+            "[CLAP SCANNER] SCANNING",
+            "CLAP SCAN COMPLETE",
+            "CLAP PLUGINS ADDED",
+            "SIZE > 0",
+            "! PDATA->LOADINGPROJECT",
+            "VAR.SIZE >= SIZE",
+            "INITIALIZING YABRIDGE",
+            "HOSTING MODE:",
+            "ENABLED FEATURES:",
+            "BITBRIDGE SUPPORT",
+            "WINE PREFIX:",
+            "WINE VERSION:",
+            "OTHER OPTIONS:",
+            "SOCKETS:",
+            "CONFIG FROM:",
         )
-        if any(b in upper_text for b in benign_noise):
+        is_yabridge_line = bool(re.search(r'\[[\w\.-]+-[A-Za-z0-9]{8}\]', clean_text))
+        if is_yabridge_line or any(b in upper_text for b in benign_noise):
             level = LOG_LEVEL_DEBUG
             if tag == "APP":
                 if "PATCHBAY" in upper_text:
@@ -317,7 +333,7 @@ class CarlaLogger(QObject):
                     tag = "PLUGIN"
                 elif "ENGINE" in upper_text:
                     tag = "ENGINE"
-                elif "WINE" in upper_text or "YABRIDGE" in upper_text or "BRIDGE" in upper_text:
+                elif is_yabridge_line or "WINE" in upper_text or "YABRIDGE" in upper_text or "BRIDGE" in upper_text:
                     tag = "BRIDGE"
                 else:
                     tag = "BACKEND"
