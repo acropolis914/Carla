@@ -20,6 +20,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-19 00:15:00
+- **feat(rack)**: Photoshop-layer style minified rack view with collapsible mini parameter sliders
+  - Introduced minified "Layer View" in `PluginSlot_Minimal` rendering plugins as ultra-compact 36px strips with left-aligned power, bypass, type badge, and title.
+  - Added collapsible mini parameters drawer (`w_mini_params_tray`) with disclosure chevron (`▸`/`▾`), exposing essential controls in 18px horizontal mini sliders.
+  - Cleaned up layout hierarchy and parenting so toggling between Knobs, Sliders, and Minified Layer views is instantaneous without re-allocating widgets.
+  - Added "Minified Layer View" toggle to slot context menu (`slot_showCustomMenu`) and preserved state in plugin custom data (`CarlaSkinLayerMode`).
+
 ### 2026-10-18 23:28:00
 - **refactor(version)**: centralize Clara version as single source of truth and deprecate unused C++ dialogs
   - Established `carla_shared.py:CLARA_VERSION_STRING` as the single source of truth for Clara versioning with dynamic fallback to git tags.

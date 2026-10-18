@@ -43,7 +43,7 @@
 ## 🎚️ Rack & Dual-View Integration
 - [x] `[Diff: 2]` feat: Side-by-side view for mini rack and patchbay with bidirectional focus/scroll synchronization
 - [x] `[Diff: 2]` feat: Synchronized colors, bypass state, and switch button between rack node and patchbay node
-- [ ] `[Diff: 2]` feat: Minified rack mode exposing only essential controls
+- [x] `[Diff: 2]` feat: Minified rack mode exposing only essential controls (Photoshop layer view with mini collapsible slider tray)
 
 ---
 
@@ -81,6 +81,14 @@
 - [ ] `[Diff: 2]` `claractl` CLI + `carla --getnodeinfo` alias — connect to a running instance, print JSON or tables
 - [ ] `[Diff: 3]` In-UI scripting tab — `exec` user code with a `Clara` facade injected into globals (no imports), e.g. `Clara.getAllNodes() -> dict`
 - [ ] `[Diff: 2]` MCP/lib wrapper exposing the same ops layer for external agents
+
+---
+
+## 🧩 UI Decoupling & Multi-Framework Architecture (Parked)
+- [ ] `[Diff: 3]` Extract Headless Session & Engine Controller: Decouple backend state and event dispatching from `carla_host.py:HostWindow` into a framework-agnostic `SessionController`.
+- [ ] `[Diff: 2]` Standardize UI Manifest & Operations API: Implement pure command bus (`core/ops.py`) for pluggable frontends (Transport, Rack, Patchbay, Plugin Browser, Session).
+- [ ] `[Diff: 2]` Framework-agnostic Rack and Canvas data models: Decouple `carla_skin.py` and `patchcanvas/` logic from `QWidget` / `QGraphicsItem` hierarchies.
+- [ ] `[Diff: 3]` WebSocket / IPC Gateway: Allow alternative modern frontends (Tauri, Slint, Web) to connect and bidirectionally sync with running Clara instances.
 
 ---
 

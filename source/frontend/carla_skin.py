@@ -1313,6 +1313,11 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
         actCompact = menu.addAction(self.tr("Expand") if isinstance(self, PluginSlot_Compact) else self.tr("Minimize"))
 
         menuAppearance = menu.addMenu(self.tr("Appearance"))
+        actLayerMode = menuAppearance.addAction(self.tr("Minified Layer View"))
+        actLayerMode.setCheckable(True)
+        is_layer = getattr(self, "is_layer_mode", False)
+        actLayerMode.setChecked(is_layer)
+
         actSliderMode = menuAppearance.addAction(self.tr("Slider Mode"))
         actSliderMode.setCheckable(True)
         is_sliders = isinstance(self, PluginSlot_Sliders) or self.fSkinStyle.startswith("sliders")
@@ -1446,6 +1451,11 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
                 self.toggleCompacted()
             else:
                 gCarla.gui.compactPlugin(self.fPluginId)
+
+        elif actSel == actLayerMode:
+            new_layer = actLayerMode.isChecked()
+            if hasattr(self, 'setLayerMode'):
+                self.setLayerMode(new_layer)
 
         elif actSel == actSliderMode:
             new_sliders = actSliderMode.isChecked()
@@ -2239,7 +2249,7 @@ class SliderParamWidget(QWidget):
     realValueChanged = pyqtSignal(float)
     dragStateChanged = pyqtSignal(bool)
 
-    def __init__(self, parent, index, name, min_val, max_val, is_integer, full_name=""):
+    def __init__(self, parent, index, name, min_val, max_val, is_integer, full_name="", is_mini=False):
         QWidget.__init__(self, parent)
         self.fIndex = index
         self.fName = name
@@ -2247,17 +2257,23 @@ class SliderParamWidget(QWidget):
         self.fMinimum = min_val
         self.fMaximum = max_val
         self.fIsInteger = is_integer
+        self.fIsMini = is_mini
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(6, 2, 6, 2)
-        layout.setSpacing(8)
-        self.setFixedHeight(22)
+        if is_mini:
+            layout.setContentsMargins(4, 1, 4, 1)
+            layout.setSpacing(6)
+            self.setFixedHeight(18)
+        else:
+            layout.setContentsMargins(6, 2, 6, 2)
+            layout.setSpacing(8)
+            self.setFixedHeight(22)
 
         self.label = QLabel(name)
-        self.label.setMinimumWidth(40)
-        self.label.setMaximumWidth(120)
+        self.label.setMinimumWidth(32 if is_mini else 40)
+        self.label.setMaximumWidth(90 if is_mini else 120)
         f = self.label.font()
-        f.setPointSize(9)
+        f.setPointSize(8 if is_mini else 9)
         f.setBold(True)
         self.label.setFont(f)
         layout.addWidget(self.label)
@@ -2265,7 +2281,7 @@ class SliderParamWidget(QWidget):
         self.slider = QSlider(Qt.Horizontal)
         self.slider.setMinimum(0)
         self.slider.setMaximum(1000)
-        self.slider.setMaximumHeight(16)
+        self.slider.setMaximumHeight(12 if is_mini else 16)
         layout.addWidget(self.slider)
 
         self.spinbox = QDoubleSpinBox()
@@ -2274,8 +2290,8 @@ class SliderParamWidget(QWidget):
         self.spinbox.setDecimals(0 if is_integer else 2)
         self.spinbox.setButtonSymbols(QAbstractSpinBox.NoButtons)
         self.spinbox.setAlignment(Qt.AlignCenter)
-        self.spinbox.setFixedWidth(52)
-        self.spinbox.setMaximumHeight(20)
+        self.spinbox.setFixedWidth(44 if is_mini else 52)
+        self.spinbox.setMaximumHeight(16 if is_mini else 20)
         self.spinbox.setFont(f)
         layout.addWidget(self.spinbox)
 
@@ -2354,9 +2370,14 @@ class PluginSlot_Minimal(PluginSlot_Default):
         self.is_dark = skinStyle in ("minimal-dark", "sliders-dark") or "light" not in skinStyle
         self.is_slider_mode = isinstance(self, PluginSlot_Sliders) or skinStyle.startswith("sliders")
         self.is_compacted = False
+        self.is_layer_mode = False
+        self.show_mini_params = False
         self.scroll_area = None
         self.sliders_container = None
         self.fSliderParameterList = []
+        self.mini_params_tray = None
+        self.fMiniSliderParameterList = []
+        self.b_layer_expand = None
 
         p = CATPPUCCIN_MOCHA if self.is_dark else CATPPUCCIN_LATTE
         has_custom_color = (skinColor != (0, 0, 0) and skinColor != (255, 255, 255))
@@ -2579,6 +2600,17 @@ class PluginSlot_Minimal(PluginSlot_Default):
         self.b_slider_mode.clicked.connect(self.slot_toggleSliderMode)
         self.ui.layout_top.addWidget(self.b_slider_mode)
 
+        # Layer mode mini-params disclosure chevron (Photoshop layer style): \uf078 (down) / \uf054 (right)
+        self.b_layer_expand = QPushButton("\uf054", parent=self)
+        self.b_layer_expand.setObjectName("btn_layer_expand")
+        self.b_layer_expand.setMinimumSize(20, 20)
+        self.b_layer_expand.setMaximumSize(20, 20)
+        self.b_layer_expand.setFlat(True)
+        self.b_layer_expand.setToolTip("Show/Hide Quick Layer Parameters")
+        self.b_layer_expand.clicked.connect(self.slot_toggleMiniParams)
+        self.b_layer_expand.setVisible(False)
+        self.ui.layout_top.addWidget(self.b_layer_expand)
+
         self.b_minimize = QPushButton("\uf077", parent=self)
         self.b_minimize.setFlat(True)
         self.b_minimize.setObjectName("btn_minimize")
@@ -2711,21 +2743,21 @@ class PluginSlot_Minimal(PluginSlot_Default):
                 outline: none;
                 padding-top: 2px;
             }}
-            QPushButton#btn_minimize, QPushButton#btn_expand {{
+            QPushButton#btn_minimize, QPushButton#btn_expand, QPushButton#btn_layer_expand {{
                 background: transparent;
                 border: none;
                 outline: none;
                 border-radius: 4px;
                 color: {p['overlay1']};
-                font-size: 12px;
+                font-size: 11px;
                 font-weight: bold;
-                min-width: 22px;
-                max-width: 22px;
-                min-height: 22px;
-                max-height: 22px;
+                min-width: 20px;
+                max-width: 20px;
+                min-height: 20px;
+                max-height: 20px;
                 padding: 0px;
             }}
-            QPushButton#btn_minimize:hover, QPushButton#btn_expand:hover {{
+            QPushButton#btn_minimize:hover, QPushButton#btn_expand:hover, QPushButton#btn_layer_expand:hover {{
                 background: rgba(255, 255, 255, 0.08);
                 border: none;
                 outline: none;
@@ -3174,25 +3206,48 @@ class PluginSlot_Minimal(PluginSlot_Default):
                 self.w_knobs_right.setVisible(False)
             if hasattr(self, 'scroll_area') and self.scroll_area is not None:
                 self.scroll_area.setVisible(False)
+            if hasattr(self, 'mini_params_tray') and self.mini_params_tray is not None:
+                self.mini_params_tray.setVisible(False)
             if hasattr(self, 'b_slider_mode') and self.b_slider_mode is not None:
                 self.b_slider_mode.setVisible(False)
+            if hasattr(self, 'b_layer_expand') and self.b_layer_expand is not None:
+                self.b_layer_expand.setVisible(False)
             self.b_minimize.setText("\uf078")
             self.b_minimize.setToolTip("Expand Rack Slot")
         else:
             if hasattr(self.ui, 'line') and self.ui.line is not None:
-                self.ui.line.setVisible(True)
+                self.ui.line.setVisible(not self.is_layer_mode or self.show_mini_params)
             if hasattr(self, 'b_slider_mode') and self.b_slider_mode is not None:
-                self.b_slider_mode.setVisible(True)
-            if self.is_slider_mode:
+                self.b_slider_mode.setVisible(not self.is_layer_mode)
+            if hasattr(self, 'b_layer_expand') and self.b_layer_expand is not None:
+                self.b_layer_expand.setVisible(self.is_layer_mode)
+                self.b_layer_expand.setText("\uf078" if self.show_mini_params else "\uf054")
+
+            if self.is_layer_mode:
                 if self.w_knobs_left is not None:
                     self.w_knobs_left.setVisible(False)
                 if self.w_knobs_right is not None:
                     self.w_knobs_right.setVisible(False)
                 if hasattr(self, 'scroll_area') and self.scroll_area is not None:
+                    self.scroll_area.setVisible(False)
+                if hasattr(self, 'mini_params_tray') and self.mini_params_tray is not None:
+                    self.mini_params_tray.setVisible(self.show_mini_params)
+                    if self.show_mini_params:
+                        self.syncMiniSliderValues()
+            elif self.is_slider_mode:
+                if self.w_knobs_left is not None:
+                    self.w_knobs_left.setVisible(False)
+                if self.w_knobs_right is not None:
+                    self.w_knobs_right.setVisible(False)
+                if hasattr(self, 'mini_params_tray') and self.mini_params_tray is not None:
+                    self.mini_params_tray.setVisible(False)
+                if hasattr(self, 'scroll_area') and self.scroll_area is not None:
                     self.scroll_area.setVisible(True)
             else:
                 if hasattr(self, 'scroll_area') and self.scroll_area is not None:
                     self.scroll_area.setVisible(False)
+                if hasattr(self, 'mini_params_tray') and self.mini_params_tray is not None:
+                    self.mini_params_tray.setVisible(False)
                 if self.w_knobs_left is not None:
                     self.w_knobs_left.setVisible(True)
                 if self.w_knobs_right is not None:
@@ -3202,12 +3257,161 @@ class PluginSlot_Minimal(PluginSlot_Default):
 
         self.updateRackItemSize()
 
+    def setLayerMode(self, layer_mode):
+        """Set Photoshop-layer style minified rack slot mode."""
+        self.is_layer_mode = bool(layer_mode)
+        self.host.set_custom_data(
+            self.fPluginId, CUSTOM_DATA_TYPE_PROPERTY, "CarlaSkinLayerMode", "true" if self.is_layer_mode else "false"
+        )
+        if hasattr(gCarla, "gui") and gCarla.gui is not None:
+            gCarla.gui.fHasUnsavedChanges = True
+            pitem = gCarla.gui.getPluginItem(self.fPluginId)
+            if pitem is not None and hasattr(pitem, "fOptions"):
+                pitem.fOptions['layer_mode'] = self.is_layer_mode
+
+        if hasattr(self, 'b_layer_expand') and self.b_layer_expand is not None:
+            self.b_layer_expand.setVisible(self.is_layer_mode and not self.is_compacted)
+            self.b_layer_expand.setText("\uf078" if self.show_mini_params else "\uf054")
+
+        if hasattr(self, 'b_slider_mode') and self.b_slider_mode is not None:
+            self.b_slider_mode.setVisible(not self.is_layer_mode and not self.is_compacted)
+
+        if self.is_layer_mode:
+            if self.w_knobs_left is not None:
+                self.w_knobs_left.setVisible(False)
+            if self.w_knobs_right is not None:
+                self.w_knobs_right.setVisible(False)
+            if hasattr(self, 'scroll_area') and self.scroll_area is not None:
+                self.scroll_area.setVisible(False)
+            if self.show_mini_params:
+                self._ensure_mini_params_created()
+                if self.mini_params_tray is not None:
+                    self.mini_params_tray.setVisible(True)
+                    self.syncMiniSliderValues()
+            else:
+                if self.mini_params_tray is not None:
+                    self.mini_params_tray.setVisible(False)
+        else:
+            if self.mini_params_tray is not None:
+                self.mini_params_tray.setVisible(False)
+            if not self.is_compacted:
+                if self.is_slider_mode:
+                    if hasattr(self, 'scroll_area') and self.scroll_area is not None:
+                        self.scroll_area.setVisible(True)
+                else:
+                    if self.w_knobs_left is not None:
+                        self.w_knobs_left.setVisible(True)
+                    if self.w_knobs_right is not None:
+                        self.w_knobs_right.setVisible(True)
+
+        self.updateRackItemSize()
+
+    def slot_toggleMiniParams(self):
+        """Toggle disclosure of the mini parameters drawer in layer mode."""
+        self.show_mini_params = not self.show_mini_params
+        if self.show_mini_params:
+            self._ensure_mini_params_created()
+        if hasattr(self, 'b_layer_expand') and self.b_layer_expand is not None:
+            self.b_layer_expand.setText("\uf078" if self.show_mini_params else "\uf054")
+        if self.mini_params_tray is not None:
+            self.mini_params_tray.setVisible(self.show_mini_params)
+            if self.show_mini_params:
+                self.syncMiniSliderValues()
+        if hasattr(self.ui, 'line') and self.ui.line is not None:
+            self.ui.line.setVisible(self.show_mini_params)
+        self.updateRackItemSize()
+
+    def _ensure_mini_params_created(self):
+        """Build compact Photoshop adjustment-layer style mini slider tray."""
+        if hasattr(self, 'mini_params_tray') and self.mini_params_tray is not None:
+            return
+
+        self.mini_params_tray = QWidget(parent=self)
+        self.mini_params_tray.setObjectName("w_mini_params_tray")
+        self.mini_params_layout = QVBoxLayout(self.mini_params_tray)
+        self.mini_params_layout.setContentsMargins(18, 2, 8, 2)
+        self.mini_params_layout.setSpacing(1)
+
+        self.fMiniSliderParameterList = []
+        parameterCount = self.host.get_parameter_count(self.fPluginId)
+
+        # Essential parameters: dry/wet, volume, or top active parameters
+        for i in range(parameterCount):
+            paramInfo = self.host.get_parameter_info(self.fPluginId, i)
+            paramData = self.host.get_parameter_data(self.fPluginId, i)
+            paramRanges = self.host.get_parameter_ranges(self.fPluginId, i)
+            isInteger = (paramData['hints'] & PARAMETER_IS_INTEGER) != 0
+
+            if paramData['type'] != PARAMETER_INPUT:
+                continue
+            if paramData['hints'] & PARAMETER_IS_BOOLEAN:
+                continue
+            if (paramData['hints'] & PARAMETER_IS_ENABLED) == 0:
+                continue
+            if paramInfo['name'].startswith("unused"):
+                continue
+
+            paramName = getParameterShortName(paramInfo['name'])
+            widget = SliderParamWidget(
+                self.mini_params_tray,
+                i,
+                paramName,
+                paramRanges['min'],
+                paramRanges['max'],
+                isInteger,
+                paramInfo['name'],
+                is_mini=True,
+            )
+            self.fMiniSliderParameterList.append([i, widget])
+            self.mini_params_layout.addWidget(widget)
+            widget.realValueChanged.connect(self.slot_parameterValueChanged)
+
+        if self.fPluginInfo['hints'] & PLUGIN_CAN_DRYWET:
+            widget = SliderParamWidget(
+                self.mini_params_tray, PARAMETER_DRYWET, "Dry/Wet", 0.0, 1.0, False, is_mini=True
+            )
+            self.fMiniSliderParameterList.append([PARAMETER_DRYWET, widget])
+            self.mini_params_layout.addWidget(widget)
+            widget.realValueChanged.connect(self.slot_parameterValueChanged)
+
+        if self.fPluginInfo['hints'] & PLUGIN_CAN_VOLUME:
+            widget = SliderParamWidget(
+                self.mini_params_tray, PARAMETER_VOLUME, "Volume", 0.0, 1.27, False, is_mini=True
+            )
+            self.fMiniSliderParameterList.append([PARAMETER_VOLUME, widget])
+            self.mini_params_layout.addWidget(widget)
+            widget.realValueChanged.connect(self.slot_parameterValueChanged)
+
+        self.ui.verticalLayout.addWidget(self.mini_params_tray)
+        self.syncMiniSliderValues()
+
+    def syncMiniSliderValues(self):
+        if not hasattr(self, 'fMiniSliderParameterList') or not self.fMiniSliderParameterList:
+            return
+        for paramIndex, paramWidget in self.fMiniSliderParameterList:
+            paramWidget.blockSignals(True)
+            if paramIndex < 0:
+                val = self.host.get_internal_parameter_value(self.fPluginId, paramIndex)
+            else:
+                val = self.host.get_current_parameter_value(self.fPluginId, paramIndex)
+            paramWidget.setValue(val)
+            paramWidget.blockSignals(False)
+
     def toggleCompacted(self):
         self.setCompacted(not self.is_compacted)
 
     def getFixedHeight(self):
         if getattr(self, 'is_compacted', False):
-            return 38
+            return 36
+
+        if getattr(self, 'is_layer_mode', False):
+            if getattr(self, 'show_mini_params', False):
+                count = len(getattr(self, 'fMiniSliderParameterList', []))
+                if count == 0 and hasattr(self, 'fParameterList'):
+                    count = min(len(self.fParameterList), 8)
+                req_h = 38 + (count * 20)
+                return max(58, min(req_h, 300))
+            return 36
 
         if getattr(self, 'is_slider_mode', False):
             count = len(getattr(self, 'fSliderParameterList', []))
@@ -3513,16 +3717,24 @@ def createPluginSlot(parent, host, pluginId, options):
         skinStyle = options['skin']
 
     is_compact = bool("compact" in skinStyle or options.get('compact', False))
+    is_layer = bool(
+        options.get('layer_mode', False)
+        or host.get_custom_data(pluginId, CUSTOM_DATA_TYPE_PROPERTY, "CarlaSkinLayerMode") == "true"
+    )
 
     if skinStyle.startswith("sliders"):
         slot = PluginSlot_Sliders(parent, host, pluginId, skinColor, skinStyle)
         if is_compact:
             slot.setCompacted(True)
+        if is_layer:
+            slot.setLayerMode(True)
         return slot
 
     slot = PluginSlot_Minimal(parent, host, pluginId, skinColor, skinStyle)
     if is_compact:
         slot.setCompacted(True)
+    if is_layer:
+        slot.setLayerMode(True)
     return slot
 
 class PluginSlot_Sliders(PluginSlot_Minimal):
