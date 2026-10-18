@@ -616,7 +616,7 @@ class CarlaSettingsW(QDialog):
             return _GLYPH_ICON_CACHE[cache_key]
         if not nerd_family:
             return QIcon()
-        from qt_compat import QPixmap, QPainter, QColor, QImage
+        from qt_compat import QPixmap, QPainter, QColor, QImage, QRect
         font_size = max(9, int(size * 0.72))
         font = QFont(nerd_family, font_size)
 
@@ -678,7 +678,12 @@ class CarlaSettingsW(QDialog):
         self.ui.lw_page.setShowGrid(False)
         stretch_mode = getattr(QHeaderView.ResizeMode, "Stretch", None) if hasattr(QHeaderView, "ResizeMode") else getattr(QHeaderView, "Stretch", 1)
         self.ui.lw_page.horizontalHeader().setSectionResizeMode(stretch_mode)
-        self.ui.lw_page.verticalHeader().setDefaultSectionSize(34)
+        self.ui.lw_page.verticalHeader().setDefaultSectionSize(36)
+
+        sidebar_font = self.ui.lw_page.font()
+        sidebar_font.setPointSize(11)
+        sidebar_font.setBold(True)
+        self.ui.lw_page.setFont(sidebar_font)
 
         # Tab titles with refined typography
         tab_titles = [
@@ -714,6 +719,7 @@ class CarlaSettingsW(QDialog):
                     if nerd_family and row < len(tab_glyphs):
                         item.setIcon(self._make_glyph_icon(tab_glyphs[row]))
                     item.setText(tab_titles[row])
+                    item.setFont(sidebar_font)
 
         # Remove hideous page header glyphs (upper-right corner of every tab)
         for icon_attr in (

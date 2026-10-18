@@ -167,6 +167,11 @@ QListView::item:selected, QTreeView::item:selected, QTableView::item:selected {
     color: #11111b;
 }
 
+QTableWidget#lw_page, QTableWidget#lw_page::item {
+    font-weight: bold;
+    font-size: 11pt;
+}
+
 /* Tabs */
 QTabWidget::pane {
     border: 1px solid #313244;

@@ -20,6 +20,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-19 04:59:00
+- **fix(settings)**: bold legible typography for sidebar page navigation tabs
+  - Replaced thin 10pt/400-weight sidebar font with bold 11pt typography across all page tabs (General, Patchbay, Engine, OSC, etc.).
+  - Increased sidebar item height to 36px and added explicit theme stylesheet rules for crisp legibility.
+
+
 ### 2026-10-19 04:56:00
 - **fix(settings)**: optical ink-bounds centering for sidebar tab and action button icons
   - Applied automated pixel-ink bounding box measurement to `_make_glyph_icon` to visually balance all sidebar page tab icons (General, Patchbay, Engine, OSC, etc.).
