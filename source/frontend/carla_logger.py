@@ -284,16 +284,41 @@ class CarlaLogger(QObject):
             "SLOT_HANDLEPLUGINADDEDCALLBACK",
             "PYPLUGINLISTDIALOG: SET_OPTION FAILED",
             "PYPLUGINLISTDIALOG: FAILED TO CHECK GLOBAL SCANNER",
+            "WHICH IS NOT AVAILABLE",
+            "REQUESTED UNSUPPORTED CLAP EXTENSION",
+            "THE ENUMERATION HAS AN INVALID RANGE",
+            "[WINE STDERR]",
+            "PCI ID FOR FD",
+            "YABRIDGE-HOST.EXE",
+            "LIBYABRIDGE",
+            "STARTING PLUGIN BRIDGE",
+            "CARLA BRIDGE READY",
+            "WITH REALTIME PRIORITY SUCCESSFUL",
+            "CARLA_SHM_CREATE_TEMP",
+            "WAITFORSAVED",
+            "QT.QPA.WAYLAND",
+            "WAYLANDTEXTINPUT",
+            "DISABLESURFACE",
+            "QT.SVG: INVALID PATH DATA",
+            "QFONT::SETPIXELSIZE",
+            "RENDER GLYPH FAILED",
+            "MAPPING ABSOLUTEPATH",
+            "GETSTATEINFORMATION CALLED",
+            "STATE SAVED. TOTAL SIZE",
+            "[CLAP SCANNER] FOUND",
+            "[SCANNER] FOUND",
         )
         if any(b in upper_text for b in benign_noise):
             level = LOG_LEVEL_DEBUG
             if tag == "APP":
                 if "PATCHBAY" in upper_text:
                     tag = "PATCHBAY"
-                elif "PLUGIN" in upper_text:
+                elif "PLUGIN" in upper_text or "SCANNER" in upper_text or "CLAP" in upper_text:
                     tag = "PLUGIN"
                 elif "ENGINE" in upper_text:
                     tag = "ENGINE"
+                elif "WINE" in upper_text or "YABRIDGE" in upper_text or "BRIDGE" in upper_text:
+                    tag = "BRIDGE"
                 else:
                     tag = "BACKEND"
         elif explicit_level is None:

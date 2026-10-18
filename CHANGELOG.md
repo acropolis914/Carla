@@ -20,6 +20,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-19 06:30:00
+- **refactor(logger)**: filter background noise and demote repetitive bridge/engine/scanner logs to DEBUG
+  - Expanded `CarlaLogger` benign noise rules to catch high-frequency Sfizz CC parameter queries, CLAP extension checks, and Wine/yabridge driver probing.
+  - Demoted Wayland text input surface warnings, FreeType glyph errors, and Qt SVG/font setPixelSize warnings to `DEBUG`.
+  - Filtered background plugin scanner discovery lines (`[CLAP Scanner] Found:`) and SHM temp retries from polluting the standard info log.
+  - Replaced lingering raw `print()` calls in `carla_host.py` with structured `log_carla()` and `logger` calls.
+
 ### 2026-10-19 06:24:00
 - **refactor(logger)**: clean up dirty log spam and categorize benign callbacks to DEBUG
   - Demoted high-volume engine callbacks (`PATCHBAY_CLIENT_ADDED/REMOVED/RENAMED`, `slot_handlePluginAddedCallback`, port mappings) to `DEBUG` level.

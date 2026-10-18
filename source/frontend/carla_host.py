@@ -1449,16 +1449,16 @@ class HostWindow(QMainWindow):
                             if ask == QMessageBox.Yes:
                                 force_bridged = True
         except Exception as e:
-            print("Bridge pre-check warning:", e)
+            logger.warning("BRIDGE", f"Bridge pre-check warning: {e}")
 
-        logger.info("SESSION", f"load_source='{load_source}', fProjectFilename='{self.fProjectFilename}', engine_running={self.host.is_engine_running()}")
+        logger.debug("SESSION", f"load_source='{load_source}', fProjectFilename='{self.fProjectFilename}', engine_running={self.host.is_engine_running()}")
         actual_load_filename = load_source
         tmp_cleanup_file = None
         try:
             actual_load_filename = storage_manager.prepare_for_backend_load(load_source, force_bridged=force_bridged)
             if actual_load_filename != load_source:
                 tmp_cleanup_file = actual_load_filename
-            logger.info("SESSION", f"prepared actual_load_filename='{actual_load_filename}', exists={os.path.exists(actual_load_filename)}")
+            logger.debug("SESSION", f"prepared actual_load_filename='{actual_load_filename}', exists={os.path.exists(actual_load_filename)}")
         except Exception as e:
             logger.error("SESSION", f"Failed to prepare project for loading: {e}")
 
@@ -1477,9 +1477,12 @@ class HostWindow(QMainWindow):
         log_history_start = len(logger.history)
 
         try:
-            logger.info("SESSION", f"Calling self.host.load_project('{actual_load_filename}')")
+            logger.debug("SESSION", f"Calling self.host.load_project('{actual_load_filename}')")
             load_ok = self.host.load_project(actual_load_filename)
-            logger.info("SESSION", f"load_project returned {load_ok}, last_error='{self.host.get_last_error()}'")
+            if load_ok:
+                logger.info("SESSION", f"Project loaded successfully: {self.fProjectFilename or actual_load_filename}")
+            else:
+                logger.error("SESSION", f"load_project failed, last_error='{self.host.get_last_error()}'")
         except Exception as e:
             load_exception = str(e)
             logger.error("SESSION", f"Exception during load_project: {e}")
@@ -1586,7 +1589,7 @@ class HostWindow(QMainWindow):
                 self.fProjectFilename, backend_save_target, positions, extra_metadata=extra_meta
             )
         except Exception as e:
-            print("Failed to finalize project save:", e)
+            logger.error("SESSION", f"Failed to finalize project save: {e}")
 
         # Clean manual save succeeded: prune outstanding autosaves for this project
         if hasattr(self, "fSessionManager") and self.fSessionManager is not None:
@@ -1683,7 +1686,7 @@ class HostWindow(QMainWindow):
 
             return True
         except Exception as e:
-            print("Failed to load canvas positions from project:", e)
+            logger.warning("CANVAS", f"Failed to load canvas positions from project: {e}")
             return False
 
     def loadExternalCanvasGroupPositionsIfNeeded(self, filename):
@@ -6229,7 +6232,7 @@ def engineCallback(host, action, pluginId, value1, value2, value3, valuef, value
     elif action == ENGINE_CALLBACK_INLINE_DISPLAY_REDRAW:
         host.InlineDisplayRedrawCallback.emit(pluginId)
     else:
-        print("unhandled action", action)
+        log_carla(f"Unhandled engine action: {action}", level="debug")
 
 
 # ------------------------------------------------------------------------------------------------------------
