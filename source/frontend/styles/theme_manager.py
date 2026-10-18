@@ -151,6 +151,7 @@ class ThemeManager:
         self._current_theme = None
         self._using_system = False
         self._original_style = None
+        self._available_themes = None
 
     @classmethod
     def instance(cls):
@@ -161,8 +162,11 @@ class ThemeManager:
     def is_using_system(self) -> bool:
         return self._using_system
 
-    def get_available_themes(self) -> list[str]:
+    def get_available_themes(self, refresh: bool = False) -> list[str]:
         """Return a sorted list of unique available theme names discovered from disk."""
+        if not refresh and self._available_themes is not None:
+            return list(self._available_themes)
+
         themes = set()
 
         for search_dir in (self.bundled_themes_dir, self.user_themes_dir):
@@ -181,7 +185,8 @@ class ThemeManager:
         if "Catppuccin Macchiato" in sorted_themes:
             sorted_themes.remove("Catppuccin Macchiato")
             sorted_themes.insert(0, "Catppuccin Macchiato")
-        return sorted_themes
+        self._available_themes = sorted_themes
+        return list(sorted_themes)
 
     def _resolve_theme_file(self, theme_name: str) -> str | None:
         """Find the .qss file corresponding to a given human-readable theme name."""

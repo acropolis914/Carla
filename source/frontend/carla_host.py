@@ -4299,8 +4299,12 @@ class HostWindow(QMainWindow):
 
     @pyqtSlot()
     def slot_configureCarla(self):
-        dialog = CarlaSettingsW(self.fParentOrSelf, self.host, True, hasGL)
-        if not dialog.exec_():
+        if not hasattr(self, "_settingsDialog") or self._settingsDialog is None:
+            self._settingsDialog = CarlaSettingsW(self.fParentOrSelf, self.host, True, hasGL)
+        else:
+            self._settingsDialog.loadSettings()
+
+        if not self._settingsDialog.exec_():
             return
 
         self.loadSettings(False)

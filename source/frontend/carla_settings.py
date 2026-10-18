@@ -570,6 +570,8 @@ class RuntimeDriverSettingsW(QDialog):
 # ---------------------------------------------------------------------------------------------------------------------
 # Settings Dialog
 
+_GLYPH_ICON_CACHE = {}
+
 
 class CarlaSettingsW(QDialog):
     # Tab indexes
@@ -615,7 +617,7 @@ class CarlaSettingsW(QDialog):
         # Set-up GUI
 
         # Modern compact sidebar layout & styling
-        self.ui.lw_page.setIconSize(QSize(0, 0))
+        self.ui.lw_page.setIconSize(QSize(18, 18))
         self.ui.lw_page.setFixedWidth(195)
         self.ui.lw_page.setShowGrid(False)
         stretch_mode = getattr(QHeaderView.ResizeMode, "Stretch", None) if hasattr(QHeaderView, "ResizeMode") else getattr(QHeaderView, "Stretch", 1)
@@ -644,25 +646,29 @@ class CarlaSettingsW(QDialog):
             "\uf0eb",  # nf-fa-lightbulb    Experimental
         ]
         try:
-            from carla_canvas import getBestNerdFont
+            from carla_shared import getBestNerdFont
             nerd_family = getBestNerdFont()
         except Exception:
             nerd_family = ""
 
         def _make_glyph_icon(glyph, size=18):
+            cache_key = (glyph, size, nerd_family)
+            if cache_key in _GLYPH_ICON_CACHE:
+                return _GLYPH_ICON_CACHE[cache_key]
             if not nerd_family:
                 return QIcon()
             from qt_compat import QPixmap, QPainter, QColor
             pm = QPixmap(size, size)
             pm.fill(QColor(0, 0, 0, 0))
             p = QPainter(pm)
-            p.setFont(QFont(nerd_family, int(size * 0.72)))
+            font_size = max(9, int(size * 0.72))
+            p.setFont(QFont(nerd_family, font_size))
             p.setPen(QColor("#89b4fa"))
             p.drawText(pm.rect(), Qt.AlignCenter, glyph)
             p.end()
-            return QIcon(pm)
-
-        self.ui.lw_page.setIconSize(QSize(18, 18))
+            icon = QIcon(pm)
+            _GLYPH_ICON_CACHE[cache_key] = icon
+            return icon
 
         for row in range(self.ui.lw_page.rowCount()):
             item = self.ui.lw_page.item(row, 0)
@@ -836,46 +842,12 @@ class CarlaSettingsW(QDialog):
         else:
             self.general_form_builder = None
 
-        # 2. Patchbay Tab
-        if hasattr(self.ui, "page_canvas"):
-            for old_grp in ("label_9", "label_10", "group_canvas_theme", "group_canvas_options", "group_canvas_render"):
-                if hasattr(self.ui, old_grp):
-                    getattr(self.ui, old_grp).hide()
-
-            self.canvas_form_builder = SettingsFormBuilder(self, PATCHBAY_SCHEMA)
-            self.canvas_form_builder.build_page(self.ui.page_canvas)
-        else:
-            self.canvas_form_builder = None
-
-        # 3. OSC Tab
-        if hasattr(self.ui, "page_osc"):
-            for old_grp in ("label_14", "label_36", "label_icon_engine_5", "label_20", "label_21", "group_osc_core", "group_osc_tcp_port", "group_osc_udp_port", "ch_osc_enable"):
-                if hasattr(self.ui, old_grp):
-                    getattr(self.ui, old_grp).hide()
-            self.osc_form_builder = SettingsFormBuilder(self, OSC_SCHEMA)
-            self.osc_form_builder.build_page(self.ui.page_osc)
-        else:
-            self.osc_form_builder = None
-
-        # 4. Wine Tab
-        if hasattr(self.ui, "page_wine"):
-            for old_grp in ("label_29", "label_icon_wine", "label_36", "label_26", "label_27", "label_28", "group_wine_exec", "group_wine_prefix", "group_wine_environment", "group_wine_realtime"):
-                if hasattr(self.ui, old_grp):
-                    getattr(self.ui, old_grp).hide()
-            self.wine_form_builder = SettingsFormBuilder(self, WINE_SCHEMA)
-            self.wine_form_builder.build_page(self.ui.page_wine)
-        else:
-            self.wine_form_builder = None
-
-        # 5. Experimental Tab
-        if hasattr(self.ui, "page_experimental"):
-            for old_grp in ("label_11", "label_icon_experimental", "label_16", "label_17", "label_25", "group_experimental_main", "group_experimental_canvas", "group_experimental_engine"):
-                if hasattr(self.ui, old_grp):
-                    getattr(self.ui, old_grp).hide()
-            self.experimental_form_builder = SettingsFormBuilder(self, EXPERIMENTAL_SCHEMA)
-            self.experimental_form_builder.build_page(self.ui.page_experimental)
-        else:
-            self.experimental_form_builder = None
+        # Declarative schema form builders (Patchbay, OSC, Wine, Experimental are built lazily)
+        self._built_tabs = {self.TAB_INDEX_MAIN}
+        self.canvas_form_builder = None
+        self.osc_form_builder = None
+        self.wine_form_builder = None
+        self.experimental_form_builder = None
 
         if host.isPlugin:
             self.ui.cb_engine_audio_driver.setEnabled(False)
@@ -925,7 +897,7 @@ class CarlaSettingsW(QDialog):
         # Set-up Icons
 
         try:
-            from carla_canvas import getBestNerdFont
+            from carla_shared import getBestNerdFont
             _nerd = getBestNerdFont()
         except Exception:
             _nerd = ""
@@ -1012,6 +984,8 @@ class CarlaSettingsW(QDialog):
                 lambda v: self.ui.label_canvas_node_radius.setText(f"{v} px")
             )
 
+        self.ui.stackedWidget.currentChanged.connect(self._ensure_tab_built)
+
         # -------------------------------------------------------------------------------------------------------------
         # Post-connect setup
 
@@ -1034,6 +1008,52 @@ class CarlaSettingsW(QDialog):
         self.slot_pluginPathTabChanged(0)
 
         self.adjustSize()
+
+    # -----------------------------------------------------------------------------------------------------------------
+
+    @pyqtSlot(int)
+    def _ensure_tab_built(self, index):
+        if index in self._built_tabs:
+            return
+
+        settings = QSafeSettings()
+
+        if index == self.TAB_INDEX_CANVAS and hasattr(self.ui, "page_canvas"):
+            self._built_tabs.add(index)
+            for old_grp in ("label_9", "label_10", "group_canvas_theme", "group_canvas_options", "group_canvas_render"):
+                if hasattr(self.ui, old_grp):
+                    getattr(self.ui, old_grp).hide()
+            self.canvas_form_builder = SettingsFormBuilder(self, PATCHBAY_SCHEMA)
+            self.canvas_form_builder.build_page(self.ui.page_canvas)
+            self.canvas_form_builder.load_values(settings)
+
+        elif index == self.TAB_INDEX_OSC and hasattr(self.ui, "page_osc"):
+            self._built_tabs.add(index)
+            for old_grp in ("label_14", "label_36", "label_icon_engine_5", "label_20", "label_21", "group_osc_core", "group_osc_tcp_port", "group_osc_udp_port", "ch_osc_enable"):
+                if hasattr(self.ui, old_grp):
+                    getattr(self.ui, old_grp).hide()
+            self.osc_form_builder = SettingsFormBuilder(self, OSC_SCHEMA)
+            self.osc_form_builder.build_page(self.ui.page_osc)
+            self.osc_form_builder.load_values(settings)
+
+        elif index == self.TAB_INDEX_WINE and hasattr(self.ui, "page_wine"):
+            self._built_tabs.add(index)
+            for old_grp in ("label_29", "label_icon_wine", "label_36", "label_26", "label_27", "label_28", "group_wine_exec", "group_wine_prefix", "group_wine_environment", "group_wine_realtime"):
+                if hasattr(self.ui, old_grp):
+                    getattr(self.ui, old_grp).hide()
+            self.wine_form_builder = SettingsFormBuilder(self, WINE_SCHEMA)
+            self.wine_form_builder.build_page(self.ui.page_wine)
+            self.wine_form_builder.load_values(settings)
+
+        elif index == self.TAB_INDEX_EXPERIMENTAL and hasattr(self.ui, "page_experimental"):
+            self._built_tabs.add(index)
+            for old_grp in ("label_11", "label_icon_experimental", "label_16", "label_17", "label_25", "group_experimental_main", "group_experimental_canvas", "group_experimental_engine"):
+                if hasattr(self.ui, old_grp):
+                    getattr(self.ui, old_grp).hide()
+            self.experimental_form_builder = SettingsFormBuilder(self, EXPERIMENTAL_SCHEMA)
+            self.experimental_form_builder.build_page(self.ui.page_experimental)
+            self.experimental_form_builder.load_values(settings)
+
 
     # -----------------------------------------------------------------------------------------------------------------
 
@@ -1456,6 +1476,7 @@ class CarlaSettingsW(QDialog):
     @pyqtSlot()
     def slot_resetSettings(self):
         currentRow = self.ui.lw_page.currentRow()
+        self._ensure_tab_built(currentRow)
 
         # -------------------------------------------------------------------------------------------------------------
         # Main

@@ -211,41 +211,7 @@ def _get_event_global_pos(event):
 # Floating Photoshop-style Modal Toolbar (Left Vertical Palette)
 # ------------------------------------------------------------------------------------------------------------
 
-_CACHED_NERD_FONT_FAMILY = None
-
-def getBestNerdFont():
-    global _CACHED_NERD_FONT_FAMILY
-    if _CACHED_NERD_FONT_FAMILY is not None:
-        return _CACHED_NERD_FONT_FAMILY
-
-    try:
-        families = QFontDatabase.families()
-    except (TypeError, AttributeError):
-        try:
-            families = QFontDatabase().families()
-        except Exception:
-            families = []
-    nerd_candidates = [
-        "JetBrainsMono Nerd Font",
-        "JetBrainsMonoNF",
-        "CommitMono Nerd Font Mono",
-        "Liga SFMono Nerd Font",
-        "FiraCode Nerd Font",
-        "Hack Nerd Font",
-        "MesloLGS NF",
-    ]
-    for cand in nerd_candidates:
-        if cand in families:
-            _CACHED_NERD_FONT_FAMILY = cand
-            return cand
-
-    for fam in families:
-        if "nerd" in fam.lower():
-            _CACHED_NERD_FONT_FAMILY = fam
-            return fam
-
-    _CACHED_NERD_FONT_FAMILY = ""
-    return _CACHED_NERD_FONT_FAMILY
+from carla_shared import getBestNerdFont
 
 
 class CanvasToolBarOverlay(QFrame):

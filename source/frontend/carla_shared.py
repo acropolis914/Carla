@@ -723,6 +723,49 @@ def log_carla(msg, level="info"):
         print(msg_str, file=sys.stderr, flush=True)
 
 # ------------------------------------------------------------------------------------------------------------
+# Nerd Font Detection (Cached)
+
+_CACHED_NERD_FONT_FAMILY = None
+
+def getBestNerdFont():
+    global _CACHED_NERD_FONT_FAMILY
+    if _CACHED_NERD_FONT_FAMILY is not None:
+        return _CACHED_NERD_FONT_FAMILY
+
+    try:
+        from qt_compat import QFontDatabase
+        try:
+            families = QFontDatabase.families()
+        except (TypeError, AttributeError):
+            families = QFontDatabase().families()
+    except Exception:
+        families = []
+
+    nerd_candidates = [
+        "JetBrainsMono Nerd Font",
+        "JetBrainsMonoNF",
+        "CommitMono Nerd Font Mono",
+        "Liga SFMono Nerd Font",
+        "FiraCode Nerd Font",
+        "Hack Nerd Font",
+        "MesloLGS NF",
+    ]
+    family_set = set(families)
+    for cand in nerd_candidates:
+        if cand in family_set:
+            _CACHED_NERD_FONT_FAMILY = cand
+            return cand
+
+    for fam in families:
+        if "nerd" in fam.lower():
+            _CACHED_NERD_FONT_FAMILY = fam
+            return fam
+
+    _CACHED_NERD_FONT_FAMILY = ""
+    return _CACHED_NERD_FONT_FAMILY
+
+
+# ------------------------------------------------------------------------------------------------------------
 # Set CWD
 
 CWD = sys.path[0]

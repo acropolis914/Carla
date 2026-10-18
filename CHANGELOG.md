@@ -20,6 +20,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-19 04:15:00
+- **perf(settings)**: lazy tab building and dialog caching for fast cold start and instant reopen
+  - Deferred declarative schema construction for Patchbay, OSC, Wine, and Experimental tabs until explicitly visited, avoiding construction of ~100 widgets on dialog open.
+  - Cached `_settingsDialog` on `HostWindow` to eliminate repeated widget instantiation on subsequent settings opens.
+  - Moved `getBestNerdFont` to `carla_shared` with set lookup and cached glyph icon rasterization (`_GLYPH_ICON_CACHE`), decoupling settings from canvas imports and preventing FreeType glyph render warnings.
+  - Cached discovered theme listings in `ThemeManager` to eliminate repetitive filesystem disk queries.
+
 ### 2026-10-19 04:00:00
 - **perf(gui)**: visibility culling, OpenGL hardware acceleration, and meter deadband throttling
   - Enabled hardware-accelerated `QOpenGLWidget` viewport on `RackListWidget` to offload rack rasterization from CPU to GPU.
