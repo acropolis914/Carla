@@ -20,6 +20,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-19 01:10:00
+- **feat(rack)**: 2-line minified layer layout and scrollable mini parameter drawer
+  - Separated slot controls into a clean 2-line flex layout: Row 1 handles power/bypass/type/title and disclosure chevron; Row 2 houses preset selector and LEDs/peak meters to eliminate horizontal widget overlap.
+  - Wrapped mini parameter tray in a `QScrollArea` with `MINIMAL_SCROLLBAR_QSS` and standardized label/spinbox column widths (75px/46px), preventing clipping when plugins have many parameters.
+  - Adjusted collapsed and expanded slot heights with dynamic scroll handling.
+
+### 2026-10-19 01:05:00
+- **fix(patchbay)**: preserve readable text contrast on selected canvasbox nodes
+  - Ensured custom tinted headers calculate contrast based on background luminescence rather than being overwritten with inverted/unreadable selection text colors.
+  - Safely fell back to standard readable box text when selected text color is unset.
+
 ### 2026-10-19 00:50:00
 - **feat(rack)**: global mini rack mode setting, unified disclosure button, and cleaned parameter slider layout
   - Added global "Use minified layer view for rack slots by default" setting (`Main/MiniRackMode`) in the Settings dialog Appearance section.

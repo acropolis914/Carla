@@ -2263,15 +2263,15 @@ class SliderParamWidget(QWidget):
         if is_mini:
             layout.setContentsMargins(4, 1, 4, 1)
             layout.setSpacing(6)
-            self.setFixedHeight(18)
+            self.setFixedHeight(20)
         else:
             layout.setContentsMargins(6, 2, 6, 2)
             layout.setSpacing(8)
             self.setFixedHeight(22)
 
         self.label = QLabel(name)
-        self.label.setMinimumWidth(32 if is_mini else 40)
-        self.label.setMaximumWidth(90 if is_mini else 120)
+        self.label.setFixedWidth(75 if is_mini else 90)
+        self.label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         f = self.label.font()
         f.setPointSize(8 if is_mini else 9)
         f.setBold(True)
@@ -2289,9 +2289,9 @@ class SliderParamWidget(QWidget):
         self.spinbox.setMaximum(max_val)
         self.spinbox.setDecimals(0 if is_integer else 2)
         self.spinbox.setButtonSymbols(QAbstractSpinBox.NoButtons)
-        self.spinbox.setAlignment(Qt.AlignCenter)
-        self.spinbox.setFixedWidth(44 if is_mini else 52)
-        self.spinbox.setMaximumHeight(16 if is_mini else 20)
+        self.spinbox.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.spinbox.setFixedWidth(46 if is_mini else 52)
+        self.spinbox.setMaximumHeight(18 if is_mini else 20)
         self.spinbox.setFont(f)
         layout.addWidget(self.spinbox)
 
@@ -2376,6 +2376,8 @@ class PluginSlot_Minimal(PluginSlot_Default):
         self.sliders_container = None
         self.fSliderParameterList = []
         self.mini_params_tray = None
+        self.mini_scroll_area = None
+        self.w_subrow = None
         self.fMiniSliderParameterList = []
 
         p = CATPPUCCIN_MOCHA if self.is_dark else CATPPUCCIN_LATTE
@@ -2542,18 +2544,50 @@ class PluginSlot_Minimal(PluginSlot_Default):
         self.ui.layout_top.setSpacing(4)
         self.ui.layout_top.setContentsMargins(0, 0, 0, 0)
 
-        # 5. <right modules> (Presets, Slider mode toggle, Minimize)
+        # 5. Row 1 right controls: Slider mode toggle (standard mode only), and unified chevron minimize
+        self.b_slider_mode = QPushButton("\uf0c9" if not self.is_slider_mode else "\uf1de", parent=self)
+        self.b_slider_mode.setObjectName("btn_slider_mode")
+        self.b_slider_mode.setMinimumSize(22, 22)
+        self.b_slider_mode.setMaximumSize(22, 22)
+        self.b_slider_mode.setFlat(True)
+        self.b_slider_mode.setToolTip("Switch to Sliders view" if not self.is_slider_mode else "Switch to Knobs view")
+        self.b_slider_mode.clicked.connect(self.slot_toggleSliderMode)
+        self.ui.layout_top.addWidget(self.b_slider_mode)
+
+        # Unified collapse/disclosure chevron button (handles both standard minimize and layer mode drawer)
+        self.b_minimize = QPushButton("\uf077", parent=self)
+        self.b_minimize.setFlat(True)
+        self.b_minimize.setObjectName("btn_minimize")
+        self.b_minimize.setMinimumSize(22, 22)
+        self.b_minimize.setMaximumSize(22, 22)
+        self.b_minimize.setToolTip("Minimize / Collapse Rack Slot")
+        self.b_minimize.clicked.connect(self.slot_toggleExpandOrMini)
+        self.ui.layout_top.addWidget(self.b_minimize)
+
+        # 6. Row 2 (Subrow container) for secondary controls: presets dropdown on the left, meters on the right
+        self.w_subrow = QWidget(parent=self)
+        self.w_subrow.setObjectName("w_slot_subrow")
+        self.layout_subrow = QHBoxLayout(self.w_subrow)
+        self.layout_subrow.setContentsMargins(0, 0, 0, 0)
+        self.layout_subrow.setSpacing(4)
+
+        top_idx = self.ui.verticalLayout.indexOf(self.ui.layout_top)
+        if top_idx >= 0:
+            self.ui.verticalLayout.insertWidget(top_idx + 1, self.w_subrow)
+        else:
+            self.ui.verticalLayout.addWidget(self.w_subrow)
+
         progCount = self.host.get_program_count(self.fPluginId)
         usingMidiPrograms = False
         if progCount == 0:
             progCount = self.host.get_midi_program_count(self.fPluginId)
             usingMidiPrograms = True
         if progCount > 0:
-            self.cb_presets = QComboBox(parent=self)
+            self.cb_presets = QComboBox(parent=self.w_subrow)
             self.cb_presets.setObjectName("cb_presets")
-            self.cb_presets.setMinimumWidth(60)
-            self.cb_presets.setMaximumWidth(125)
-            self.cb_presets.setFixedHeight(22)
+            self.cb_presets.setMinimumWidth(80)
+            self.cb_presets.setMaximumWidth(180)
+            self.cb_presets.setFixedHeight(20)
             self.cb_presets.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
             self.cb_presets.setToolTip("Preset Selector")
             curProg = self.host.get_current_midi_program_index(self.fPluginId) if usingMidiPrograms else self.host.get_current_program_index(self.fPluginId)
@@ -2588,28 +2622,13 @@ class PluginSlot_Minimal(PluginSlot_Default):
                 self.cb_presets.currentIndexChanged.connect(self.slot_midiProgramChanged)
             else:
                 self.cb_presets.currentIndexChanged.connect(self.slot_programChanged)
-            self.ui.layout_top.addWidget(self.cb_presets)
+            self.layout_subrow.addWidget(self.cb_presets)
 
-        self.b_slider_mode = QPushButton("\uf0c9" if not self.is_slider_mode else "\uf1de", parent=self)
-        self.b_slider_mode.setObjectName("btn_slider_mode")
-        self.b_slider_mode.setMinimumSize(22, 22)
-        self.b_slider_mode.setMaximumSize(22, 22)
-        self.b_slider_mode.setFlat(True)
-        self.b_slider_mode.setToolTip("Switch to Sliders view" if not self.is_slider_mode else "Switch to Knobs view")
-        self.b_slider_mode.clicked.connect(self.slot_toggleSliderMode)
-        self.ui.layout_top.addWidget(self.b_slider_mode)
+        self.spacer_subrow = QSpacerItem(8, 1, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.layout_subrow.addItem(self.spacer_subrow)
 
-        # Unified collapse/disclosure chevron button (handles both standard minimize and layer mode drawer)
-        self.b_minimize = QPushButton("\uf077", parent=self)
-        self.b_minimize.setFlat(True)
-        self.b_minimize.setObjectName("btn_minimize")
-        self.b_minimize.setMinimumSize(22, 22)
-        self.b_minimize.setMaximumSize(22, 22)
-        self.b_minimize.setToolTip("Minimize / Collapse Rack Slot")
-        self.b_minimize.clicked.connect(self.slot_toggleExpandOrMini)
-        self.ui.layout_top.addWidget(self.b_minimize)
-
-        self.ui.verticalLayout.setContentsMargins(14, 6, 6, 6)
+        self.ui.verticalLayout.setContentsMargins(14, 5, 6, 5)
+        self.ui.verticalLayout.setSpacing(2)
 
         styleSheet = f"""
             QFrame#PluginWidget {{
@@ -2927,7 +2946,7 @@ class PluginSlot_Minimal(PluginSlot_Default):
         full_text = self.fFullTitle
         # If total title fits comfortably, display full string
         total_w = fm.horizontalAdvance(full_text) if hasattr(fm, 'horizontalAdvance') else fm.width(full_text)
-        max_allowed = max(80, self.width() - 320)
+        max_allowed = max(80, self.width() - 170)
         if total_w <= max_allowed:
             self.label_name.setText(full_text)
         else:
@@ -2947,7 +2966,7 @@ class PluginSlot_Minimal(PluginSlot_Default):
 
         # Ensure container widgets exist
         if not hasattr(self, '_modern_slice_container'):
-            self._modern_slice_container = QWidget(parent=self)
+            self._modern_slice_container = QWidget(parent=self.w_subrow if hasattr(self, 'w_subrow') and self.w_subrow is not None else self)
             self._modern_slice_container.setObjectName("w_modern_slice")
             self._modern_slice_container.setStyleSheet(
                 "QWidget#w_modern_slice { background: rgba(0, 0, 0, 40); border: 1px solid rgba(255, 255, 255, 12); border-radius: 4px; }"
@@ -2974,12 +2993,15 @@ class PluginSlot_Minimal(PluginSlot_Default):
             slice_layout.addWidget(self._led_grid_container)
             slice_layout.addWidget(self._meter_slice_container)
 
-            # Add to layout_top right before b_minimize (so minimize is to the right of the meters)
-            min_idx = self.ui.layout_top.indexOf(self.b_minimize) if hasattr(self, 'b_minimize') and self.b_minimize is not None else -1
-            if min_idx >= 0:
-                self.ui.layout_top.insertWidget(min_idx, self._modern_slice_container)
+            # Add to layout_subrow (Row 2 right) if available, or fallback to layout_top
+            if hasattr(self, 'layout_subrow') and self.layout_subrow is not None:
+                self.layout_subrow.addWidget(self._modern_slice_container)
             else:
-                self.ui.layout_top.addWidget(self._modern_slice_container)
+                min_idx = self.ui.layout_top.indexOf(self.b_minimize) if hasattr(self, 'b_minimize') and self.b_minimize is not None else -1
+                if min_idx >= 0:
+                    self.ui.layout_top.insertWidget(min_idx, self._modern_slice_container)
+                else:
+                    self.ui.layout_top.addWidget(self._modern_slice_container)
 
         if modernized:
             # Hide old horizontal layouts
@@ -3189,19 +3211,23 @@ class PluginSlot_Minimal(PluginSlot_Default):
         if self.is_compacted:
             if hasattr(self.ui, 'line') and self.ui.line is not None:
                 self.ui.line.setVisible(False)
+            if hasattr(self, 'w_subrow') and self.w_subrow is not None:
+                self.w_subrow.setVisible(False)
             if self.w_knobs_left is not None:
                 self.w_knobs_left.setVisible(False)
             if self.w_knobs_right is not None:
                 self.w_knobs_right.setVisible(False)
             if hasattr(self, 'scroll_area') and self.scroll_area is not None:
                 self.scroll_area.setVisible(False)
-            if hasattr(self, 'mini_params_tray') and self.mini_params_tray is not None:
-                self.mini_params_tray.setVisible(False)
+            if hasattr(self, 'mini_scroll_area') and self.mini_scroll_area is not None:
+                self.mini_scroll_area.setVisible(False)
             if hasattr(self, 'b_slider_mode') and self.b_slider_mode is not None:
                 self.b_slider_mode.setVisible(False)
             self.b_minimize.setText("\uf078")
             self.b_minimize.setToolTip("Expand Rack Slot")
         else:
+            if hasattr(self, 'w_subrow') and self.w_subrow is not None:
+                self.w_subrow.setVisible(True)
             if hasattr(self.ui, 'line') and self.ui.line is not None:
                 self.ui.line.setVisible(not self.is_layer_mode or self.show_mini_params)
             if hasattr(self, 'b_slider_mode') and self.b_slider_mode is not None:
@@ -3214,8 +3240,8 @@ class PluginSlot_Minimal(PluginSlot_Default):
                     self.w_knobs_right.setVisible(False)
                 if hasattr(self, 'scroll_area') and self.scroll_area is not None:
                     self.scroll_area.setVisible(False)
-                if hasattr(self, 'mini_params_tray') and self.mini_params_tray is not None:
-                    self.mini_params_tray.setVisible(self.show_mini_params)
+                if hasattr(self, 'mini_scroll_area') and self.mini_scroll_area is not None:
+                    self.mini_scroll_area.setVisible(self.show_mini_params)
                     if self.show_mini_params:
                         self.syncMiniSliderValues()
                 self.b_minimize.setText("\uf078" if self.show_mini_params else "\uf054")
@@ -3225,8 +3251,8 @@ class PluginSlot_Minimal(PluginSlot_Default):
                     self.w_knobs_left.setVisible(False)
                 if self.w_knobs_right is not None:
                     self.w_knobs_right.setVisible(False)
-                if hasattr(self, 'mini_params_tray') and self.mini_params_tray is not None:
-                    self.mini_params_tray.setVisible(False)
+                if hasattr(self, 'mini_scroll_area') and self.mini_scroll_area is not None:
+                    self.mini_scroll_area.setVisible(False)
                 if hasattr(self, 'scroll_area') and self.scroll_area is not None:
                     self.scroll_area.setVisible(True)
                 self.b_minimize.setText("\uf077")
@@ -3234,8 +3260,8 @@ class PluginSlot_Minimal(PluginSlot_Default):
             else:
                 if hasattr(self, 'scroll_area') and self.scroll_area is not None:
                     self.scroll_area.setVisible(False)
-                if hasattr(self, 'mini_params_tray') and self.mini_params_tray is not None:
-                    self.mini_params_tray.setVisible(False)
+                if hasattr(self, 'mini_scroll_area') and self.mini_scroll_area is not None:
+                    self.mini_scroll_area.setVisible(False)
                 if self.w_knobs_left is not None:
                     self.w_knobs_left.setVisible(True)
                 if self.w_knobs_right is not None:
@@ -3260,30 +3286,41 @@ class PluginSlot_Minimal(PluginSlot_Default):
         if hasattr(self, 'b_slider_mode') and self.b_slider_mode is not None:
             self.b_slider_mode.setVisible(not self.is_layer_mode and not self.is_compacted)
 
+        pref_policy = getattr(QSizePolicy, "Preferred", None) or getattr(getattr(QSizePolicy, "Policy", None), "Preferred", None)
+
         if self.is_layer_mode:
             if self.w_knobs_left is not None:
                 self.w_knobs_left.setVisible(False)
             if self.w_knobs_right is not None:
                 self.w_knobs_right.setVisible(False)
+            if hasattr(self.ui, 'layout_bottom') and self.ui.layout_bottom is not None:
+                self.ui.layout_bottom.setContentsMargins(0, 0, 0, 0)
+                self.ui.layout_bottom.setSpacing(0)
+            if self.spacer_knobs is not None and pref_policy is not None:
+                self.spacer_knobs.changeSize(0, 0, pref_policy, pref_policy)
             if hasattr(self, 'scroll_area') and self.scroll_area is not None:
                 self.scroll_area.setVisible(False)
+            if hasattr(self, 'w_subrow') and self.w_subrow is not None:
+                self.w_subrow.setVisible(True)
             if self.show_mini_params:
                 self._ensure_mini_params_created()
-                if self.mini_params_tray is not None:
-                    self.mini_params_tray.setVisible(True)
+                if hasattr(self, 'mini_scroll_area') and self.mini_scroll_area is not None:
+                    self.mini_scroll_area.setVisible(True)
                     self.syncMiniSliderValues()
             else:
-                if self.mini_params_tray is not None:
-                    self.mini_params_tray.setVisible(False)
+                if hasattr(self, 'mini_scroll_area') and self.mini_scroll_area is not None:
+                    self.mini_scroll_area.setVisible(False)
             if hasattr(self.ui, 'line') and self.ui.line is not None:
                 self.ui.line.setVisible(self.show_mini_params)
             self.b_minimize.setText("\uf078" if self.show_mini_params else "\uf054")
             self.b_minimize.setToolTip("Collapse Parameters" if self.show_mini_params else "Expand Parameters")
         else:
-            if self.mini_params_tray is not None:
-                self.mini_params_tray.setVisible(False)
+            if hasattr(self, 'mini_scroll_area') and self.mini_scroll_area is not None:
+                self.mini_scroll_area.setVisible(False)
             if hasattr(self.ui, 'line') and self.ui.line is not None:
                 self.ui.line.setVisible(not self.is_compacted)
+            if hasattr(self, 'w_subrow') and self.w_subrow is not None:
+                self.w_subrow.setVisible(not self.is_compacted)
             if not self.is_compacted:
                 if self.is_slider_mode:
                     if hasattr(self, 'scroll_area') and self.scroll_area is not None:
@@ -3304,8 +3341,8 @@ class PluginSlot_Minimal(PluginSlot_Default):
             self.show_mini_params = not self.show_mini_params
             if self.show_mini_params:
                 self._ensure_mini_params_created()
-            if self.mini_params_tray is not None:
-                self.mini_params_tray.setVisible(self.show_mini_params)
+            if hasattr(self, 'mini_scroll_area') and self.mini_scroll_area is not None:
+                self.mini_scroll_area.setVisible(self.show_mini_params)
                 if self.show_mini_params:
                     self.syncMiniSliderValues()
             if hasattr(self.ui, 'line') and self.ui.line is not None:
@@ -3317,15 +3354,22 @@ class PluginSlot_Minimal(PluginSlot_Default):
             self.toggleCompacted()
 
     def _ensure_mini_params_created(self):
-        """Build compact Photoshop adjustment-layer style mini slider tray."""
-        if hasattr(self, 'mini_params_tray') and self.mini_params_tray is not None:
+        """Build compact Photoshop adjustment-layer style mini slider tray with scroll area."""
+        if hasattr(self, 'mini_scroll_area') and self.mini_scroll_area is not None:
             return
 
-        self.mini_params_tray = QWidget(parent=self)
+        self.mini_params_tray = QWidget()
         self.mini_params_tray.setObjectName("w_mini_params_tray")
         self.mini_params_layout = QVBoxLayout(self.mini_params_tray)
-        self.mini_params_layout.setContentsMargins(8, 4, 8, 4)
-        self.mini_params_layout.setSpacing(4)
+        self.mini_params_layout.setContentsMargins(4, 2, 4, 2)
+        self.mini_params_layout.setSpacing(3)
+
+        self.mini_scroll_area = QScrollArea()
+        self.mini_scroll_area.setObjectName("mini_scroll_area")
+        self.mini_scroll_area.setWidgetResizable(True)
+        self.mini_scroll_area.setWidget(self.mini_params_tray)
+        from styles.theme_manager import MINIMAL_SCROLLBAR_QSS
+        self.mini_scroll_area.setStyleSheet("QScrollArea { border: none; background: transparent; }\n" + MINIMAL_SCROLLBAR_QSS)
 
         self.fMiniSliderParameterList = []
         parameterCount = self.host.get_parameter_count(self.fPluginId)
@@ -3377,7 +3421,7 @@ class PluginSlot_Minimal(PluginSlot_Default):
             self.mini_params_layout.addWidget(widget)
             widget.realValueChanged.connect(self.slot_parameterValueChanged)
 
-        self.ui.verticalLayout.addWidget(self.mini_params_tray)
+        self.ui.verticalLayout.addWidget(self.mini_scroll_area, 1)
         self.syncMiniSliderValues()
 
     def syncMiniSliderValues(self):
@@ -3397,22 +3441,22 @@ class PluginSlot_Minimal(PluginSlot_Default):
 
     def getFixedHeight(self):
         if getattr(self, 'is_compacted', False):
-            return 36
+            return 32
 
         if getattr(self, 'is_layer_mode', False):
             if getattr(self, 'show_mini_params', False):
                 count = len(getattr(self, 'fMiniSliderParameterList', []))
                 if count == 0 and hasattr(self, 'fParameterList'):
                     count = min(len(self.fParameterList), 8)
-                req_h = 44 + (count * 24)
-                return max(64, min(req_h, 340))
-            return 36
+                req_h = 56 + (count * 23)
+                return max(80, min(req_h, 300))
+            return 52
 
         if getattr(self, 'is_slider_mode', False):
             count = len(getattr(self, 'fSliderParameterList', []))
             if count == 0 and hasattr(self, 'fParameterList'):
                 count = len(self.fParameterList)
-            req_height = 50 + (count * 22)
+            req_height = 56 + (count * 22)
             return max(116, min(req_height, 360))
 
         if hasattr(self, 'w_knobs_left') and self.w_knobs_left is not None and self.w_knobs_left.layout() is not None:
@@ -3420,8 +3464,8 @@ class PluginSlot_Minimal(PluginSlot_Default):
             if w > 50:
                 knobs_h = self.w_knobs_left.layout().heightForWidth(w)
                 if knobs_h > 40:
-                    return max(86, min(42 + knobs_h, 360))
-        return 106
+                    return max(90, min(56 + knobs_h, 360))
+        return 112
 
     def setParameterValue(self, parameterId, value, sendCallback):
         PluginSlot_Default.setParameterValue(self, parameterId, value, sendCallback)
@@ -3439,7 +3483,7 @@ class PluginSlot_Minimal(PluginSlot_Default):
         painter.setRenderHint(QPainter.Antialiasing)
 
         w = float(self.width())
-        h = float(self.getFixedHeight())
+        h = float(self.height())
         rect = QRectF(1.0, 1.0, w - 2.0, h - 2.0)
 
         painter.setBrush(self.minimal_bg_color)
