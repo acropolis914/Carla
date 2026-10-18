@@ -1781,128 +1781,37 @@ class ProjectLoadSummaryDialog(QDialog):
 class ProjectLoadingDialog(QDialog):
     def __init__(self, parent=None, filename=""):
         super().__init__(parent)
-        from qt_compat import QFrame, QGraphicsDropShadowEffect, QColor, QTimer, QFont
-        from carla_shared import getBestNerdFont
+        from qt_compat import QTimer
 
-        flags = getattr(Qt, "FramelessWindowHint", None) or getattr(getattr(Qt, "WindowType", object), "FramelessWindowHint", 0)
-        dialog_flag = getattr(Qt, "Dialog", None) or getattr(getattr(Qt, "WindowType", object), "Dialog", 0)
-        self.setWindowFlags(flags | dialog_flag)
-
-        wa_trans = getattr(Qt, "WA_TranslucentBackground", None) or getattr(getattr(Qt, "WidgetAttribute", object), "WA_TranslucentBackground", None)
-        if wa_trans is not None:
-            self.setAttribute(wa_trans, True)
-
-        self.setFixedSize(500, 205)
+        self.setWindowTitle(self.tr("Loading Project..."))
+        self.setFixedSize(450, 120)
         app_modal = getattr(Qt, "ApplicationModal", None) or getattr(getattr(Qt, "WindowModality", object), "ApplicationModal", None)
         if app_modal is not None:
             self.setWindowModality(app_modal)
 
         self._start_time = 0
-        self._drag_pos = None
-        self._current_progress = 14.0
+        self._current_progress = 12.0
         self._target_progress = 20.0
 
-        outer_layout = QVBoxLayout(self)
-        outer_layout.setContentsMargins(14, 14, 14, 14)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(18, 14, 18, 14)
+        layout.setSpacing(8)
 
-        self.card = QFrame(self)
-        self.card.setObjectName("ProjectLoadingCard")
-        self.card.setStyleSheet("""
-            QFrame#ProjectLoadingCard {
-                background-color: #181825;
-                border: 1px solid #313244;
-                border-radius: 14px;
-            }
-        """)
-
-        shadow = QGraphicsDropShadowEffect(self)
-        shadow.setBlurRadius(24)
-        shadow.setColor(QColor(0, 0, 0, 190))
-        shadow.setOffset(0, 8)
-        self.card.setGraphicsEffect(shadow)
-
-        card_layout = QVBoxLayout(self.card)
-        card_layout.setContentsMargins(20, 16, 20, 18)
-        card_layout.setSpacing(10)
-
-        # 1. Header Row
+        # 1. Top row: Filename & Percentage
         header_layout = QHBoxLayout()
         header_layout.setSpacing(8)
 
-        nerd_family = getBestNerdFont()
+        basename = os.path.basename(filename) if filename else self.tr("Project")
+        self.lbl_title = QLabel(f"<b>{self.tr('Loading:')}</b> {basename}", self)
+        header_layout.addWidget(self.lbl_title, 1)
 
-        brand_badge = QLabel("CLARA", self.card)
-        brand_badge.setStyleSheet("""
-            background-color: #313244;
-            color: #cba6f7;
-            font-weight: bold;
-            font-size: 11px;
-            padding: 2px 7px;
-            border-radius: 5px;
-            letter-spacing: 1px;
-        """)
-        header_layout.addWidget(brand_badge)
+        self.lbl_percent = QLabel(f"{int(self._current_progress)}%", self)
+        self.lbl_percent.setStyleSheet("font-weight: bold; color: #89b4fa;")
+        header_layout.addWidget(self.lbl_percent)
+        layout.addLayout(header_layout)
 
-        lbl_sub = QLabel("MODULAR AUDIO WORKSTATION", self.card)
-        lbl_sub.setStyleSheet("color: #6c7086; font-size: 9px; font-weight: bold; letter-spacing: 0.5px;")
-        header_layout.addWidget(lbl_sub)
-        header_layout.addStretch(1)
-
-        engine_badge = QLabel("● RESTORING GRAPH", self.card)
-        engine_badge.setStyleSheet("color: #a6e3a1; font-size: 9px; font-weight: bold;")
-        header_layout.addWidget(engine_badge)
-        card_layout.addLayout(header_layout)
-
-        # 2. Project File Row
-        proj_frame = QFrame(self.card)
-        proj_frame.setStyleSheet("""
-            QFrame {
-                background-color: #1e1e2e;
-                border: 1px solid #313244;
-                border-radius: 9px;
-            }
-        """)
-        proj_layout = QHBoxLayout(proj_frame)
-        proj_layout.setContentsMargins(12, 9, 12, 9)
-        proj_layout.setSpacing(10)
-
-        icon_lbl = QLabel(proj_frame)
-        if nerd_family:
-            icon_lbl.setFont(QFont(nerd_family, 15))
-            icon_lbl.setText("\uf1c7")  # nf-fa-file_audio_o
-        else:
-            icon_lbl.setText("♫")
-        icon_lbl.setStyleSheet("color: #fab387; background: transparent; border: none;")
-        proj_layout.addWidget(icon_lbl)
-
-        proj_info_layout = QVBoxLayout()
-        proj_info_layout.setSpacing(2)
-
-        basename = os.path.basename(filename) if filename else self.tr("Untitled Project")
-        self.lbl_title = QLabel(basename, proj_frame)
-        self.lbl_title.setStyleSheet("color: #cdd6f4; font-weight: bold; font-size: 12px; background: transparent; border: none;")
-        proj_info_layout.addWidget(self.lbl_title)
-
-        lbl_desc = QLabel(self.tr("Restoring plugins, audio graph bridges & rack parameters"), proj_frame)
-        lbl_desc.setStyleSheet("color: #6c7086; font-size: 10px; background: transparent; border: none;")
-        proj_info_layout.addWidget(lbl_desc)
-
-        proj_layout.addLayout(proj_info_layout)
-        card_layout.addWidget(proj_frame)
-
-        # 3. Dynamic Progress Bar & Percent
-        prog_header_layout = QHBoxLayout()
-        self.lbl_detail = QLabel(self.tr("Initializing plugins, graph routing, and parameters..."), self.card)
-        self.lbl_detail.setStyleSheet("color: #a6adc8; font-size: 11px; background: transparent; border: none;")
-        prog_header_layout.addWidget(self.lbl_detail, 1)
-
-        self.lbl_percent = QLabel(f"{int(self._current_progress)}%", self.card)
-        self.lbl_percent.setStyleSheet("color: #cba6f7; font-size: 11px; font-weight: bold; background: transparent; border: none;")
-        prog_header_layout.addWidget(self.lbl_percent)
-        card_layout.addLayout(prog_header_layout)
-
-        # Glowing gradient progress bar
-        self.progressBar = QProgressBar(self.card)
+        # 2. Glowing gradient progress bar (never frozen)
+        self.progressBar = QProgressBar(self)
         self.progressBar.setRange(0, 100)
         self.progressBar.setValue(int(self._current_progress))
         self.progressBar.setTextVisible(False)
@@ -1919,9 +1828,13 @@ class ProjectLoadingDialog(QDialog):
                 border-radius: 3px;
             }
         """)
-        card_layout.addWidget(self.progressBar)
+        layout.addWidget(self.progressBar)
 
-        outer_layout.addWidget(self.card)
+        # 3. Specific loading detail
+        self.lbl_detail = QLabel(self.tr("Reading project file & canvas geometry..."), self)
+        self.lbl_detail.setStyleSheet("color: #a6adc8; font-size: 11px;")
+        self.lbl_detail.setWordWrap(True)
+        layout.addWidget(self.lbl_detail)
 
         # Smooth auto-crawler timer so progress bar NEVER looks frozen during long tasks
         self._anim_timer = QTimer(self)
@@ -1935,31 +1848,17 @@ class ProjectLoadingDialog(QDialog):
             self._current_progress = min(self._target_progress, self._current_progress + step)
         elif self._current_progress < 93.0:
             # Subtle background crawl so the bar stays alive even when event loop is starved
-            self._current_progress += 0.15
+            self._current_progress += 0.12
 
         val_int = int(self._current_progress)
         self.progressBar.setValue(val_int)
         self.lbl_percent.setText(f"{val_int}%")
 
-    def mousePressEvent(self, event):
-        left_btn = getattr(Qt, "LeftButton", None) or getattr(getattr(Qt, "MouseButton", object), "LeftButton", None)
-        if event.button() == left_btn:
-            pos = event.globalPosition().toPoint() if hasattr(event, "globalPosition") else event.globalPos()
-            self._drag_pos = pos - self.frameGeometry().topLeft()
-            event.accept()
-
-    def mouseMoveEvent(self, event):
-        left_btn = getattr(Qt, "LeftButton", None) or getattr(getattr(Qt, "MouseButton", object), "LeftButton", None)
-        if (event.buttons() & left_btn) and self._drag_pos is not None:
-            pos = event.globalPosition().toPoint() if hasattr(event, "globalPosition") else event.globalPos()
-            self.move(pos - self._drag_pos)
-            event.accept()
-
     def show(self):
         import time
         self._start_time = time.time()
-        self._current_progress = 14.0
-        self._target_progress = 25.0
+        self._current_progress = 12.0
+        self._target_progress = 22.0
         super().show()
         QApplication.processEvents()
 
@@ -1967,7 +1866,7 @@ class ProjectLoadingDialog(QDialog):
         if text:
             clean_text = str(text)
             self.lbl_detail.setText(clean_text)
-            self._target_progress = min(93.0, self._target_progress + 15.0)
+            self._target_progress = min(93.0, self._target_progress + 14.0)
             self._current_progress = max(self._current_progress, self._target_progress - 8.0)
             val_int = int(self._current_progress)
             self.progressBar.setValue(val_int)
@@ -1988,6 +1887,7 @@ class ProjectLoadingDialog(QDialog):
         QApplication.processEvents()
         self.close()
         self.deleteLater()
+
 
 
 

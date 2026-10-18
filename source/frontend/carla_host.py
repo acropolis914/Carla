@@ -1400,6 +1400,8 @@ class HostWindow(QMainWindow):
 
         load_source = source_override or self.fProjectFilename
         self.projectLoadingStarted(load_source)
+        if getattr(self, "fLoadingDialog", None) is not None:
+            self.fLoadingDialog.setDetail(f"Preparing {os.path.basename(load_source)}...")
         self.fIsProjectLoading = True
 
         # Check if project contains plugins prone to in-process JUCE UI thread collisions
@@ -2826,6 +2828,22 @@ class HostWindow(QMainWindow):
             f"carla_host: slot_handlePluginAddedCallback id={pluginId}, type={pluginType}, name='{pluginName}'"
         )
 
+        if getattr(self, "fLoadingDialog", None) is not None:
+            type_names = {
+                PLUGIN_LV2: "LV2",
+                PLUGIN_VST2: "VST2",
+                PLUGIN_VST3: "VST3",
+                PLUGIN_CLAP: "CLAP",
+                PLUGIN_LADSPA: "LADSPA",
+                PLUGIN_DSSI: "DSSI",
+                PLUGIN_JSFX: "JSFX",
+                PLUGIN_SF2: "SF2",
+                PLUGIN_SFZ: "SFZ",
+            }
+            type_str = type_names.get(pluginType, "")
+            suffix = f" [{type_str}]" if type_str else ""
+            self.fLoadingDialog.setDetail(f"Loading plugin: {pluginName}{suffix}...")
+
         while len(self.fPluginList) <= pluginId:
             self.fPluginList.append(None)
 
@@ -3690,6 +3708,8 @@ class HostWindow(QMainWindow):
         patchcanvas.connectPorts(
             connectionId, groupOutId, portOutId, groupInId, portInId
         )
+        if getattr(self, "fLoadingDialog", None) is not None:
+            self.fLoadingDialog.setDetail("Restoring audio/MIDI graph routing connections...")
         self.updateMiniCanvasLater()
 
     @pyqtSlot(int, int, int)

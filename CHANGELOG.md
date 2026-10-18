@@ -20,12 +20,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-### 2026-10-19 04:28:00
-- **feat(ui)**: modern Catppuccin loading screen with active gradient progress animation
-  - Replaced legacy native loading dialog with a floating Catppuccin Macchiato modal card featuring translucent background, drop shadow, CLARA brand badges, and project file metadata.
-  - Implemented an active glowing gradient progress bar (`#89b4fa` -> `#cba6f7` -> `#f5c2e7`) with live percentage display.
-  - Added background crawl animation timer to ensure the loading bar stays alive and never freezes even when the Qt event loop is starved during heavy plugin initialization.
-  - Added Generative UI interactive simulation artifact for testing loading screen animations.
+### 2026-10-19 04:33:00
+- **feat(ui)**: minimal system-framed loading dialog with live plugin and routing status
+  - Restored clean native OS window framing to ensure 100% compatibility across all Linux/Wayland/X11 window managers without translucent background artifacts.
+  - Streamlined layout to a minimal, compact dialog showing project filename, live completion percentage, and active gradient progress bar.
+  - Added specific live loading status updates: detailed plugin names with format tags (e.g. `Surge XT [LV2]`, `Dexed [VST3]`) and audio/MIDI graph routing progress.
+  - Kept smooth auto-advancing progress ticker to prevent progress bar freezing during blocking plugin DSOs.
+  - Updated Generative UI preview widget to reflect the system-framed minimal style.
 
 ### 2026-10-19 04:15:00
 - **perf(settings)**: lazy tab building and dialog caching for fast cold start and instant reopen
