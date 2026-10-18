@@ -1826,23 +1826,30 @@ class HostWindow(QMainWindow):
                         if rec_ask == QMessageBox.Yes:
                             recovery_source = newer_autosave
 
-            if getattr(gCarla, "autoload_lastsave", False):
+            is_autoload = getattr(gCarla, "autoload_lastsave", False) or QSafeSettings().value("Main/AutoloadLastSave", False, bool)
+            if is_autoload:
                 self.loadProjectLater(recent_file, source_override=recovery_source)
                 return
 
-            name = os.path.basename(recent_file)
-            ask = QMessageBox.question(
-                self,
-                self.tr("Load Recent Project"),
-                self.tr(
-                    f"No project is loaded. Would you like to load recent project '{name}'?"
-                ),
-                QMessageBox.Yes | QMessageBox.No,
-                QMessageBox.Yes,
-            )
-            if ask == QMessageBox.Yes:
+            def _on_recent_load():
                 self.loadProjectLater(recent_file, source_override=recovery_source)
-                return
+
+            def _on_recent_skip():
+                self.fLoadingDialog = None
+                if not self.host.isControl:
+                    self.slot_engineStart()
+                    if self.fWithCanvas:
+                        QTimer.singleShot(600, self.slot_canvasArrange)
+
+            self.fLoadingDialog = ProjectLoadingDialog(
+                self.fParentOrSelf,
+                recent_file,
+                offer_mode=True,
+                on_load_accepted=_on_recent_load,
+                on_load_declined=_on_recent_skip,
+            )
+            self.fLoadingDialog.show()
+            return
 
         # Not loading recent: start engine and auto-arrange canvas
         if not self.host.isControl:

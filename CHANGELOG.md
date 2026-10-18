@@ -20,6 +20,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-19 04:37:00
+- **feat(ui)**: unified recent session prompt and loading dialog with autoload bypass
+  - Merged recent session startup prompt (`QMessageBox`) directly into `ProjectLoadingDialog` in-place, eliminating jarring popups and window recreation.
+  - Added seamless morphing from session prompt to live progress bar upon clicking "Load Session", with optional "Always load last save on startup" preference checkbox.
+  - Automatically bypasses offer screen and initiates direct loading when `--autoload-lastsave` CLI flag or `Main/AutoloadLastSave` setting is active.
+
+
 ### 2026-10-19 04:33:00
 - **feat(ui)**: minimal system-framed loading dialog with live plugin and routing status
   - Restored clean native OS window framing to ensure 100% compatibility across all Linux/Wayland/X11 window managers without translucent background artifacts.

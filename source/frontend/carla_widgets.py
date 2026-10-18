@@ -1779,12 +1779,12 @@ class ProjectLoadSummaryDialog(QDialog):
 # Modern Project Loading Dialog with indeterminate animation and detailed status text
 
 class ProjectLoadingDialog(QDialog):
-    def __init__(self, parent=None, filename=""):
+    def __init__(self, parent=None, filename="", offer_mode=False, on_load_accepted=None, on_load_declined=None):
         super().__init__(parent)
-        from qt_compat import QTimer
+        from qt_compat import QTimer, QPushButton, QCheckBox
 
         self.setWindowTitle(self.tr("Loading Project..."))
-        self.setFixedSize(450, 120)
+        self.setFixedSize(460, 150 if offer_mode else 120)
         app_modal = getattr(Qt, "ApplicationModal", None) or getattr(getattr(Qt, "WindowModality", object), "ApplicationModal", None)
         if app_modal is not None:
             self.setWindowModality(app_modal)
@@ -1792,6 +1792,10 @@ class ProjectLoadingDialog(QDialog):
         self._start_time = 0
         self._current_progress = 12.0
         self._target_progress = 20.0
+        self._offer_mode = offer_mode
+        self._on_load_accepted = on_load_accepted
+        self._on_load_declined = on_load_declined
+        self._accepted = False
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(18, 14, 18, 14)
@@ -1802,11 +1806,14 @@ class ProjectLoadingDialog(QDialog):
         header_layout.setSpacing(8)
 
         basename = os.path.basename(filename) if filename else self.tr("Project")
-        self.lbl_title = QLabel(f"<b>{self.tr('Loading:')}</b> {basename}", self)
+        title_prefix = self.tr("Recent Session:") if offer_mode else self.tr("Loading:")
+        self.lbl_title = QLabel(f"<b>{title_prefix}</b> {basename}", self)
         header_layout.addWidget(self.lbl_title, 1)
 
         self.lbl_percent = QLabel(f"{int(self._current_progress)}%", self)
         self.lbl_percent.setStyleSheet("font-weight: bold; color: #89b4fa;")
+        if offer_mode:
+            self.lbl_percent.hide()
         header_layout.addWidget(self.lbl_percent)
         layout.addLayout(header_layout)
 
@@ -1828,21 +1835,123 @@ class ProjectLoadingDialog(QDialog):
                 border-radius: 3px;
             }
         """)
+        if offer_mode:
+            self.progressBar.hide()
         layout.addWidget(self.progressBar)
 
-        # 3. Specific loading detail
-        self.lbl_detail = QLabel(self.tr("Reading project file & canvas geometry..."), self)
+        # 3. Status detail label
+        initial_detail = (
+            self.tr("No project is currently open. Would you like to restore this session?")
+            if offer_mode
+            else self.tr("Reading project file & canvas geometry...")
+        )
+        self.lbl_detail = QLabel(initial_detail, self)
         self.lbl_detail.setStyleSheet("color: #a6adc8; font-size: 11px;")
         self.lbl_detail.setWordWrap(True)
         layout.addWidget(self.lbl_detail)
+
+        # 4. Offer button container (visible only in offer_mode)
+        self.offer_widget = QWidget(self)
+        offer_layout = QVBoxLayout(self.offer_widget)
+        offer_layout.setContentsMargins(0, 4, 0, 0)
+        offer_layout.setSpacing(6)
+
+        btn_row = QHBoxLayout()
+        btn_row.setSpacing(8)
+
+        self.cb_autoload = QCheckBox(self.tr("Always load last save on startup"), self.offer_widget)
+        self.cb_autoload.setStyleSheet("color: #6c7086; font-size: 11px;")
+        btn_row.addWidget(self.cb_autoload, 1)
+
+        self.b_skip = QPushButton(self.tr("Start Empty"), self.offer_widget)
+        self.b_skip.setStyleSheet("""
+            QPushButton {
+                background-color: #313244;
+                color: #cdd6f4;
+                border: 1px solid #45475a;
+                border-radius: 4px;
+                padding: 4px 12px;
+                font-size: 11px;
+            }
+            QPushButton:hover {
+                background-color: #45475a;
+            }
+        """)
+        self.b_skip.clicked.connect(self._on_skip_clicked)
+        btn_row.addWidget(self.b_skip)
+
+        self.b_load = QPushButton(self.tr("Load Session"), self.offer_widget)
+        self.b_load.setStyleSheet("""
+            QPushButton {
+                background-color: #cba6f7;
+                color: #11111b;
+                border: none;
+                border-radius: 4px;
+                padding: 4px 14px;
+                font-weight: bold;
+                font-size: 11px;
+            }
+            QPushButton:hover {
+                background-color: #b4befe;
+            }
+        """)
+        self.b_load.clicked.connect(self._on_load_clicked)
+        btn_row.addWidget(self.b_load)
+
+        offer_layout.addLayout(btn_row)
+        layout.addWidget(self.offer_widget)
+
+        if not offer_mode:
+            self.offer_widget.hide()
 
         # Smooth auto-crawler timer so progress bar NEVER looks frozen during long tasks
         self._anim_timer = QTimer(self)
         self._anim_timer.setInterval(40)
         self._anim_timer.timeout.connect(self._on_tick)
+        if not offer_mode:
+            self._anim_timer.start()
+
+    def _on_load_clicked(self):
+        self._accepted = True
+        if self.cb_autoload.isChecked():
+            try:
+                from carla_shared import gCarla, QSafeSettings
+                QSafeSettings().setValue("Main/AutoloadLastSave", True)
+                gCarla.autoload_lastsave = True
+            except Exception:
+                pass
+        self.startLoading()
+        if callable(self._on_load_accepted):
+            self._on_load_accepted()
+
+    def _on_skip_clicked(self):
+        self._accepted = False
+        self.dismiss()
+        if callable(self._on_load_declined):
+            self._on_load_declined()
+
+    def closeEvent(self, event):
+        if self._offer_mode and not self._accepted:
+            if callable(self._on_load_declined):
+                self._on_load_declined()
+        super().closeEvent(event)
+
+    def startLoading(self, detail=None):
+        self._offer_mode = False
+        self.offer_widget.hide()
+        self.progressBar.show()
+        self.lbl_percent.show()
+        title_text = self.lbl_title.text()
+        self.lbl_title.setText(title_text.replace(self.tr("Recent Session:"), self.tr("Loading:")))
+        self.lbl_detail.setText(detail or self.tr("Preparing project file & engine..."))
+        self.setFixedSize(450, 120)
         self._anim_timer.start()
+        self.repaint()
+        QApplication.processEvents()
 
     def _on_tick(self):
+        if self._offer_mode:
+            return
         if self._current_progress < self._target_progress:
             step = max(0.5, (self._target_progress - self._current_progress) * 0.28)
             self._current_progress = min(self._target_progress, self._current_progress + step)
@@ -1887,6 +1996,7 @@ class ProjectLoadingDialog(QDialog):
         QApplication.processEvents()
         self.close()
         self.deleteLater()
+
 
 
 
