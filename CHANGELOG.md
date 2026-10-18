@@ -22,6 +22,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### 2026-10-18 08:38:00
 - **fix(shortcuts)**: restore `Ctrl+S` and `Ctrl+Shift+S` save functionality across all focus contexts
+  - Fixed missing `QShortcut` and `QKeySequence` import in `carla_host.py`.
   - Registered window-level actions and dedicated `QShortcut` bindings with `Qt.ApplicationShortcut` context so saving triggers even when the menubar is hidden (Modern UI Mode / `Ctrl+M`).
   - Added `Qt.ShortcutContext` compatibility aliases in `qt_compat.py` for PyQt6.
   - Kept project save and open actions active during startup and engine stopped states instead of disabling them.
