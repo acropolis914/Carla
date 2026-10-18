@@ -20,6 +20,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-19 00:50:00
+- **feat(rack)**: global mini rack mode setting, unified disclosure button, and cleaned parameter slider layout
+  - Added global "Use minified layer view for rack slots by default" setting (`Main/MiniRackMode`) in the Settings dialog Appearance section.
+  - Unified the duplicate arrow down / expand button into a single contextual disclosure chevron (`▸`/`▾`/`▴`) that controls both slot collapsing and mini parameter drawer disclosure.
+  - Optimized mini parameter sliders spacing, margins, and row height (18px) to stack cleanly without crowding or label overlap.
+
 ### 2026-10-19 00:40:00
 - **fix(rack)**: fix `get_custom_data_value` method call in `createPluginSlot`
   - Fixed `host.get_custom_data` call which expected a numeric index instead of type and key, causing a traceback when creating plugin slots.

@@ -50,6 +50,8 @@ from carla_shared import (
     CARLA_DEFAULT_MAIN_SYSTEM_ICONS,
     CARLA_KEY_MAIN_CLASSIC_SKIN,
     CARLA_DEFAULT_MAIN_CLASSIC_SKIN,
+    CARLA_KEY_MAIN_MINI_RACK_MODE,
+    CARLA_DEFAULT_MAIN_MINI_RACK_MODE,
     CARLA_KEY_MAIN_USE_SYSTEM_THEME,
     CARLA_DEFAULT_MAIN_USE_SYSTEM_THEME,
     CARLA_KEY_MAIN_APP_THEME,
@@ -280,6 +282,13 @@ GENERAL_SCHEMA = {
                             "label": "Use classic plugin skin by default",
                             "key": CARLA_KEY_MAIN_CLASSIC_SKIN,
                             "default": CARLA_DEFAULT_MAIN_CLASSIC_SKIN,
+                        },
+                        {
+                            "id": "mini_rack_mode",
+                            "type": "checkbox",
+                            "label": "Use minified layer view for rack slots by default",
+                            "key": CARLA_KEY_MAIN_MINI_RACK_MODE,
+                            "default": CARLA_DEFAULT_MAIN_MINI_RACK_MODE,
                         },
                         {
                             "id": "system_icons",

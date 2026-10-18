@@ -72,10 +72,20 @@ class RackListItem(QListWidgetItem):
         if useClassicSkin and not skin:
             skin = "minimal-dark"
 
+        layer_mode_data = self.host.get_custom_data_value(pluginId, CUSTOM_DATA_TYPE_PROPERTY, "CarlaSkinLayerMode")
+        if layer_mode_data is not None:
+            layer_mode = bool(layer_mode_data == "true")
+        else:
+            layer_mode = bool(
+                getattr(self.fParent, "fParent", None) is not None
+                and getattr(self.fParent.fParent, "fSavedSettings", {}).get(CARLA_KEY_MAIN_MINI_RACK_MODE, False)
+            )
+
         self.fOptions = {
-            'color'  : color,
-            'skin'   : skin,
-            'compact': compact,
+            'color'     : color,
+            'skin'      : skin,
+            'compact'   : compact,
+            'layer_mode': layer_mode,
         }
 
         self.setFlags(Qt.ItemIsSelectable|Qt.ItemIsEnabled)

@@ -2377,7 +2377,6 @@ class PluginSlot_Minimal(PluginSlot_Default):
         self.fSliderParameterList = []
         self.mini_params_tray = None
         self.fMiniSliderParameterList = []
-        self.b_layer_expand = None
 
         p = CATPPUCCIN_MOCHA if self.is_dark else CATPPUCCIN_LATTE
         has_custom_color = (skinColor != (0, 0, 0) and skinColor != (255, 255, 255))
@@ -2600,24 +2599,14 @@ class PluginSlot_Minimal(PluginSlot_Default):
         self.b_slider_mode.clicked.connect(self.slot_toggleSliderMode)
         self.ui.layout_top.addWidget(self.b_slider_mode)
 
-        # Layer mode mini-params disclosure chevron (Photoshop layer style): \uf078 (down) / \uf054 (right)
-        self.b_layer_expand = QPushButton("\uf054", parent=self)
-        self.b_layer_expand.setObjectName("btn_layer_expand")
-        self.b_layer_expand.setMinimumSize(20, 20)
-        self.b_layer_expand.setMaximumSize(20, 20)
-        self.b_layer_expand.setFlat(True)
-        self.b_layer_expand.setToolTip("Show/Hide Quick Layer Parameters")
-        self.b_layer_expand.clicked.connect(self.slot_toggleMiniParams)
-        self.b_layer_expand.setVisible(False)
-        self.ui.layout_top.addWidget(self.b_layer_expand)
-
+        # Unified collapse/disclosure chevron button (handles both standard minimize and layer mode drawer)
         self.b_minimize = QPushButton("\uf077", parent=self)
         self.b_minimize.setFlat(True)
         self.b_minimize.setObjectName("btn_minimize")
         self.b_minimize.setMinimumSize(22, 22)
         self.b_minimize.setMaximumSize(22, 22)
         self.b_minimize.setToolTip("Minimize / Collapse Rack Slot")
-        self.b_minimize.clicked.connect(self.toggleCompacted)
+        self.b_minimize.clicked.connect(self.slot_toggleExpandOrMini)
         self.ui.layout_top.addWidget(self.b_minimize)
 
         self.ui.verticalLayout.setContentsMargins(14, 6, 6, 6)
@@ -3210,8 +3199,6 @@ class PluginSlot_Minimal(PluginSlot_Default):
                 self.mini_params_tray.setVisible(False)
             if hasattr(self, 'b_slider_mode') and self.b_slider_mode is not None:
                 self.b_slider_mode.setVisible(False)
-            if hasattr(self, 'b_layer_expand') and self.b_layer_expand is not None:
-                self.b_layer_expand.setVisible(False)
             self.b_minimize.setText("\uf078")
             self.b_minimize.setToolTip("Expand Rack Slot")
         else:
@@ -3219,9 +3206,6 @@ class PluginSlot_Minimal(PluginSlot_Default):
                 self.ui.line.setVisible(not self.is_layer_mode or self.show_mini_params)
             if hasattr(self, 'b_slider_mode') and self.b_slider_mode is not None:
                 self.b_slider_mode.setVisible(not self.is_layer_mode)
-            if hasattr(self, 'b_layer_expand') and self.b_layer_expand is not None:
-                self.b_layer_expand.setVisible(self.is_layer_mode)
-                self.b_layer_expand.setText("\uf078" if self.show_mini_params else "\uf054")
 
             if self.is_layer_mode:
                 if self.w_knobs_left is not None:
@@ -3234,6 +3218,8 @@ class PluginSlot_Minimal(PluginSlot_Default):
                     self.mini_params_tray.setVisible(self.show_mini_params)
                     if self.show_mini_params:
                         self.syncMiniSliderValues()
+                self.b_minimize.setText("\uf078" if self.show_mini_params else "\uf054")
+                self.b_minimize.setToolTip("Collapse Parameters" if self.show_mini_params else "Expand Parameters")
             elif self.is_slider_mode:
                 if self.w_knobs_left is not None:
                     self.w_knobs_left.setVisible(False)
@@ -3243,6 +3229,8 @@ class PluginSlot_Minimal(PluginSlot_Default):
                     self.mini_params_tray.setVisible(False)
                 if hasattr(self, 'scroll_area') and self.scroll_area is not None:
                     self.scroll_area.setVisible(True)
+                self.b_minimize.setText("\uf077")
+                self.b_minimize.setToolTip("Minimize / Collapse Rack Slot")
             else:
                 if hasattr(self, 'scroll_area') and self.scroll_area is not None:
                     self.scroll_area.setVisible(False)
@@ -3252,8 +3240,8 @@ class PluginSlot_Minimal(PluginSlot_Default):
                     self.w_knobs_left.setVisible(True)
                 if self.w_knobs_right is not None:
                     self.w_knobs_right.setVisible(True)
-            self.b_minimize.setText("\uf077")
-            self.b_minimize.setToolTip("Minimize / Collapse Rack Slot")
+                self.b_minimize.setText("\uf077")
+                self.b_minimize.setToolTip("Minimize / Collapse Rack Slot")
 
         self.updateRackItemSize()
 
@@ -3268,10 +3256,6 @@ class PluginSlot_Minimal(PluginSlot_Default):
             pitem = gCarla.gui.getPluginItem(self.fPluginId)
             if pitem is not None and hasattr(pitem, "fOptions"):
                 pitem.fOptions['layer_mode'] = self.is_layer_mode
-
-        if hasattr(self, 'b_layer_expand') and self.b_layer_expand is not None:
-            self.b_layer_expand.setVisible(self.is_layer_mode and not self.is_compacted)
-            self.b_layer_expand.setText("\uf078" if self.show_mini_params else "\uf054")
 
         if hasattr(self, 'b_slider_mode') and self.b_slider_mode is not None:
             self.b_slider_mode.setVisible(not self.is_layer_mode and not self.is_compacted)
@@ -3291,9 +3275,15 @@ class PluginSlot_Minimal(PluginSlot_Default):
             else:
                 if self.mini_params_tray is not None:
                     self.mini_params_tray.setVisible(False)
+            if hasattr(self.ui, 'line') and self.ui.line is not None:
+                self.ui.line.setVisible(self.show_mini_params)
+            self.b_minimize.setText("\uf078" if self.show_mini_params else "\uf054")
+            self.b_minimize.setToolTip("Collapse Parameters" if self.show_mini_params else "Expand Parameters")
         else:
             if self.mini_params_tray is not None:
                 self.mini_params_tray.setVisible(False)
+            if hasattr(self.ui, 'line') and self.ui.line is not None:
+                self.ui.line.setVisible(not self.is_compacted)
             if not self.is_compacted:
                 if self.is_slider_mode:
                     if hasattr(self, 'scroll_area') and self.scroll_area is not None:
@@ -3303,23 +3293,28 @@ class PluginSlot_Minimal(PluginSlot_Default):
                         self.w_knobs_left.setVisible(True)
                     if self.w_knobs_right is not None:
                         self.w_knobs_right.setVisible(True)
+            self.b_minimize.setText("\uf078" if self.is_compacted else "\uf077")
+            self.b_minimize.setToolTip("Expand Rack Slot" if self.is_compacted else "Minimize / Collapse Rack Slot")
 
         self.updateRackItemSize()
 
-    def slot_toggleMiniParams(self):
-        """Toggle disclosure of the mini parameters drawer in layer mode."""
-        self.show_mini_params = not self.show_mini_params
-        if self.show_mini_params:
-            self._ensure_mini_params_created()
-        if hasattr(self, 'b_layer_expand') and self.b_layer_expand is not None:
-            self.b_layer_expand.setText("\uf078" if self.show_mini_params else "\uf054")
-        if self.mini_params_tray is not None:
-            self.mini_params_tray.setVisible(self.show_mini_params)
+    def slot_toggleExpandOrMini(self):
+        """Unified disclosure toggle: toggles mini-params in layer mode, or compacted state in standard mode."""
+        if self.is_layer_mode:
+            self.show_mini_params = not self.show_mini_params
             if self.show_mini_params:
-                self.syncMiniSliderValues()
-        if hasattr(self.ui, 'line') and self.ui.line is not None:
-            self.ui.line.setVisible(self.show_mini_params)
-        self.updateRackItemSize()
+                self._ensure_mini_params_created()
+            if self.mini_params_tray is not None:
+                self.mini_params_tray.setVisible(self.show_mini_params)
+                if self.show_mini_params:
+                    self.syncMiniSliderValues()
+            if hasattr(self.ui, 'line') and self.ui.line is not None:
+                self.ui.line.setVisible(self.show_mini_params)
+            self.b_minimize.setText("\uf078" if self.show_mini_params else "\uf054")
+            self.b_minimize.setToolTip("Collapse Parameters" if self.show_mini_params else "Expand Parameters")
+            self.updateRackItemSize()
+        else:
+            self.toggleCompacted()
 
     def _ensure_mini_params_created(self):
         """Build compact Photoshop adjustment-layer style mini slider tray."""
@@ -3329,8 +3324,8 @@ class PluginSlot_Minimal(PluginSlot_Default):
         self.mini_params_tray = QWidget(parent=self)
         self.mini_params_tray.setObjectName("w_mini_params_tray")
         self.mini_params_layout = QVBoxLayout(self.mini_params_tray)
-        self.mini_params_layout.setContentsMargins(18, 2, 8, 2)
-        self.mini_params_layout.setSpacing(1)
+        self.mini_params_layout.setContentsMargins(8, 4, 8, 4)
+        self.mini_params_layout.setSpacing(4)
 
         self.fMiniSliderParameterList = []
         parameterCount = self.host.get_parameter_count(self.fPluginId)
@@ -3409,8 +3404,8 @@ class PluginSlot_Minimal(PluginSlot_Default):
                 count = len(getattr(self, 'fMiniSliderParameterList', []))
                 if count == 0 and hasattr(self, 'fParameterList'):
                     count = min(len(self.fParameterList), 8)
-                req_h = 38 + (count * 20)
-                return max(58, min(req_h, 300))
+                req_h = 44 + (count * 24)
+                return max(64, min(req_h, 340))
             return 36
 
         if getattr(self, 'is_slider_mode', False):
