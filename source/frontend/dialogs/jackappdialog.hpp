@@ -1,5 +1,7 @@
 // SPDX-FileCopyrightText: 2011-2025 Filipe Coelho <falktx@falktx.com>
 // SPDX-License-Identifier: GPL-2.0-or-later
+//
+// @deprecated: Superseded by pure-PyQt implementation in dialogs/jackappdialog_py.py. Kept for legacy C++ build targets only.
 
 #pragma once
 

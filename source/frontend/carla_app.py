@@ -46,6 +46,7 @@ from carla_backend import (
 from carla_shared import (
     CARLA_KEY_MAIN_USE_PRO_THEME,
     CARLA_KEY_MAIN_PRO_THEME_COLOR,
+    CLARA_VERSION_STRING,
     CARLA_KEY_MAIN_USE_SYSTEM_THEME,
     CARLA_KEY_MAIN_APP_THEME,
     CARLA_DEFAULT_MAIN_USE_PRO_THEME,
@@ -145,7 +146,7 @@ class CarlaApplication():
 
         self.fApp = QCoreApplication(args) if gCarla.nogui else QApplication(args)
         self.fApp.setApplicationName(appName)
-        self.fApp.setApplicationVersion(CARLA_VERSION_STRING)
+        self.fApp.setApplicationVersion(CLARA_VERSION_STRING)
         self.fApp.setOrganizationName("falkTX")
 
         if self.fAppTranslator is not None:

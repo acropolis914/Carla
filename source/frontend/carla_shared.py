@@ -61,7 +61,24 @@ from carla_backend import (
     ENGINE_TRANSPORT_MODE_JACK,
 )
 
-CLARA_VERSION_STRING = "1.0.3"
+def _get_clara_version():
+    base_version = "1.0.3"
+    try:
+        import subprocess
+        tag = subprocess.check_output(
+            ["git", "describe", "--tags", "--exact-match"],
+            cwd=os.path.dirname(__file__),
+            stderr=subprocess.DEVNULL
+        ).decode("utf-8").strip()
+        if tag.startswith("v"):
+            tag = tag[1:]
+        if tag:
+            return tag
+    except Exception:
+        pass
+    return base_version
+
+CLARA_VERSION_STRING = _get_clara_version()
 
 # ------------------------------------------------------------------------------------------------------------
 # Config

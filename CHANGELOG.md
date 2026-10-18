@@ -20,6 +20,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-18 23:28:00
+- **refactor(version)**: centralize Clara version as single source of truth and deprecate unused C++ dialogs
+  - Established `carla_shared.py:CLARA_VERSION_STRING` as the single source of truth for Clara versioning with dynamic fallback to git tags.
+  - Updated `carla_app.py` to register `CLARA_VERSION_STRING` in `QCoreApplication.setApplicationVersion`.
+  - Updated `aboutdialog_py.py` to dynamically display the active Clara version alongside the Carla basis version.
+  - Marked superseded legacy C++ dialog files (`aboutdialog.cpp`, `aboutdialog.hpp`, `jackappdialog.cpp`, `jackappdialog.hpp`) as deprecated.
+
 ### 2026-10-18 08:38:00
 - **fix(shortcuts)**: restore `Ctrl+S` and `Ctrl+Shift+S` save functionality across all focus contexts
   - Fixed missing `QShortcut` and `QKeySequence` import in `carla_host.py`.

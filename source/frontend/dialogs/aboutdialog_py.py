@@ -20,17 +20,17 @@ from qt_compat import (
     QWidget,
     Qt,
 )
-from carla_shared import CARLA_OS_MAC, CARLA_OS_WIN, CARLA_VERSION_STRING, gCarla
+from carla_shared import CARLA_OS_MAC, CARLA_OS_WIN, CARLA_VERSION_STRING, CLARA_VERSION_STRING, gCarla
 from carla_utils import *  # noqa: F401,F403  (repo convention, shared utils namespace)
 
 # ------------------------------------------------------------------------------------------------------------
-# Static text (kept byte-identical to aboutdialog.cpp)
+# Static text
 
 _ABOUT_HTML = (
     "<div style='text-align: center; font-family: sans-serif; line-height: 1.6;'>"
     "<h2 style='margin: 0; color: #89b4fa;'>Clara</h2>"
     "<p style='margin: 4px 0 12px 0; color: #a6adc8; font-size: 11px;'>"
-    "Modernized Audio Plugin Host & Patchbay (v0.1.5 &bull; Carla %1%2)</p>"
+    "Modernized Audio Plugin Host & Patchbay (v%3 &bull; Carla %1%2)</p>"
     "<p style='margin: 8px 0; font-size: 12px;'>"
     "Maintained & Modernized by <b>acropolis914</b><br>"
     "Original Carla core created by <b>falkTX</b>"
@@ -176,7 +176,11 @@ class AboutDialog(QDialog):
         self.l_about.setObjectName("l_about")
         self.l_about.setTextFormat(Qt.RichText)
         self.l_about.setOpenExternalLinks(True)
-        self.l_about.setText(_ABOUT_HTML.replace("%1", CARLA_VERSION_STRING).replace("%2", extraInfo))
+        self.l_about.setText(
+            _ABOUT_HTML.replace("%1", CARLA_VERSION_STRING)
+            .replace("%2", extraInfo)
+            .replace("%3", CLARA_VERSION_STRING)
+        )
 
         self.l_extended = QLabel()
         self.l_extended.setObjectName("l_extended")
