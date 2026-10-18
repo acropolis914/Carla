@@ -223,6 +223,7 @@ class HostWindow(QMainWindow):
         self.fFilteredPatchbayClients = set()
 
         self.fPluginListDialog = None
+        self._settingsDialog = None
         self.fFavoritePlugins = []
 
         self.fProjectFilename = ""
@@ -1027,6 +1028,7 @@ class HostWindow(QMainWindow):
                 QTimer.singleShot(0, self.slot_engineStart)
             if not self.host.isPlugin:
                 QTimer.singleShot(1500, self.startStartupPluginScanner)
+            QTimer.singleShot(400, self._prewarmSettingsDialog)
 
     # --------------------------------------------------------------------------------------------------------
     # Manage visibility state, needed for NSM
@@ -4296,6 +4298,13 @@ class HostWindow(QMainWindow):
         self._logsDialog.show()
         self._logsDialog.raise_()
         self._logsDialog.activateWindow()
+
+    def _prewarmSettingsDialog(self):
+        if getattr(self, "_settingsDialog", None) is None:
+            try:
+                self._settingsDialog = CarlaSettingsW(self.fParentOrSelf, self.host, True, hasGL)
+            except Exception:
+                pass
 
     @pyqtSlot()
     def slot_configureCarla(self):
