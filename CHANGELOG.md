@@ -20,6 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-19 01:15:00
+- **fix(shortcuts)**: resolve ambiguous `Ctrl+S` and `Ctrl+Shift+S` shortcut overload
+  - Removed duplicate `QShortcut` instances that conflicted with window-level `ui.act_file_save` and `ui.act_file_save_as` actions.
+  - Set `ApplicationShortcut` context across save, save-as, open, and new actions for seamless window-wide triggering.
+
 ### 2026-10-19 01:10:00
 - **feat(rack)**: 2-line minified layer layout and scrollable mini parameter drawer
   - Separated slot controls into a clean 2-line flex layout: Row 1 handles power/bypass/type/title and disclosure chevron; Row 2 houses preset selector and LEDs/peak meters to eliminate horizontal widget overlap.

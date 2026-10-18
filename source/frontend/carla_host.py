@@ -618,14 +618,8 @@ class HostWindow(QMainWindow):
         sc_app = getattr(Qt, "ApplicationShortcut", getattr(Qt.ShortcutContext, "ApplicationShortcut", Qt.WindowShortcut))
         self.ui.act_file_save.setShortcutContext(sc_app)
         self.ui.act_file_save_as.setShortcutContext(sc_app)
-
-        self.sc_file_save = QShortcut(QKeySequence("Ctrl+S"), self)
-        self.sc_file_save.setContext(sc_app)
-        self.sc_file_save.activated.connect(self.slot_fileSave)
-
-        self.sc_file_save_as = QShortcut(QKeySequence("Ctrl+Shift+S"), self)
-        self.sc_file_save_as.setContext(sc_app)
-        self.sc_file_save_as.activated.connect(self.slot_fileSaveAs)
+        self.ui.act_file_open.setShortcutContext(sc_app)
+        self.ui.act_file_new.setShortcutContext(sc_app)
 
         self.ui.act_help_about.setText(self.tr("&About Clara"))
 
