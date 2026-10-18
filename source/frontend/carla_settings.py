@@ -607,6 +607,62 @@ class CarlaSettingsW(QDialog):
 
     # -----------------------------------------------------------------------------------------------------------------
 
+    @staticmethod
+    def _make_glyph_icon(glyph, size=18, color="#89b4fa"):
+        from carla_shared import getBestNerdFont
+        nerd_family = getBestNerdFont()
+        cache_key = (glyph, size, nerd_family, color)
+        if cache_key in _GLYPH_ICON_CACHE:
+            return _GLYPH_ICON_CACHE[cache_key]
+        if not nerd_family:
+            return QIcon()
+        from qt_compat import QPixmap, QPainter, QColor, QImage
+        font_size = max(9, int(size * 0.72))
+        font = QFont(nerd_family, font_size)
+
+        # Probe exact ink bounding box for optical centering
+        img = QImage(size, size, QImage.Format_ARGB32)
+        img.fill(0)
+        probe = QPainter(img)
+        probe.setFont(font)
+        probe.setPen(QColor(255, 255, 255))
+        probe.drawText(QRect(0, 0, size, size), Qt.AlignCenter, glyph)
+        probe.end()
+
+        min_x, max_x = size, -1
+        min_y, max_y = size, -1
+        for y in range(size):
+            for x in range(size):
+                if (img.pixel(x, y) >> 24) & 0xFF > 20:
+                    if x < min_x:
+                        min_x = x
+                    if x > max_x:
+                        max_x = x
+                    if y < min_y:
+                        min_y = y
+                    if y > max_y:
+                        max_y = y
+
+        if max_x != -1:
+            cx = (min_x + max_x) / 2.0
+            cy = (min_y + max_y) / 2.0
+            dx = int(round((size - 1) / 2.0 - cx))
+            dy = int(round((size - 1) / 2.0 - cy))
+        else:
+            dx, dy = 0, 0
+
+        pm = QPixmap(size, size)
+        pm.fill(QColor(0, 0, 0, 0))
+        p = QPainter(pm)
+        p.setFont(font)
+        p.setPen(QColor(color))
+        draw_rect = QRect(0, 0, size, size).translated(dx, dy)
+        p.drawText(draw_rect, Qt.AlignCenter, glyph)
+        p.end()
+        icon = QIcon(pm)
+        _GLYPH_ICON_CACHE[cache_key] = icon
+        return icon
+
     def __init__(self, parent, host, hasCanvas, hasCanvasGL):
         QDialog.__init__(self, parent)
         self.host = host
@@ -651,31 +707,12 @@ class CarlaSettingsW(QDialog):
         except Exception:
             nerd_family = ""
 
-        def _make_glyph_icon(glyph, size=18):
-            cache_key = (glyph, size, nerd_family)
-            if cache_key in _GLYPH_ICON_CACHE:
-                return _GLYPH_ICON_CACHE[cache_key]
-            if not nerd_family:
-                return QIcon()
-            from qt_compat import QPixmap, QPainter, QColor
-            pm = QPixmap(size, size)
-            pm.fill(QColor(0, 0, 0, 0))
-            p = QPainter(pm)
-            font_size = max(9, int(size * 0.72))
-            p.setFont(QFont(nerd_family, font_size))
-            p.setPen(QColor("#89b4fa"))
-            p.drawText(pm.rect(), Qt.AlignCenter, glyph)
-            p.end()
-            icon = QIcon(pm)
-            _GLYPH_ICON_CACHE[cache_key] = icon
-            return icon
-
         for row in range(self.ui.lw_page.rowCount()):
             item = self.ui.lw_page.item(row, 0)
             if item is not None:
                 if row < len(tab_titles):
                     if nerd_family and row < len(tab_glyphs):
-                        item.setIcon(_make_glyph_icon(tab_glyphs[row]))
+                        item.setIcon(self._make_glyph_icon(tab_glyphs[row]))
                     item.setText(tab_titles[row])
 
         # Remove hideous page header glyphs (upper-right corner of every tab)
@@ -903,8 +940,7 @@ class CarlaSettingsW(QDialog):
             _nerd = ""
 
         if _nerd:
-            # Modern Nerd Font glyph buttons instead of the legacy bitmap icons
-            _btn_font = QFont(_nerd, 12)
+            # Modern Nerd Font glyph buttons with optical centering
             for _btn, _glyph in (
                 (self.ui.b_main_proj_folder_open, "\uf07c"),  # nf-fa-folder-open
                 (self.ui.b_filepaths_add, "\uf067"),          # nf-fa-plus
@@ -915,9 +951,8 @@ class CarlaSettingsW(QDialog):
                 (self.ui.b_paths_remove, "\uf068"),
             ):
                 if _btn is not None:
-                    _btn.setIcon(QIcon())
-                    _btn.setText(_glyph)
-                    _btn.setFont(_btn_font)
+                    _btn.setText("")
+                    _btn.setIcon(self._make_glyph_icon(_glyph, 16, color="#cdd6f4"))
         elif self.ui.ch_main_system_icons.isChecked():
             self.ui.b_main_proj_folder_open.setIcon(
                 getIcon("document-open", 16, "svgz")

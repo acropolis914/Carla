@@ -20,6 +20,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-19 04:56:00
+- **fix(settings)**: optical ink-bounds centering for sidebar tab and action button icons
+  - Applied automated pixel-ink bounding box measurement to `_make_glyph_icon` to visually balance all sidebar page tab icons (General, Patchbay, Engine, OSC, etc.).
+  - Migrated path action buttons (add, edit, remove, folder) to optically centered `QIcon` instances, removing text-alignment slant.
+
+
 ### 2026-10-19 04:53:00
 - **fix(canvas)**: visual and optical centering for floating toolbar glyph icons
   - Introduced `CanvasToolButton` with cached ink bounding-box measurement to eliminate 2-4px horizontal and vertical asymmetry on Nerd Font and unicode glyphs.
