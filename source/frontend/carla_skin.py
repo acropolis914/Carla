@@ -1217,6 +1217,9 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
         self.midiActivityChanged(onOff)
 
     def idleFast(self):
+        if not self.isVisible():
+            return
+
         if self.fPeaksInputCount > 0:
             if self.fPeaksInputCount > 1:
                 peak1 = self.host.get_input_peak_value(self.fPluginId, True)
@@ -1258,6 +1261,9 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
                 self.led_audio_out.setChecked(ledState)
 
     def idleSlow(self):
+        if not self.isVisible() and not self.fEditDialog.isVisible():
+            return
+
         if self.fParameterIconTimer == ICON_STATE_ON:
             self.parameterActivityChanged(True)
             self.fParameterIconTimer = ICON_STATE_WAIT

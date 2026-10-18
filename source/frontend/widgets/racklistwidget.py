@@ -252,6 +252,12 @@ class RackListWidget(QListWidget):
         self.setSelectionMode(QAbstractItemView.SingleSelection)
         self.setSortingEnabled(False)
 
+        try:
+            from qt_compat import QOpenGLWidget
+            self.setViewport(QOpenGLWidget(self))
+        except Exception:
+            pass
+
         # Smooth scrolling configuration
         scroll_mode = getattr(QAbstractItemView.ScrollMode, "ScrollPerPixel", getattr(QAbstractItemView, "ScrollPerPixel", None))
         if scroll_mode is not None:

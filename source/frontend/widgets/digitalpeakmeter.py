@@ -218,6 +218,9 @@ class DigitalPeakMeter(QWidget):
 
         i = meter - 1
 
+        if not self.isVisible():
+            return
+
         if self.fSmoothMultiplier > 0 and not forced:
             level = (
                 (self.fLastChannelData[i] * float(self.fSmoothMultiplier) + level)
@@ -229,7 +232,7 @@ class DigitalPeakMeter(QWidget):
         elif level > 0.999:
             level = 1.0
 
-        if self.fChannelData[i] != level:
+        if abs(self.fChannelData[i] - level) > 0.005 or forced or (level == 0.0 and self.fChannelData[i] != 0.0):
             self.fChannelData[i] = level
             self.update()
 

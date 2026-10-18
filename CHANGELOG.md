@@ -20,6 +20,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-19 04:00:00
+- **perf(gui)**: visibility culling, OpenGL hardware acceleration, and meter deadband throttling
+  - Enabled hardware-accelerated `QOpenGLWidget` viewport on `RackListWidget` to offload rack rasterization from CPU to GPU.
+  - Added visibility culling to `HostWindow.idleFast()`, `idleSlow()`, and `AbstractPluginSlot` to skip C++ peak queries and Qt redraws for non-visible slots.
+  - Implemented 0.005 delta deadbanding and visibility check in `DigitalPeakMeter.displayMeter` to eliminate redundant repaints.
+
 ### 2026-10-19 03:55:00
 - **feat(rack)**: pin master Dry/Wet and Volume sliders at the top with distinct accent colors
   - Moved Dry/Wet and Volume sliders to the top of the parameter slider lists in both full and mini slider views.

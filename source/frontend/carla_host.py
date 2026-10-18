@@ -5546,7 +5546,7 @@ class HostWindow(QMainWindow):
                 break
 
             widget = pitem.getWidget()
-            if widget is not None:
+            if widget is not None and widget.isVisible():
                 if hasattr(widget, "idleFast"):
                     widget.idleFast()
 
