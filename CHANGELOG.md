@@ -24,7 +24,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **refactor(logger)**: filter background noise and demote repetitive bridge/engine/scanner logs to DEBUG
   - Expanded `CarlaLogger` benign noise rules to catch high-frequency Sfizz CC parameter queries, CLAP extension checks, and Wine/yabridge driver probing.
   - Demoted yabridge multiline banner messages (`[AlterEgo-...]`, hosting mode, bitbridge features) to `DEBUG` under the `[BRIDGE]` tag.
-  - Categorized repetitive non-fatal backend assertions (`size > 0`, `! pData->loadingProject`, `var.size >= size`) and scanner batch status logs to `DEBUG`.
+  - Categorized repetitive non-fatal backend assertions (`size > 0`, `! pData->loadingProject`, `var.size >= size`, `urid < fCustomURIDs.size()`), unsupported KVT item notices, and scanner batch status logs to `DEBUG`.
+  - Demoted nested CLAP host / JUCE rack constructor chatter and plugin latency query warnings to `DEBUG`.
   - Demoted Wayland text input surface warnings, FreeType glyph errors, and Qt SVG/font setPixelSize warnings to `DEBUG`.
   - Filtered background plugin scanner discovery lines (`[CLAP Scanner] Found:`) and SHM temp retries from polluting the standard info log.
   - Replaced lingering raw `print()` calls in `carla_host.py` with structured `log_carla()` and `logger` calls.

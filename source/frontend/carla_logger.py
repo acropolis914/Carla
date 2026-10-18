@@ -322,14 +322,33 @@ class CarlaLogger(QObject):
             "OTHER OPTIONS:",
             "SOCKETS:",
             "CONFIG FROM:",
+            "URID < FCUSTOMURIDS.SIZE()",
+            "UNSUPPORTED KVT ITEM TYPE",
+            "PLUGIN UI WANTS A FEATURE THAT IS NOT SUPPORTED",
+            "HTTP://LV2PLUG.IN/NS/EXT/OPTIONS#INTERFACE",
+            "GOT UNKNOWN PORT DESIGNATION",
+            "=== CONSTRUCTOR START ===",
+            "=== CONSTRUCTOR DONE ===",
+            "SCANNING VST3...",
+            "VST3 PLUGINS FOUND",
+            "DEFERRING CLAP SCAN",
+            "VST3 PLUGINS AVAILABLE IMMEDIATELY",
+            "SETSTATEINFORMATION CALLED",
+            "STATE RESTORED",
+            "STARTING DEFERRED CLAP SCAN",
+            "SKIPPING SELF:",
+            "CLAP_PLUGIN_GUI.CAN_RESIZE()",
+            "IT IS WRONG TO QUERY THE LATENCY",
+            "[CLAP HOST]",
+            "MODEL AND ENGINE GRAPH COUNTS DO NOT MATCH",
         )
         is_yabridge_line = bool(re.search(r'\[[\w\.-]+-[A-Za-z0-9]{8}\]', clean_text))
         if is_yabridge_line or any(b in upper_text for b in benign_noise):
             level = LOG_LEVEL_DEBUG
-            if tag == "APP":
+            if tag in ("APP", "WRN"):
                 if "PATCHBAY" in upper_text:
                     tag = "PATCHBAY"
-                elif "PLUGIN" in upper_text or "SCANNER" in upper_text or "CLAP" in upper_text:
+                elif "PLUGIN" in upper_text or "SCANNER" in upper_text or "CLAP" in upper_text or "KVT" in upper_text:
                     tag = "PLUGIN"
                 elif "ENGINE" in upper_text:
                     tag = "ENGINE"
