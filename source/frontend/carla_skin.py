@@ -2527,24 +2527,67 @@ class PluginSlot_Minimal(PluginSlot_Default):
         self.ui.horizontalLayout.addWidget(self.b_gui)
         self.ui.horizontalLayout.addWidget(self.b_edit)
 
+        plugin_cat = self.fPluginInfo.get('category', PLUGIN_CATEGORY_OTHER)
+        CATPPUCCIN_CATEGORY_COLORS = {
+            PLUGIN_CATEGORY_SYNTH: '#89b4fa',      # Blue
+            PLUGIN_CATEGORY_DELAY: '#fab387',      # Peach
+            PLUGIN_CATEGORY_EQ: '#a6e3a1',         # Green
+            PLUGIN_CATEGORY_FILTER: '#94e2d5',     # Teal
+            PLUGIN_CATEGORY_DISTORTION: '#f38ba8', # Red
+            PLUGIN_CATEGORY_DYNAMICS: '#cba6f7',   # Mauve
+            PLUGIN_CATEGORY_MODULATOR: '#f9e2af',  # Yellow
+            PLUGIN_CATEGORY_UTILITY: '#89dceb',    # Sky
+            PLUGIN_CATEGORY_OTHER: '#b4befe',      # Lavender
+        }
+        CATPPUCCIN_CATEGORY_NAMES = {
+            PLUGIN_CATEGORY_SYNTH: "Synth",
+            PLUGIN_CATEGORY_DELAY: "Delay",
+            PLUGIN_CATEGORY_EQ: "EQ",
+            PLUGIN_CATEGORY_FILTER: "Filter",
+            PLUGIN_CATEGORY_DISTORTION: "Distortion",
+            PLUGIN_CATEGORY_DYNAMICS: "Dynamics",
+            PLUGIN_CATEGORY_MODULATOR: "Modulator",
+            PLUGIN_CATEGORY_UTILITY: "Utility",
+            PLUGIN_CATEGORY_OTHER: "FX",
+        }
+        self.cat_color = CATPPUCCIN_CATEGORY_COLORS.get(plugin_cat, p['mauve'])
+        cat_name = CATPPUCCIN_CATEGORY_NAMES.get(plugin_cat, "")
         plugin_type_str = getPluginTypeAsString(self.fPluginInfo['type'])
-        self.label_badge = QLabel(f" {plugin_type_str} ", parent=self)
-        self.label_badge.setObjectName("label_badge")
-        self.label_badge.setToolTip(f"Plugin Type: {plugin_type_str}")
-        self.label_badge.setMinimumWidth(38)
-        self.label_badge.setMaximumWidth(52)
-        self.label_badge.setAlignment(Qt.AlignCenter)
+        type_sub = f"{plugin_type_str} • {cat_name.upper()}" if cat_name else plugin_type_str
 
-        # Plugin Title: full name stored in tooltip, dynamically elided in resizeEvent
+        # Title & Type Stack (Vertical 2-line layout)
+        self.w_title_stack = QWidget(parent=self)
+        self.w_title_stack.setObjectName("w_title_stack")
+        self.layout_title_stack = QVBoxLayout(self.w_title_stack)
+        self.layout_title_stack.setContentsMargins(0, 0, 0, 0)
+        self.layout_title_stack.setSpacing(0)
+        self.layout_title_stack.setAlignment(Qt.AlignVCenter)
+
         self.fFullTitle = self.fPluginInfo['name']
         self.label_name.setToolTip(self.fFullTitle)
         self.label_name.setText(self.fFullTitle)
         self.label_name.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+
+        self.label_badge = QLabel(type_sub, parent=self.w_title_stack)
+        self.label_badge.setObjectName("label_badge")
+        self.label_badge.setToolTip(f"Plugin: {self.fFullTitle} ({type_sub})")
+        self.label_badge.setStyleSheet(f"color: {self.cat_color}; font-size: 8px; font-weight: 700; background: transparent; padding: 0px; margin: 0px;")
+
+        self.layout_title_stack.addWidget(self.label_name)
+        self.layout_title_stack.addWidget(self.label_badge)
+
+        self.w_title_stack.mouseDoubleClickEvent = lambda ev: self.slot_toggleExpandOrMini()
         self.label_name.mouseDoubleClickEvent = lambda ev: self.slot_toggleExpandOrMini()
         self.label_badge.mouseDoubleClickEvent = lambda ev: self.slot_toggleExpandOrMini()
 
+        # Title Row for Ultra-Thin mode (< 230px)
+        self.w_title_row = QWidget(parent=self)
+        self.w_title_row.setObjectName("w_title_row")
+        self.layout_title_row = QHBoxLayout(self.w_title_row)
+        self.layout_title_row.setContentsMargins(0, 0, 0, 0)
+        self.layout_title_row.setSpacing(0)
+
         # Clear legacy items and fixed spacers from layout_top to construct clean flex layout:
-        # <buttons> <type badge> <title> <auto-expanding spacer> <right modules>
         if hasattr(self.ui, 'line_sep') and self.ui.line_sep is not None:
             self.ui.line_sep.hide()
             self.ui.layout_top.removeWidget(self.ui.line_sep)
@@ -2552,7 +2595,6 @@ class PluginSlot_Minimal(PluginSlot_Default):
         for w in (self.ui.w_buttons, self.label_badge, self.label_name):
             self.ui.layout_top.removeWidget(w)
 
-        # Remove any fixed spacers from layout_top so items are never pushed towards the right/center
         for i in range(self.ui.layout_top.count() - 1, -1, -1):
             it = self.ui.layout_top.itemAt(i)
             if it and it.spacerItem():
@@ -2560,20 +2602,18 @@ class PluginSlot_Minimal(PluginSlot_Default):
 
         # 1. <buttons> at far-left (index 0)
         self.ui.layout_top.insertWidget(0, self.ui.w_buttons)
-        # 2. <type badge> (index 1)
-        self.ui.layout_top.insertWidget(1, self.label_badge)
-        # 3. <title> (index 2)
-        self.ui.layout_top.insertWidget(2, self.label_name)
+        # 2. <title stack> (index 1)
+        self.ui.layout_top.insertWidget(1, self.w_title_stack)
 
-        # 4. <auto-expanding spacer> (index 3) pushing right controls to the right
+        # 3. <auto-expanding spacer> (index 2) pushing right controls to the right
         self.spacer_flex = QSpacerItem(8, 1, QSizePolicy.Expanding, QSizePolicy.Minimum)
-        self.ui.layout_top.insertItem(3, self.spacer_flex)
+        self.ui.layout_top.insertItem(2, self.spacer_flex)
 
-        self.setMinimumWidth(200)
+        self.setMinimumWidth(160)
         self.ui.layout_top.setSpacing(4)
         self.ui.layout_top.setContentsMargins(0, 0, 0, 0)
 
-        # 5. Row 1 right controls: Slider mode toggle (standard mode only), and unified chevron minimize
+        # 4. Row 1 right controls: Slider mode toggle, and unified chevron minimize
         self.b_slider_mode = QPushButton("\uf0c9" if not self.is_slider_mode else "\uf1de", parent=self)
         self.b_slider_mode.setObjectName("btn_slider_mode")
         self.b_slider_mode.setMinimumSize(22, 22)
@@ -2583,7 +2623,6 @@ class PluginSlot_Minimal(PluginSlot_Default):
         self.b_slider_mode.clicked.connect(self.slot_toggleSliderMode)
         self.ui.layout_top.addWidget(self.b_slider_mode)
 
-        # Unified collapse/disclosure chevron button (handles both standard minimize and layer mode drawer)
         self.b_minimize = QPushButton("\uf077", parent=self)
         self.b_minimize.setFlat(True)
         self.b_minimize.setObjectName("btn_minimize")
@@ -2593,7 +2632,7 @@ class PluginSlot_Minimal(PluginSlot_Default):
         self.b_minimize.clicked.connect(self.slot_toggleExpandOrMini)
         self.ui.layout_top.addWidget(self.b_minimize)
 
-        # 6. Row 2 (Subrow container) for secondary controls: presets dropdown on the left, meters on the right
+        # 5. Row 2 (Subrow container) for secondary controls: presets dropdown
         self.w_subrow = QWidget(parent=self)
         self.w_subrow.setObjectName("w_slot_subrow")
         self.layout_subrow = QHBoxLayout(self.w_subrow)
@@ -2602,9 +2641,12 @@ class PluginSlot_Minimal(PluginSlot_Default):
 
         top_idx = self.ui.verticalLayout.indexOf(self.ui.layout_top)
         if top_idx >= 0:
-            self.ui.verticalLayout.insertWidget(top_idx + 1, self.w_subrow)
+            self.ui.verticalLayout.insertWidget(top_idx + 1, self.w_title_row)
+            self.ui.verticalLayout.insertWidget(top_idx + 2, self.w_subrow)
         else:
+            self.ui.verticalLayout.addWidget(self.w_title_row)
             self.ui.verticalLayout.addWidget(self.w_subrow)
+        self.w_title_row.setVisible(False)
 
         progCount = self.host.get_program_count(self.fPluginId)
         usingMidiPrograms = False
@@ -2694,15 +2736,24 @@ class PluginSlot_Minimal(PluginSlot_Default):
             }}
             QPushButton#btn_power {{
                 background: transparent;
+                border: none;
+                outline: none;
                 font-size: 13px;
-                color: {p['subtext0']};
+                font-weight: 700;
+                color: {p['overlay0']};
+                padding: 0px;
+                border-radius: 4px;
             }}
             QPushButton#btn_power:checked {{
-                color: {p['blue']};
+                color: {p['green']};
             }}
             QPushButton#btn_power:hover {{
                 background: rgba(255, 255, 255, 0.08);
                 color: {p['text']};
+            }}
+            QPushButton#btn_power:checked:hover {{
+                color: {p['green']};
+                background: rgba(166, 227, 161, 0.12);
             }}
             QPushButton#btn_bypass {{
                 background: transparent;
@@ -2710,12 +2761,12 @@ class PluginSlot_Minimal(PluginSlot_Default):
                 outline: none;
                 font-size: 13px;
                 font-weight: 700;
-                color: {p['subtext0']};
+                color: {p['overlay0']};
                 padding: 0px;
                 border-radius: 4px;
             }}
             QPushButton#btn_bypass:hover {{
-                color: {p['text']};
+                color: {p['yellow']};
                 background: rgba(255, 255, 255, 0.08);
                 border: none;
                 outline: none;
@@ -2730,7 +2781,7 @@ class PluginSlot_Minimal(PluginSlot_Default):
                 background: transparent;
                 border: none;
                 outline: none;
-                color: {bypass_active};
+                color: {p['peach']};
                 font-weight: 800;
             }}
             QPushButton#btn_bypass:checked:hover {{
@@ -2746,16 +2797,26 @@ class PluginSlot_Minimal(PluginSlot_Default):
                 color: rgba(140, 145, 160, 0.25);
             }}
             QPushButton#btn_gui {{
+                color: {p['overlay0']};
                 font-size: 13px;
             }}
             QPushButton#btn_gui:checked {{
                 color: {p['lavender']};
             }}
+            QPushButton#btn_gui:hover {{
+                color: {p['text']};
+                background: rgba(255, 255, 255, 0.08);
+            }}
             QPushButton#btn_edit {{
+                color: {p['overlay0']};
                 font-size: 13px;
             }}
             QPushButton#btn_edit:checked {{
                 color: {p['mauve']};
+            }}
+            QPushButton#btn_edit:hover {{
+                color: {p['text']};
+                background: rgba(255, 255, 255, 0.08);
             }}
             QPushButton#btn_slider_mode {{
                 background: transparent;
@@ -2981,39 +3042,95 @@ class PluginSlot_Minimal(PluginSlot_Default):
         w = self.width()
         is_compact = getattr(self, 'is_compacted', False)
 
-        # 1. Chevron visibility: hidden in Ultra-Thin (< 230px)
-        if hasattr(self, 'b_minimize') and self.b_minimize is not None:
-            self.b_minimize.setVisible(w >= 230)
+        # Tier 1: Ultra-Thin (< 230px)
+        if w < 230:
+            if hasattr(self, 'b_minimize') and self.b_minimize is not None:
+                self.b_minimize.setVisible(False)
+            if hasattr(self, 'b_slider_mode') and self.b_slider_mode is not None:
+                self.b_slider_mode.setVisible(False)
 
-        # 2. Slider mode switch button: hidden in Ultra-Thin or when collapsed
-        if hasattr(self, 'b_slider_mode') and self.b_slider_mode is not None:
-            self.b_slider_mode.setVisible(w >= 230 and not is_compact)
+            # Move w_title_stack to Row 2 (layout_title_row) for 100% full-width display
+            if hasattr(self, 'w_title_stack') and hasattr(self, 'layout_title_row'):
+                if self.ui.layout_top.indexOf(self.w_title_stack) >= 0:
+                    self.ui.layout_top.removeWidget(self.w_title_stack)
+                if self.layout_title_row.indexOf(self.w_title_stack) < 0:
+                    self.layout_title_row.addWidget(self.w_title_stack)
+                if hasattr(self, 'w_title_row') and self.w_title_row is not None:
+                    self.w_title_row.setVisible(True)
 
-        # 3. Dynamic layout reflow between Tier 3 (Wide) and Tier 1/2 (Medium/Thin)
-        if hasattr(self, 'cb_presets') and self.cb_presets is not None and hasattr(self, 'layout_subrow'):
-            if w >= 440:
-                # Wide mode: Preset selector in top row next to spacer
+            # Presets in Row 3 (w_subrow)
+            if hasattr(self, 'cb_presets') and self.cb_presets is not None and hasattr(self, 'layout_subrow'):
+                if self.ui.layout_top.indexOf(self.cb_presets) >= 0:
+                    self.ui.layout_top.removeWidget(self.cb_presets)
+                if self.layout_subrow.indexOf(self.cb_presets) < 0:
+                    self.layout_subrow.insertWidget(0, self.cb_presets)
+            if hasattr(self, 'w_subrow') and self.w_subrow is not None:
+                self.w_subrow.setVisible(not is_compact)
+
+        # Tier 2: Medium (230px <= w < 440px)
+        elif w < 440:
+            if hasattr(self, 'b_minimize') and self.b_minimize is not None:
+                self.b_minimize.setVisible(True)
+            if hasattr(self, 'b_slider_mode') and self.b_slider_mode is not None:
+                self.b_slider_mode.setVisible(not is_compact)
+
+            # Move w_title_stack back to Row 1 (layout_top, right after buttons)
+            if hasattr(self, 'w_title_stack') and hasattr(self, 'layout_title_row'):
+                if self.layout_title_row.indexOf(self.w_title_stack) >= 0:
+                    self.layout_title_row.removeWidget(self.w_title_stack)
+                if hasattr(self, 'w_title_row') and self.w_title_row is not None:
+                    self.w_title_row.setVisible(False)
+                if self.ui.layout_top.indexOf(self.w_title_stack) < 0:
+                    btn_idx = self.ui.layout_top.indexOf(self.ui.w_buttons)
+                    self.ui.layout_top.insertWidget(btn_idx + 1 if btn_idx >= 0 else 0, self.w_title_stack)
+
+            # Presets stay in Row 2 (w_subrow) so title has full breathing room
+            if hasattr(self, 'cb_presets') and self.cb_presets is not None and hasattr(self, 'layout_subrow'):
+                if self.ui.layout_top.indexOf(self.cb_presets) >= 0:
+                    self.ui.layout_top.removeWidget(self.cb_presets)
+                if self.layout_subrow.indexOf(self.cb_presets) < 0:
+                    self.layout_subrow.insertWidget(0, self.cb_presets)
+            if hasattr(self, 'w_subrow') and self.w_subrow is not None:
+                self.w_subrow.setVisible(not is_compact)
+
+        # Tier 3: Wide (w >= 440px)
+        else:
+            if hasattr(self, 'b_minimize') and self.b_minimize is not None:
+                self.b_minimize.setVisible(True)
+            if hasattr(self, 'b_slider_mode') and self.b_slider_mode is not None:
+                self.b_slider_mode.setVisible(not is_compact)
+
+            # w_title_stack in Row 1
+            if hasattr(self, 'w_title_stack') and hasattr(self, 'layout_title_row'):
+                if self.layout_title_row.indexOf(self.w_title_stack) >= 0:
+                    self.layout_title_row.removeWidget(self.w_title_stack)
+                if hasattr(self, 'w_title_row') and self.w_title_row is not None:
+                    self.w_title_row.setVisible(False)
+                if self.ui.layout_top.indexOf(self.w_title_stack) < 0:
+                    btn_idx = self.ui.layout_top.indexOf(self.ui.w_buttons)
+                    self.ui.layout_top.insertWidget(btn_idx + 1 if btn_idx >= 0 else 0, self.w_title_stack)
+
+            # Move cb_presets into Row 1 (before spacer_flex)
+            if hasattr(self, 'cb_presets') and self.cb_presets is not None and hasattr(self, 'layout_subrow'):
                 if self.layout_subrow.indexOf(self.cb_presets) >= 0:
                     self.layout_subrow.removeWidget(self.cb_presets)
+                if self.ui.layout_top.indexOf(self.cb_presets) < 0:
                     idx = self.ui.layout_top.indexOf(self.spacer_flex)
                     if idx >= 0:
                         self.ui.layout_top.insertWidget(idx, self.cb_presets)
                     else:
                         self.ui.layout_top.addWidget(self.cb_presets)
-            else:
-                # Medium/Thin mode: Presets stay in subrow to give title guaranteed breathing room
-                if self.ui.layout_top.indexOf(self.cb_presets) >= 0:
-                    self.ui.layout_top.removeWidget(self.cb_presets)
-                    self.layout_subrow.insertWidget(0, self.cb_presets)
+            if hasattr(self, 'w_subrow') and self.w_subrow is not None:
+                self.w_subrow.setVisible(False)
 
-        # 4. Parameter slider drawer card stacking: stacked if w < 320, inline if w >= 320
+        # Parameter slider drawer card stacking: stacked if w < 320, inline if w >= 320
         if hasattr(self, 'fSliderParameterList'):
             stacked = (w < 320)
             for _, sWidget in self.fSliderParameterList:
                 if hasattr(sWidget, 'setIsMini'):
                     sWidget.setIsMini(stacked)
 
-        # 5. Notify rack item size if fixed height changed
+        # Notify rack item size if fixed height changed
         new_h = self.getFixedHeight()
         if not hasattr(self, '_lastFixedHeight') or self._lastFixedHeight != new_h:
             self._lastFixedHeight = new_h
@@ -3027,11 +3144,11 @@ class PluginSlot_Minimal(PluginSlot_Default):
         total_w = fm.horizontalAdvance(full_text) if hasattr(fm, 'horizontalAdvance') else fm.width(full_text)
         w = self.width()
         if w < 230:
-            max_allowed = max(40, w - 100)
+            max_allowed = max(100, w - 24)
         elif w < 440:
             max_allowed = max(90, w - 160)
         else:
-            max_allowed = max(120, w - 240)
+            max_allowed = max(120, w - 290)
         if total_w <= max_allowed:
             self.label_name.setText(full_text)
         else:
@@ -3054,11 +3171,11 @@ class PluginSlot_Minimal(PluginSlot_Default):
             self._modern_slice_container = QWidget(parent=self)
             self._modern_slice_container.setObjectName("w_modern_slice")
             self._modern_slice_container.setStyleSheet(
-                "QWidget#w_modern_slice { background: rgba(0, 0, 0, 40); border: 1px solid rgba(255, 255, 255, 12); border-radius: 4px; }"
+                "QWidget#w_modern_slice { background: rgba(0, 0, 0, 50); border: 1px solid rgba(255, 255, 255, 15); border-radius: 4px; }"
             )
             slice_layout = QHBoxLayout(self._modern_slice_container)
-            slice_layout.setContentsMargins(3, 2, 3, 2)
-            slice_layout.setSpacing(4)
+            slice_layout.setContentsMargins(2, 2, 2, 2)
+            slice_layout.setSpacing(3)
             slice_layout.setAlignment(Qt.AlignVCenter)
 
             # Container for vertical 2x2 LEDs - strictly 18x18 square
@@ -3067,13 +3184,15 @@ class PluginSlot_Minimal(PluginSlot_Default):
             self._led_grid_layout.setContentsMargins(0, 0, 0, 0)
             self._led_grid_layout.setSpacing(2)
             self._led_grid_container.setFixedSize(18, 18)
+            self._led_grid_container.setStyleSheet("background: rgba(0, 0, 0, 40); border-radius: 2px;")
 
             # Meter slice container
             self._meter_slice_container = QWidget(self._modern_slice_container)
             self._meter_slice_layout = QHBoxLayout(self._meter_slice_container)
-            self._meter_slice_layout.setContentsMargins(0, 0, 0, 0)
-            self._meter_slice_layout.setSpacing(2)
+            self._meter_slice_layout.setContentsMargins(1, 0, 0, 0)
+            self._meter_slice_layout.setSpacing(1)
             self._meter_slice_container.setFixedHeight(18)
+            self._meter_slice_container.setStyleSheet("border-left: 1px solid rgba(255, 255, 255, 15);")
 
             slice_layout.addWidget(self._led_grid_container)
             slice_layout.addWidget(self._meter_slice_container)
@@ -3433,10 +3552,14 @@ class PluginSlot_Minimal(PluginSlot_Default):
 
     def getFixedHeight(self):
         w = self.width() if hasattr(self, 'width') and self.width() > 0 else 300
-        base_h = 38 if w >= 440 else (50 if w >= 230 else 58)
+        is_compact = getattr(self, 'is_compacted', False)
 
-        if getattr(self, 'is_compacted', False):
-            return base_h
+        if is_compact:
+            if w < 230:
+                return 54
+            return 38
+
+        base_h = 38 if w >= 440 else (52 if w >= 230 else 72)
 
         if getattr(self, 'is_slider_mode', False):
             count = len(getattr(self, 'fSliderParameterList', []))
@@ -3480,9 +3603,8 @@ class PluginSlot_Minimal(PluginSlot_Default):
         stripePath = QPainterPath()
         stripePath.addRoundedRect(QRectF(3.0, 4.0, 4.0, h - 8.0), 2.0, 2.0)
         categoryColor = QColor(self.fSkinColor[0], self.fSkinColor[1], self.fSkinColor[2])
-        if categoryColor.red() == 0 and categoryColor.green() == 0 and categoryColor.blue() == 0:
-            catRgb = getColorFromCategory(self.fPluginInfo['category'])
-            categoryColor = QColor(*catRgb)
+        if (categoryColor.red() == 0 and categoryColor.green() == 0 and categoryColor.blue() == 0) or (categoryColor.red() == 255 and categoryColor.green() == 255 and categoryColor.blue() == 255):
+            categoryColor = QColor(getattr(self, 'cat_color', '#cba6f7'))
         painter.fillPath(stripePath, categoryColor)
 
         if self.fIsSelected:

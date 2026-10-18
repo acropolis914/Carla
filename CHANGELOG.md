@@ -20,6 +20,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-19 01:55:00
+- **fix(rack)**: complete 100% visual parity with responsive rack prototype
+  - Re-implemented `LEDButton._paintMinimalLed` to paint crisp 1:1 square pixel tiles with specular edge highlights instead of round ellipses.
+  - Implemented vertical 2-line Title & Type Stack (`w_title_stack`) with Catppuccin category accents; reflows to dedicated Row 2 in Ultra-Thin mode (`< 230px`) for 100% unclipped title visibility.
+  - Updated power and bypass button state stylesheets to emerald green (`#a6e3a1`) and warm amber (`#fab387`).
+  - Swapped washed-out legacy 40-50 RGB category colors with vibrant Catppuccin accents for the left rack slot stripe and subtitle.
+
 ### 2026-10-19 01:45:00
 - **feat(rack)**: unified dynamic adaptive rack slot layout and specification manifest
   - Authored comprehensive specification and parity checklist in `docs/DYNAMIC_RACK_SPEC.md` defining 3 responsive width tiers (Ultra-Thin `< 230px`, Medium `230px–440px`, Wide `≥ 440px`).
