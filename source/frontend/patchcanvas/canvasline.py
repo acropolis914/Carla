@@ -59,7 +59,7 @@ class CanvasLine(QGraphicsPathItem):
         self.m_algorithm = get_line_algorithm(self.m_shape)
 
         self.m_locked = False
-        self.m_lineSelected = None  # None sentinel — ensures updateLineGradient() fires on first call
+        self.m_lineSelected = None  # None sentinel - ensures updateLineGradient() fires on first call
 
         self._cached_pen = None
         self._cached_cosm_pen = None
@@ -114,7 +114,7 @@ class CanvasLine(QGraphicsPathItem):
                  (p2 is not None and p2.isSelected()))
 
         if yesno == self.m_lineSelected:
-            return  # No state change — skip expensive gradient + QPen recompute
+            return  # No state change - skip expensive gradient + QPen recompute
 
         self.m_lineSelected = yesno
         self.updateLineGradient()
@@ -249,7 +249,7 @@ class CanvasLine(QGraphicsPathItem):
         self._cached_pen = QPen(port_gradient, 2.00001, pen_style, cap_style)
         self.setPen(self._cached_pen)
 
-        # Pre-build cosmetic overlay pen — stored for reuse
+        # Pre-build cosmetic overlay pen - stored for reuse
         cosm = QPen(self._cached_pen)
         cosm.setCosmetic(True)
         cosm.setWidthF(1.00001)
@@ -279,7 +279,7 @@ class CanvasLine(QGraphicsPathItem):
         painter.setBrush(Qt.NoBrush)
         painter.drawPath(self.path())
 
-        # Cosmetic glow overlay — skip entirely when eye candy is off
+        # Cosmetic glow overlay - skip entirely when eye candy is off
         if options.eyecandy and not options.software_render:
             cosm_pen = getattr(self, "_cached_cosm_pen", None)
             if cosm_pen is not None:

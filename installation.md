@@ -8,7 +8,7 @@ This guide covers installing **Clara** (*Carla Improved*) via Arch Linux / AUR p
 
 Clara provides two AUR packaging options in the `aur/` directory:
 
-### Option A: Binary Package (`clara-bin`) — Fastest (No compilation required)
+### Option A: Binary Package (`clara-bin`) - Fastest (No compilation required)
 
 Downloads and installs the official pre-compiled multi-distro release archive for Arch Linux:
 
@@ -23,7 +23,7 @@ cd aur/clara-bin
 makepkg -si
 ```
 
-### Option B: Source Package (`clara-git`) — Compile from latest git main
+### Option B: Source Package (`clara-git`) - Compile from latest git main
 
 Clones and compiles the latest source directly against Qt6:
 

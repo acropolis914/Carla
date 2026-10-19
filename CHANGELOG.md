@@ -20,6 +20,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-19 23:30:00
+- **docs**: replace long dashes (em/en) with standard hyphens across docs, comments, and CI output
+
 ### 2026-10-19 23:20:00
 - **docs**: punctuation cleanup in the new README/CONTRIBUTING text
 
@@ -113,7 +116,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **feat(styles)**: centralize theming engine with Base16/Base24 ingestion, auto light/dark flip, and unified UI primitives
   - Implemented deterministic cascade pipeline in [engine.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/styles/engine.py): `System Core Defaults` -> `Semantic Variable Map` -> `Active Theme Overrides (Palette)` -> `Mode Inversion (Light/Dark)` -> `Component Primitives`.
   - Built comprehensive root baseline [base_primitives.qss](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/styles/base_primitives.qss) binding variables to headers, buttons (`.btn`, `.btn-primary`, `.btn-subtle`, `.btn-danger`), pills/badges (`.pill`), form inputs, cards, rack items, tables, and minimal scrollbars.
-  - Implemented direct Base16/Base24 palette ingestion and automatic grayscale scale flipping (`base00`–`base07`) for instantaneous light/dark modes without altering accent colors.
+  - Implemented direct Base16/Base24 palette ingestion and automatic grayscale scale flipping (`base00`-`base07`) for instantaneous light/dark modes without altering accent colors.
   - Consolidated theme definitions into a centralized registry [registry.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/styles/registry.py) bundled with lean Base16 palettes (Catppuccin Macchiato, Mocha, Latte, Classic Dark, Nord, Tokyo Night, Dracula, Gruvbox Dark) and dynamic YAML/JSON ingestion.
   - Integrated [ThemeEngine](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/styles/engine.py) into [ThemeManager](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/styles/theme_manager.py) and added verification demo [demo_theme_verification.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/styles/demo_theme_verification.py).
 
@@ -291,7 +294,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### 2026-10-19 01:45:00
 - **feat(rack)**: unified dynamic adaptive rack slot layout and specification manifest
-  - Authored comprehensive specification and parity checklist in `docs/DYNAMIC_RACK_SPEC.md` defining 3 responsive width tiers (Ultra-Thin `< 230px`, Medium `230px–440px`, Wide `≥ 440px`).
+  - Authored comprehensive specification and parity checklist in `docs/DYNAMIC_RACK_SPEC.md` defining 3 responsive width tiers (Ultra-Thin `< 230px`, Medium `230px-440px`, Wide `≥ 440px`).
   - Decommissioned rigid "Mini Rack Mode" global setting and per-plugin layer toggles in favor of automatic responsive reflow.
   - Implemented universal title double-click to toggle rack slot expansion/collapse across all viewport widths.
   - Enforced strictly square 18×18px 2×2 I/O LED grid with 8×8 square pixel tiles and 18px vertical peak meters.
@@ -372,7 +375,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### 2026-10-18 00:30:00
 - **feat(theme)**: Catppuccin Macchiato default, roundedness, minimal scrollbars, and full QSS data-driven styling
   - Set `Catppuccin Macchiato` as default theme for application interface and patchbay canvas.
-  - Added modern 6–8px component roundedness and minimal 8px scrollbars with subtle track and contrast hover handles across all themes.
+  - Added modern 6-8px component roundedness and minimal 8px scrollbars with subtle track and contrast hover handles across all themes.
   - Extracted hardcoded inline stylesheets from Python files into theme stylesheets (`catppuccin_macchiato.qss`, `catppuccin_mocha.qss`, `catppuccin_latte.qss`, `classic_dark.qss`) targeting semantic IDs (`#miniCanvasFloatFrame`, `#canvasNodeSearchList`, `#rackListWidget`, `#rackFloatingAddButton`, `#canvasSearchEdit`).
   - Added pure native Qt system theme fallback when "Use system desktop theme" is enabled, clearing inline overrides and restoring the system Qt style.
 
@@ -491,12 +494,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### 2026-10-15 23:55:00
 - **chore(releases)**: retract all published binary artifacts
-  - Removed every uploaded binary asset from the GitHub releases `v0.1.0`–`v1.0.1` (including the malformed `v.1.0.1`), keeping only the auto-generated source archives. All were broken: GUI-less deb/rpm/nix/void packages (missing launcher scripts, desktop files, icons and the Python frontend), a non-starting AppImage (no frontend bundled; hard-coded `/home/runner` build paths), an empty `void-musl` tarball, and `archlinux`/`alpine` tarballs that were plain install trees rather than real `pkg.tar.zst` packages (no `.PKGINFO`/`.MTREE`).
-  - Each release body now carries a "RETRACTED — DO NOT USE" notice, and `releases.json` marks every documented release `retracted`. Corrected builds will be published after the packaging fixes land.
+  - Removed every uploaded binary asset from the GitHub releases `v0.1.0`-`v1.0.1` (including the malformed `v.1.0.1`), keeping only the auto-generated source archives. All were broken: GUI-less deb/rpm/nix/void packages (missing launcher scripts, desktop files, icons and the Python frontend), a non-starting AppImage (no frontend bundled; hard-coded `/home/runner` build paths), an empty `void-musl` tarball, and `archlinux`/`alpine` tarballs that were plain install trees rather than real `pkg.tar.zst` packages (no `.PKGINFO`/`.MTREE`).
+  - Each release body now carries a "RETRACTED - DO NOT USE" notice, and `releases.json` marks every documented release `retracted`. Corrected builds will be published after the packaging fixes land.
 
 ### 2026-10-15 23:30:00
 - **refactor(frontend)**: replace the Qt-linked native dialogs with pure-PyQt6 implementations
-  - `libcarla_frontend` (a Qt C++ shared library) is no longer built or shipped. Its three dialogs — About, Add JACK Application, and the Plugin List browser — are reimplemented in Python under `source/frontend/dialogs/` and `source/frontend/pluginlist/`, using the non-Qt `libcarla_utils` backend for plugin discovery.
+  - `libcarla_frontend` (a Qt C++ shared library) is no longer built or shipped. Its three dialogs - About, Add JACK Application, and the Plugin List browser - are reimplemented in Python under `source/frontend/dialogs/` and `source/frontend/pluginlist/`, using the non-Qt `libcarla_utils` backend for plugin discovery.
   - `CarlaFrontendLib` (`carla_frontend.py`) is now a thin pure-Python shim that keeps the same public API, so `carla_host.py` is unchanged and the app no longer needs a system Qt matching the native build (this fixes the AppImage startup crash caused by the Qt ABI mismatch).
   - Makefile: stop building/installing `libcarla_frontend`, and install the new `dialogs`/`pluginlist` Python packages.
 
@@ -507,7 +510,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### 2026-10-15 22:15:00
 - **ci(packaging)**: Experimental aarch64 packaging workflow
-  - New manual-only `.github/workflows/package-aarch64.yml` (`workflow_dispatch`). It builds the same target set as the release workflow (alpine/ubuntu/fedora/archlinux/void archives, AppImage, Flatpak, Nix) on `ubuntu-24.04-arm` runners and attaches the results — suffixed `-aarch64` so they never clobber the x86_64 assets — to the **same** versioned GitHub Release. Targets without an aarch64 image/build fail soft (`continue-on-error`).
+  - New manual-only `.github/workflows/package-aarch64.yml` (`workflow_dispatch`). It builds the same target set as the release workflow (alpine/ubuntu/fedora/archlinux/void archives, AppImage, Flatpak, Nix) on `ubuntu-24.04-arm` runners and attaches the results - suffixed `-aarch64` so they never clobber the x86_64 assets - to the **same** versioned GitHub Release. Targets without an aarch64 image/build fail soft (`continue-on-error`).
   - `scripts/build_appimage.sh` now accepts `--arch=aarch64` (relocatable CPython + linuxdeploy/appimagetool from the aarch64 assets); `scripts/build_flatpak.sh` derives the output arch from `uname -m`.
 
 ### 2026-10-15 21:30:00
@@ -557,12 +560,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### 2026-10-15 15:45:00
 - **feat(patchbay)**: Search selection now persists
   - `Ctrl+F` fuzzy search now *selects* the matching nodes in the scene (in addition to the highlight), so the result set stays selected after the search box closes via Enter, click or Esc.
-  - The selection persists until the user interacts with the canvas — a canvas click/drag, or the select-all / invert-selection / deselect-all shortcuts, clears it (`_clearHighlights`).
+  - The selection persists until the user interacts with the canvas - a canvas click/drag, or the select-all / invert-selection / deselect-all shortcuts, clears it (`_clearHighlights`).
   - Because the persisted selection emits `pluginSelected`, it also drives the mini-rack sync and the floating context toolbar, so you can search and then immediately arrange / act on the result set.
 
 ### 2026-10-15 15:00:00
 - **feat(canvas)**: Graph introspection model
-  - New `patchcanvas/graph_info.py`: a single JSON-serialisable view of the patchbay (`collect_graph`) — nodes (id, name, split, pos/size/rect, ports with mode/type), connections (out/in group+port+node index) and derived topology (edges, incoming, degree, connected components, longest-path layers). Foundation for the layout plugins and the future claractl / scripting layer.
+  - New `patchcanvas/graph_info.py`: a single JSON-serialisable view of the patchbay (`collect_graph`) - nodes (id, name, split, pos/size/rect, ports with mode/type), connections (out/in group+port+node index) and derived topology (edges, incoming, degree, connected components, longest-path layers). Foundation for the layout plugins and the future claractl / scripting layer.
 
 ### 2026-10-15 14:00:00
 - **feat(canvas)**: Pattern-aware heuristic auto-arrange
@@ -580,7 +583,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### 2026-10-15 12:00:00
 - **feat(canvas)**: Orthogonal router, Sugiyama arrange
   - New `orthogonal` line algorithm (`patchcanvas/linealgo_ortho.py`): self-contained Manhattan router, a direction-aware A* over an occupancy grid with a bend-aware cost (`length + bend_penalty·turns + soft cable-proximity cost`), node boxes as hard obstacles, neighbouring cables as soft obstacles, and rounded corners. Registered after `router`.
-  - New `sugiyama` arrange algorithm (`patchcanvas/arrange_sugiyama.py`): classic layered layout — cycle breaking, longest-path layering, barycenter crossing reduction (down/up sweeps), even column placement. It appears in the Arrange Tools "Auto arrange" submenu automatically via the arrange registry.
+  - New `sugiyama` arrange algorithm (`patchcanvas/arrange_sugiyama.py`): classic layered layout - cycle breaking, longest-path layering, barycenter crossing reduction (down/up sweeps), even column placement. It appears in the Arrange Tools "Auto arrange" submenu automatically via the arrange registry.
   - Settings "Line style" combo picks up `orthogonal` with no extra code.
 
 ### 2026-10-15 11:15:00
@@ -1072,7 +1075,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### 2026-10-13 03:56:00
 - **feat(settings)**: Overhaul Settings UI with live tweakables and modern Catppuccin styling
-  - Exposed live interactive sliders for rack item vertical spacing (0–16px), slot internal padding (2–16px), and minimum slot width (180–450px) that apply instantly without app restart.
+  - Exposed live interactive sliders for rack item vertical spacing (0-16px), slot internal padding (2-16px), and minimum slot width (180-450px) that apply instantly without app restart.
   - Added a statusbar visibility toggle ("Show Statusbar at bottom") that reacts in real-time.
   - Redesigned `CarlaSettingsW` dialog styling with sleek Catppuccin Mochaccino sidebar navigation and modern form card layouts.
 
@@ -1427,7 +1430,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### 2026-10-12 17:34:00 (`38b2215df`)
 - **feat(canvas)**: Expose line style, pattern, and opacity in Canvas Settings
-  - Added configurable options `Canvas/LineStyle` (`"bezier"`, `"straight"`, `"stepped"`), `Canvas/LineStroke` (`"solid"`, `"dotted"`, `"dashed"`), and `Canvas/LineOpacity` (20% – 100%) in `carla_shared.py`, `patchcanvas/__init__.py`, and `carla_host.py`.
+  - Added configurable options `Canvas/LineStyle` (`"bezier"`, `"straight"`, `"stepped"`), `Canvas/LineStroke` (`"solid"`, `"dotted"`, `"dashed"`), and `Canvas/LineOpacity` (20% - 100%) in `carla_shared.py`, `patchcanvas/__init__.py`, and `carla_host.py`.
   - Added line style and pattern comboboxes and an interactive opacity slider in `carla_settings.py`.
   - Updated `CanvasLine` to dynamically scale line alpha by user opacity settings.
 - **refactor(qt)**: Complete migration of all custom UI widgets in `widgets/` to `qt_compat.py`
@@ -1452,15 +1455,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Eliminated duplicate boilerplate across line implementations while enabling future custom path and stroke styling.
 
 ### 2026-10-12 16:53:00
-- **perf(canvas)**: Cache gradient `QPen` in `CanvasBezierLine`/`CanvasLine` — built once in `updateLineGradient()`, reused in `paint()`. Eliminates hundreds of `QPen`/`QLinearGradient`/`QColor` heap allocs per mousemove tick with many connections.
-- **perf(canvas)**: Early-return in `updateLineSelected()` when selection state is unchanged — skips full gradient recompute on every drag event when nothing visually changed.
-- **perf(canvas)**: Guard cosmetic double-draw (glow overlay) in line `paint()` behind `options.eyecandy` — saves one full path/line draw per connection per frame when eye candy is off.
-- **perf(canvas)**: Cache theme attribute lookups in `CanvasPort` — resolved once at port creation and on `updateTheme()` instead of dict-instantiation + `getattr` f-string lookups on every `paint()` frame for every visible port.
-- **perf(canvas)**: Throttle minimap update timeout from 0ms to 150ms — stops full scene re-renders for the thumbnail on every event.
-- **perf(canvas)**: Reduce `CanvasBoxShadow` blur radius from 20 → 8 — cuts per-box offscreen composite buffer cost.
+- **perf(canvas)**: Cache gradient `QPen` in `CanvasBezierLine`/`CanvasLine` - built once in `updateLineGradient()`, reused in `paint()`. Eliminates hundreds of `QPen`/`QLinearGradient`/`QColor` heap allocs per mousemove tick with many connections.
+- **perf(canvas)**: Early-return in `updateLineSelected()` when selection state is unchanged - skips full gradient recompute on every drag event when nothing visually changed.
+- **perf(canvas)**: Guard cosmetic double-draw (glow overlay) in line `paint()` behind `options.eyecandy` - saves one full path/line draw per connection per frame when eye candy is off.
+- **perf(canvas)**: Cache theme attribute lookups in `CanvasPort` - resolved once at port creation and on `updateTheme()` instead of dict-instantiation + `getattr` f-string lookups on every `paint()` frame for every visible port.
+- **perf(canvas)**: Throttle minimap update timeout from 0ms to 150ms - stops full scene re-renders for the thumbnail on every event.
+- **perf(canvas)**: Reduce `CanvasBoxShadow` blur radius from 20 → 8 - cuts per-box offscreen composite buffer cost.
 
 ### 2026-10-12 15:59:00 (`3f3c6711c`)
-- **perf(canvas)**: Remove `repaintLines()` cascade from `CanvasBoxShadow.draw()` — eliminates per-frame `updateLinePos()` call on every box shadow repaint, which was cascading into O(connections) work every render tick when dragging nodes with many connections loaded.
+- **perf(canvas)**: Remove `repaintLines()` cascade from `CanvasBoxShadow.draw()` - eliminates per-frame `updateLinePos()` call on every box shadow repaint, which was cascading into O(connections) work every render tick when dragging nodes with many connections loaded.
 
 ### 2026-10-12 15:37:00 (`e213d7f02`)
 - **fix(canvas)**: Fix HighQualityAntialiasing crash and expose Use OpenGL in Canvas settings

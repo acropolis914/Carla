@@ -1,5 +1,5 @@
 > [!IMPORTANT]
-> ### Early Alpha — Action Required: Report Bugs & Join Development
+> ### Early Alpha - Action Required: Report Bugs & Join Development
 > **Clara is evolving rapidly.** While the audio engine, routing graph, and autosaving core are rock-solid, expect UI quirks and experimental behaviors in the patchbay toolbars.
 > - **Report Every Bug**: If you encounter crashes, graphical glitches, or broken controls, you **must [open a bug report](https://github.com/acropolis914/Clara/issues/new?template=bug_report.md)** with complete logs and system specs.
 > - **Help Build Clara**: We need developers, audio hackers, and maintainers. **[Read CONTRIBUTING.md](CONTRIBUTING.md) and start contributing today.**

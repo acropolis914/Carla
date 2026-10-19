@@ -2204,9 +2204,9 @@ class PluginSlot_Compact(AbstractPluginSlot):
         self.b_bypass.setChecked(is_bypassed)
         self.b_bypass.setText("BYP")
         if is_bypassed:
-            self.b_bypass.setToolTip("Bypassed (Dry/Wet = 0%) — Click to activate")
+            self.b_bypass.setToolTip("Bypassed (Dry/Wet = 0%) - Click to activate")
         else:
-            self.b_bypass.setToolTip("Active (Dry/Wet = 100%) — Click to bypass")
+            self.b_bypass.setToolTip("Active (Dry/Wet = 100%) - Click to bypass")
         self.b_bypass.blockSignals(False)
 
     def toggleCompacted(self):
@@ -3394,9 +3394,9 @@ class PluginSlot_Minimal(PluginSlot_Default):
         self.b_bypass.setChecked(is_bypassed)
         self.b_bypass.setText("\uf05e")
         if is_bypassed:
-            self.b_bypass.setToolTip("Bypassed (Dry/Wet = 0%) — Click to activate audio")
+            self.b_bypass.setToolTip("Bypassed (Dry/Wet = 0%) - Click to activate audio")
         else:
-            self.b_bypass.setToolTip("Active (Dry/Wet = 100%) — Click to bypass")
+            self.b_bypass.setToolTip("Active (Dry/Wet = 100%) - Click to bypass")
         self.b_bypass.blockSignals(False)
 
     def _ensure_sliders_created(self):

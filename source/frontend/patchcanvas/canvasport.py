@@ -104,7 +104,7 @@ class CanvasPort(QGraphicsItem):
             canvas.theme.port_font_size, canvas.theme.port_font_state
         )
 
-        # Cached theme references — resolved once, not on every paint() call
+        # Cached theme references - resolved once, not on every paint() call
         self._theme_prefix = None
         self._theme_poly_color = None
         self._theme_poly_color_sel = None
@@ -407,7 +407,7 @@ class CanvasPort(QGraphicsItem):
             canvas.callback(ACTION_PORTS_DISCONNECT, conn_id, 0, "")
 
     def _rebuildThemeCache(self):
-        """Resolve theme attributes once — called at creation and on theme change."""
+        """Resolve theme attributes once - called at creation and on theme change."""
         _prefix_map = {
             PORT_TYPE_AUDIO_JACK: "port_audio_jack",
             PORT_TYPE_MIDI_JACK:  "port_midi_jack",
@@ -444,7 +444,7 @@ class CanvasPort(QGraphicsItem):
             QPainter.Antialiasing, bool(options.antialiasing == ANTIALIASING_FULL or canvas.theme.port_mode == Theme.THEME_PORT_SOCKET)
         )
 
-        # Use pre-resolved theme attrs — no dict/getattr on every frame
+        # Use pre-resolved theme attrs - no dict/getattr on every frame
         if self._theme_prefix is None:
             qCritical(
                 f"PatchCanvas::CanvasPort.paint() - invalid port type '{port_type2str(self.m_port_type)}'"

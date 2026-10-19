@@ -64,7 +64,7 @@ Before landing any UI modification to rack slots, verify the following checklist
   - [ ] Action buttons `[⏻ ⊘ 🗔 ⚙]` are frameless and do not wrap or overflow.
   - [ ] Plugin title is 100% readable without truncation.
   - [ ] Parameter sliders stack label/value on row 1 and slider track on row 2 (100% width).
-- [ ] **Medium Parity (230px – 440px)**:
+- [ ] **Medium Parity (230px - 440px)**:
   - [ ] Plugin title has at least 100px visible width and does not collapse to 0px.
   - [ ] Presets and Mix stay on row 2 below title and never crush the title horizontally.
 - [ ] **Wide Parity (≥ 440px)**:

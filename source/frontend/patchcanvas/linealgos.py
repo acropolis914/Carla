@@ -173,7 +173,7 @@ def rounded_polyline(points, radius):
 
 
 # ------------------------------------------------------------------------------------------------------------
-# Phase A — pure geometric shapes
+# Phase A - pure geometric shapes
 
 class StraightLineAlgorithm(LineAlgorithm):
     name = "straight"
@@ -231,7 +231,7 @@ class SteppedLineAlgorithm(LineAlgorithm):
 
 
 # ------------------------------------------------------------------------------------------------------------
-# Phase B — circuit traces and the adaptive hybrid
+# Phase B - circuit traces and the adaptive hybrid
 
 class CircuitLineAlgorithm(LineAlgorithm):
     name = "circuit"

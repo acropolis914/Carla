@@ -555,7 +555,7 @@ jobs:
             echo "| Platform | Artifact | Size | Link |"
             echo "| :--- | :--- | :--- | :--- |"
             if [ -z "$ARTIFACTS" ]; then
-              echo "| — | none produced | — | — |"
+              echo "| - | none produced | - | - |"
             else
               while IFS='|' read -r name size id; do
                 [ -z "$name" ] && continue
@@ -574,7 +574,7 @@ jobs:
               STATUS=$(jq -r '.status' "$file")
               OUTFILE=$(jq -r '.file' "$file")
               ERR=$(jq -r '.error' "$file" | cut -c 1-80)
-              if [ "$STATUS" = "success" ]; then ICON="✅"; else ICON="❌"; ERR="—"; fi
+              if [ "$STATUS" = "success" ]; then ICON="✅"; else ICON="❌"; ERR="-"; fi
               echo "| **$PLATFORM** | $ICON $STATUS | \`$OUTFILE\` | $ERR |"
             done
           } > REPORT.md
