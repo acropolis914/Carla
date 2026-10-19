@@ -636,7 +636,7 @@ QHeaderView::section {
     color: #cad3f5;
     font-weight: 600;
     font-size: 11px;
-    padding: 4px 8px;
+    padding: 5px 8px;
     border: none;
     border-right: 1px solid #2a2b3d;
     border-bottom: 1px solid #363a4f;
@@ -658,53 +658,90 @@ QTableCornerButton::section {
     border-right: 1px solid #2a2b3d;
 }
 
-/* Rack Plugin Item */
-QFrame#rackPluginItem {
+/* Table Widget Items */
+QTableWidget {
     background-color: #181926;
+    gridline-color: transparent;
     border: 1px solid #363a4f;
-    border-radius: 6px;
+    border-radius: 8px;
+}
+
+QTableWidget::item {
+    border-bottom: 1px solid #24273a;
+    padding: 2px 8px;
+}
+
+QTableWidget::item:selected {
+    background-color: rgba(138, 173, 244, 0.22);
+    color: #ffffff;
+}
+
+/* Rack & Cards Lists */
+QListWidget#pluginRackListWidget, QListWidget#pluginCardsListWidget {
+    background: transparent;
+    border: none;
+    outline: none;
+}
+
+QListWidget#pluginRackListWidget::item, QListWidget#pluginCardsListWidget::item {
+    background: transparent;
+    border: none;
+}
+
+QListWidget#pluginRackListWidget::item:selected, QListWidget#pluginCardsListWidget::item:selected {
+    background: transparent;
+    border: none;
+}
+
+/* Rack Plugin Item Capsule */
+QFrame#rackPluginItem {
+    background-color: #1e2030;
+    border: 1px solid #363a4f;
+    border-radius: 10px;
 }
 
 QFrame#rackPluginItem:hover {
     background-color: #24273a;
-    border-color: #494d64;
+    border-color: rgba(138, 173, 244, 0.5);
 }
 
 QFrame#rackPluginItem[selected="true"] {
-    background-color: rgba(138, 173, 244, 0.18);
+    background-color: rgba(138, 173, 244, 0.14);
     border: 1.5px solid #8aadf4;
 }
 
 QLabel#rackPluginName {
     color: #cad3f5;
-    font-size: 12px;
+    font-size: 13px;
+    font-weight: 600;
 }
 
 /* Card Plugin Item */
 QFrame#cardPluginItem {
-    background-color: #181926;
+    background-color: #1e2030;
     border: 1px solid #363a4f;
-    border-radius: 8px;
+    border-radius: 12px;
 }
 
 QFrame#cardPluginItem:hover {
     background-color: #24273a;
-    border-color: #494d64;
+    border-color: rgba(138, 173, 244, 0.6);
 }
 
 QFrame#cardPluginItem[selected="true"] {
-    background-color: rgba(138, 173, 244, 0.18);
-    border: 1.5px solid #8aadf4;
+    background-color: rgba(138, 173, 244, 0.16);
+    border: 2px solid #8aadf4;
 }
 
 QLabel#cardPluginName {
     color: #cad3f5;
-    font-size: 12px;
+    font-size: 13px;
+    font-weight: 600;
 }
 
 /* Favorite Star in Plugin Browser */
 QLabel#itemStar {
-    font-size: 13px;
+    font-size: 14px;
     color: #6e738d;
 }
 

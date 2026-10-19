@@ -20,7 +20,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-### 2026-10-19 14:08:00
+### 2026-10-19 14:16:00
+- **feat(pluginlist)**: achieve 1:1 visual parity with generative UI redesign
+  - Upgraded `QFrame#rackPluginItem` to 10px rounded capsule aesthetics, increased spacing, and polished category accent indicator bars.
+  - Upgraded `QFrame#cardPluginItem` to 12px rounded cards with 10px top accent strips, subtle horizontal divider lines, developer subtitle coloring, and proper pill margins.
+  - Replaced native OS checkbox with crisp golden text stars (`★` / `☆`) in `QTableWidget` favorite column.
+  - Added transparent item selection background stylesheets to `pluginRackListWidget` and `pluginCardsListWidget` to eliminate Qt's native selection overlay fringe and allow custom card borders to shine.
+  - Styled `QTableWidget` rows with subtle bottom borders, 30px height, and refined selection highlights across all 4 themes.
 - **fix(pluginlist)**: eliminate required scroll to render cards/rack items and colorize format badges
   - Fixed issue where the user had to scroll first before cards or rack items visually appeared by adding `_ensureVisibleWidgets()` to eagerly instantiate the active viewport batch on `showEvent`, filter changes, and view mode switching.
   - Replaced fallback `indexAt()` scroll detection with direct scrollbar offset calculation (`sb.value() // rowHeight`), ensuring rock-solid row range coverage during fast or fractional scrolling.

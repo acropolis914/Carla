@@ -31,6 +31,7 @@ from qt_compat import (
     QAction,
     QApplication,
     QCheckBox,
+    QColor,
     QDialog,
     QFileInfo,
     QFrame,
@@ -773,7 +774,7 @@ class CardPluginItemWidget(QFrame):
         # Top Category Accent Strip
         self.top_strip = QFrame(self)
         self.top_strip.setFixedHeight(4)
-        self.top_strip.setStyleSheet(f"background-color: {color}; border-top-left-radius: 8px; border-top-right-radius: 8px;")
+        self.top_strip.setStyleSheet(f"background-color: {color}; border-top-left-radius: 10px; border-top-right-radius: 10px;")
         layout.addWidget(self.top_strip)
 
         # Top Bar: Badge + Star
@@ -808,14 +809,22 @@ class CardPluginItemWidget(QFrame):
 
         self.lbl_maker = QLabel(info.get("maker") or "---", self)
         self.lbl_maker.setObjectName("infoMaker")
+        self.lbl_maker.setStyleSheet("color: #8aadf4; font-size: 11px;")
         layout.addWidget(self.lbl_maker)
+
+        # Subtle divider above bottom bar
+        self.div_line = QFrame(self)
+        self.div_line.setFixedHeight(1)
+        self.div_line.setStyleSheet("background-color: rgba(255, 255, 255, 0.08); border: none;")
+        layout.addWidget(self.div_line)
 
         # Bottom: Category & I/O
         botBar = QHBoxLayout()
-        botBar.setContentsMargins(0, 0, 0, 0)
+        botBar.setContentsMargins(0, 2, 0, 0)
         cat = info.get("category") or ("Synth" if isSynth else "Plugin")
         self.lbl_cat = QLabel(cat, self)
         self.lbl_cat.setObjectName("infoCategory")
+        self.lbl_cat.setStyleSheet("color: #a5adcb; font-size: 11px;")
         botBar.addWidget(self.lbl_cat)
         botBar.addStretch(1)
 
@@ -1029,7 +1038,12 @@ class PyPluginListDialog(QDialog):
         self.list_rack.setSelectionMode(_EXTENDED_SELECTION)
         self.list_rack.setVerticalScrollMode(_SCROLL_PER_PIXEL)
         self.list_rack.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.list_rack.setSpacing(2)
+        self.list_rack.setSpacing(3)
+        self.list_rack.setStyleSheet(
+            "QListWidget { background: transparent; border: none; outline: none; } "
+            "QListWidget::item { border: none; background: transparent; padding: 1px 0px; } "
+            "QListWidget::item:selected { border: none; background: transparent; }"
+        )
         self.stackCenter.addWidget(self.list_rack)
 
         # Mode 1: Cards Mode
@@ -1040,7 +1054,12 @@ class PyPluginListDialog(QDialog):
         self.list_cards.setMovement(_STATIC)
         self.list_cards.setSelectionMode(_EXTENDED_SELECTION)
         self.list_cards.setVerticalScrollMode(_SCROLL_PER_PIXEL)
-        self.list_cards.setSpacing(6)
+        self.list_cards.setSpacing(8)
+        self.list_cards.setStyleSheet(
+            "QListWidget { background: transparent; border: none; outline: none; } "
+            "QListWidget::item { border: none; background: transparent; padding: 3px; } "
+            "QListWidget::item:selected { border: none; background: transparent; }"
+        )
         self.stackCenter.addWidget(self.list_cards)
 
         # Mode 2: Table Mode
@@ -2301,9 +2320,9 @@ class PyPluginListDialog(QDialog):
 
         isFav = self._isFavorite(info)
 
-        itemFav = QTableWidgetItem()
-        itemFav.setCheckState(_qt_checkstate(isFav))
-        itemFav.setText(" ")
+        itemFav = QTableWidgetItem("★" if isFav else "☆")
+        itemFav.setTextAlignment(Qt.AlignCenter)
+        itemFav.setForeground(QColor("#eed49f" if isFav else "#6e738d"))
         self.table.setItem(index, TW_FAVORITE, itemFav)
 
         self.table.setItem(index, TW_NAME, QTableWidgetItem(info["name"]))
@@ -2322,7 +2341,7 @@ class PyPluginListDialog(QDialog):
 
         # Rack Item placeholder
         rackItem = QListWidgetItem()
-        rackItem.setSizeHint(QSize(0, 44))
+        rackItem.setSizeHint(QSize(0, 48))
         if index < self.list_rack.count():
             self.list_rack.insertItem(index, rackItem)
         else:
@@ -2330,7 +2349,7 @@ class PyPluginListDialog(QDialog):
 
         # Cards Item placeholder
         cardItem = QListWidgetItem()
-        cardItem.setSizeHint(QSize(190, 115))
+        cardItem.setSizeHint(QSize(195, 120))
         if index < self.list_cards.count():
             self.list_cards.insertItem(index, cardItem)
         else:
@@ -2552,7 +2571,8 @@ class PyPluginListDialog(QDialog):
         newFav = not isFavorite
         if itemFav:
             self.table.blockSignals(True)
-            itemFav.setCheckState(_qt_checkstate(newFav))
+            itemFav.setText("★" if newFav else "☆")
+            itemFav.setForeground(QColor("#eed49f" if newFav else "#6e738d"))
             self.table.blockSignals(False)
 
         if newFav and not isFavorite:
