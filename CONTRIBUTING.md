@@ -86,4 +86,4 @@ To check consistency without releasing (exits non-zero on any mismatch):
 ./scripts/check_version.sh v1.2.3
 ```
 
-The same check runs in CI (the `version-check` job) and, when installed via `./scripts/install-git-hooks.sh`, in the local `pre-push` hook — so a tag whose version disagrees with the tree is blocked before it can publish.
+The same check runs in CI (the `version-check` job) and, when installed via `./scripts/install-git-hooks.sh`, in the local `pre-push` hook, so a tag whose version disagrees with the tree is blocked before it can publish.

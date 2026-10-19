@@ -54,11 +54,11 @@
 
 ## Why Clara?
 
-**First, credit where it is due:** [Carla](https://github.com/falkTX/Carla) is the OG — a rock-solid, battle-tested modular plugin host by [falkTX](https://github.com/falkTX) that has powered Linux audio for years. Clara does not replace that engine; it stands on Carla's shoulders, and everything you rely on (plugin hosting, drivers, stability) is still Carla underneath.
+**First, credit where it is due:** [Carla](https://github.com/falkTX/Carla) is the OG: a rock-solid, battle-tested modular plugin host by [falkTX](https://github.com/falkTX) that has powered Linux audio for years. Clara does not replace that engine; it stands on Carla's shoulders, and everything you rely on (plugin hosting, drivers, stability) is still Carla underneath.
 
 Clara is a **frontend-first reinterpretation** of that foundation, focused on **visuals and quality-of-life**. The engine is kept up to date with upstream, while the experience around it was reworked: the plugin scanner and loader got a pass, alongside general optimizations, some cleanup, and **OpenGL enabled by default** to drive the animations.
 
-The goal is simple — an **eye-candy patchbay that asks for fewer clicks**:
+The goal is simple: an **eye-candy patchbay that asks for fewer clicks**.
 
 - **Arrange & align**: auto-arrange, arrange in rows, multi-select with align, auto-repel when nodes overlap, and line nodes up before or after each other.
 - **Less clicking in the graph**: direct bypass and switch buttons on the patchbay node, plus hiding I/O ports that are not in use.

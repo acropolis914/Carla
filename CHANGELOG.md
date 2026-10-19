@@ -20,6 +20,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-19 23:20:00
+- **docs**: punctuation cleanup in the new README/CONTRIBUTING text
+
 ### 2026-10-19 23:10:00
 - **docs**: add a "Why Clara?" section to the README
   - Explains Clara's frontend/QoL focus (patchbay ergonomics, OpenGL-driven animations, toggleable visuals) while crediting upstream Carla as the OG engine it builds upon.
