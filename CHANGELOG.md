@@ -20,6 +20,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-19 18:50:00
+- **fix(patchbay)**: restore inline display rendering and dimensions for VU meters inside node boxes
+  - Fixed configuration scope in [carla_settings.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/carla_settings.py) by targeting `QSafeSettings("falkTX", "Carla2")` so `Canvas/InlineDisplays` properly persists and synchronizes to `patchcanvas.options.inline_displays`.
+  - Accounted for node header and rack subbar heights in [canvasbox.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/patchcanvas/canvasbox.py), ensuring embedded plugin inline displays (like Big Meter and LV2 utilities) reserve sufficient canvas box dimensions and align properly beneath toolbar controls.
+
+### 2026-10-19 17:36:00
+- **fix(ui)**: restore search field and filter visibility across all view modes
+  - Fixed search and filter regression in [pluginlistdialog_py.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/pluginlist/pluginlistdialog_py.py) where rows passing filter checks were accidentally not unhidden due to an omitted `_showRow(i)` call.
+  - Re-synchronized `_hideRow` and `_showRow` to update Table, Rack, and Cards rows consistently without desync when filtering.
+  - Completely removed the 12ms background streaming timer that was forcing thousands of complex `CardPluginItemWidget` QFrames to be allocated in RAM.
+  - Replaced bulk card allocation with pure on-demand viewport rendering via `viewport().indexAt(QPoint(...))` so only currently visible cards on screen are ever created.
+  - Restricted widget creation and `updatesEnabled` toggling exclusively to the active view mode (Rack or Cards) rather than populating and hiding all three views in parallel.
+  - Added on-demand view visibility synchronization `_syncViewModeVisibility()` when toggling view modes, avoiding redundant hidden-state loops during search and filter operations.
+  - Fixed `TypeError: cannot use 'PyQt6.QtWidgets.QListWidgetItem' as a set element` in [pluginlistdialog_py.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/pluginlist/pluginlistdialog_py.py) by iterating selection lists directly.
+  - Fixed exponential path list duplication bug in [carla_settings.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/carla_settings.py) by clearing `lw_*` list widgets before loading and deduplicating stored paths.
+  - Fixed duplicate plugin streaming in [pluginlistdialog_py.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/pluginlist/pluginlistdialog_py.py) by returning `False` on duplicate in `_pluginsAdd()`, preventing duplicate table rows from being added.
+  - Added discovery stage logging and imported `log_carla` in [startup_scanner.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/pluginlist/startup_scanner.py).
+  - Fixed missing `QTimer` import in [carla_settings.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/carla_settings.py).
+
+### 2026-10-19 17:28:00
+- **fix(ui)**: transparent plugin card text backgrounds and debounced live theme switching in settings
+  - Enforced `background: transparent` and `setAutoFillBackground(False)` on all text labels within `CardPluginItemWidget` in [pluginlistdialog_py.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/pluginlist/pluginlistdialog_py.py) and [base_primitives.qss](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/styles/base_primitives.qss), eliminating opaque rectangular background boxes on plugin cards.
+  - Added a 120ms single-shot timer debounce to live theme selection in [carla_settings.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/carla_settings.py), decoupling rapid combobox navigation from blocking whole-app stylesheet re-evaluations and icon re-rendering.
+
 ### 2026-10-19 17:10:00
 - **fix(styles)**: eliminate opaque text background blocks in rack slots for clean color tinting
   - Enforced `background: transparent` across all rack item text labels, title stacks, and sub-containers in [carla_skin.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/carla_skin.py) and [base_primitives.qss](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/styles/base_primitives.qss).

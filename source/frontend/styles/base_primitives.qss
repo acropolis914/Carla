@@ -259,6 +259,10 @@ QFrame#rackPluginItem QLabel {
 }
 
 /* Modular Card Primitive */
+QFrame#cardPluginItem QLabel {
+    background: transparent;
+}
+
 QFrame#cardPluginItem {
     background-color: var(--bg-surface);
     border: 1px solid var(--border-dim);

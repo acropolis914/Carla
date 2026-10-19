@@ -42,6 +42,7 @@ from carla_backend import (
     PLUGIN_VST3,
 )
 from carla_utils import getPluginCategoryAsString
+from carla_shared import log_carla
 from pluginlist.discovery_py import PluginDiscovery, get_library_folder
 from pluginlist.pluginlistdialog_py import (
     _bytesToInfoList,
@@ -193,6 +194,7 @@ class PluginScannerThread(QThread):
                 continue
 
             self.statusChanged.emit(f"Scanning {label}...")
+            log_carla(f"[SCANNER] Starting discovery for {label} (path='{path}')", level="info")
 
             runner = PluginDiscovery(infoCallback, checkCacheCallback)
             self._currentRunner = runner
@@ -204,6 +206,7 @@ class PluginScannerThread(QThread):
                         break
                     # Gentle yield so Qt main event loop and audio engine experience zero jitter
                     time.sleep(0.003)
+            log_carla(f"[SCANNER] Finished discovery for {label}", level="info")
 
             self._currentRunner = None
 

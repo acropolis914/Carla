@@ -801,6 +801,7 @@ class CardPluginItemWidget(QFrame):
         # Center: Name & Maker
         self.lbl_name = QLabel(info.get("name", "---"), self)
         self.lbl_name.setObjectName("cardPluginName")
+        self.lbl_name.setAutoFillBackground(False)
         f_name = self.lbl_name.font()
         f_name.setBold(True)
         self.lbl_name.setFont(f_name)
@@ -809,7 +810,8 @@ class CardPluginItemWidget(QFrame):
 
         self.lbl_maker = QLabel(info.get("maker") or "---", self)
         self.lbl_maker.setObjectName("infoMaker")
-        self.lbl_maker.setStyleSheet("color: #8aadf4; font-size: 11px;")
+        self.lbl_maker.setAutoFillBackground(False)
+        self.lbl_maker.setStyleSheet("background: transparent; color: #8aadf4; font-size: 11px;")
         layout.addWidget(self.lbl_maker)
 
         # Subtle divider above bottom bar
@@ -824,7 +826,8 @@ class CardPluginItemWidget(QFrame):
         cat = info.get("category") or ("Synth" if isSynth else "Plugin")
         self.lbl_cat = QLabel(cat, self)
         self.lbl_cat.setObjectName("infoCategory")
-        self.lbl_cat.setStyleSheet("color: #a5adcb; font-size: 11px;")
+        self.lbl_cat.setAutoFillBackground(False)
+        self.lbl_cat.setStyleSheet("background: transparent; color: #a5adcb; font-size: 11px;")
         botBar.addWidget(self.lbl_cat)
         botBar.addStretch(1)
 
@@ -1799,7 +1802,7 @@ class PyPluginListDialog(QDialog):
             if (existing["filename"] == pinfo["filename"]
                     and existing["uniqueId"] == pinfo["uniqueId"]
                     and existing["name"] == pinfo["name"]):
-                return True
+                return False
 
         vec.append(pinfo)
         return True
@@ -2149,15 +2152,8 @@ class PyPluginListDialog(QDialog):
             for info in self._plugins[key]:
                 self._addPluginToTable(info, isStream=False)
 
-        # Pre-instantiate visible rows immediately for instant dialog appearance
-        initialBatch = min(45, total)
-        for r in range(initialBatch):
-            self._ensureRackWidget(r)
-            self._ensureCardWidget(r)
-
-        self._lazyIndex = initialBatch
-        self._lazyTotal = total
-        self._lazyTimer.start()
+        # Pre-instantiate visible rows immediately for current mode only
+        self._ensureVisibleWidgets()
 
         self._updatePluginsSummaryLabel()
         self.table.setSortingEnabled(True)
@@ -2291,13 +2287,12 @@ class PyPluginListDialog(QDialog):
             return
         end = min(self._lazyTotal, self._lazyIndex + 50)
         curr_mode = self.stackCenter.currentIndex()
-        for r in range(self._lazyIndex, end):
-            if curr_mode == 0:
+        if curr_mode == 0:
+            for r in range(self._lazyIndex, end):
                 self._ensureRackWidget(r)
-            elif curr_mode == 1:
+        elif curr_mode == 1:
+            for r in range(self._lazyIndex, end):
                 self._ensureCardWidget(r)
-            else:
-                self._ensureRackWidget(r)
         self._lazyIndex = end
         if self._lazyIndex >= self._lazyTotal:
             self._lazyTimer.stop()
@@ -2314,14 +2309,19 @@ class PyPluginListDialog(QDialog):
             self._ensureRackWidget(r)
 
     def _onCardsScroll(self):
-        count = self.list_cards.count()
-        if count == 0:
+        vp = self.list_cards.viewport()
+        w_vp = vp.width()
+        h_vp = vp.height()
+        if w_vp <= 0 or h_vp <= 0:
             return
-        sb = self.list_cards.verticalScrollBar()
-        row_idx = max(0, (sb.value() // 125) - 2)
-        first = max(0, row_idx * 4)
-        last = min(count, first + 40)
-        for r in range(first, last):
+        # Scan visible grid points inside the viewport to identify visible items
+        visible_rows = set()
+        for y in range(0, h_vp + 60, 60):
+            for x in range(10, w_vp, 100):
+                idx = self.list_cards.indexAt(QPoint(x, y))
+                if idx.isValid():
+                    visible_rows.add(idx.row())
+        for r in visible_rows:
             self._ensureCardWidget(r)
 
     def _addPluginToTable(self, info, isStream=False):
@@ -2401,6 +2401,8 @@ class PyPluginListDialog(QDialog):
             elif mode == 1 and cur_row < self.list_cards.count():
                 self.list_cards.setCurrentRow(cur_row)
 
+        self._syncViewModeVisibility(mode)
+
         if mode == 0:
             self._onRackScroll()
         elif mode == 1:
@@ -2462,16 +2464,32 @@ class PyPluginListDialog(QDialog):
         if row < self.list_cards.count():
             self.list_cards.setRowHidden(row, False)
 
+    def _syncViewModeVisibility(self, mode):
+        if mode == 0:
+            self.list_rack.setUpdatesEnabled(False)
+            try:
+                for r in range(self.table.rowCount()):
+                    self.list_rack.setRowHidden(r, self.table.isRowHidden(r))
+            finally:
+                self.list_rack.setUpdatesEnabled(True)
+        elif mode == 1:
+            self.list_cards.setUpdatesEnabled(False)
+            try:
+                for r in range(self.table.rowCount()):
+                    self.list_cards.setRowHidden(r, self.table.isRowHidden(r))
+            finally:
+                self.list_cards.setUpdatesEnabled(True)
+
     def _updateSelectionState(self):
         curr_mode = self.stackCenter.currentIndex()
 
         # Update rack widgets selection highlight
-        selected_rack = set(self.list_rack.selectedItems()) if curr_mode == 0 else set()
-        if curr_mode == 0 and not selected_rack and self.list_rack.currentItem():
-            selected_rack = {self.list_rack.currentItem()}
+        selected_rack_items = self.list_rack.selectedItems() if curr_mode == 0 else []
+        if curr_mode == 0 and not selected_rack_items and self.list_rack.currentItem():
+            selected_rack_items = [self.list_rack.currentItem()]
         old_rack = getattr(self, "_selected_rack_widgets", set())
         new_rack = set()
-        for it in selected_rack:
+        for it in selected_rack_items:
             w = self.list_rack.itemWidget(it) or self._ensureRackWidget(self.list_rack.row(it))
             if w and hasattr(w, "setSelected"):
                 new_rack.add(w)
@@ -2482,12 +2500,12 @@ class PyPluginListDialog(QDialog):
         self._selected_rack_widgets = new_rack
 
         # Update cards widgets selection highlight
-        selected_cards = set(self.list_cards.selectedItems()) if curr_mode == 1 else set()
-        if curr_mode == 1 and not selected_cards and self.list_cards.currentItem():
-            selected_cards = {self.list_cards.currentItem()}
+        selected_cards_items = self.list_cards.selectedItems() if curr_mode == 1 else []
+        if curr_mode == 1 and not selected_cards_items and self.list_cards.currentItem():
+            selected_cards_items = [self.list_cards.currentItem()]
         old_cards = getattr(self, "_selected_cards_widgets", set())
         new_cards = set()
-        for it in selected_cards:
+        for it in selected_cards_items:
             w = self.list_cards.itemWidget(it) or self._ensureCardWidget(self.list_cards.row(it))
             if w and hasattr(w, "setSelected"):
                 new_cards.add(w)

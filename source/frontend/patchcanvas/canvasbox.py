@@ -1101,14 +1101,15 @@ class CanvasBox(QGraphicsObject):
                         port.widget.setY(last_out_pos)
                         last_out_pos += port_spacing
 
-            self.p_width = max(self.p_width, 30 + max_in_width + max_out_width)
+            self.p_width = max(self.p_width, (100 if self.m_plugin_inline != self.INLINE_DISPLAY_DISABLED else 30) + max_in_width + max_out_width)
             self.p_width = min(
                 self.p_width, self.MAX_BOX_WIDTH_ABSOLUTE
             )  # Absolute hard limit
             self.p_width_in = max_in_width
             self.p_width_out = max_out_width
 
-            self.p_height = max(last_in_pos, last_out_pos)
+            min_h = (header_total_h + 60) if self.m_plugin_inline != self.INLINE_DISPLAY_DISABLED else 0
+            self.p_height = max(last_in_pos, last_out_pos, min_h)
             self.p_height += (
                 max(canvas.theme.port_spacing, canvas.theme.port_spacingT)
                 - canvas.theme.port_spacing
@@ -2223,11 +2224,13 @@ class CanvasBox(QGraphicsObject):
         if not options.inline_displays:
             return
 
+        subbar_h = 22 if self.m_plugin_id >= 0 else 0
+        header_total_h = canvas.theme.box_header_height + subbar_h
         inwidth = self.p_width - 16 - self.p_width_in - self.p_width_out
         inheight = (
             self.p_height
             - 3
-            - canvas.theme.box_header_height
+            - header_total_h
             - canvas.theme.box_header_spacing
             - canvas.theme.port_spacing
         )
@@ -2265,7 +2268,7 @@ class CanvasBox(QGraphicsObject):
             if self.m_inline_first:
                 self.m_inline_first = False
                 aspectRatio = data["width"] / data["height"]
-                self.p_height = int(max(50 * scaling, self.p_height))
+                self.p_height = int(max((header_total_h + 50) * scaling, self.p_height))
                 self.p_width += int(
                     max(
                         0,
@@ -2297,10 +2300,10 @@ class CanvasBox(QGraphicsObject):
             - swidth / 2
         )
         srcy = int(
-            canvas.theme.box_header_height
+            header_total_h
             + canvas.theme.box_header_spacing
             + 1
-            + (inheight - sheight) / 2
+            + max(0, (inheight - sheight) / 2)
         )
 
         painter.drawImage(QRectF(srcx, srcy, swidth, sheight), self.m_inline_image)

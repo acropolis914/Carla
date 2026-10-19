@@ -27,6 +27,7 @@ from qt_compat import (
     QFormLayout,
     QApplication,
     QPalette,
+    QTimer,
 )
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -912,7 +913,11 @@ class CarlaSettingsW(QDialog):
                 if current_text and cb_theme.findText(current_text) >= 0:
                     cb_theme.setCurrentText(current_text)
 
-                def _on_live_theme_change(*_):
+                self._theme_apply_timer = QTimer(self)
+                self._theme_apply_timer.setSingleShot(True)
+                self._theme_apply_timer.setInterval(120)
+
+                def _apply_live_theme():
                     use_system = ch_sys.isChecked()
                     chosen_theme = cb_theme.currentText()
                     theme_manager.apply_theme(chosen_theme, use_system=use_system)
@@ -924,8 +929,14 @@ class CarlaSettingsW(QDialog):
                     except Exception:
                         pass
 
+                self._theme_apply_timer.timeout.connect(_apply_live_theme)
+
+                def _on_live_theme_change(*_):
+                    self._theme_apply_timer.start()
+
                 ch_sys.toggled.connect(_on_live_theme_change)
-                cb_theme.currentTextChanged.connect(_on_live_theme_change)
+                cb_theme.activated.connect(_on_live_theme_change)
+                cb_theme.currentIndexChanged.connect(_on_live_theme_change)
         else:
             self.general_form_builder = None
 
@@ -1101,7 +1112,7 @@ class CarlaSettingsW(QDialog):
         if index in self._built_tabs:
             return
 
-        settings = QSafeSettings()
+        settings = QSafeSettings("falkTX", "Carla2")
 
         if index == self.TAB_INDEX_CANVAS and hasattr(self.ui, "page_canvas"):
             self._built_tabs.add(index)
@@ -1143,7 +1154,7 @@ class CarlaSettingsW(QDialog):
     # -----------------------------------------------------------------------------------------------------------------
 
     def loadSettings(self):
-        settings = QSafeSettings()
+        settings = QSafeSettings("falkTX", "Carla2")
 
         # -------------------------------------------------------------------------------------------------------------
         # General & Canvas
@@ -1156,9 +1167,6 @@ class CarlaSettingsW(QDialog):
 
         # -------------------------------------------------------------------------------------------------------------
 
-        settings = QSafeSettings("falkTX", "Carla2")
-
-        # -------------------------------------------------------------------------------------------------------------
         # Main
 
         self.ui.ch_main_experimental.setChecked(self.host.experimental)
@@ -1232,13 +1240,15 @@ class CarlaSettingsW(QDialog):
 
         # -------------------------------------------------------------------------------------------------------------
         # File Paths
+        self.ui.lw_files_audio.clear()
+        self.ui.lw_files_midi.clear()
 
-        audioPaths = settings.value(
+        audioPaths = list(dict.fromkeys(settings.value(
             CARLA_KEY_PATHS_AUDIO, CARLA_DEFAULT_FILE_PATH_AUDIO, list
-        )
-        midiPaths = settings.value(
+        ) or []))
+        midiPaths = list(dict.fromkeys(settings.value(
             CARLA_KEY_PATHS_MIDI, CARLA_DEFAULT_FILE_PATH_MIDI, list
-        )
+        ) or []))
 
         audioPaths.sort()
         midiPaths.sort()
@@ -1255,18 +1265,27 @@ class CarlaSettingsW(QDialog):
 
         # -------------------------------------------------------------------------------------------------------------
         # Plugin Paths
+        self.ui.lw_ladspa.clear()
+        self.ui.lw_dssi.clear()
+        self.ui.lw_lv2.clear()
+        self.ui.lw_vst.clear()
+        self.ui.lw_vst3.clear()
+        self.ui.lw_sf2.clear()
+        self.ui.lw_sfz.clear()
+        self.ui.lw_jsfx.clear()
+        self.ui.lw_clap.clear()
 
-        ladspas = settings.value(
+        ladspas = list(dict.fromkeys(settings.value(
             CARLA_KEY_PATHS_LADSPA, CARLA_DEFAULT_LADSPA_PATH, list
-        )
-        dssis = settings.value(CARLA_KEY_PATHS_DSSI, CARLA_DEFAULT_DSSI_PATH, list)
-        lv2s = settings.value(CARLA_KEY_PATHS_LV2, CARLA_DEFAULT_LV2_PATH, list)
-        vst2s = settings.value(CARLA_KEY_PATHS_VST2, CARLA_DEFAULT_VST2_PATH, list)
-        vst3s = settings.value(CARLA_KEY_PATHS_VST3, CARLA_DEFAULT_VST3_PATH, list)
-        sf2s = settings.value(CARLA_KEY_PATHS_SF2, CARLA_DEFAULT_SF2_PATH, list)
-        sfzs = settings.value(CARLA_KEY_PATHS_SFZ, CARLA_DEFAULT_SFZ_PATH, list)
-        jsfxs = settings.value(CARLA_KEY_PATHS_JSFX, CARLA_DEFAULT_JSFX_PATH, list)
-        claps = settings.value(CARLA_KEY_PATHS_CLAP, CARLA_DEFAULT_CLAP_PATH, list)
+        ) or []))
+        dssis = list(dict.fromkeys(settings.value(CARLA_KEY_PATHS_DSSI, CARLA_DEFAULT_DSSI_PATH, list) or []))
+        lv2s = list(dict.fromkeys(settings.value(CARLA_KEY_PATHS_LV2, CARLA_DEFAULT_LV2_PATH, list) or []))
+        vst2s = list(dict.fromkeys(settings.value(CARLA_KEY_PATHS_VST2, CARLA_DEFAULT_VST2_PATH, list) or []))
+        vst3s = list(dict.fromkeys(settings.value(CARLA_KEY_PATHS_VST3, CARLA_DEFAULT_VST3_PATH, list) or []))
+        sf2s = list(dict.fromkeys(settings.value(CARLA_KEY_PATHS_SF2, CARLA_DEFAULT_SF2_PATH, list) or []))
+        sfzs = list(dict.fromkeys(settings.value(CARLA_KEY_PATHS_SFZ, CARLA_DEFAULT_SFZ_PATH, list) or []))
+        jsfxs = list(dict.fromkeys(settings.value(CARLA_KEY_PATHS_JSFX, CARLA_DEFAULT_JSFX_PATH, list) or []))
+        claps = list(dict.fromkeys(settings.value(CARLA_KEY_PATHS_CLAP, CARLA_DEFAULT_CLAP_PATH, list) or []))
 
         ladspas.sort()
         dssis.sort()
@@ -1339,7 +1358,7 @@ class CarlaSettingsW(QDialog):
 
     @pyqtSlot()
     def slot_saveSettings(self):
-        settings = QSafeSettings()
+        settings = QSafeSettings("falkTX", "Carla2")
 
         self.host.experimental = self.ui.ch_main_experimental.isChecked()
 
@@ -1367,9 +1386,6 @@ class CarlaSettingsW(QDialog):
 
         # -------------------------------------------------------------------------------------------------------------
 
-        settings = QSafeSettings("falkTX", "Carla2")
-
-        # -------------------------------------------------------------------------------------------------------------
         # Main
 
         settings.setValue(CARLA_KEY_MAIN_EXPERIMENTAL, self.host.experimental)
