@@ -62,13 +62,23 @@ with open('$ROOT_DIR/releases.json', 'w') as f:
     git add "$ROOT_DIR/releases.json"
 fi
 
-# 3. Update aur/clara-bin/PKGBUILD
+# 3. Update the internal version constant. This drives CLARA_VERSION_STRING
+#    (About dialog, setApplicationVersion, in-app updater) for installed builds
+#    that have no git checkout to resolve the tag from.
+echo "🔢 Updating carla_shared.py base_version to ${CLEAN_VER}..."
+SHARED_PY="$ROOT_DIR/source/frontend/carla_shared.py"
+if [ -f "$SHARED_PY" ]; then
+    sed -i -E "s/^([[:space:]]*base_version[[:space:]]*=[[:space:]]*\")[^\"]*(\")/\1${CLEAN_VER}\2/" "$SHARED_PY"
+    git add "$SHARED_PY"
+fi
+
+# 4. Update aur/clara-bin/PKGBUILD
 echo "📦 Updating aur/clara-bin/PKGBUILD to ${CLEAN_VER}..."
 sed -i "s/^pkgver=.*/pkgver=${CLEAN_VER}/" "$ROOT_DIR/aur/clara-bin/PKGBUILD"
 sed -i "s/^pkgrel=.*/pkgrel=1/" "$ROOT_DIR/aur/clara-bin/PKGBUILD"
 git add "$ROOT_DIR/aur/clara-bin/PKGBUILD"
 
-# 4. Commit and push bump if changed
+# 5. Commit and push bump if changed
 if ! git diff --cached --quiet; then
     echo "💾 Committing version bump to main..."
     git commit -m "chore(release): bump version to ${CLEAN_VER}"
@@ -76,7 +86,7 @@ if ! git diff --cached --quiet; then
 fi
 
 
-# 5. Create and push Git tag to GitHub (triggers GitHub Actions release build)
+# 6. Create and push Git tag to GitHub (triggers GitHub Actions release build)
 echo "🏷️ Tagging ${TAG} and pushing to GitHub..."
 if git rev-parse "$TAG" >/dev/null 2>&1; then
     echo "Tag $TAG already exists locally."
@@ -85,7 +95,7 @@ else
 fi
 git push origin "$TAG"
 
-# 6. Publish to AUR (clara-bin)
+# 7. Publish to AUR (clara-bin)
 echo "🚀 Publishing clara-bin to AUR..."
 AUR_DIR="$ROOT_DIR/aur/clara-bin"
 cd "$AUR_DIR"
@@ -109,7 +119,7 @@ else
     git push origin master
 fi
 
-# 7. Publish to AUR (clara-git)
+# 8. Publish to AUR (clara-git)
 echo "🚀 Publishing clara-git to AUR..."
 GIT_AUR_DIR="$ROOT_DIR/aur/clara-git"
 if [ -d "$GIT_AUR_DIR/.git" ]; then

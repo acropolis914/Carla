@@ -12,4 +12,4 @@ chmod +x scripts/git-hooks/* 2>/dev/null || true
 git config core.hooksPath scripts/git-hooks
 
 printf 'Installed git hooks from scripts/git-hooks (core.hooksPath = scripts/git-hooks)\n'
-printf 'On a v* tag push this builds the AppImage and Flatpak into dist/.\n'
+printf 'On a v* tag push this validates the tag version, then builds the AppImage and Flatpak into dist/.\n'

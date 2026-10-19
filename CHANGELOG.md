@@ -20,6 +20,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-19 21:45:00
+- **ci(release)**: enforce tag/version consistency and fix the AUR push on release
+  - Added [check_version.sh](file:///home/acroarch/Documents/Projects/git-clones/Carla/scripts/check_version.sh) which verifies a pushed `vX.Y.Z` tag matches `base_version` in [carla_shared.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/carla_shared.py) and the `latest`/entry in [releases.json](file:///home/acroarch/Documents/Projects/git-clones/Carla/releases.json); the AUR `pkgver` is checked as a warning since CI bumps it.
+  - Added a `version-check` job to [package.yml](file:///home/acroarch/Documents/Projects/git-clones/Carla/.github/workflows/package.yml) that gates `release`/`publish-aur` on tag pushes, and gave the release checkout `fetch-depth: 0` so `git push HEAD:main` fast-forwards instead of being rejected by the shallow clone.
+  - The [pre-push hook](file:///home/acroarch/Documents/Projects/git-clones/Carla/scripts/git-hooks/pre-push) now runs the version check on `v*` tag pushes and blocks a mismatched tag (override with `CLARA_SKIP_VERSION_CHECK=1`).
+  - [release_and_push_aur.sh](file:///home/acroarch/Documents/Projects/git-clones/Carla/scripts/release_and_push_aur.sh) now also bumps `base_version`, which had drifted and made packages self-report the wrong version to the in-app updater.
+
 ## [1.0.5] - 2026-10-19
 
 ### 2026-10-19 21:15:00
