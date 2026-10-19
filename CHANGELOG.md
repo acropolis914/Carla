@@ -20,6 +20,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [1.0.5] - 2026-10-19
+
+### 2026-10-19 21:15:00
+- **fix(version)**: bump the internal Clara version fallback to 1.0.5
+  - `_get_clara_version()` in [carla_shared.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/carla_shared.py) still returned `"1.0.3"` when no exact tag could be resolved (i.e. installed builds without a `.git` checkout, such as the AUR source tarball).
+  - This drives `CLARA_VERSION_STRING`, which the About dialog, `setApplicationVersion`, and the update checker read, so a 1.0.4 package reported 1.0.3 and the updater kept re-offering the current release.
+
 ## [1.0.4] - 2026-10-19
 
 ### 2026-10-19 20:45:00
