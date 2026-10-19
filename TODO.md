@@ -89,6 +89,21 @@
 
 ---
 
+## 📚 Documentation & Branding
+- [x] `[Diff: 1]` docs: Add a "Why Clara?" section to the README (frontend/QoL focus, explicit credit to upstream Carla)
+- [x] `[Diff: 1]` docs: Refresh README, installation, and CONTRIBUTING for the v1.1.0 CLI experience
+- [x] `[Diff: 1]` docs: Replace long dashes (em/en) with standard punctuation across docs, comments, and CI output
+
+---
+
+## 🚀 Release Engineering & CI
+- [x] `[Diff: 2]` CI: Enforce tag/version consistency (`version-check` job, `scripts/check_version.sh`, `pre-push` hook)
+- [x] `[Diff: 2]` Fix: Release workflow shallow checkout rejected the AUR `HEAD:main` push (`fetch-depth: 0`)
+- [x] `[Diff: 1]` Fix: `release_and_push_aur.sh` now bumps `base_version` alongside the AUR `pkgver`
+- [x] `[Diff: 1]` Release: Ship v1.0.4, v1.0.5, and v1.1.0 (bin + source packages, AppImage, Flatpak, Nix)
+
+---
+
 ## 📦 Packaging & Distribution
 - [x] `[Diff: 1]` Create and maintain `clara-bin` package on AUR for rapid binary installations alongside `clara-git`
 - [x] `[Diff: 3]` feat: AppImage build with standalone builder bundling CPython + PyQt6/Qt6

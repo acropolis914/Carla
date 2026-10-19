@@ -171,12 +171,20 @@ Refer to [`installation.md`](installation.md) for full distribution-specific bui
 
 ## Roadmap
 
-Active task tracking and architectural priorities are maintained in [TODO.md](TODO.md):
-- [ ] Visual audio/MIDI signal activity animations along cables and active nodes.
+Active task tracking and architectural priorities are maintained in [TODO.md](TODO.md).
+
+**Recently shipped:**
+- [x] Rich CLI startup banner and a safe SIGINT exit prompt.
+- [x] Visual audio/MIDI signal activity animations along cables and active nodes.
+- [x] Infinite canvas with migration recentering for legacy projects.
+- [x] Standardized `argparse` CLI integration with `rich` help output.
+- [x] Release pipeline hardening: tag/version consistency guard and AUR publish fix.
+
+**Next up:**
+- [ ] `claractl` CLI / IPC core for live graph control and scripting.
 - [ ] Mini DSP load history graph with side labels and hover tooltips.
 - [ ] In-project session notes with rich Qt Markdown (`QTextDocument`) preview.
-- [ ] Infinite canvas with migration recentering for legacy projects.
-- [ ] Standardized `argparse` CLI integration with `rich` help output.
+- [ ] Floating sidebar quick settings overlay with integrated search.
 
 ---
 
@@ -184,7 +192,7 @@ Active task tracking and architectural priorities are maintained in [TODO.md](TO
 
 > [!TIP]
 > **Help Shape the Future of Linux Modular Audio!**
-> Whether you're an experienced C++/Qt hacker, a Python developer, a DSP audio nerd, a UI/UX designer, or an everyday music producer finding edge-case bugs&mdash;**we want your help.**
+> Whether you're an experienced C++/Qt hacker, a Python developer, a DSP audio nerd, a UI/UX designer, or an everyday music producer finding edge-case bugs: **we want your help.**
 
 Clara is evolving fast, and we are actively looking for:
 - **Core Developers & Co-Maintainers**: Help refine the canvas architecture, Qt6 modernize legacy modules, and review PRs.
@@ -194,7 +202,7 @@ Clara is evolving fast, and we are actively looking for:
 Check out our current backlog in [**TODO.md**](TODO.md) for open tasks rated by difficulty (`[Diff: 1]` to `[Diff: 3]`).
 
 ### AI-Assisted Development Policy
-- **Guided AI Usage is Permitted**: Contributors are allowed to use AI coding agents and assistants&mdash;such as **Google Antigravity / Gemini**, Claude, or Copilot&mdash;to research, scaffold, refactor, and draft code.
+- **Guided AI Usage is Permitted**: Contributors are allowed to use AI coding agents and assistants, such as **Google Antigravity / Gemini**, Claude, or Copilot, to research, scaffold, refactor, and draft code.
 - **Explicit AI Disclosure Required**: If AI was used in any part of creating a PR, you **must explicitly state so in the PR description**, noting the tools used and the prompts/intent.
 - **Rigorous Quality Review**: AI-generated code will not be accepted without scrutiny. All PRs are **extensively reviewed for architectural sanity, clean code standards, Qt compatibility, and stability**. Contributors must test and take full ownership of their submitted code.
 - Read [**CONTRIBUTING.md**](CONTRIBUTING.md) for build guides, coding standards, and PR submission checklist.

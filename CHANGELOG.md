@@ -20,6 +20,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-19 23:45:00
+- **docs**: refresh TODO.md and the README roadmap for shipped work; replace the last HTML dash entities
+
 ### 2026-10-19 23:30:00
 - **docs**: replace long dashes (em/en) with standard hyphens across docs, comments, and CI output
 
