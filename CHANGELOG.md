@@ -20,6 +20,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-19 22:50:00
+- **docs**: document the v1.1.0 CLI experience and the release version guard
+  - [README.md](file:///home/acroarch/Documents/Projects/git-clones/Carla/README.md) gained a "Modern CLI Experience" section covering the rich startup banner and the Ctrl+C prompt.
+  - [installation.md](file:///home/acroarch/Documents/Projects/git-clones/Carla/installation.md) AppImage/Flatpak examples bumped to 1.1.0 and the new launch/CLI behaviour documented.
+  - [CONTRIBUTING.md](file:///home/acroarch/Documents/Projects/git-clones/Carla/CONTRIBUTING.md) gained a "Release Process" section describing the tag/version consistency check, `scripts/check_version.sh`, and `scripts/release_and_push_aur.sh`.
+  - [TODO.md](file:///home/acroarch/Documents/Projects/git-clones/Carla/TODO.md) now tracks the finished CLI banner/SIGINT work.
+
 ## [1.1.0] - 2026-10-19
 
 ### 2026-10-19 22:20:00

@@ -49,8 +49,8 @@ These run on any modern x86_64 Linux without installing distribution packages.
 ### AppImage
 
 ```bash
-chmod +x Clara-1.0.1-x86_64.AppImage
-./Clara-1.0.1-x86_64.AppImage
+chmod +x Clara-1.1.0-x86_64.AppImage
+./Clara-1.1.0-x86_64.AppImage
 ```
 
 The AppImage bundles a relocatable Python, PyQt6 (which ships its own Qt6) and the Clara native libraries, so it does not depend on the system Qt.
@@ -58,7 +58,7 @@ The AppImage bundles a relocatable Python, PyQt6 (which ships its own Qt6) and t
 ### Flatpak
 
 ```bash
-flatpak install --user Clara-1.0.1-x86_64.flatpak
+flatpak install --user Clara-1.1.0-x86_64.flatpak
 flatpak run com.github.acropolis914.Clara
 ```
 
@@ -163,3 +163,7 @@ carla --autoload-lastsave
 # Search canvas nodes while in Patchbay view
 # Press Ctrl+F on the canvas to open the fuzzy search bar.
 ```
+
+On launch, Clara prints a `rich` banner showing `Clara vX.Y.Z` followed by `based on Carla version A.B.C` (with Python/Qt/PyQt and path details); `--version` prints the same banner.
+
+When running from a terminal, **Ctrl+C** opens a `rich` prompt: pressing **Enter** quits (the default) and **T** keeps Clara running in the system tray.

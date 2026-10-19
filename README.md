@@ -105,6 +105,10 @@ Carla's rock-solid audio backend, supercharged with modern creative-suite ergono
 - **Structured Python Rich Console**: Color-coded loglevels and categorical tags (`APP`, `ENGINE`, `PATCHBAY`, `BACKEND`) with low-level C++ `stderr` interception.
 - **Instant Reactive Settings**: Real-time sliders for rack spacing, padding, and width without application restarts.
 
+### Modern CLI Experience
+- **Rich Startup Banner**: Launching from a terminal renders a `rich` panel reading `Clara vX.Y.Z` then `based on Carla version A.B.C`, alongside the runtime and binary/resource paths; `--version` shows the same banner.
+- **Graceful Ctrl+C Handling**: The terminal SIGINT prompt is a `rich` panel where pressing `Enter` quits (default) and `T` keeps Clara running in the system tray.
+
 ---
 
 ## Installation & Packages

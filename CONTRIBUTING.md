@@ -64,3 +64,26 @@ If you encounter bugs, visual glitches, or unexpected behavior:
 1. Search [Existing Issues](https://github.com/acropolis914/Clara/issues) to avoid duplicate reports.
 2. Provide your Linux distribution, desktop environment (X11 / Wayland), Qt version (`qmake -v`), and relevant console logs.
 3. Use the [Bug Report Template](.github/ISSUE_TEMPLATE/bug_report.md).
+
+---
+
+## 🚀 Release Process
+
+Releases are cut by pushing an annotated `vX.Y.Z` tag, which triggers the **Multi-distro packaging** workflow (builds every distro, creates the GitHub release from `releases.json`, and publishes `clara-bin` to the AUR).
+
+The version has to agree in three places before tagging:
+- `base_version` in `source/frontend/carla_shared.py` (drives `CLARA_VERSION_STRING`)
+- `latest` plus a matching `releases[<version>]` entry in `releases.json`
+- `pkgver` in `aur/clara-bin/PKGBUILD`
+
+Use the helper script, which updates all of the above, commits, and pushes the tag:
+```bash
+./scripts/release_and_push_aur.sh 1.2.3
+```
+
+To check consistency without releasing (exits non-zero on any mismatch):
+```bash
+./scripts/check_version.sh v1.2.3
+```
+
+The same check runs in CI (the `version-check` job) and, when installed via `./scripts/install-git-hooks.sh`, in the local `pre-push` hook — so a tag whose version disagrees with the tree is blocked before it can publish.

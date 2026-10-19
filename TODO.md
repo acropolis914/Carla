@@ -63,6 +63,7 @@
 - [x] `[Diff: 2]` feat: Improved logging with Python Rich console, loglevels, log tags, and CLI flags (`--log-whitelist`, `--log-blacklist`)
 - [ ] `[Diff: 2]` feat: Project notes for current session/save file with rich Markdown rendering support in Qt (QTextDocument markdown / preview)
 - [x] `[Diff: 1]` feat: Standardized `argparse` integration to expose all CLI flags and `--help` with Python `rich` formatting
+- [x] `[Diff: 1]` feat: Rich CLI startup banner (`Clara vX.Y.Z` / `based on Carla version A.B.C`) and a formatted SIGINT prompt with a safe Enter-to-exit default
 - [x] `[Diff: 1]` Fix/feat: Full `.carjp` project file integration across autosave manager, recent files list, dirty tracking, and startup autoload
 ---
 
