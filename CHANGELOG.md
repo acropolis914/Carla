@@ -20,6 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-19 13:32:00
+- **fix(pluginlist)**: harmonize pill filter button geometry and rounded capsule border radii
+  - Fixed distorted dimensions and square corners on selected filter pills by synchronizing `border-radius: 12px`, `padding: 2px 9px`, `min-height: 20px`, and `max-height: 20px` across both normal and `:checked` states in `filterSidebar` and all 4 QSS themes.
+  - Eliminated size jumping and layout collapse on "All" master pills and format/type/arch filter pills when toggling selection.
+
 ### 2026-10-19 13:21:00
 - **fix(pluginlist)**: use system highlight color for selected filter sidebar pills
   - Replaced hardcoded blue tones in all 4 QSS themes (`catppuccin_macchiato.qss`, `catppuccin_mocha.qss`, `catppuccin_latte.qss`, `classic_dark.qss`) with dynamic `palette(highlight)` and `palette(highlighted-text)`.

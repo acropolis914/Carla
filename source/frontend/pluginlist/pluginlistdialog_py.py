@@ -1235,22 +1235,35 @@ class PyPluginListDialog(QDialog):
 
         self.filterBox = self.filterSidebar
 
-        # Ensure filter sidebar pills use the active system highlight color
+        # Ensure filter sidebar pills use the active system highlight color and stable pill geometry
         app = QApplication.instance()
         if app is not None:
             hl = app.palette().color(QPalette.Highlight).name()
             txt = app.palette().color(QPalette.HighlightedText).name()
             self.filterSidebar.setStyleSheet(f"""
+                QPushButton[pill="true"] {{
+                    padding: 2px 9px;
+                    font-size: 11px;
+                    border-radius: 12px;
+                    min-height: 20px;
+                    max-height: 20px;
+                }}
                 QPushButton[pill="true"]:checked {{
                     background-color: {hl};
                     color: {txt};
-                    border: 1.5px solid {hl};
+                    border: 1px solid {hl};
+                    border-radius: 12px;
+                    padding: 2px 9px;
+                    font-size: 11px;
+                    min-height: 20px;
+                    max-height: 20px;
                     font-weight: bold;
                 }}
                 QPushButton[pill="true"]:checked:hover {{
                     background-color: {hl};
                     color: {txt};
-                    border-color: {hl};
+                    border: 1px solid {hl};
+                    border-radius: 12px;
                 }}
             """)
 

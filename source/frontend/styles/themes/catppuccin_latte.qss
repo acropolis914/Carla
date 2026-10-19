@@ -490,9 +490,11 @@ QFrame#canvasToolbarSeparator {
 
 /* Add Plugin Dialog Pill Filters */
 QPushButton[pill="true"] {
-    padding: 2px 7px;
-    font-size: 10px;
-    border-radius: 9px;
+    padding: 2px 9px;
+    font-size: 11px;
+    border-radius: 12px;
+    min-height: 20px;
+    max-height: 20px;
     background-color: #e6e9ef;
     border: 1px solid #ccd0da;
     color: #4c4f69;
@@ -506,14 +508,20 @@ QPushButton[pill="true"]:hover {
 QPushButton[pill="true"]:checked {
     background-color: palette(highlight);
     color: palette(highlighted-text);
-    border: 1.5px solid palette(highlight);
+    border: 1px solid palette(highlight);
+    border-radius: 12px;
+    padding: 2px 9px;
+    font-size: 11px;
+    min-height: 20px;
+    max-height: 20px;
     font-weight: bold;
 }
 
 QPushButton[pill="true"]:checked:hover {
     background-color: palette(highlight);
     color: palette(highlighted-text);
-    border-color: palette(highlight);
+    border: 1px solid palette(highlight);
+    border-radius: 12px;
 }
 
 /* Add Plugin Dialog Information Inspector */
