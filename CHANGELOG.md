@@ -20,7 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-### 2026-10-19 14:00:00
+### 2026-10-19 14:08:00
+- **fix(pluginlist)**: eliminate required scroll to render cards/rack items and colorize format badges
+  - Fixed issue where the user had to scroll first before cards or rack items visually appeared by adding `_ensureVisibleWidgets()` to eagerly instantiate the active viewport batch on `showEvent`, filter changes, and view mode switching.
+  - Replaced fallback `indexAt()` scroll detection with direct scrollbar offset calculation (`sb.value() // rowHeight`), ensuring rock-solid row range coverage during fast or fractional scrolling.
+  - Enhanced `RackPluginItemWidget` and `CardPluginItemWidget` with distinct format pill colors (CLAP, VST3, LV2, VST2, JSFX), custom amber favorite stars, and set default table row height to 30px for better vertical rhythm.
 - **feat(pluginlist)**: optimize dialog cold start to ~50ms, modernize cards and rack items, and style table headers
   - Implemented on-demand lazy/streaming instantiation for Rack and Card item widgets, reducing cold-start modal freeze from ~1,529ms to ~50ms (>30x speedup) across 800+ plugins.
   - Added background chunk streaming timer and scroll event hooks (`_onRackScroll`, `_onCardsScroll`) to populate visible viewport rows smoothly on demand.

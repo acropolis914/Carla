@@ -657,6 +657,20 @@ def _formatIoText(ains, aouts):
     return f"{ains} In / {aouts} Out"
 
 # ------------------------------------------------------------------------------------------------------------
+def _getFormatBadgeStyle(ptype):
+    if ptype == PLUGIN_CLAP:
+        return "background-color: rgba(137, 180, 250, 0.16); border: 1px solid rgba(137, 180, 250, 0.4); color: #89b4fa;"
+    if ptype == PLUGIN_VST3:
+        return "background-color: rgba(250, 179, 135, 0.16); border: 1px solid rgba(250, 179, 135, 0.4); color: #fab387;"
+    if ptype == PLUGIN_LV2:
+        return "background-color: rgba(166, 227, 161, 0.16); border: 1px solid rgba(166, 227, 161, 0.4); color: #a6e3a1;"
+    if ptype == PLUGIN_VST2:
+        return "background-color: rgba(243, 139, 168, 0.16); border: 1px solid rgba(243, 139, 168, 0.4); color: #f38ba8;"
+    if ptype == PLUGIN_JSFX:
+        return "background-color: rgba(203, 166, 247, 0.16); border: 1px solid rgba(203, 166, 247, 0.4); color: #cba6f7;"
+    return "background-color: rgba(108, 112, 134, 0.16); border: 1px solid rgba(108, 112, 134, 0.4); color: #a6adc8;"
+
+# ------------------------------------------------------------------------------------------------------------
 # Rack-style Plugin Item Widget (Default View)
 
 class RackPluginItemWidget(QFrame):
@@ -668,32 +682,35 @@ class RackPluginItemWidget(QFrame):
         self.setFrameShape(QFrame.NoFrame)
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(8, 4, 12, 4)
-        layout.setSpacing(8)
+        layout.setContentsMargins(10, 4, 12, 4)
+        layout.setSpacing(10)
 
         # Left Accent Color Strip
         isSynth = bool(info.get("hints", 0) & PLUGIN_IS_SYNTH)
         color = _getCategoryColor(info.get("category", ""), isSynth)
         self.strip = QFrame(self)
-        self.strip.setFixedWidth(4)
+        self.strip.setFixedWidth(5)
         self.strip.setFixedHeight(28)
-        self.strip.setStyleSheet(f"background-color: {color}; border-radius: 2px;")
+        self.strip.setStyleSheet(f"background-color: {color}; border-radius: 2.5px;")
         layout.addWidget(self.strip)
 
         # Star Favorite icon
         self.lbl_star = QLabel("★" if isFav else "☆", self)
         self.lbl_star.setObjectName("itemStar")
-        self.lbl_star.setFixedWidth(18)
+        self.lbl_star.setFixedWidth(20)
         cursor = getattr(Qt, "PointingHandCursor", None) or getattr(Qt.CursorShape, "PointingHandCursor", None)
         if cursor is not None:
             self.lbl_star.setCursor(cursor)
         self.lbl_star.setProperty("starred", bool(isFav))
+        self.lbl_star.setStyleSheet("color: #eed49f; font-size: 14px;" if isFav else "color: #6c7086; font-size: 14px;")
         layout.addWidget(self.lbl_star)
 
         # Format Badge
-        fmt = getPluginTypeAsString(info.get("type", PLUGIN_NONE))
+        ptype = info.get("type", PLUGIN_NONE)
+        fmt = getPluginTypeAsString(ptype)
         self.lbl_badge = QLabel(fmt, self)
         self.lbl_badge.setObjectName("infoBadge")
+        self.lbl_badge.setStyleSheet(f"{_getFormatBadgeStyle(ptype)} font-size: 10px; font-weight: bold; border-radius: 3px; padding: 1px 6px;")
         layout.addWidget(self.lbl_badge)
 
         # Name & Subtitle
@@ -720,11 +737,13 @@ class RackPluginItemWidget(QFrame):
         aouts = info.get("audioOuts", 0)
         self.lbl_io = QLabel(_formatIoText(ains, aouts), self)
         self.lbl_io.setObjectName("infoTag")
+        self.lbl_io.setStyleSheet("background-color: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 4px; padding: 1px 7px; font-size: 11px;")
         layout.addWidget(self.lbl_io)
 
     def setFavorite(self, isFav):
         self.lbl_star.setText("★" if isFav else "☆")
         self.lbl_star.setProperty("starred", bool(isFav))
+        self.lbl_star.setStyleSheet("color: #eed49f; font-size: 14px;" if isFav else "color: #6c7086; font-size: 14px;")
         self.lbl_star.style().unpolish(self.lbl_star)
         self.lbl_star.style().polish(self.lbl_star)
 
@@ -737,7 +756,7 @@ class RackPluginItemWidget(QFrame):
 # Card-style Plugin Item Widget
 
 class CardPluginItemWidget(QFrame):
-    """Modular card item (~190x115px) for grid view."""
+    """Modular card item (~195x120px) for grid view."""
 
     def __init__(self, info, isFav=False, parent=None):
         super().__init__(parent)
@@ -745,7 +764,7 @@ class CardPluginItemWidget(QFrame):
         self.setFrameShape(QFrame.NoFrame)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(8, 0, 8, 8)
+        layout.setContentsMargins(10, 0, 10, 8)
         layout.setSpacing(4)
 
         isSynth = bool(info.get("hints", 0) & PLUGIN_IS_SYNTH)
@@ -754,15 +773,17 @@ class CardPluginItemWidget(QFrame):
         # Top Category Accent Strip
         self.top_strip = QFrame(self)
         self.top_strip.setFixedHeight(4)
-        self.top_strip.setStyleSheet(f"background-color: {color}; border-top-left-radius: 7px; border-top-right-radius: 7px;")
+        self.top_strip.setStyleSheet(f"background-color: {color}; border-top-left-radius: 8px; border-top-right-radius: 8px;")
         layout.addWidget(self.top_strip)
 
         # Top Bar: Badge + Star
         topBar = QHBoxLayout()
         topBar.setContentsMargins(0, 4, 0, 0)
-        fmt = getPluginTypeAsString(info.get("type", PLUGIN_NONE))
+        ptype = info.get("type", PLUGIN_NONE)
+        fmt = getPluginTypeAsString(ptype)
         self.lbl_badge = QLabel(fmt, self)
         self.lbl_badge.setObjectName("infoBadge")
+        self.lbl_badge.setStyleSheet(f"{_getFormatBadgeStyle(ptype)} font-size: 10px; font-weight: bold; border-radius: 3px; padding: 1px 5px;")
         topBar.addWidget(self.lbl_badge)
         topBar.addStretch(1)
 
@@ -772,6 +793,7 @@ class CardPluginItemWidget(QFrame):
         if cursor is not None:
             self.lbl_star.setCursor(cursor)
         self.lbl_star.setProperty("starred", bool(isFav))
+        self.lbl_star.setStyleSheet("color: #eed49f; font-size: 14px;" if isFav else "color: #6c7086; font-size: 14px;")
         topBar.addWidget(self.lbl_star)
         layout.addLayout(topBar)
 
@@ -801,12 +823,14 @@ class CardPluginItemWidget(QFrame):
         aouts = info.get("audioOuts", 0)
         self.lbl_io = QLabel(_formatIoText(ains, aouts), self)
         self.lbl_io.setObjectName("infoTag")
+        self.lbl_io.setStyleSheet("background-color: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 4px; padding: 1px 6px; font-size: 11px;")
         botBar.addWidget(self.lbl_io)
         layout.addLayout(botBar)
 
     def setFavorite(self, isFav):
         self.lbl_star.setText("★" if isFav else "☆")
         self.lbl_star.setProperty("starred", bool(isFav))
+        self.lbl_star.setStyleSheet("color: #eed49f; font-size: 14px;" if isFav else "color: #6c7086; font-size: 14px;")
         self.lbl_star.style().unpolish(self.lbl_star)
         self.lbl_star.style().polish(self.lbl_star)
 
@@ -1030,6 +1054,7 @@ class PyPluginListDialog(QDialog):
         self.table.setWordWrap(False)
         self.table.setSortingEnabled(True)
         self.table.verticalHeader().setVisible(False)
+        self.table.verticalHeader().setDefaultSectionSize(30)
         self.table.setHorizontalHeaderLabels(["", self.tr("Name"), self.tr("Label/Id/URI"),
                                               self.tr("Maker"), self.tr("Binary/Filename")])
         hh = self.table.horizontalHeader()
@@ -1476,6 +1501,8 @@ class PyPluginListDialog(QDialog):
         if self._discovery["firstInit"]:
             self._discovery["firstInit"] = False
             self._addPluginsToTable()   # show instantly from cache
+
+        self._ensureVisibleWidgets()
 
         # Connect to background scanner if running
         try:
@@ -2094,9 +2121,10 @@ class PyPluginListDialog(QDialog):
                 self._addPluginToTable(info, isStream=False)
 
         # Pre-instantiate visible rows immediately for instant dialog appearance
-        initialBatch = min(35, total)
+        initialBatch = min(45, total)
         for r in range(initialBatch):
             self._ensureRackWidget(r)
+            self._ensureCardWidget(r)
 
         self._lazyIndex = initialBatch
         self._lazyTotal = total
@@ -2106,6 +2134,7 @@ class PyPluginListDialog(QDialog):
         self.table.setSortingEnabled(True)
 
         self._checkFilters()
+        self._ensureVisibleWidgets()
         self._checkPlugin(self.table.currentRow())
 
     def _cacheRowData(self, index, info, pluginText=None):
@@ -2168,6 +2197,27 @@ class PyPluginListDialog(QDialog):
         self._rowPluginData[index] = data
         return data
 
+    def _ensureVisibleWidgets(self):
+        curr_mode = self.stackCenter.currentIndex()
+        if curr_mode == 0:
+            count = self.list_rack.count()
+            found = 0
+            for r in range(count):
+                if not self.list_rack.isRowHidden(r):
+                    self._ensureRackWidget(r)
+                    found += 1
+                    if found >= 40:
+                        break
+        elif curr_mode == 1:
+            count = self.list_cards.count()
+            found = 0
+            for r in range(count):
+                if not self.list_cards.isRowHidden(r):
+                    self._ensureCardWidget(r)
+                    found += 1
+                    if found >= 40:
+                        break
+
     def _ensureRackWidget(self, row):
         if row < 0 or row >= self.list_rack.count():
             return None
@@ -2227,10 +2277,10 @@ class PyPluginListDialog(QDialog):
         count = self.list_rack.count()
         if count == 0:
             return
-        top_idx = self.list_rack.indexAt(QPoint(10, 0))
-        first = max(0, top_idx.row() if top_idx.isValid() else 0)
-        bottom_idx = self.list_rack.indexAt(QPoint(10, self.list_rack.viewport().height()))
-        last = min(count, (bottom_idx.row() + 15) if bottom_idx.isValid() else first + 25)
+        sb = self.list_rack.verticalScrollBar()
+        first = max(0, (sb.value() // 44) - 5)
+        visible_count = max(25, (self.list_rack.viewport().height() // 44) + 15)
+        last = min(count, first + visible_count)
         for r in range(first, last):
             self._ensureRackWidget(r)
 
@@ -2238,10 +2288,10 @@ class PyPluginListDialog(QDialog):
         count = self.list_cards.count()
         if count == 0:
             return
-        top_idx = self.list_cards.indexAt(QPoint(10, 0))
-        first = max(0, top_idx.row() if top_idx.isValid() else 0)
-        bottom_idx = self.list_cards.indexAt(QPoint(10, self.list_cards.viewport().height()))
-        last = min(count, (bottom_idx.row() + 20) if bottom_idx.isValid() else first + 30)
+        sb = self.list_cards.verticalScrollBar()
+        row_idx = max(0, (sb.value() // 125) - 2)
+        first = max(0, row_idx * 4)
+        last = min(count, first + 40)
         for r in range(first, last):
             self._ensureCardWidget(r)
 
@@ -2327,6 +2377,7 @@ class PyPluginListDialog(QDialog):
         elif mode == 1:
             self._onCardsScroll()
 
+        self._ensureVisibleWidgets()
         self._updateSelectionState()
 
     def _onRackCurrentItemChanged(self, current, previous):
@@ -2790,6 +2841,7 @@ class PyPluginListDialog(QDialog):
             self.table.setUpdatesEnabled(True)
             self.list_rack.setUpdatesEnabled(True)
             self.list_cards.setUpdatesEnabled(True)
+            self._ensureVisibleWidgets()
 
     def _checkFiltersCategoryAll(self, clicked=False):
         self.group_cat.setAll(True)
