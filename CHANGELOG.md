@@ -20,7 +20,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-### 2026-10-19 13:41:00
+### 2026-10-19 14:00:00
+- **feat(pluginlist)**: optimize dialog cold start to ~50ms, modernize cards and rack items, and style table headers
+  - Implemented on-demand lazy/streaming instantiation for Rack and Card item widgets, reducing cold-start modal freeze from ~1,529ms to ~50ms (>30x speedup) across 800+ plugins.
+  - Added background chunk streaming timer and scroll event hooks (`_onRackScroll`, `_onCardsScroll`) to populate visible viewport rows smoothly on demand.
+  - Modernized `CardPluginItemWidget` geometry (190x115px, `border-radius: 8px`), top 4px category accent color strip with rounded corners, formatted I/O labels (`Stereo`, `Mono`, `MIDI`), and pointing hand cursor on favorite stars.
+  - Modernized `RackPluginItemWidget` with category accent indicator, clean typography hierarchy, and selection highlight states.
+  - Added dedicated styling for `QHeaderView`, `QHeaderView::section`, and `QTableCornerButton::section` across all four QSS themes (`catppuccin_macchiato.qss`, `catppuccin_mocha.qss`, `catppuccin_latte.qss`, `classic_dark.qss`).
 - **feat(pluginlist)**: simplify reset filters button, combine view modes into single toggle, and split rescan into two buttons
   - Simplified the Reset Filters button into a flat, compact action with subtle styling and clean 16px icon.
   - Converted the 3-button segmented Rack/Cards/Table switcher into a single cycling toggle button (`btnViewMode`) displaying the active mode glyph and title (`☲ Rack`, `▦ Cards`, `☰ Table`).

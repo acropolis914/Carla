@@ -45,6 +45,7 @@ from qt_compat import (
     QListWidgetItem,
     QMenu,
     QPalette,
+    QPoint,
     QProgressBar,
     QPushButton,
     QScrollArea,
@@ -642,6 +643,20 @@ def _getCategoryColor(category, isSynth=False):
     return "#6c7086"      # Subdued Slate
 
 # ------------------------------------------------------------------------------------------------------------
+def _formatIoText(ains, aouts):
+    if ains == 2 and aouts == 2:
+        return "Stereo"
+    if ains == 1 and aouts == 1:
+        return "Mono"
+    if ains == 0 and aouts == 2:
+        return "Stereo Out"
+    if ains == 1 and aouts == 2:
+        return "1 In / 2 Out"
+    if ains == 0 and aouts == 0:
+        return "MIDI"
+    return f"{ains} In / {aouts} Out"
+
+# ------------------------------------------------------------------------------------------------------------
 # Rack-style Plugin Item Widget (Default View)
 
 class RackPluginItemWidget(QFrame):
@@ -653,7 +668,7 @@ class RackPluginItemWidget(QFrame):
         self.setFrameShape(QFrame.NoFrame)
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(6, 4, 10, 4)
+        layout.setContentsMargins(8, 4, 12, 4)
         layout.setSpacing(8)
 
         # Left Accent Color Strip
@@ -661,14 +676,17 @@ class RackPluginItemWidget(QFrame):
         color = _getCategoryColor(info.get("category", ""), isSynth)
         self.strip = QFrame(self)
         self.strip.setFixedWidth(4)
-        self.strip.setFixedHeight(30)
+        self.strip.setFixedHeight(28)
         self.strip.setStyleSheet(f"background-color: {color}; border-radius: 2px;")
         layout.addWidget(self.strip)
 
         # Star Favorite icon
         self.lbl_star = QLabel("★" if isFav else "☆", self)
         self.lbl_star.setObjectName("itemStar")
-        self.lbl_star.setFixedWidth(16)
+        self.lbl_star.setFixedWidth(18)
+        cursor = getattr(Qt, "PointingHandCursor", None) or getattr(Qt.CursorShape, "PointingHandCursor", None)
+        if cursor is not None:
+            self.lbl_star.setCursor(cursor)
         self.lbl_star.setProperty("starred", bool(isFav))
         layout.addWidget(self.lbl_star)
 
@@ -681,7 +699,7 @@ class RackPluginItemWidget(QFrame):
         # Name & Subtitle
         textLayout = QVBoxLayout()
         textLayout.setContentsMargins(0, 0, 0, 0)
-        textLayout.setSpacing(1)
+        textLayout.setSpacing(2)
 
         self.lbl_name = QLabel(info.get("name", "---"), self)
         self.lbl_name.setObjectName("rackPluginName")
@@ -700,7 +718,7 @@ class RackPluginItemWidget(QFrame):
         # Right: I/O Pill
         ains = info.get("audioIns", 0)
         aouts = info.get("audioOuts", 0)
-        self.lbl_io = QLabel(f"{ains} in / {aouts} out", self)
+        self.lbl_io = QLabel(_formatIoText(ains, aouts), self)
         self.lbl_io.setObjectName("infoTag")
         layout.addWidget(self.lbl_io)
 
@@ -719,7 +737,7 @@ class RackPluginItemWidget(QFrame):
 # Card-style Plugin Item Widget
 
 class CardPluginItemWidget(QFrame):
-    """Modular card item (~180x105px) for grid view."""
+    """Modular card item (~190x115px) for grid view."""
 
     def __init__(self, info, isFav=False, parent=None):
         super().__init__(parent)
@@ -735,8 +753,8 @@ class CardPluginItemWidget(QFrame):
 
         # Top Category Accent Strip
         self.top_strip = QFrame(self)
-        self.top_strip.setFixedHeight(3)
-        self.top_strip.setStyleSheet(f"background-color: {color}; border-top-left-radius: 4px; border-top-right-radius: 4px;")
+        self.top_strip.setFixedHeight(4)
+        self.top_strip.setStyleSheet(f"background-color: {color}; border-top-left-radius: 7px; border-top-right-radius: 7px;")
         layout.addWidget(self.top_strip)
 
         # Top Bar: Badge + Star
@@ -750,6 +768,9 @@ class CardPluginItemWidget(QFrame):
 
         self.lbl_star = QLabel("★" if isFav else "☆", self)
         self.lbl_star.setObjectName("itemStar")
+        cursor = getattr(Qt, "PointingHandCursor", None) or getattr(Qt.CursorShape, "PointingHandCursor", None)
+        if cursor is not None:
+            self.lbl_star.setCursor(cursor)
         self.lbl_star.setProperty("starred", bool(isFav))
         topBar.addWidget(self.lbl_star)
         layout.addLayout(topBar)
@@ -778,7 +799,7 @@ class CardPluginItemWidget(QFrame):
 
         ains = info.get("audioIns", 0)
         aouts = info.get("audioOuts", 0)
-        self.lbl_io = QLabel(f"{ains}/{aouts}", self)
+        self.lbl_io = QLabel(_formatIoText(ains, aouts), self)
         self.lbl_io.setObjectName("infoTag")
         botBar.addWidget(self.lbl_io)
         layout.addLayout(botBar)
@@ -870,6 +891,14 @@ class PyPluginListDialog(QDialog):
         self.list_cards.currentItemChanged.connect(self._onCardsCurrentItemChanged)
         self.list_rack.itemDoubleClicked.connect(lambda _it: self._slotAddClicked())
         self.list_cards.itemDoubleClicked.connect(lambda _it: self._slotAddClicked())
+        self.list_rack.verticalScrollBar().valueChanged.connect(self._onRackScroll)
+        self.list_cards.verticalScrollBar().valueChanged.connect(self._onCardsScroll)
+
+        self._lazyTimer = QTimer(self)
+        self._lazyTimer.setInterval(12)
+        self._lazyTimer.timeout.connect(self._streamNextChunk)
+        self._lazyIndex = 0
+        self._lazyTotal = 0
 
         for grp in (self.group_format, self.group_type, self.group_cat, self.group_arch, self.group_req):
             grp.changed.connect(self._checkFilters)
@@ -1006,10 +1035,12 @@ class PyPluginListDialog(QDialog):
         hh = self.table.horizontalHeader()
         hh.setStretchLastSection(True)
         hh.setMinimumSectionSize(24)
-        self.table.setColumnWidth(TW_FAVORITE, 24)
-        self.table.setColumnWidth(TW_NAME, 250)
+        hh.setFixedHeight(28)
+        hh.setHighlightSections(False)
+        self.table.setColumnWidth(TW_FAVORITE, 26)
+        self.table.setColumnWidth(TW_NAME, 260)
         self.table.setColumnWidth(TW_LABEL, 200)
-        self.table.setColumnWidth(TW_MAKER, 150)
+        self.table.setColumnWidth(TW_MAKER, 160)
         self.stackCenter.addWidget(self.table)
 
         self.stackCenter.setCurrentIndex(0)
@@ -2024,7 +2055,7 @@ class PyPluginListDialog(QDialog):
         row = self.table.rowCount()
         self.table.insertRow(row)
         self._lastTableWidgetIndex = row
-        self._addPluginToTable(info)
+        self._addPluginToTable(info, isStream=True)
         self._filterSingleRow(row)
         self.table.setSortingEnabled(True)
         self._updatePluginsSummaryLabel()
@@ -2060,7 +2091,16 @@ class PyPluginListDialog(QDialog):
         self._lastTableWidgetIndex = 0
         for key in order:
             for info in self._plugins[key]:
-                self._addPluginToTable(info)
+                self._addPluginToTable(info, isStream=False)
+
+        # Pre-instantiate visible rows immediately for instant dialog appearance
+        initialBatch = min(35, total)
+        for r in range(initialBatch):
+            self._ensureRackWidget(r)
+
+        self._lazyIndex = initialBatch
+        self._lazyTotal = total
+        self._lazyTimer.start()
 
         self._updatePluginsSummaryLabel()
         self.table.setSortingEnabled(True)
@@ -2128,7 +2168,84 @@ class PyPluginListDialog(QDialog):
         self._rowPluginData[index] = data
         return data
 
-    def _addPluginToTable(self, info):
+    def _ensureRackWidget(self, row):
+        if row < 0 or row >= self.list_rack.count():
+            return None
+        item = self.list_rack.item(row)
+        if item is None:
+            return None
+        w = self.list_rack.itemWidget(item)
+        if w is not None:
+            return w
+        row_data = self._rowPluginData.get(row)
+        if not row_data:
+            return None
+        info = row_data["info"]
+        isFav = self._isFavorite(info)
+        rackWidget = RackPluginItemWidget(info, isFav, self.list_rack)
+        rackWidget.lbl_star.mousePressEvent = lambda _ev, r=row: self._cellClicked(r, TW_FAVORITE)
+        self.list_rack.setItemWidget(item, rackWidget)
+        return rackWidget
+
+    def _ensureCardWidget(self, row):
+        if row < 0 or row >= self.list_cards.count():
+            return None
+        item = self.list_cards.item(row)
+        if item is None:
+            return None
+        w = self.list_cards.itemWidget(item)
+        if w is not None:
+            return w
+        row_data = self._rowPluginData.get(row)
+        if not row_data:
+            return None
+        info = row_data["info"]
+        isFav = self._isFavorite(info)
+        cardWidget = CardPluginItemWidget(info, isFav, self.list_cards)
+        cardWidget.lbl_star.mousePressEvent = lambda _ev, r=row: self._cellClicked(r, TW_FAVORITE)
+        self.list_cards.setItemWidget(item, cardWidget)
+        return cardWidget
+
+    def _streamNextChunk(self):
+        if self._lazyIndex >= self._lazyTotal:
+            self._lazyTimer.stop()
+            return
+        end = min(self._lazyTotal, self._lazyIndex + 50)
+        curr_mode = self.stackCenter.currentIndex()
+        for r in range(self._lazyIndex, end):
+            if curr_mode == 0:
+                self._ensureRackWidget(r)
+            elif curr_mode == 1:
+                self._ensureCardWidget(r)
+            else:
+                self._ensureRackWidget(r)
+        self._lazyIndex = end
+        if self._lazyIndex >= self._lazyTotal:
+            self._lazyTimer.stop()
+
+    def _onRackScroll(self):
+        count = self.list_rack.count()
+        if count == 0:
+            return
+        top_idx = self.list_rack.indexAt(QPoint(10, 0))
+        first = max(0, top_idx.row() if top_idx.isValid() else 0)
+        bottom_idx = self.list_rack.indexAt(QPoint(10, self.list_rack.viewport().height()))
+        last = min(count, (bottom_idx.row() + 15) if bottom_idx.isValid() else first + 25)
+        for r in range(first, last):
+            self._ensureRackWidget(r)
+
+    def _onCardsScroll(self):
+        count = self.list_cards.count()
+        if count == 0:
+            return
+        top_idx = self.list_cards.indexAt(QPoint(10, 0))
+        first = max(0, top_idx.row() if top_idx.isValid() else 0)
+        bottom_idx = self.list_cards.indexAt(QPoint(10, self.list_cards.viewport().height()))
+        last = min(count, (bottom_idx.row() + 20) if bottom_idx.isValid() else first + 30)
+        for r in range(first, last):
+            self._ensureCardWidget(r)
+
+    def _addPluginToTable(self, info, isStream=False):
         index = self._lastTableWidgetIndex
         self._lastTableWidgetIndex += 1
 
@@ -2153,27 +2270,30 @@ class PyPluginListDialog(QDialog):
         data = self._cacheRowData(index, info, pluginText)
         itemName.setData(int(Qt.UserRole) + 50, data)
 
-        # Rack Item
+        # Rack Item placeholder
         rackItem = QListWidgetItem()
         rackItem.setSizeHint(QSize(0, 44))
-        rackWidget = RackPluginItemWidget(info, isFav, self.list_rack)
-        rackWidget.lbl_star.mousePressEvent = lambda _ev, r=index: self._cellClicked(r, TW_FAVORITE)
         if index < self.list_rack.count():
             self.list_rack.insertItem(index, rackItem)
         else:
             self.list_rack.addItem(rackItem)
-        self.list_rack.setItemWidget(rackItem, rackWidget)
 
-        # Cards Item
+        # Cards Item placeholder
         cardItem = QListWidgetItem()
-        cardItem.setSizeHint(QSize(180, 105))
-        cardWidget = CardPluginItemWidget(info, isFav, self.list_cards)
-        cardWidget.lbl_star.mousePressEvent = lambda _ev, r=index: self._cellClicked(r, TW_FAVORITE)
+        cardItem.setSizeHint(QSize(190, 115))
         if index < self.list_cards.count():
             self.list_cards.insertItem(index, cardItem)
         else:
             self.list_cards.addItem(cardItem)
-        self.list_cards.setItemWidget(cardItem, cardWidget)
+
+        if isStream:
+            curr_mode = self.stackCenter.currentIndex()
+            if curr_mode == 0:
+                self._ensureRackWidget(index)
+            elif curr_mode == 1:
+                self._ensureCardWidget(index)
+            else:
+                self._ensureRackWidget(index)
 
     # ----------------------------------------------------------------------------------------------------
     # slots
@@ -2201,6 +2321,12 @@ class PyPluginListDialog(QDialog):
                 self.list_rack.setCurrentRow(cur_row)
             elif mode == 1 and cur_row < self.list_cards.count():
                 self.list_cards.setCurrentRow(cur_row)
+
+        if mode == 0:
+            self._onRackScroll()
+        elif mode == 1:
+            self._onCardsScroll()
+
         self._updateSelectionState()
 
     def _onRackCurrentItemChanged(self, current, previous):
@@ -2266,7 +2392,7 @@ class PyPluginListDialog(QDialog):
         old_rack = getattr(self, "_selected_rack_widgets", set())
         new_rack = set()
         for it in selected_rack:
-            w = self.list_rack.itemWidget(it)
+            w = self.list_rack.itemWidget(it) or self._ensureRackWidget(self.list_rack.row(it))
             if w and hasattr(w, "setSelected"):
                 new_rack.add(w)
         for w in old_rack - new_rack:
@@ -2282,7 +2408,7 @@ class PyPluginListDialog(QDialog):
         old_cards = getattr(self, "_selected_cards_widgets", set())
         new_cards = set()
         for it in selected_cards:
-            w = self.list_cards.itemWidget(it)
+            w = self.list_cards.itemWidget(it) or self._ensureCardWidget(self.list_cards.row(it))
             if w and hasattr(w, "setSelected"):
                 new_cards.add(w)
         for w in old_cards - new_cards:

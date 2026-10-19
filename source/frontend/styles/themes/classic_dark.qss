@@ -619,6 +619,40 @@ QListWidget#pluginRackListWidget::item:selected, QListWidget#pluginCardsListWidg
     border: none;
 }
 
+/* Table Headers */
+QHeaderView {
+    background-color: #222222;
+    border: none;
+    border-bottom: 1px solid #3c3c3c;
+}
+
+QHeaderView::section {
+    background-color: #222222;
+    color: #e0e0e0;
+    font-weight: 600;
+    font-size: 11px;
+    padding: 4px 8px;
+    border: none;
+    border-right: 1px solid #2d2d2d;
+    border-bottom: 1px solid #3c3c3c;
+}
+
+QHeaderView::section:hover {
+    background-color: #282828;
+    color: #4a90e2;
+}
+
+QHeaderView::section:checked {
+    color: #4a90e2;
+}
+
+QTableCornerButton::section {
+    background-color: #222222;
+    border: none;
+    border-bottom: 1px solid #3c3c3c;
+    border-right: 1px solid #2d2d2d;
+}
+
 /* Rack Plugin Item */
 QFrame#rackPluginItem {
     background-color: #1e1e1e;
@@ -636,11 +670,16 @@ QFrame#rackPluginItem[selected="true"] {
     border: 1.5px solid #4a90e2;
 }
 
+QLabel#rackPluginName {
+    color: #e0e0e0;
+    font-size: 12px;
+}
+
 /* Card Plugin Item */
 QFrame#cardPluginItem {
     background-color: #1e1e1e;
     border: 1px solid #3c3c3c;
-    border-radius: 6px;
+    border-radius: 8px;
 }
 
 QFrame#cardPluginItem:hover {
@@ -651,6 +690,11 @@ QFrame#cardPluginItem:hover {
 QFrame#cardPluginItem[selected="true"] {
     background-color: rgba(74, 144, 226, 0.18);
     border: 1.5px solid #4a90e2;
+}
+
+QLabel#cardPluginName {
+    color: #e0e0e0;
+    font-size: 12px;
 }
 
 /* Favorite Star in Plugin Browser */
