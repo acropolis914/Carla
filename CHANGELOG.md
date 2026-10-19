@@ -20,6 +20,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-19
+
 ### 2026-10-19 22:20:00
 - **feat(cli)**: rich startup banner and rich Ctrl+C prompt
   - Starting Clara from the CLI now prints a rich panel reading "Clara vX.Y.Z" then "based on Carla version A.B.C" (plus Python/Qt/PyQt/paths) instead of the plain `Carla ... started, status:` lines; `--version` uses the same banner. Falls back to plain text when `rich` is unavailable ([carla_shared.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/carla_shared.py) `printStartupBanner`, called from [carla_host.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/carla_host.py)).

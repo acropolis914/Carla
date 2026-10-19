@@ -1,6 +1,28 @@
 {
-  "latest": "1.0.5",
+  "latest": "1.1.0",
   "releases": {
+    "1.1.0": {
+      "version": "1.1.0",
+      "date": "2026-10-19",
+      "urgency": "suggested",
+      "summary": "Rich CLI startup banner and Ctrl+C prompt, plus tag/version consistency enforcement across the release pipeline",
+      "changes": [
+        "CLI startup now renders a rich panel showing `Clara vX.Y.Z` followed by `based on Carla version A.B.C` (with Python/Qt/PyQt and path details); `--version` uses the same banner, with a plain-text fallback when `rich` is unavailable",
+        "The terminal Ctrl+C (SIGINT) prompt is now a rich panel: pressing Enter quits (default) and T keeps Clara running in the system tray",
+        "Release pipeline now enforces tag/version consistency: `scripts/check_version.sh` and a CI `version-check` job block a tag whose version does not match `base_version`/`releases.json`, and the release checkout uses `fetch-depth: 0` so the AUR `pkgver` bump fast-forwards cleanly",
+        "`scripts/release_and_push_aur.sh` now also bumps the internal `base_version`, preventing builds from self-reporting a stale version to the in-app updater"
+      ],
+      "installation": {
+        "appimage": "Download `Clara-1.1.0-x86_64.AppImage`, then: `chmod +x Clara-1.1.0-x86_64.AppImage && ./Clara-1.1.0-x86_64.AppImage`",
+        "flatpak": "Download/run the Flatpak bundle: `flatpak install --user com.github.acropolis914.Clara.flatpak`",
+        "arch": "Install via AUR / PKGBUILD: `paru -S clara-bin` (or `clara-git`)",
+        "ubuntu": "Download `.deb` and run: `sudo dpkg -i clara-ubuntu-*.deb && sudo apt-get install -f`",
+        "fedora": "Download `.rpm` and run: `sudo dnf install clara-*.rpm`",
+        "void": "Extract tarball: `tar --zstd -xvf clara-void-*.tar.zst -C /`",
+        "alpine": "Extract tarball: `tar --zstd -xvf clara-alpine-*.tar.zst -C /`",
+        "nix": "Run directly via Flake: `nix run github:acropolis914/Clara`"
+      }
+    },
     "1.0.5": {
       "version": "1.0.5",
       "date": "2026-10-19",
