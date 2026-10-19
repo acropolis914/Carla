@@ -1,0 +1,423 @@
+/* ====================================================================================================
+   Clara Base UI Primitives & Semantic Variable Foundation
+   Variables follow the standard CSS syntax var(--name), substituted by the ThemeEngine.
+   ==================================================================================================== */
+
+/* Global Baseline */
+QWidget {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--font-family);
+    font-size: var(--font-size-base);
+    selection-background-color: var(--accent);
+    selection-color: var(--bg-primary);
+}
+
+/* Window & Dialog Surfaces */
+QMainWindow, QDialog {
+    background-color: var(--bg-primary);
+}
+
+/* ToolBar & Menus */
+QMenuBar {
+    background-color: var(--bg-surface);
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-dim);
+}
+
+QMenuBar::item {
+    background: transparent;
+    padding: var(--space-xs) var(--space-sm);
+    border-radius: var(--radius-sm);
+}
+
+QMenuBar::item:selected {
+    background-color: var(--bg-hover);
+    color: var(--accent);
+}
+
+QMenu {
+    background-color: var(--bg-surface);
+    color: var(--text-primary);
+    border: 1px solid var(--border-dim);
+    border-radius: var(--radius-md);
+    padding: var(--space-xs);
+}
+
+QMenu::item {
+    padding: 6px 24px 6px 12px;
+    border-radius: var(--radius-sm);
+}
+
+QMenu::item:selected {
+    background-color: var(--accent);
+    color: var(--bg-primary);
+}
+
+QMenu::separator {
+    height: 1px;
+    background-color: var(--border-dim);
+    margin: var(--space-xs) 0px;
+}
+
+/* Headers & Typography Primitives */
+QLabel#header, QLabel[role="header"] {
+    font-size: var(--font-size-xl);
+    font-weight: bold;
+    color: var(--text-primary);
+}
+
+QLabel#title, QLabel[role="title"] {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+QLabel#subtitle, QLabel[role="subtitle"] {
+    font-size: var(--font-size-md);
+    color: var(--text-secondary);
+}
+
+QLabel#muted, QLabel[role="help"], QLabel[role="muted"] {
+    font-size: var(--font-size-sm);
+    color: var(--text-muted);
+}
+
+/* Push Button Primitives */
+QPushButton {
+    background-color: var(--bg-surface);
+    color: var(--text-primary);
+    border: 1px solid var(--border-dim);
+    border-radius: var(--radius-sm);
+    padding: var(--space-xs) var(--space-md);
+    min-height: 22px;
+}
+
+QPushButton:hover {
+    background-color: var(--bg-hover);
+    border-color: var(--accent);
+}
+
+QPushButton:pressed {
+    background-color: var(--accent);
+    color: var(--bg-primary);
+}
+
+QPushButton:disabled {
+    background-color: var(--bg-surface);
+    color: var(--text-muted);
+    border-color: var(--border-dim);
+    opacity: 0.6;
+}
+
+/* Primary Accent Button (.btn-primary) */
+QPushButton[primary="true"], QPushButton#btn_primary {
+    background-color: var(--accent);
+    color: var(--bg-primary);
+    font-weight: bold;
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-sm);
+}
+
+QPushButton[primary="true"]:hover, QPushButton#btn_primary:hover {
+    background-color: var(--cyan);
+    border-color: var(--cyan);
+}
+
+/* Subtle / Flat Button (.btn-subtle) */
+QPushButton[flat="true"], QPushButton#btn_subtle {
+    background: transparent;
+    border: 1px solid transparent;
+}
+
+QPushButton[flat="true"]:hover, QPushButton#btn_subtle:hover {
+    background-color: var(--bg-hover);
+    border: 1px solid var(--border-dim);
+}
+
+/* Danger Button (.btn-danger) */
+QPushButton[danger="true"], QPushButton#btn_danger {
+    background-color: var(--red);
+    color: #ffffff;
+    font-weight: bold;
+    border: 1px solid var(--red);
+}
+
+QPushButton[danger="true"]:hover, QPushButton#btn_danger:hover {
+    background-color: var(--orange);
+    border-color: var(--orange);
+}
+
+/* Filter Pills & Badges (.pill, .badge) */
+QPushButton[pill="true"], QPushButton.pill {
+    background-color: var(--bg-surface);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-dim);
+    border-radius: var(--radius-full);
+    padding: 2px 9px;
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    min-height: 20px;
+    max-height: 20px;
+}
+
+QPushButton[pill="true"]:hover, QPushButton.pill:hover {
+    background-color: var(--bg-hover);
+    border-color: var(--accent);
+    color: var(--text-primary);
+}
+
+QPushButton[pill="true"]:checked, QPushButton.pill:checked {
+    background-color: var(--accent);
+    color: var(--bg-primary);
+    border-color: var(--accent);
+    font-weight: 600;
+}
+
+/* Form Inputs & Fields */
+QLineEdit, QTextEdit, QPlainTextEdit, QSpinBox, QDoubleSpinBox {
+    background-color: var(--bg-surface);
+    color: var(--text-primary);
+    border: 1px solid var(--border-dim);
+    border-radius: var(--radius-sm);
+    padding: var(--space-xs) var(--space-sm);
+    min-height: 22px;
+    selection-background-color: var(--accent);
+    selection-color: var(--bg-primary);
+}
+
+QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus, QSpinBox:focus {
+    border: 1.5px solid var(--accent);
+    background-color: var(--bg-primary);
+}
+
+QLineEdit:disabled, QTextEdit:disabled {
+    background-color: var(--bg-primary);
+    color: var(--text-muted);
+}
+
+/* Cards & Module Containers */
+QFrame#infoCard, QFrame[role="card"], QGroupBox {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-dim);
+    border-radius: var(--radius-md);
+}
+
+/* Rack Unit Capsule Primitive */
+QFrame#rackPluginItem {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-dim);
+    border-radius: var(--radius-md);
+}
+
+QFrame#rackPluginItem:hover {
+    background-color: var(--bg-hover);
+    border-color: var(--accent-tint-50);
+}
+
+QFrame#rackPluginItem[selected="true"] {
+    background-color: var(--accent-tint-15);
+    border: 1.5px solid var(--accent);
+}
+
+QLabel#rackPluginName {
+    color: var(--text-primary);
+    font-size: var(--font-size-md);
+    font-weight: 600;
+}
+
+/* Modular Card Primitive */
+QFrame#cardPluginItem {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-dim);
+    border-radius: var(--radius-lg);
+}
+
+QFrame#cardPluginItem:hover {
+    background-color: var(--bg-hover);
+    border-color: var(--accent-tint-50);
+}
+
+QFrame#cardPluginItem[selected="true"] {
+    background-color: var(--accent-tint-15);
+    border: 2px solid var(--accent);
+}
+
+QLabel#cardPluginName {
+    color: var(--text-primary);
+    font-size: var(--font-size-md);
+    font-weight: 600;
+}
+
+/* Badges & Tags */
+QLabel#infoBadge, QLabel.badge {
+    background-color: var(--bg-hover);
+    border: 1px solid var(--border-dim);
+    color: var(--accent);
+    font-weight: bold;
+    font-size: var(--font-size-xs);
+    border-radius: var(--radius-xs);
+    padding: 1px 6px;
+}
+
+QLabel#infoMaker {
+    color: var(--accent);
+    font-weight: 600;
+}
+
+QLabel#infoCategory {
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+}
+
+QLabel#infoTag, QLabel.tag {
+    background-color: var(--border-subtle);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    padding: 2px 7px;
+    font-size: var(--font-size-sm);
+}
+
+/* Table & Grid Views */
+QTableWidget, QTableView, QTreeView, QListView {
+    background-color: var(--bg-primary);
+    alternate-background-color: var(--bg-surface);
+    gridline-color: transparent;
+    border: 1px solid var(--border-dim);
+    border-radius: var(--radius-md);
+    selection-background-color: var(--accent-tint-20);
+    selection-color: var(--text-primary);
+    outline: none;
+}
+
+QTableWidget::item, QTableView::item {
+    border-bottom: 1px solid var(--bg-hover);
+    padding: var(--space-xs) var(--space-sm);
+}
+
+QTableWidget::item:selected, QTableView::item:selected {
+    background-color: var(--accent-tint-20);
+    color: var(--text-primary);
+}
+
+/* Modern Sticky Table Header */
+QHeaderView {
+    background-color: var(--bg-surface);
+    border: none;
+    border-bottom: 1px solid var(--border-dim);
+}
+
+QHeaderView::section {
+    background-color: var(--bg-surface);
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: var(--font-size-sm);
+    padding: 5px var(--space-sm);
+    border: none;
+    border-right: 1px solid var(--bg-hover);
+    border-bottom: 1px solid var(--border-dim);
+}
+
+QHeaderView::section:hover {
+    background-color: var(--bg-hover);
+    color: var(--accent);
+}
+
+QHeaderView::section:checked {
+    color: var(--accent);
+}
+
+QTableCornerButton::section {
+    background-color: var(--bg-surface);
+    border: none;
+    border-bottom: 1px solid var(--border-dim);
+    border-right: 1px solid var(--bg-hover);
+}
+
+/* Transparent List Widget Items (removes OS selection fringe on custom item widgets) */
+QListWidget#pluginRackListWidget, QListWidget#pluginCardsListWidget {
+    background: transparent;
+    border: none;
+    outline: none;
+}
+
+QListWidget#pluginRackListWidget::item, QListWidget#pluginCardsListWidget::item {
+    background: transparent;
+    border: none;
+    padding: 1px 0px;
+}
+
+QListWidget#pluginRackListWidget::item:selected, QListWidget#pluginCardsListWidget::item:selected {
+    background: transparent;
+    border: none;
+}
+
+/* Tab Widgets & Panes */
+QTabWidget::pane {
+    border: 1px solid var(--border-dim);
+    border-radius: var(--radius-md);
+    background-color: var(--bg-surface);
+}
+
+QTabBar::tab {
+    background-color: var(--bg-surface);
+    color: var(--text-muted);
+    border: 1px solid var(--border-dim);
+    padding: 6px 14px;
+    border-top-left-radius: var(--radius-md);
+    border-top-right-radius: var(--radius-md);
+    margin-right: 2px;
+}
+
+QTabBar::tab:selected {
+    background-color: var(--bg-hover);
+    color: var(--text-primary);
+    border-bottom: 2px solid var(--accent);
+}
+
+QTabBar::tab:hover:!selected {
+    background-color: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+/* Minimal Scrollbars */
+QScrollBar:vertical {
+    border: none;
+    background-color: transparent;
+    width: 8px;
+    margin: 0px;
+    border-radius: var(--radius-sm);
+}
+
+QScrollBar::handle:vertical {
+    background-color: var(--border-dim);
+    min-height: 24px;
+    border-radius: var(--radius-sm);
+}
+
+QScrollBar::handle:vertical:hover {
+    background-color: var(--accent);
+}
+
+QScrollBar:horizontal {
+    border: none;
+    background-color: transparent;
+    height: 8px;
+    margin: 0px;
+    border-radius: var(--radius-sm);
+}
+
+QScrollBar::handle:horizontal {
+    background-color: var(--border-dim);
+    min-width: 24px;
+    border-radius: var(--radius-sm);
+}
+
+QScrollBar::handle:horizontal:hover {
+    background-color: var(--accent);
+}
+
+QScrollBar::add-line, QScrollBar::sub-line {
+    border: none;
+    background: none;
+}

@@ -20,6 +20,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-19 14:24:00
+- **feat(styles)**: centralize theming engine with Base16/Base24 ingestion, auto light/dark flip, and unified UI primitives
+  - Implemented deterministic cascade pipeline in [engine.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/styles/engine.py): `System Core Defaults` -> `Semantic Variable Map` -> `Active Theme Overrides (Palette)` -> `Mode Inversion (Light/Dark)` -> `Component Primitives`.
+  - Built comprehensive root baseline [base_primitives.qss](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/styles/base_primitives.qss) binding variables to headers, buttons (`.btn`, `.btn-primary`, `.btn-subtle`, `.btn-danger`), pills/badges (`.pill`), form inputs, cards, rack items, tables, and minimal scrollbars.
+  - Implemented direct Base16/Base24 palette ingestion and automatic grayscale scale flipping (`base00`–`base07`) for instantaneous light/dark modes without altering accent colors.
+  - Consolidated theme definitions into a centralized registry [registry.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/styles/registry.py) bundled with lean Base16 palettes (Catppuccin Macchiato, Mocha, Latte, Classic Dark, Nord, Tokyo Night, Dracula, Gruvbox Dark) and dynamic YAML/JSON ingestion.
+  - Integrated [ThemeEngine](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/styles/engine.py) into [ThemeManager](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/styles/theme_manager.py) and added verification demo [demo_theme_verification.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/styles/demo_theme_verification.py).
+
 ### 2026-10-19 14:16:00
 - **feat(pluginlist)**: achieve 1:1 visual parity with generative UI redesign
   - Upgraded `QFrame#rackPluginItem` to 10px rounded capsule aesthetics, increased spacing, and polished category accent indicator bars.

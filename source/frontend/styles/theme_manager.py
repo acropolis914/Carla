@@ -40,6 +40,19 @@ QScrollBar::handle:horizontal:hover {
 }
 """
 from qt_compat import QApplication, QColor, QPalette
+from .engine import ThemeEngine
+
+_STYLES_DIR = os.path.dirname(os.path.abspath(__file__))
+_PRIMITIVES_PATH = os.path.join(_STYLES_DIR, "base_primitives.qss")
+
+def _load_base_primitives() -> str:
+    if os.path.isfile(_PRIMITIVES_PATH):
+        try:
+            with open(_PRIMITIVES_PATH, "r", encoding="utf-8") as f:
+                return f.read()
+        except Exception:
+            pass
+    return ""
 
 CARLA_KEY_MAIN_USE_SYSTEM_THEME = "Main/UseSystemTheme"
 CARLA_DEFAULT_MAIN_USE_SYSTEM_THEME = False
@@ -148,7 +161,9 @@ class ThemeManager:
         self.bundled_themes_dir = os.path.join(os.path.dirname(__file__), "themes")
         # User customized themes directory (~/.config/clara/themes or ~/.config/carla/themes)
         self.user_themes_dir = os.path.expanduser("~/.config/clara/themes")
+        self.engine = ThemeEngine(base_primitives_template=_load_base_primitives())
         self._current_theme = None
+        self._current_mode = "dark"
         self._using_system = False
         self._original_style = None
         self._available_themes = None
@@ -163,11 +178,12 @@ class ThemeManager:
         return self._using_system
 
     def get_available_themes(self, refresh: bool = False) -> list[str]:
-        """Return a sorted list of unique available theme names discovered from disk."""
+        """Return a sorted list of unique available theme names from registry and disk."""
         if not refresh and self._available_themes is not None:
             return list(self._available_themes)
 
-        themes = set()
+        from .registry import registry
+        themes = set(registry.list_theme_names())
 
         for search_dir in (self.bundled_themes_dir, self.user_themes_dir):
             if os.path.isdir(search_dir):
@@ -254,14 +270,20 @@ class ThemeManager:
         except Exception as e:
             print(f"[THEME] Error live refreshing GUI views: {e}")
 
-    def apply_theme(self, theme_name: str = CARLA_DEFAULT_MAIN_APP_THEME, use_system: bool = False):
-        """Apply the specified theme or revert to native system styling live without restart."""
+    def apply_theme(
+        self,
+        theme_name: str = CARLA_DEFAULT_MAIN_APP_THEME,
+        mode: str = "dark",
+        use_system: bool = False,
+    ):
+        """Apply the specified theme via the centralized theme engine or revert to native system styling."""
         app = QApplication.instance()
         if not app:
             return
 
         self._using_system = use_system
         self._current_theme = theme_name
+        self._current_mode = mode.lower()
 
         if self._original_style is None and hasattr(app, "style"):
             curr_style = app.style()
@@ -269,42 +291,43 @@ class ThemeManager:
                 self._original_style = curr_style.objectName()
 
         if use_system:
-            # Revert to system styling then layer theme + minimal scrollbar QSS on top
+            # Revert to system styling then layer minimal scrollbars
             app.setStyleSheet("")
             if self._original_style:
                 app.setStyle(self._original_style)
-            qss_file = self._resolve_theme_file(theme_name)
-            if not qss_file and theme_name != CARLA_DEFAULT_MAIN_APP_THEME:
-                qss_file = self._resolve_theme_file(CARLA_DEFAULT_MAIN_APP_THEME)
-            theme_qss = ""
-            if qss_file and os.path.isfile(qss_file):
-                try:
-                    with open(qss_file, "r", encoding="utf-8") as f:
-                        theme_qss = f.read()
-                except Exception:
-                    theme_qss = ""
-            app.setStyleSheet(theme_qss + "\n" + MINIMAL_SCROLLBAR_QSS)
+            app.setStyleSheet(MINIMAL_SCROLLBAR_QSS)
             self._notify_theme_changed()
             return
 
         # Ensure a clean consistent baseline Qt widget layout
         app.setStyle("Fusion")
 
-        qss_file = self._resolve_theme_file(theme_name)
-        if not qss_file and theme_name != CARLA_DEFAULT_MAIN_APP_THEME:
-            # Fallback to default bundled theme
-            qss_file = self._resolve_theme_file(CARLA_DEFAULT_MAIN_APP_THEME)
+        # 1. Compile from centralized Base16/Base24 theme engine
+        from .registry import registry
 
+        theme_def = registry.get_theme(theme_name, mode=mode)
         theme_qss = ""
-        if qss_file and os.path.isfile(qss_file):
-            try:
-                with open(qss_file, "r", encoding="utf-8") as f:
-                    theme_qss = f.read()
-            except Exception as e:
-                print(f"[THEME] Failed to load stylesheet {qss_file}: {e}")
+        if theme_def:
+            theme_qss = self.engine.compile_qss(theme_def, mode=mode)
+        else:
+            # 2. Fallback to legacy static .qss file
+            qss_file = self._resolve_theme_file(theme_name)
+            if not qss_file and theme_name != CARLA_DEFAULT_MAIN_APP_THEME:
+                theme_def = registry.get_theme(CARLA_DEFAULT_MAIN_APP_THEME, mode=mode)
+                if theme_def:
+                    theme_qss = self.engine.compile_qss(theme_def, mode=mode)
+                else:
+                    qss_file = self._resolve_theme_file(CARLA_DEFAULT_MAIN_APP_THEME)
 
-        # Always apply minimal scrollbars on top of theme QSS
-        app.setStyleSheet(theme_qss + "\n" + MINIMAL_SCROLLBAR_QSS)
+            if not theme_qss and qss_file and os.path.isfile(qss_file):
+                try:
+                    with open(qss_file, "r", encoding="utf-8") as f:
+                        theme_qss = f.read() + "\n" + MINIMAL_SCROLLBAR_QSS
+                except Exception as e:
+                    print(f"[THEME] Failed to load stylesheet {qss_file}: {e}")
+
+        if theme_qss:
+            app.setStyleSheet(theme_qss)
         self._notify_theme_changed()
 
 
