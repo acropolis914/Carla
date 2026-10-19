@@ -611,9 +611,15 @@ class CarlaSettingsW(QDialog):
 
     @staticmethod
     def _make_glyph_icon(glyph, size=18, color=None):
-        if color is None:
-            app = QApplication.instance()
-            color = app.palette().color(QPalette.Highlight).name() if app else "#89b4fa"
+        if not color:
+            try:
+                from styles.theme_manager import theme_manager
+                color = theme_manager.engine.get_token("accent") or "#89b4fa"
+            except Exception:
+                app = QApplication.instance()
+                color = app.palette().color(QPalette.Highlight).name() if app else "#89b4fa"
+        if not color:
+            color = "#89b4fa"
         from carla_shared import getBestNerdFont
         nerd_family = getBestNerdFont()
         cache_key = (glyph, size, nerd_family, color)
@@ -668,6 +674,45 @@ class CarlaSettingsW(QDialog):
         _GLYPH_ICON_CACHE[cache_key] = icon
         return icon
 
+    def _update_sidebar_icons(self):
+        tab_titles = [
+            self.tr("General"),
+            self.tr("Patchbay"),
+            self.tr("Engine"),
+            self.tr("OSC"),
+            self.tr("File Paths"),
+            self.tr("Plugin Paths"),
+            self.tr("Wine"),
+            self.tr("Experimental"),
+        ]
+        tab_glyphs = [
+            "\uf013",  # nf-fa-cog          General
+            "\uf0e8",  # nf-fa-sitemap      Patchbay
+            "\uf085",  # nf-fa-cogs         Engine
+            "\uf0ac",  # nf-fa-globe        OSC
+            "\uf07b",  # nf-fa-folder       File Paths
+            "\uf12e",  # nf-fa-puzzle-piece Plugin Paths
+            "\uf000",  # nf-fa-glass        Wine
+            "\uf0eb",  # nf-fa-lightbulb    Experimental
+        ]
+        try:
+            from carla_shared import getBestNerdFont
+            nerd_family = getBestNerdFont()
+        except Exception:
+            nerd_family = ""
+
+        sidebar_font = self.ui.lw_page.font()
+        sidebar_font.setPointSize(11)
+        sidebar_font.setBold(True)
+
+        for row in range(self.ui.lw_page.rowCount()):
+            item = self.ui.lw_page.item(row, 0)
+            if item is not None and row < len(tab_titles):
+                if nerd_family and row < len(tab_glyphs):
+                    item.setIcon(self._make_glyph_icon(tab_glyphs[row]))
+                item.setText(tab_titles[row])
+                item.setFont(sidebar_font)
+
     def __init__(self, parent, host, hasCanvas, hasCanvasGL):
         QDialog.__init__(self, parent)
         self.host = host
@@ -717,14 +762,7 @@ class CarlaSettingsW(QDialog):
         except Exception:
             nerd_family = ""
 
-        for row in range(self.ui.lw_page.rowCount()):
-            item = self.ui.lw_page.item(row, 0)
-            if item is not None:
-                if row < len(tab_titles):
-                    if nerd_family and row < len(tab_glyphs):
-                        item.setIcon(self._make_glyph_icon(tab_glyphs[row]))
-                    item.setText(tab_titles[row])
-                    item.setFont(sidebar_font)
+        self._update_sidebar_icons()
 
         # Remove hideous page header glyphs (upper-right corner of every tab)
         for icon_attr in (
@@ -878,6 +916,7 @@ class CarlaSettingsW(QDialog):
                     use_system = ch_sys.isChecked()
                     chosen_theme = cb_theme.currentText()
                     theme_manager.apply_theme(chosen_theme, use_system=use_system)
+                    self._update_sidebar_icons()
                     try:
                         from carla_shared import gCarla
                         if hasattr(gCarla, "gui") and gCarla.gui is not None and hasattr(gCarla.gui, "_update_split_tab_views"):

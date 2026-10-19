@@ -20,6 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-19 14:37:00
+- **fix(settings)**: resolve groupbox title overlaps and synchronize sidebar icon colors with active theme
+  - Re-anchored `QGroupBox` and `QGroupBox::title` styles with `subcontrol-origin: margin`, `margin-top: 14px`, and proper padding in [base_primitives.qss](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/styles/base_primitives.qss), eliminating chopped titles and overlapping widget content.
+  - Linked `_make_glyph_icon` directly to the active theme engine accent token with fallback to `QPalette.Highlight`, and added `_update_sidebar_icons()` on theme switching in [carla_settings.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/carla_settings.py).
+
 ### 2026-10-19 14:24:00
 - **feat(styles)**: centralize theming engine with Base16/Base24 ingestion, auto light/dark flip, and unified UI primitives
   - Implemented deterministic cascade pipeline in [engine.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/styles/engine.py): `System Core Defaults` -> `Semantic Variable Map` -> `Active Theme Overrides (Palette)` -> `Mode Inversion (Light/Dark)` -> `Component Primitives`.

@@ -197,10 +197,31 @@ QLineEdit:disabled, QTextEdit:disabled {
 }
 
 /* Cards & Module Containers */
-QFrame#infoCard, QFrame[role="card"], QGroupBox {
+QFrame#infoCard, QFrame[role="card"] {
     background-color: var(--bg-surface);
     border: 1px solid var(--border-dim);
     border-radius: var(--radius-md);
+}
+
+/* GroupBox Container Primitive */
+QGroupBox {
+    border: 1px solid var(--border-dim);
+    border-radius: var(--radius-md);
+    margin-top: 14px;
+    padding-top: 14px;
+    padding-bottom: 8px;
+    padding-left: 6px;
+    padding-right: 6px;
+    font-weight: bold;
+    color: var(--accent);
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    left: 12px;
+    padding: 0 4px;
+    color: var(--accent);
 }
 
 /* Rack Unit Capsule Primitive */

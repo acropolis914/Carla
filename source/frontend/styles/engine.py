@@ -207,6 +207,12 @@ class ThemeEngine:
 
     def __init__(self, base_primitives_template: Optional[str] = None):
         self.base_template = base_primitives_template or ""
+        self.active_tokens: Dict[str, str] = {}
+
+    def get_token(self, name: str, default: str = "") -> str:
+        """Get an active resolved token value by key name (with or without -- prefix)."""
+        key = name[2:] if name.startswith("--") else name
+        return self.active_tokens.get(key, self.active_tokens.get(f"--{key}", default))
 
     def resolve_tokens(
         self,
@@ -254,6 +260,7 @@ class ThemeEngine:
     ) -> str:
         """Compile the resolved theme tokens into valid QSS by interpolating variables."""
         tokens = self.resolve_tokens(theme_def, mode, structural_overrides)
+        self.active_tokens = tokens
         template = self.base_template
 
         # Support both var(--name) and {{name}} syntax in QSS template
