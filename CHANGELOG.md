@@ -20,6 +20,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-10-19
+
+### 2026-10-19 20:45:00
+- **feat(plugins)**: choose bridge mode (in-process vs sandboxed) when adding a plugin
+  - Added a "Mode:" selector in the plugin add dialog ([pluginlistdialog_py.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/pluginlist/pluginlistdialog_py.py)) with `Default`, `In-process (inline display)` and `Bridged (sandboxed)` choices, so a single plugin can opt out of (or into) the global bridge preference at add time.
+  - Introduced `PLUGIN_OPTION_USE_BRIDGE` (`0x800`) and `PLUGIN_OPTION_AVOID_BRIDGE` (`0x1000`) in [CarlaBackend.h](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/backend/CarlaBackend.h) and [carla_backend.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/carla_backend.py), honored per-plugin in [CarlaEngine.cpp](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/backend/engine/CarlaEngine.cpp) on top of the global `PreferPluginBridges` option.
+  - The choice is persisted with the plugin in the project `<Options>` value and re-applied on load and clone, so in-process plugins keep rendering their inline displays in the patchbay while sandboxed plugins stay bridged.
+
+### 2026-10-19 19:30:00
+- **feat(settings)**: expose plugin-bridge controls in the data-driven settings UI
+  - Added a "Plugin Sandboxing & Bridges" set of controls to [settings_schema.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/settings_schema.py): an "Enable plugin bridges (experimental)" master checkbox (`Experimental/PluginBridges`) and a "Run plugins in bridge mode when possible" checkbox (`Engine/PreferPluginBridges`), restoring the control that was missing from the schema-driven Experimental tab.
+  - The bridge-mode checkbox depends on the master toggle and includes a tooltip noting that bridged plugins cannot show inline displays and that an engine restart is required.
+
 ### 2026-10-19 18:50:00
 - **fix(patchbay)**: restore inline display rendering and dimensions for VU meters inside node boxes
   - Fixed configuration scope in [carla_settings.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/carla_settings.py) by targeting `QSafeSettings("falkTX", "Carla2")` so `Canvas/InlineDisplays` properly persists and synchronizes to `patchcanvas.options.inline_displays`.

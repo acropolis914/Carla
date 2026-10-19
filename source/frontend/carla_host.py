@@ -2603,13 +2603,13 @@ class HostWindow(QMainWindow):
         except Exception as exc:
             log_carla(f"HostWindow: startStartupPluginScanner failed: {exc}", level="debug")
 
-    def loadPluginFromData(self, btype, ptype, filename, label, uniqueId, extraPtr):
+    def loadPluginFromData(self, btype, ptype, filename, label, uniqueId, extraPtr, options=PLUGIN_OPTIONS_NULL):
         cursor = getattr(Qt, "WaitCursor", None) or getattr(getattr(Qt, "CursorShape", object), "WaitCursor", None)
         if cursor is not None:
             QApplication.setOverrideCursor(cursor)
         try:
             ok = self.host.add_plugin(
-                btype, ptype, filename, None, label, uniqueId, extraPtr, PLUGIN_OPTIONS_NULL
+                btype, ptype, filename, None, label, uniqueId, extraPtr, options
             )
         finally:
             if cursor is not None:
@@ -2644,7 +2644,8 @@ class HostWindow(QMainWindow):
         label = info["label"]
         uniqueId = info["uniqueId"]
         extraPtr = None
-        return self.loadPluginFromData(btype, ptype, filename, label, uniqueId, extraPtr)
+        options = info.get("__bridgeOption", PLUGIN_OPTIONS_NULL) | PLUGIN_OPTIONS_NULL
+        return self.loadPluginFromData(btype, ptype, filename, label, uniqueId, extraPtr, options)
 
     @pyqtSlot()
     def slot_pluginAdd(self):

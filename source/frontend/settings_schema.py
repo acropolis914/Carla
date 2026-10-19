@@ -118,11 +118,16 @@ from carla_shared import (
     CARLA_DEFAULT_WINE_BASE_RT_PRIO,
     CARLA_KEY_WINE_SERVER_RT_PRIO,
     CARLA_DEFAULT_WINE_SERVER_RT_PRIO,
+    # Engine
+    CARLA_KEY_ENGINE_PREFER_PLUGIN_BRIDGES,
+    CARLA_DEFAULT_PREFER_PLUGIN_BRIDGES,
     # Experimental
     CARLA_KEY_EXPERIMENTAL_JACK_APPS,
     CARLA_DEFAULT_EXPERIMENTAL_JACK_APPS,
     CARLA_KEY_EXPERIMENTAL_PREVENT_BAD_BEHAVIOUR,
     CARLA_DEFAULT_EXPERIMENTAL_PREVENT_BAD_BEHAVIOUR,
+    CARLA_KEY_EXPERIMENTAL_PLUGIN_BRIDGES,
+    CARLA_DEFAULT_EXPERIMENTAL_PLUGIN_BRIDGES,
 )
 
 
@@ -672,10 +677,27 @@ EXPERIMENTAL_SCHEMA = {
                     "title": "Plugin Sandboxing & Bridges",
                     "fields": [
                         {
+                            "id": "enable_plugin_bridges",
+                            "type": "checkbox",
+                            "label": "Enable plugin bridges (experimental)",
+                            "key": CARLA_KEY_EXPERIMENTAL_PLUGIN_BRIDGES,
+                            "default": CARLA_DEFAULT_EXPERIMENTAL_PLUGIN_BRIDGES,
+                            "tooltip": "Master switch for running plugins in a separate bridge process.",
+                        },
+                        {
+                            "id": "prefer_plugin_bridges",
+                            "type": "checkbox",
+                            "label": "Run plugins in bridge mode when possible",
+                            "key": CARLA_KEY_ENGINE_PREFER_PLUGIN_BRIDGES,
+                            "default": CARLA_DEFAULT_PREFER_PLUGIN_BRIDGES,
+                            "depends_on": "enable_plugin_bridges",
+                            "tooltip": "Run plugins in a separate process, so if they crash it does not affect Carla.\nNote: bridged plugins cannot show inline displays on the patchbay canvas.\nNeeds an engine restart to take effect.",
+                        },
+                        {
                             "id": "plugin_bridges_note",
                             "type": "label",
-                            "label": "Plugin bridges and isolated processing are configured per-host under Engine.",
-                        }
+                            "label": "Inline plugin displays require non-bridged (in-process) LV2 plugins.",
+                        },
                     ],
                 }
             ],

@@ -263,6 +263,14 @@ PLUGIN_OPTION_SEND_PROGRAM_CHANGES = 0x200
 # We always want notes enabled by default, not the contrary.
 PLUGIN_OPTION_SKIP_SENDING_NOTES = 0x400
 
+# Force this plugin to run through a bridge (sandboxed), even when bridges are not preferred.
+# Bridged plugins do not render inline displays in the patchbay.
+PLUGIN_OPTION_USE_BRIDGE = 0x800
+
+# Force this plugin to run in-process, even when bridges are preferred.
+# In-process plugins can render inline displays in the patchbay.
+PLUGIN_OPTION_AVOID_BRIDGE = 0x1000
+
 # Special flag to indicate that plugin options are not yet set.
 # This flag exists because 0x0 as an option value is a valid one, so we need something else to indicate "null-ness".
 PLUGIN_OPTIONS_NULL = 0x10000

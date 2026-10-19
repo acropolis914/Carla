@@ -288,6 +288,18 @@ static constexpr const uint PLUGIN_OPTION_SEND_PROGRAM_CHANGES = 0x200;
 static constexpr const uint PLUGIN_OPTION_SKIP_SENDING_NOTES = 0x400;
 
 /*!
+ * Force this plugin to run in a separate bridge process, overriding the engine preference.
+ * Note: bridged plugins cannot show inline displays on the patchbay canvas.
+ */
+static constexpr const uint PLUGIN_OPTION_USE_BRIDGE = 0x800;
+
+/*!
+ * Force this plugin to run in-process, overriding the engine preference.
+ * In-process LV2 plugins can show inline displays on the patchbay canvas.
+ */
+static constexpr const uint PLUGIN_OPTION_AVOID_BRIDGE = 0x1000;
+
+/*!
  * Special flag to indicate that plugin options are not yet set.
  * This flag exists because 0x0 as an option value is a valid one, so we need something else to indicate "null-ness".
  */

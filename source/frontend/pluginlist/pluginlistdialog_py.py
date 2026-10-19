@@ -67,10 +67,10 @@ from qt_compat import (
 
 try:
     from PyQt6.QtCore import QByteArray
-    from PyQt6.QtWidgets import QListView, QRadioButton, QToolBox  # noqa: F811
+    from PyQt6.QtWidgets import QComboBox, QListView, QRadioButton, QToolBox  # noqa: F811
 except ImportError:  # pragma: no cover - Qt5 fallback
     from PyQt5.QtCore import QByteArray
-    from PyQt5.QtWidgets import QListView, QRadioButton, QToolBox  # noqa: F811
+    from PyQt5.QtWidgets import QComboBox, QListView, QRadioButton, QToolBox  # noqa: F811
 
 # ------------------------------------------------------------------------------------------------------------
 # Imports (Custom)
@@ -106,6 +106,9 @@ from carla_backend import (
     PLUGIN_IS_SYNTH,
     PLUGIN_HAS_CUSTOM_UI,
     PLUGIN_HAS_INLINE_DISPLAY,
+    PLUGIN_OPTION_AVOID_BRIDGE,
+    PLUGIN_OPTIONS_NULL,
+    PLUGIN_OPTION_USE_BRIDGE,
 )
 from carla_shared import getIcon, log_carla
 from carla_utils import getPluginCategoryAsString, getPluginTypeAsString
@@ -1106,6 +1109,18 @@ class PyPluginListDialog(QDialog):
 
         self.ch_keep_open = QCheckBox(self.tr("Keep open"), self)
         bottomRow.addWidget(self.ch_keep_open)
+
+        c_bridge_label = QLabel(self.tr("Mode:"), self)
+        bottomRow.addWidget(c_bridge_label)
+
+        self.c_bridge_mode = QComboBox(self)
+        self.c_bridge_mode.addItem(self.tr("Default"), PLUGIN_OPTIONS_NULL)
+        self.c_bridge_mode.addItem(self.tr("In-process (inline display)"), PLUGIN_OPTION_AVOID_BRIDGE)
+        self.c_bridge_mode.addItem(self.tr("Bridged (sandboxed)"), PLUGIN_OPTION_USE_BRIDGE)
+        self.c_bridge_mode.setToolTip(self.tr(
+            "Run this plugin in-process so it can show an inline display, "
+            "or through a bridge for sandboxing (no inline display)."))
+        bottomRow.addWidget(self.c_bridge_mode)
 
         self.b_add = QPushButton(self.tr("&Add Plugin"), self)
         self.b_add.setIcon(getIcon("list-add", 16, "svgz"))
@@ -2555,6 +2570,7 @@ class PyPluginListDialog(QDialog):
             return
 
         added_infos = []
+        bridgeOption = self.c_bridge_mode.currentData()
         for row in selected_rows:
             item = self.table.item(row, TW_NAME)
             if item is None:
@@ -2566,6 +2582,8 @@ class PyPluginListDialog(QDialog):
                 if raw is not None:
                     info, _ = _bytesToInfo(bytes(raw) if isinstance(raw, QByteArray) else bytes(raw))
             if info:
+                info = dict(info)
+                info["__bridgeOption"] = bridgeOption
                 added_infos.append(info)
                 self.pluginAddRequested.emit(info)
 

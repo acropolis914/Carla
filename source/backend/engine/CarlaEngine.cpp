@@ -610,6 +610,12 @@ bool CarlaEngine::addPlugin(const BinaryType btype,
     bool preferBridges = pData->options.preferPluginBridges;
     const char* needsArchBridge = nullptr;
 
+    // Per-plugin overrides, so the user can choose at add time
+    if (options & PLUGIN_OPTION_USE_BRIDGE)
+        preferBridges = true;
+    else if (options & PLUGIN_OPTION_AVOID_BRIDGE)
+        preferBridges = false;
+
    #ifdef CARLA_OS_MAC
     // Plugin might be in quarentine due to Apple stupid notarization rules, let's remove that if possible
     if (canBeBridged && ptype != PLUGIN_LV2 && ptype != PLUGIN_AU)
@@ -792,6 +798,7 @@ bool CarlaEngine::addPlugin(const BinaryType btype,
     if (plugin.get() == nullptr)
         return false;
 
+    plugin->setBridgeOptions(options);
     plugin->reload();
 
    #ifdef SFZ_FILES_USING_SFIZZ
