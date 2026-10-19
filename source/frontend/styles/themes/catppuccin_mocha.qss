@@ -498,16 +498,16 @@ QPushButton[pill="true"]:hover {
 }
 
 QPushButton[pill="true"]:checked {
-    background-color: #1e66f5;
-    color: #ffffff;
-    border: 1.5px solid #7287fd;
+    background-color: palette(highlight);
+    color: palette(highlighted-text);
+    border: 1.5px solid palette(highlight);
     font-weight: bold;
 }
 
 QPushButton[pill="true"]:checked:hover {
-    background-color: #3b82f6;
-    color: #ffffff;
-    border-color: #89b4fa;
+    background-color: palette(highlight);
+    color: palette(highlighted-text);
+    border-color: palette(highlight);
 }
 
 /* Add Plugin Dialog Information Inspector */

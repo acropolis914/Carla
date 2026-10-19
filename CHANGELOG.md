@@ -20,6 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-19 13:21:00
+- **fix(pluginlist)**: use system highlight color for selected filter sidebar pills
+  - Replaced hardcoded blue tones in all 4 QSS themes (`catppuccin_macchiato.qss`, `catppuccin_mocha.qss`, `catppuccin_latte.qss`, `classic_dark.qss`) with dynamic `palette(highlight)` and `palette(highlighted-text)`.
+  - Added scoped dynamic stylesheet injection in `PyPluginListDialog._buildFilters()` to bind `QPushButton[pill="true"]:checked` to `QPalette.Highlight` and `QPalette.HighlightedText`, ensuring identical visual accent color to the Settings sidebar.
+
 ### 2026-10-19 13:12:00
 - **fix(settings)**: import missing `QApplication` and `QPalette` in `carla_settings.py`
   - Resolved `NameError: name 'QApplication' is not defined` when opening the Carla Settings dialog (`slot_configureCarla`).

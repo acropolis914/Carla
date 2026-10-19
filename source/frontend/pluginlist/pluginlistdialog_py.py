@@ -29,6 +29,7 @@ for _d in (_FRONTEND_DIR, _HERE):
 from qt_compat import (
     QAbstractItemView,
     QAction,
+    QApplication,
     QCheckBox,
     QDialog,
     QFileInfo,
@@ -43,6 +44,7 @@ from qt_compat import (
     QListWidget,
     QListWidgetItem,
     QMenu,
+    QPalette,
     QProgressBar,
     QPushButton,
     QScrollArea,
@@ -1232,6 +1234,25 @@ class PyPluginListDialog(QDialog):
         sidebarLayout.addWidget(self.b_clear_filters)
 
         self.filterBox = self.filterSidebar
+
+        # Ensure filter sidebar pills use the active system highlight color
+        app = QApplication.instance()
+        if app is not None:
+            hl = app.palette().color(QPalette.Highlight).name()
+            txt = app.palette().color(QPalette.HighlightedText).name()
+            self.filterSidebar.setStyleSheet(f"""
+                QPushButton[pill="true"]:checked {{
+                    background-color: {hl};
+                    color: {txt};
+                    border: 1.5px solid {hl};
+                    font-weight: bold;
+                }}
+                QPushButton[pill="true"]:checked:hover {{
+                    background-color: {hl};
+                    color: {txt};
+                    border-color: {hl};
+                }}
+            """)
 
     def _buildInfoPanel(self):
         self.infoPanel = QWidget(self)
