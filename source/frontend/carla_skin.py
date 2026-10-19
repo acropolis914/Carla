@@ -2628,9 +2628,12 @@ class PluginSlot_Minimal(PluginSlot_Default):
         self.label_name.setToolTip(self.fFullTitle)
         self.label_name.setText(self.fFullTitle)
         self.label_name.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+        self.label_name.setAutoFillBackground(False)
+        self.label_name.setStyleSheet("background: transparent;")
 
         self.label_badge = QLabel(type_sub, parent=self.w_title_stack)
         self.label_badge.setObjectName("label_badge")
+        self.label_badge.setAutoFillBackground(False)
         self.label_badge.setToolTip(f"Plugin: {self.fFullTitle} ({type_sub})")
         self.label_badge.setStyleSheet(f"color: {self.cat_color}; font-size: 8px; font-weight: 700; background: transparent; padding: 0px; margin: 0px;")
 
@@ -2763,7 +2766,10 @@ class PluginSlot_Minimal(PluginSlot_Default):
         self.ui.verticalLayout.setSpacing(2)
 
         styleSheet = f"""
-            QFrame#PluginWidget {{
+            QFrame#PluginWidget, QWidget#w_title_stack, QWidget#w_title_row, QWidget#w_slot_subrow, QWidget#w_buttons {{
+                background: transparent;
+            }}
+            QWidget {{
                 background: transparent;
             }}
             QPushButton {{
@@ -2935,15 +2941,18 @@ class PluginSlot_Minimal(PluginSlot_Default):
             QLabel#label_audio_out,
             QLabel#label_midi,
             QLabel#label_presets {{
+                background: transparent;
                 color: {text_color};
                 font-weight: 600;
             }}
             QLabel#label_name {{
+                background: transparent;
                 font-weight: bold;
                 font-size: 12px;
             }}
             QLabel:disabled,
             QLabel#label_name:disabled {{
+                background: transparent;
                 color: {text_disabled};
             }}
             QLabel#label_badge {{

@@ -242,9 +242,20 @@ QFrame#rackPluginItem[selected="true"] {
 }
 
 QLabel#rackPluginName {
+    background: transparent;
     color: var(--text-primary);
     font-size: var(--font-size-md);
     font-weight: 600;
+}
+
+/* Rack Slot child controls transparency (prevents rectangular opaque text blocks over color tints) */
+QFrame#PluginWidget QLabel,
+QFrame#PluginWidget QWidget#w_title_stack,
+QFrame#PluginWidget QWidget#w_title_row,
+QFrame#PluginWidget QWidget#w_slot_subrow,
+QFrame#PluginWidget QWidget#w_buttons,
+QFrame#rackPluginItem QLabel {
+    background: transparent;
 }
 
 /* Modular Card Primitive */

@@ -20,6 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-19 17:10:00
+- **fix(styles)**: eliminate opaque text background blocks in rack slots for clean color tinting
+  - Enforced `background: transparent` across all rack item text labels, title stacks, and sub-containers in [carla_skin.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/carla_skin.py) and [base_primitives.qss](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/styles/base_primitives.qss).
+  - Disabled `autoFillBackground` on rack slot title and badge labels so custom category color tints render cleanly and flatly without opaque rectangular seams.
+
 ### 2026-10-19 14:50:00
 - **fix(styles)**: achieve end-to-end theme compliance across rack slots, patchbay canvas background, typography, and pills
   - Fixed typography clipping across rack slots and controls by setting `font-family: inherit` in [engine.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/styles/engine.py), honoring system font metrics and optical font advances.
