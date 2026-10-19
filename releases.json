@@ -1,6 +1,26 @@
 {
-  "latest": "1.0.4",
+  "latest": "1.0.5",
   "releases": {
+    "1.0.5": {
+      "version": "1.0.5",
+      "date": "2026-10-19",
+      "urgency": "suggested",
+      "summary": "Patch release fixing the internal Clara version fallback so builds self-report the correct version",
+      "changes": [
+        "Fixed the `_get_clara_version()` fallback in `carla_shared.py` so installed builds without a `.git` checkout (such as the AUR source tarball) report the correct Clara version instead of 1.0.3",
+        "Prevents the in-app updater from repeatedly offering the already-installed release, since `CLARA_VERSION_STRING` (About dialog, application version, update check) was stale"
+      ],
+      "installation": {
+        "appimage": "Download `Clara-1.0.5-x86_64.AppImage`, then: `chmod +x Clara-1.0.5-x86_64.AppImage && ./Clara-1.0.5-x86_64.AppImage`",
+        "flatpak": "Download/run the Flatpak bundle: `flatpak install --user com.github.acropolis914.Clara.flatpak`",
+        "arch": "Install via AUR / PKGBUILD: `paru -S clara-bin` (or `clara-git`)",
+        "ubuntu": "Download `.deb` and run: `sudo dpkg -i clara-ubuntu-*.deb && sudo apt-get install -f`",
+        "fedora": "Download `.rpm` and run: `sudo dnf install clara-*.rpm`",
+        "void": "Extract tarball: `tar --zstd -xvf clara-void-*.tar.zst -C /`",
+        "alpine": "Extract tarball: `tar --zstd -xvf clara-alpine-*.tar.zst -C /`",
+        "nix": "Run directly via Flake: `nix run github:acropolis914/Clara`"
+      }
+    },
     "1.0.4": {
       "version": "1.0.4",
       "date": "2026-10-19",
