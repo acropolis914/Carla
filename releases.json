@@ -1,6 +1,30 @@
 {
-  "latest": "1.0.3",
+  "latest": "1.0.4",
   "releases": {
+    "1.0.4": {
+      "version": "1.0.4",
+      "date": "2026-10-19",
+      "urgency": "suggested",
+      "summary": "Restored inline displays for in-process plugins, per-plugin bridge mode selection at add time, and a plugin-list/settings overhaul",
+      "changes": [
+        "Restored inline display rendering (VU meters, scopes, plots) inside patchbay node boxes for in-process plugins, with canvas boxes sized to fit header/subbar so displays align below toolbar controls",
+        "Per-plugin bridge mode: new Mode selector in the add-plugin dialog (Default / In-process / Bridged) backed by PLUGIN_OPTION_USE_BRIDGE and PLUGIN_OPTION_AVOID_BRIDGE, overriding the global bridge preference and persisted with the plugin in the project",
+        "In-process mode enables inline displays, while bridged mode sandboxes the plugin (no inline display) for crash isolation",
+        "Settings UI: added Plugin Sandboxing & Bridges controls (master 'Enable plugin bridges' toggle plus 'Run plugins in bridge mode when possible') to the schema-driven Experimental tab",
+        "Plugin list: on-demand viewport rendering replacing bulk card/row allocation, fixing search/filter desync and the initial scroll jump, greatly reducing cold-start cost",
+        "Rack, canvas and statusbar refinements: flexible statusbar/toolbar layout for half-screen tiling, rack width/defocus stability, and reduced log-flood UI stalls"
+      ],
+      "installation": {
+        "appimage": "Download `Clara-1.0.4-x86_64.AppImage`, then: `chmod +x Clara-1.0.4-x86_64.AppImage && ./Clara-1.0.4-x86_64.AppImage`",
+        "flatpak": "Download/run the Flatpak bundle: `flatpak install --user com.github.acropolis914.Clara.flatpak`",
+        "arch": "Install via AUR / PKGBUILD: `paru -S clara-bin` (or `clara-git`)",
+        "ubuntu": "Download `.deb` and run: `sudo dpkg -i clara-ubuntu-*.deb && sudo apt-get install -f`",
+        "fedora": "Download `.rpm` and run: `sudo dnf install clara-*.rpm`",
+        "void": "Extract tarball: `tar --zstd -xvf clara-void-*.tar.zst -C /`",
+        "alpine": "Extract tarball: `tar --zstd -xvf clara-alpine-*.tar.zst -C /`",
+        "nix": "Run directly via Flake: `nix run github:acropolis914/Clara`"
+      }
+    },
     "1.0.3": {
       "version": "1.0.3",
       "date": "2026-10-17",
