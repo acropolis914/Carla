@@ -20,6 +20,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-19 23:10:00
+- **docs**: add a "Why Clara?" section to the README
+  - Explains Clara's frontend/QoL focus (patchbay ergonomics, OpenGL-driven animations, toggleable visuals) while crediting upstream Carla as the OG engine it builds upon.
+
 ### 2026-10-19 22:50:00
 - **docs**: document the v1.1.0 CLI experience and the release version guard
   - [README.md](file:///home/acroarch/Documents/Projects/git-clones/Carla/README.md) gained a "Modern CLI Experience" section covering the rich startup banner and the Ctrl+C prompt.
