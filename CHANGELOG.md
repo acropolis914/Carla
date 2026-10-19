@@ -20,6 +20,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-19 13:12:00
+- **fix(settings)**: import missing `QApplication` and `QPalette` in `carla_settings.py`
+  - Resolved `NameError: name 'QApplication' is not defined` when opening the Carla Settings dialog (`slot_configureCarla`).
+
 ### 2026-10-19 06:47:00
 - **fix(ui)**: complete 4-theme QSS parity, style plugin browser presentation modes, and fix selection collisions
   - Achieved 100% selector parity across all 4 themes (`catppuccin_latte.qss`, `classic_dark.qss`, `catppuccin_macchiato.qss`, `catppuccin_mocha.qss`), adding complete styling for checkboxes, radio buttons, combo box popups, text edits, sliders, tab bars, and item views.

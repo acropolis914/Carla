@@ -25,6 +25,8 @@ from qt_compat import (
     QHBoxLayout,
     QGroupBox,
     QFormLayout,
+    QApplication,
+    QPalette,
 )
 
 # ---------------------------------------------------------------------------------------------------------------------
