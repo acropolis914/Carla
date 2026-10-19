@@ -20,6 +20,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-19 13:41:00
+- **feat(pluginlist)**: simplify reset filters button, combine view modes into single toggle, and split rescan into two buttons
+  - Simplified the Reset Filters button into a flat, compact action with subtle styling and clean 16px icon.
+  - Converted the 3-button segmented Rack/Cards/Table switcher into a single cycling toggle button (`btnViewMode`) displaying the active mode glyph and title (`☲ Rack`, `▦ Cards`, `☰ Table`).
+  - Separated the rescan toolbutton popup into two explicit push buttons: `Rescan` (quick incremental scan) and `Full Rescan` (complete cache-busting discovery).
+
 ### 2026-10-19 13:32:00
 - **fix(pluginlist)**: harmonize pill filter button geometry and rounded capsule border radii
   - Fixed distorted dimensions and square corners on selected filter pills by synchronizing `border-radius: 12px`, `padding: 2px 9px`, `min-height: 20px`, and `max-height: 20px` across both normal and `:checked` states in `filterSidebar` and all 4 QSS themes.

@@ -568,32 +568,41 @@ QLabel#infoTag {
     padding: 2px 6px;
 }
 
-/* Add Plugin Dialog View Mode Switcher */
-QFrame#viewModeContainer {
-    background-color: #181926;
+/* Add Plugin Dialog View Mode Toggle Button */
+QPushButton#btnViewMode {
+    background-color: #24273a;
     border: 1px solid #363a4f;
     border-radius: 6px;
+    padding: 4px 12px;
+    font-size: 11px;
+    color: #cad3f5;
+    font-weight: bold;
 }
 
-QFrame#viewModeContainer QPushButton#btnViewMode {
+QPushButton#btnViewMode:hover {
+    background-color: #363a4f;
+    border-color: #494d64;
+    color: #ffffff;
+}
+
+QPushButton#btnViewMode:pressed {
+    background-color: #494d64;
+}
+
+/* Add Plugin Dialog Reset Filters Button */
+QPushButton#btnClearFilters {
     background-color: transparent;
-    border: none;
-    border-radius: 4px;
-    padding: 3px 10px;
+    border: 1px dashed #363a4f;
+    border-radius: 6px;
+    padding: 3px 8px;
     font-size: 11px;
     color: #a5adcb;
-    font-weight: 500;
 }
 
-QFrame#viewModeContainer QPushButton#btnViewMode:hover {
+QPushButton#btnClearFilters:hover {
     background-color: #24273a;
+    border-color: #494d64;
     color: #cad3f5;
-}
-
-QFrame#viewModeContainer QPushButton#btnViewMode:checked {
-    background-color: #8aadf4;
-    color: #181926;
-    font-weight: bold;
 }
 
 /* Add Plugin Dialog List & Item Views */

@@ -924,58 +924,24 @@ class PyPluginListDialog(QDialog):
         self.lineEdit.setClearButtonEnabled(True)
         searchRow.addWidget(self.lineEdit)
 
-        # View Mode Switcher (Rack default, Cards, Table) in an enclosed segmented container
-        self.viewModeContainer = QFrame(self)
-        self.viewModeContainer.setObjectName("viewModeContainer")
-        modeLayout = QHBoxLayout(self.viewModeContainer)
-        modeLayout.setContentsMargins(2, 2, 2, 2)
-        modeLayout.setSpacing(2)
+        # Single View Mode Toggle Button (cycles Rack -> Cards -> Table)
+        self.btn_view_mode = QPushButton(self)
+        self.btn_view_mode.setObjectName("btnViewMode")
+        self.btn_view_mode.clicked.connect(self._cycleViewMode)
+        searchRow.addWidget(self.btn_view_mode)
 
-        self.btn_mode_rack = QPushButton(self.tr("Rack"), self.viewModeContainer)
-        self.btn_mode_rack.setObjectName("btnViewMode")
-        self.btn_mode_rack.setCheckable(True)
-        self.btn_mode_rack.setChecked(True)
-        self.btn_mode_rack.setToolTip(self.tr("Rack view (compact slots, default)"))
-
-        self.btn_mode_cards = QPushButton(self.tr("Cards"), self.viewModeContainer)
-        self.btn_mode_cards.setObjectName("btnViewMode")
-        self.btn_mode_cards.setCheckable(True)
-        self.btn_mode_cards.setToolTip(self.tr("Cards grid view"))
-
-        self.btn_mode_table = QPushButton(self.tr("Table"), self.viewModeContainer)
-        self.btn_mode_table.setObjectName("btnViewMode")
-        self.btn_mode_table.setCheckable(True)
-        self.btn_mode_table.setToolTip(self.tr("Detailed table view"))
-
-        self.btn_mode_rack.clicked.connect(lambda: self._setViewMode(0))
-        self.btn_mode_cards.clicked.connect(lambda: self._setViewMode(1))
-        self.btn_mode_table.clicked.connect(lambda: self._setViewMode(2))
-
-        modeLayout.addWidget(self.btn_mode_rack)
-        modeLayout.addWidget(self.btn_mode_cards)
-        modeLayout.addWidget(self.btn_mode_table)
-
-        searchRow.addWidget(self.viewModeContainer)
-
-        self.b_refresh = QToolButton(self)
-        self.b_refresh.setText(self.tr("Rescan"))
-        tb_style = getattr(Qt, "ToolButtonTextBesideIcon", None)
-        if tb_style is None:
-            tb_style = Qt.ToolButtonStyle.ToolButtonTextBesideIcon
-        self.b_refresh.setToolButtonStyle(tb_style)
+        # Rescan Buttons (Quick Rescan and Full Rescan separate)
+        self.b_refresh = QPushButton(self.tr("Rescan"), self)
         self.b_refresh.setIcon(getIcon("view-refresh", 16, "svgz"))
-        pm = getattr(QToolButton, "MenuButtonPopup", None)
-        if pm is None:
-            pm = QToolButton.ToolButtonPopupMode.MenuButtonPopup
-        self.b_refresh.setPopupMode(pm)
-        refreshMenu = QMenu(self.b_refresh)
-        act_quick = refreshMenu.addAction(self.tr("Quick Rescan (New & Modified)"))
-        act_quick.triggered.connect(lambda: self._startScan(ignoreCache=False))
-        act_full = refreshMenu.addAction(self.tr("Full Rescan (All Plugins)"))
-        act_full.triggered.connect(lambda: self._startScan(ignoreCache=True))
-        self.b_refresh.setMenu(refreshMenu)
-        self.b_refresh.setDefaultAction(act_quick)
+        self.b_refresh.setToolTip(self.tr("Quick Rescan (New & Modified plugins)"))
+        self.b_refresh.clicked.connect(lambda: self._startScan(ignoreCache=False))
         searchRow.addWidget(self.b_refresh)
+
+        self.b_refresh_full = QPushButton(self.tr("Full Rescan"), self)
+        self.b_refresh_full.setIcon(getIcon("view-refresh", 16, "svgz"))
+        self.b_refresh_full.setToolTip(self.tr("Full Rescan (Check all plugins from scratch)"))
+        self.b_refresh_full.clicked.connect(lambda: self._startScan(ignoreCache=True))
+        searchRow.addWidget(self.b_refresh_full)
 
         grid.addLayout(searchRow, 0, 1, 1, 1)
 
@@ -1228,9 +1194,12 @@ class PyPluginListDialog(QDialog):
         scrollArea.setWidget(scrollWidget)
         sidebarLayout.addWidget(scrollArea, 1)
 
-        # Reset filters button anchored at the bottom
+        # Reset filters button anchored at the bottom (simplified flat action)
         self.b_clear_filters = QPushButton(self.tr("Reset filters"), self.filterSidebar)
+        self.b_clear_filters.setObjectName("btnClearFilters")
+        self.b_clear_filters.setFlat(True)
         self.b_clear_filters.setIcon(getIcon("edit-clear", 16, "svgz"))
+        self.b_clear_filters.setToolTip(self.tr("Reset all format, type, category, architecture, and requirement filters"))
         sidebarLayout.addWidget(self.b_clear_filters)
 
         self.filterBox = self.filterSidebar
@@ -1264,6 +1233,19 @@ class PyPluginListDialog(QDialog):
                     color: {txt};
                     border: 1px solid {hl};
                     border-radius: 12px;
+                }}
+                QPushButton#btnClearFilters {{
+                    background-color: transparent;
+                    border: 1px dashed palette(mid);
+                    border-radius: 6px;
+                    padding: 3px 8px;
+                    font-size: 11px;
+                    color: palette(text);
+                }}
+                QPushButton#btnClearFilters:hover {{
+                    background-color: palette(midlight);
+                    border-color: palette(highlight);
+                    color: palette(highlight);
                 }}
             """)
 
@@ -2004,6 +1986,8 @@ class PyPluginListDialog(QDialog):
         self._connectScanner(scanner)
         self.scanStatusLabel.setText(self.tr("Starting discovery..."))
         self.scanBar.show()
+        self.b_refresh.setEnabled(False)
+        self.b_refresh_full.setEnabled(False)
         scanner.start()
 
     def _stopScan(self):
@@ -2013,6 +1997,8 @@ class PyPluginListDialog(QDialog):
             scanner.requestStop()
         self.scanStatusLabel.setText(self.tr("Scan stopped"))
         self.scanBar.hide()
+        self.b_refresh.setEnabled(True)
+        self.b_refresh_full.setEnabled(True)
 
     def _onScannerStatusChanged(self, status):
         self.scanStatusLabel.setText(status)
@@ -2023,6 +2009,8 @@ class PyPluginListDialog(QDialog):
 
     def _onScannerFinished(self, count):
         self.scanBar.hide()
+        self.b_refresh.setEnabled(True)
+        self.b_refresh_full.setEnabled(True)
         self._updatePluginsSummaryLabel()
         self._checkPlugin(self.table.currentRow())
 
@@ -2190,18 +2178,22 @@ class PyPluginListDialog(QDialog):
     # ----------------------------------------------------------------------------------------------------
     # slots
 
-    def _setViewMode(self, mode):
-        self.btn_mode_rack.blockSignals(True)
-        self.btn_mode_cards.blockSignals(True)
-        self.btn_mode_table.blockSignals(True)
-        self.btn_mode_rack.setChecked(mode == 0)
-        self.btn_mode_cards.setChecked(mode == 1)
-        self.btn_mode_table.setChecked(mode == 2)
-        self.btn_mode_rack.blockSignals(False)
-        self.btn_mode_cards.blockSignals(False)
-        self.btn_mode_table.blockSignals(False)
+    def _cycleViewMode(self):
+        next_mode = (self.stackCenter.currentIndex() + 1) % 3
+        self._setViewMode(next_mode)
 
+    def _setViewMode(self, mode):
+        mode = mode % 3
         self.stackCenter.setCurrentIndex(mode)
+
+        mode_meta = [
+            ("☲ " + self.tr("Rack"), self.tr("Current view: Rack (click to switch to Cards)")),
+            ("▦ " + self.tr("Cards"), self.tr("Current view: Cards (click to switch to Table)")),
+            ("☰ " + self.tr("Table"), self.tr("Current view: Table (click to switch to Rack)")),
+        ]
+        label, tooltip = mode_meta[mode]
+        self.btn_view_mode.setText(label)
+        self.btn_view_mode.setToolTip(tooltip)
 
         cur_row = self.table.currentRow()
         if cur_row >= 0:
