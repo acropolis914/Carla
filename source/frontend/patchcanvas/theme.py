@@ -308,7 +308,25 @@ class Theme(object):
             from styles.theme_manager import theme_manager, find_closest_system_color
             from qt_compat import QApplication, QPalette
 
-            if theme_manager.is_using_system():
+            active_tokens = theme_manager.engine.active_tokens
+            if active_tokens and not theme_manager.is_using_system():
+                adapted_raw = dict(theme_raw)
+                # Map core background, surfaces and accents from active tokens
+                if "bg-primary" in active_tokens:
+                    adapted_raw["canvas_bg"] = active_tokens["bg-primary"]
+                if "bg-surface" in active_tokens:
+                    adapted_raw["box_bg_1"] = active_tokens["bg-surface"]
+                    adapted_raw["box_bg_2"] = active_tokens["bg-surface"]
+                if "text-primary" in active_tokens:
+                    adapted_raw["box_text"] = active_tokens["text-primary"]
+                    adapted_raw["port_text"] = active_tokens["text-primary"]
+                if "accent" in active_tokens:
+                    adapted_raw["box_pen_sel_color"] = active_tokens["accent"]
+                    adapted_raw["box_text_sel"] = active_tokens.get("bg-primary", "#ffffff")
+                if "border-dim" in active_tokens:
+                    adapted_raw["box_pen_color"] = active_tokens["border-dim"]
+                theme_raw = adapted_raw
+            elif theme_manager.is_using_system():
                 app = QApplication.instance()
                 pal = app.palette() if app else None
                 if pal:
@@ -337,7 +355,7 @@ class Theme(object):
                             adapted_raw[k] = v
                     theme_raw = adapted_raw
         except Exception as e:
-            print(f"[THEME] Warning adapting system theme: {e}")
+            print(f"[THEME] Warning adapting canvas theme: {e}")
 
         theme_data = parse_theme_dict(theme_raw)
         for key, value in theme_data.items():

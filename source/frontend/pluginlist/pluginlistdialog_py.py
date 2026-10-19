@@ -1279,18 +1279,28 @@ class PyPluginListDialog(QDialog):
 
         self.filterBox = self.filterSidebar
 
-        # Ensure filter sidebar pills use the active system highlight color and stable pill geometry
+        # Ensure filter sidebar pills use the active theme accent/highlight color and stable pill geometry
         app = QApplication.instance()
         if app is not None:
-            hl = app.palette().color(QPalette.Highlight).name()
-            txt = app.palette().color(QPalette.HighlightedText).name()
+            from styles.theme_manager import theme_manager
+            hl = theme_manager.engine.get_token("accent") or app.palette().color(QPalette.Highlight).name()
+            txt = theme_manager.engine.get_token("bg-primary") or app.palette().color(QPalette.HighlightedText).name()
+            bg_surf = theme_manager.engine.get_token("bg-surface") or app.palette().color(QPalette.Button).name()
+            b_dim = theme_manager.engine.get_token("border-dim") or app.palette().color(QPalette.Mid).name()
+            t_sec = theme_manager.engine.get_token("text-secondary") or app.palette().color(QPalette.ButtonText).name()
             self.filterSidebar.setStyleSheet(f"""
                 QPushButton[pill="true"] {{
+                    background-color: {bg_surf};
+                    color: {t_sec};
+                    border: 1px solid {b_dim};
                     padding: 2px 9px;
                     font-size: 11px;
                     border-radius: 12px;
                     min-height: 20px;
                     max-height: 20px;
+                }}
+                QPushButton[pill="true"]:hover {{
+                    border-color: {hl};
                 }}
                 QPushButton[pill="true"]:checked {{
                     background-color: {hl};

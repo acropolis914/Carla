@@ -29,7 +29,7 @@ SYSTEM_DEFAULTS: Dict[str, str] = {
     "space-xl": "24px",
 
     # Typography
-    "font-family": "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+    "font-family": "inherit",
     "font-size-base": "10pt",
     "font-size-xs": "9px",
     "font-size-sm": "11px",

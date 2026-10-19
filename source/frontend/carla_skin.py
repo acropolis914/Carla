@@ -120,7 +120,45 @@ CATPPUCCIN_LATTE = {
     'rosewater': '#dc8a78',
 }
 
-# FlowLayout — wraps child widgets to new rows when width is exhausted
+
+def get_active_skin_palette(is_dark=True):
+    """Retrieve active palette dynamically from theme_manager with fallback to Catppuccin."""
+    try:
+        from styles.theme_manager import theme_manager
+        t = theme_manager.engine.active_tokens
+        if t and "bg-surface" in t:
+            return {
+                'base': t.get("bg-primary", "#1e1e2e" if is_dark else "#eff1f5"),
+                'mantle': t.get("bg-primary", "#181825" if is_dark else "#e6e9ef"),
+                'crust': t.get("base00", "#11111b" if is_dark else "#dce0e8"),
+                'surface0': t.get("border-dim", "#313244" if is_dark else "#ccd0da"),
+                'surface1': t.get("bg-surface", "#45475a" if is_dark else "#bcc0cc"),
+                'surface2': t.get("bg-hover", "#585b70" if is_dark else "#acb0be"),
+                'overlay0': t.get("text-muted", "#6c7086" if is_dark else "#9ca0b0"),
+                'overlay1': t.get("text-secondary", "#7f849c" if is_dark else "#8c8fa1"),
+                'overlay2': t.get("text-secondary", "#9399b2" if is_dark else "#7c7f93"),
+                'subtext0': t.get("text-secondary", "#a6adc8" if is_dark else "#6c6f85"),
+                'subtext1': t.get("text-primary", "#bac2de" if is_dark else "#5c5f77"),
+                'text': t.get("text-primary", "#cdd6f4" if is_dark else "#4c4f69"),
+                'lavender': t.get("purple", "#b4befe" if is_dark else "#7287fd"),
+                'blue': t.get("accent", "#89b4fa" if is_dark else "#1e66f5"),
+                'sapphire': t.get("cyan", "#74c7ec" if is_dark else "#209fb5"),
+                'sky': t.get("cyan", "#89dceb" if is_dark else "#04a5e5"),
+                'teal': t.get("cyan", "#94e2d5" if is_dark else "#179299"),
+                'green': t.get("green", "#a6e3a1" if is_dark else "#40a02b"),
+                'yellow': t.get("yellow", "#f9e2af" if is_dark else "#df8e1d"),
+                'peach': t.get("orange", "#fab387" if is_dark else "#fe640b"),
+                'maroon': t.get("red", "#eba0ac" if is_dark else "#e64553"),
+                'red': t.get("red", "#f38ba8" if is_dark else "#d20f39"),
+                'mauve': t.get("magenta", "#cba6f7" if is_dark else "#8839ef"),
+                'pink': t.get("magenta", "#f5c2e7" if is_dark else "#ea76cb"),
+                'flamingo': t.get("orange", "#f2cdcd" if is_dark else "#dd7878"),
+                'rosewater': t.get("accent-tint-15", "#f5e0dc" if is_dark else "#dc8a78"),
+            }
+    except Exception:
+        pass
+    return CATPPUCCIN_MOCHA if is_dark else CATPPUCCIN_LATTE
+
 
 class FlowLayout(QLayout):
     """A QLayout that wraps child items like CSS flex-wrap: wrap."""
@@ -2430,7 +2468,7 @@ class PluginSlot_Minimal(PluginSlot_Default):
         self.w_subrow = None
         self.fMiniSliderParameterList = []
 
-        p = CATPPUCCIN_MOCHA if self.is_dark else CATPPUCCIN_LATTE
+        p = get_active_skin_palette(self.is_dark)
         has_custom_color = (skinColor != (0, 0, 0) and skinColor != (255, 255, 255))
 
         if has_custom_color:
@@ -3373,7 +3411,7 @@ class PluginSlot_Minimal(PluginSlot_Default):
         self.fSliderParameterList = []
         parameterCount = self.host.get_parameter_count(self.fPluginId)
 
-        p = CATPPUCCIN_MOCHA if self.is_dark else CATPPUCCIN_LATTE
+        p = get_active_skin_palette(self.is_dark)
         wet_color = p['peach']
         vol_color = p['green']
 
@@ -3577,7 +3615,7 @@ class PluginSlot_Minimal(PluginSlot_Default):
         self.fMiniSliderParameterList = []
         parameterCount = self.host.get_parameter_count(self.fPluginId)
 
-        p = CATPPUCCIN_MOCHA if self.is_dark else CATPPUCCIN_LATTE
+        p = get_active_skin_palette(self.is_dark)
         wet_color = p['peach']
         vol_color = p['green']
 

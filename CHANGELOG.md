@@ -20,6 +20,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-19 14:50:00
+- **fix(styles)**: achieve end-to-end theme compliance across rack slots, patchbay canvas background, typography, and pills
+  - Fixed typography clipping across rack slots and controls by setting `font-family: inherit` in [engine.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/styles/engine.py), honoring system font metrics and optical font advances.
+  - Bound [carla_skin.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/carla_skin.py) rack items to active theme tokens via `get_active_skin_palette()`, preserving custom color tinting while synchronizing background, text, sliders, and borders with the chosen theme.
+  - Linked [patchcanvas/theme.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/patchcanvas/theme.py) to active engine tokens (`bg-primary`, `bg-surface`, `accent`, `border-dim`), harmonizing the canvas background color with the application theme.
+  - Upgraded filter sidebar pills in [pluginlistdialog_py.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/pluginlist/pluginlistdialog_py.py) to dynamically bind to `--accent`, `--bg-surface`, `--border-dim`, and `--text-secondary`.
+
 ### 2026-10-19 14:37:00
 - **fix(settings)**: resolve groupbox title overlaps and synchronize sidebar icon colors with active theme
   - Re-anchored `QGroupBox` and `QGroupBox::title` styles with `subcontrol-origin: margin`, `margin-top: 14px`, and proper padding in [base_primitives.qss](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/styles/base_primitives.qss), eliminating chopped titles and overlapping widget content.
