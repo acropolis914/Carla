@@ -5378,32 +5378,56 @@ class HostWindow(QMainWindow):
     def _promptSIGINT(self):
         # Ctrl+C came from a terminal, so ask right there instead of popping up
         # a GUI dialog. This blocks the UI while waiting for an answer, which is
-        # fine because the user is interacting with the terminal anyway.
-        try:
-            print("")
-            print("Received Ctrl+C (SIGINT) from the terminal.")
-            print("  [K] Kill Carla now (default)")
-            if getattr(self, "fSystemTrayIcon", None) is not None:
-                print("  [T] Keep running in the system tray and detach from the terminal")
-            sys.stdout.write("Choice [K/T]: " if getattr(self, "fSystemTrayIcon", None) is not None else "Choice [K]: ")
-            sys.stdout.flush()
-        except Exception:
-            pass
+        # fine because the user is interacting with the terminal anyway. Pressing
+        # Enter (the default) quits Clara.
+        has_tray = getattr(self, "fSystemTrayIcon", None) is not None
+        answer = ""
 
         try:
-            answer = input().strip().lower()
-        except Exception:
-            answer = ""
+            from rich.console import Console
+            from rich.panel import Panel
+            from rich.prompt import Prompt
+            from rich.text import Text
 
-        if (
-            getattr(self, "fSystemTrayIcon", None) is not None
-            and (answer.startswith("t") or answer.startswith("d") or answer == "n")
-        ):
-            print("Keeping Carla running in the system tray; detached from terminal.")
+            body = Text()
+            body.append("Ctrl+C received from the terminal.\n", style="bold yellow")
+            body.append("Quit Clara now?", style="bold white")
+            body.append("\n\n")
+            body.append("[Enter]", style="bold bright_magenta")
+            body.append("  Quit now", style="dim")
+            body.append("  (default)\n", style="bold dim")
+            if has_tray:
+                body.append("[T]", style="bold bright_cyan")
+                body.append("      Keep running in the system tray\n", style="dim")
+
+            Console().print(Panel(body, title="[bold yellow] Clara [/]",
+                                  border_style="yellow", padding=(1, 2)))
+
+            answer = Prompt.ask("[bold yellow]Choice[/]", default="",
+                                show_default=False).strip().lower()
+        except Exception:
+            try:
+                print("")
+                print("Ctrl+C received from the terminal.")
+                print("Quit Clara now?")
+                print("  [Enter] Quit now (default)")
+                if has_tray:
+                    print("  [T]     Keep running in the system tray")
+                sys.stdout.write("Choice [Enter/T]: " if has_tray else "Choice [Enter]: ")
+                sys.stdout.flush()
+            except Exception:
+                pass
+            try:
+                answer = input().strip().lower()
+            except Exception:
+                answer = ""
+
+        if has_tray and answer.startswith("t"):
+            print("Keeping Clara running in the system tray; detached from terminal.")
             self._minimizeToSystemTray()
             self._detachFromTerminal()
         else:
-            print("Killing Carla now.")
+            print("Quitting Clara now.")
             self.fCustomStopAction = self.CUSTOM_ACTION_APP_CLOSE
             self.fForceQuit = True
             self.close()
@@ -6310,12 +6334,13 @@ def initHost(initName, libPrefix, isControl, isPlugin, failError, HostClass=None
     # Print info
 
     if not (gCarla.nogui and isinstance(gCarla.nogui, int)):
-        print(f"Carla {CARLA_VERSION_STRING} started, status:")
-        print("  Python version: {}".format(sys.version.split(" ", 1)[0]))
-        print(f"  Qt version:     {QT_VERSION_STR}")
-        print(f"  PyQt version:   {PYQT_VERSION_STR}")
-        print(f"  Binary dir:     {pathBinaries}")
-        print(f"  Resources dir:  {pathResources}")
+        printStartupBanner([
+            ("Python", sys.version.split(" ", 1)[0]),
+            ("Qt", QT_VERSION_STR),
+            ("PyQt", PYQT_VERSION_STR),
+            ("Binaries", pathBinaries),
+            ("Resources", pathResources),
+        ])
 
     # --------------------------------------------------------------------------------------------------------
     # Init host

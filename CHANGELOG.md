@@ -20,6 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-19 22:20:00
+- **feat(cli)**: rich startup banner and rich Ctrl+C prompt
+  - Starting Clara from the CLI now prints a rich panel reading "Clara vX.Y.Z" then "based on Carla version A.B.C" (plus Python/Qt/PyQt/paths) instead of the plain `Carla ... started, status:` lines; `--version` uses the same banner. Falls back to plain text when `rich` is unavailable ([carla_shared.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/carla_shared.py) `printStartupBanner`, called from [carla_host.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/carla_host.py)).
+  - The terminal SIGINT (Ctrl+C) prompt is now a rich panel: pressing `Enter` quits (default) and `T` keeps Clara running in the system tray, with a plain-text fallback.
+
 ### 2026-10-19 21:45:00
 - **ci(release)**: enforce tag/version consistency and fix the AUR push on release
   - Added [check_version.sh](file:///home/acroarch/Documents/Projects/git-clones/Carla/scripts/check_version.sh) which verifies a pushed `vX.Y.Z` tag matches `base_version` in [carla_shared.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/carla_shared.py) and the `latest`/entry in [releases.json](file:///home/acroarch/Documents/Projects/git-clones/Carla/releases.json); the AUR `pkgver` is checked as a warning since CI bumps it.

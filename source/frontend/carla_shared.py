@@ -81,6 +81,50 @@ def _get_clara_version():
 CLARA_VERSION_STRING = _get_clara_version()
 
 # ------------------------------------------------------------------------------------------------------------
+# Startup banner
+
+def printStartupBanner(extraInfo=None):
+    """Print the Clara startup banner, crediting the underlying Carla version.
+
+    Shows "Clara vX.Y.Z" followed by "based on Carla version A.B.C", rendered with
+    rich when available and falling back to plain text otherwise. extraInfo is an
+    optional list of (label, value) rows shown underneath the version lines.
+    """
+    claraVer = CLARA_VERSION_STRING
+    carlaVer = CARLA_VERSION_STRING
+
+    try:
+        from rich.console import Console
+        from rich.panel import Panel
+        from rich.text import Text
+
+        body = Text()
+        body.append("Clara ", style="bold white")
+        body.append(f"v{claraVer}", style="bold bright_magenta")
+        body.append("\n\n")
+        body.append("based on ", style="dim")
+        body.append("Carla", style="bold cyan")
+        body.append(" version ", style="dim")
+        body.append(carlaVer, style="bold cyan")
+
+        if extraInfo:
+            body.append("\n")
+            for label, value in extraInfo:
+                body.append(f"\n  {label}: ", style="dim")
+                body.append(str(value), style="dim white")
+
+        Console().print(Panel(body, border_style="bright_magenta", padding=(1, 3)))
+        return
+    except ImportError:
+        pass
+
+    print(f"Clara v{claraVer}")
+    print(f"based on Carla version {carlaVer}")
+    if extraInfo:
+        for label, value in extraInfo:
+            print(f"  {label}: {value}")
+
+# ------------------------------------------------------------------------------------------------------------
 # Config
 
 # These will be modified during install
@@ -944,12 +988,13 @@ def handleInitialCommandLineArguments(file):
     # Version handler
     if parsed.version:
         pathBinaries, pathResources = getPaths(libPrefix)
-        print("Using Carla version %s" % CARLA_VERSION_STRING)
-        print("  Python version: %s" % sys.version.split(" ", 1)[0])
-        print("  Qt version:     %s" % QT_VERSION_STR)
-        print("  PyQt version:   %s" % PYQT_VERSION_STR)
-        print("  Binary dir:     %s" % pathBinaries)
-        print("  Resources dir:  %s" % pathResources)
+        printStartupBanner([
+            ("Python", sys.version.split(" ", 1)[0]),
+            ("Qt", QT_VERSION_STR),
+            ("PyQt", PYQT_VERSION_STR),
+            ("Binaries", pathBinaries),
+            ("Resources", pathResources),
+        ])
         sys.exit(1 if gCarla.nogui else 0)
 
     # Assign parsed parameters
