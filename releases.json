@@ -1,6 +1,29 @@
 {
-  "latest": "1.1.0",
+  "latest": "1.1.1",
   "releases": {
+    "1.1.1": {
+      "version": "1.1.1",
+      "date": "2026-10-20",
+      "urgency": "critical",
+      "summary": "Stability and reliability patch: stops Cardinal crash-on-load, fixes the Add Plugin dialog selecting the wrong plugin, persists the plugin cache across restarts, collapses startup recovery into a single prompt, and makes the program filetype-agnostic with extensions owned solely by the save manager",
+      "changes": [
+        "Cardinal (and other GLX/KV-Element/JUCE-UI) plugins no longer crash the host on load: they are auto-loaded in bridge mode when a project contains them",
+        "Add Plugin dialog: the Rack and Cards views now stay in sync with the (custom-sorted) table, so adding a plugin no longer inserts an unrelated one",
+        "Plugin list cache now includes LV2 and internal plugins and is pruned of stale entries, so a restart no longer needs a full rescan",
+        "Startup shows a single last-save/autosave recovery prompt instead of two back-to-back dialogs; recovered sessions load the autosave content under the last-saved name and path",
+        "Project filetype handling is now filetype-agnostic: the program works with filenames plus an opaque format tag, and only the save manager knows extensions (legacy .json projects remain loadable but stay out of file dialogs)"
+      ],
+      "installation": {
+        "appimage": "Download `Clara-1.1.1-x86_64.AppImage`, then: `chmod +x Clara-1.1.1-x86_64.AppImage && ./Clara-1.1.1-x86_64.AppImage`",
+        "flatpak": "Download/run the Flatpak bundle: `flatpak install --user com.github.acropolis914.Clara.flatpak`",
+        "arch": "Install via AUR / PKGBUILD: `paru -S clara-bin` (or `clara-git`)",
+        "ubuntu": "Download `.deb` and run: `sudo dpkg -i clara-ubuntu-*.deb && sudo apt-get install -f`",
+        "fedora": "Download `.rpm` and run: `sudo dnf install clara-*.rpm`",
+        "void": "Extract tarball: `tar --zstd -xvf clara-void-*.tar.zst -C /`",
+        "alpine": "Extract tarball: `tar --zstd -xvf clara-alpine-*.tar.zst -C /`",
+        "nix": "Run directly via Flake: `nix run github:acropolis914/Clara`"
+      }
+    },
     "1.1.0": {
       "version": "1.1.0",
       "date": "2026-10-19",

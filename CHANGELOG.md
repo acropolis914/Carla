@@ -20,6 +20,40 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-10-20
+
+Stability and reliability patch: Cardinal crash-on-load fix, Add Plugin view sync, persistent plugin cache, single startup recovery prompt, and a filetype-agnostic storage refactor.
+
+### 2026-10-20 04:45:00
+- **refactor(storage)**: program is now filetype-agnostic; only the save manager knows extensions
+  - Project files, plugin state files and autosaves were recognized by hard-coded `.carxp`/`.carjp`/`.json`/`.carxs` string checks scattered across the host, widgets, session manager and rack list. The program now carries a filename plus an opaque format *tag*, and every extension/format decision lives in `ProjectStorageManager`.
+  - [project_storage.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/project_storage.py): `ProjectStorageManager` is now registry-driven (`ProjectFormat` entries for XML project, JSON project, state). Added format-agnostic helpers `get_project_root()` (returns a common XML root for any project), `is_project_file()`, `is_state_file()`, `tag_from_filter()`, `ensure_extension()`, `open_filter()`/`save_filter()`, `sidecar_positions_path()`/`has_sidecar_positions()`. `is_project_file()` trusts primary extensions but only treats legacy `.json`/extension-less files as projects after content validation, so unrelated JSON on disk is never mistaken for a session. Legacy `*.json` stays loadable but is kept out of the file-dialog filters.
+  - [carla_host.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/carla_host.py): bridge pre-check, sidecar lookup, recent-projects, file tree double-click, NSM open and the open/save dialogs now route through the manager; save-as derives the extension from the selected filter tag instead of string matching.
+  - [project_session.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/project_session.py): autosave discovery and JSON-vs-XML handling use `is_project_file()` and `prepare_for_backend_save()`.
+  - [carla_widgets.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/carla_widgets.py) / [racklistwidget.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/widgets/racklistwidget.py): plugin state dialogs and drag-drop project detection use the manager.
+
+### 2026-10-20 04:15:00
+- **fix(startup)**: single prompt for last-save/autosave recovery, loaded under the last-saved name and path
+  - Startup could show two prompts back to back: a "Autosave Recovery Detected" `QMessageBox`, then the "Recent Session" offer dialog. These are now a single dialog: when a newer autosave exists the offer switches to a "Recover Session" presentation and the autosave content is loaded while the project keeps its last-saved name and path (`fProjectFilename`), so saving writes back to the real project.
+  - [carla_widgets.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/carla_widgets.py) `ProjectLoadingDialog`: added `recover_mode` and `offer_detail` options (title "Recover Session:", "Recover Session" button, custom detail text/height); non-offer usage unchanged.
+  - [carla_host.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/carla_host.py) `checkRecentOnStartup` no longer shows the separate recovery prompt; it passes the recovery info to the one dialog. `loadProjectNow` now records the actual loaded source so `projectLoadingFinished` restores canvas positions from the recovered autosave rather than the older project file.
+
+### 2026-10-20 04:00:00
+- **fix(pluginlist)**: cache every plugin format so a restart no longer needs a full rescan
+  - The native discovery reports LV2 and internal plugins with a null `sha1` (`PluginDiscovery.cpp`), and both the scanner and dialog only wrote cache entries when a `sha1` existed. As a result LV2 (444) and internal (28) plugins were never cached and were re-enumerated on every launch, so the Add Plugin list looked incomplete until a manual refresh.
+  - [startup_scanner.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/pluginlist/startup_scanner.py): added `_cacheKeyFor()` which falls back to a stable synthetic key derived from the plugin identity (`build|type|uniqueId|filename|label|name|maker`) when no `sha1` is available; the scanner now caches all formats and replaces (rather than appends to) an entry on first write per run, preventing duplicates for formats the native cache callback cannot skip.
+  - Added a post-scan `_prunePluginCache()` pass that removes stale entries: synthetic entries whose plugin type was fully enumerated this run but not rewritten (plugin removed or identity changed), and sha1 entries whose filename now hashes differently (plugin updated). Formats skipped this run are left untouched to avoid wiping cache when a path is temporarily disabled.
+
+### 2026-10-20 03:30:00
+- **fix(pluginlist)**: Add Plugin dialog rack/cards no longer add the wrong plugin
+  - The table auto-sorted itself with Qt (`sortByColumn`/`setSortingEnabled`) while the Rack and Cards lists stayed in insertion order. Every cross-view operation is keyed by row index, so once the table was sorted a rack/card row pointed at an unrelated plugin. The table now uses custom sorting (`_sortInfos`/`_onHeaderClicked`) that rebuilds all three views in the same order, restoring correct add, selection, favorite toggle, info panel and filtering.
+  - [pluginlistdialog_py.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/pluginlist/pluginlistdialog_py.py): disabled Qt built-in table sorting, sort column/order is persisted via the header state, streamed scan results are appended in order and fully re-sorted when the scan finishes, and `_startScan(ignoreCache=True)` now clears the rack/cards lists too.
+
+### 2026-10-20 03:00:00
+- **fix(plugins)**: prevent the Cardinal VST3 crash (`X_GLXMakeCurrent` BadAccess + SIGSEGV) by sandboxing
+  - Cardinal (VCV Rack) creates its own OpenGL/GLX context; when loaded in-process it collides with the host's GL context on the X server and takes Clara down. It is now auto-bridged when added, and included in the project-load bridge pre-check alongside KV-Element/JUCE.
+  - [carla_host.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/carla_host.py) `loadPluginFromData` forces `PLUGIN_OPTION_USE_BRIDGE` for Cardinal unless the user picked an explicit bridge mode; `loadProjectNow`'s collision pre-check now matches `cardinal` (and treats a missing `PreferPluginBridges` entry as "bridges off").
+
 ### 2026-10-19 23:45:00
 - **docs**: refresh TODO.md and the README roadmap for shipped work; replace the last HTML dash entities
 

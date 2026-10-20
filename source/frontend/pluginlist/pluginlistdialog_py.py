@@ -923,6 +923,13 @@ class PyPluginListDialog(QDialog):
         self.table.currentCellChanged.connect(self._onTableCurrentCellChanged)
         self.table.cellClicked.connect(self._cellClicked)
         self.table.cellDoubleClicked.connect(self._cellDoubleClicked)
+        self.table.horizontalHeader().sectionClicked.connect(self._onHeaderClicked)
+
+        # Custom sorting: the table, rack and cards lists must always share the same row
+        # order so their index-based linking stays valid (Qt's built-in sort only reorders
+        # the table and would desync the other two views).
+        self._sortColumn = TW_NAME
+        self._sortOrder = Qt.AscendingOrder
 
         self.list_rack.itemSelectionChanged.connect(self._onListSelectionChanged)
         self.list_cards.itemSelectionChanged.connect(self._onListSelectionChanged)
@@ -1077,7 +1084,7 @@ class PyPluginListDialog(QDialog):
         self.table.setSelectionMode(_EXTENDED_SELECTION)
         self.table.setSelectionBehavior(_SELECT_ROWS)
         self.table.setWordWrap(False)
-        self.table.setSortingEnabled(True)
+        self.table.setSortingEnabled(False)
         self.table.verticalHeader().setVisible(False)
         self.table.verticalHeader().setDefaultSectionSize(30)
         self.table.setHorizontalHeaderLabels(["", self.tr("Name"), self.tr("Label/Id/URI"),
@@ -1644,11 +1651,21 @@ class PyPluginListDialog(QDialog):
             self.table.setColumnWidth(TW_NAME, 250)
             self.table.setColumnWidth(TW_LABEL, 200)
             self.table.setColumnWidth(TW_MAKER, 150)
-            self.table.sortByColumn(TW_NAME, Qt.AscendingOrder)
+
+        # Restore the sort column/order from the header state and apply it ourselves so all
+        # three views (table, rack, cards) can be rebuilt in the same order.
+        col = hh.sortIndicatorSection()
+        order = hh.sortIndicatorOrder()
+        if not hh.isSortIndicatorShown() or not (0 <= col < _TABLE_COLUMNS):
+            col, order = TW_NAME, Qt.AscendingOrder
+        self._sortColumn = col
+        self._sortOrder = order
+        hh.setSortIndicatorShown(True)
+        hh.setSortIndicator(self._sortColumn, self._sortOrder)
 
         hh.setSectionResizeMode(TW_FAVORITE, QHeaderView.Fixed)
         self.table.setColumnWidth(TW_FAVORITE, 24)
-        self.table.setSortingEnabled(True)
+        self.table.setSortingEnabled(False)
 
         # favorites
         self.favorites = self._favoritesFromBytes(_getBytes(settings, "PluginListDialog/Favorites"))
@@ -2081,6 +2098,8 @@ class PyPluginListDialog(QDialog):
 
         if ignoreCache:
             self.table.setRowCount(0)
+            self.list_rack.clear()
+            self.list_cards.clear()
             self._lastTableWidgetIndex = 0
             self._rowPluginData.clear()
             self._plugins = {k: [] for k in self._plugins}
@@ -2116,8 +2135,9 @@ class PyPluginListDialog(QDialog):
         self.scanBar.hide()
         self.b_refresh.setEnabled(True)
         self.b_refresh_full.setEnabled(True)
-        self._updatePluginsSummaryLabel()
-        self._checkPlugin(self.table.currentRow())
+        # Rebuild so plugins discovered during the scan land in the active sort order
+        # consistently across the table, rack and cards views.
+        self._addPluginsToTable()
 
     def _onScannerPluginDiscovered(self, pinfo, sha1):
         if not self._pluginsAdd(pinfo):
@@ -2125,13 +2145,13 @@ class PyPluginListDialog(QDialog):
         self._streamPluginToTable(pinfo)
 
     def _streamPluginToTable(self, info):
-        self.table.setSortingEnabled(False)
+        # Append in discovery order while scanning (all views stay index-aligned); the full
+        # sorted rebuild happens once the scan finishes.
         row = self.table.rowCount()
         self.table.insertRow(row)
         self._lastTableWidgetIndex = row
         self._addPluginToTable(info, isStream=True)
         self._filterSingleRow(row)
-        self.table.setSortingEnabled(True)
         self._updatePluginsSummaryLabel()
 
     def _updatePluginsSummaryLabel(self):
@@ -2158,24 +2178,58 @@ class PyPluginListDialog(QDialog):
         self.list_cards.clear()
         self._rowPluginData.clear()
 
-        total = sum(len(v) for v in self._plugins.values())
-        self.table.setRowCount(total)
-
         order = ["internal", "ladspa", "dssi", "lv2", "vst2", "vst3", "clap", "au", "jsfx", "kits"]
-        self._lastTableWidgetIndex = 0
+        infos = []
         for key in order:
-            for info in self._plugins[key]:
-                self._addPluginToTable(info, isStream=False)
+            infos.extend(self._plugins[key])
+        infos = self._sortInfos(infos)
+
+        self.table.setRowCount(len(infos))
+
+        self._lastTableWidgetIndex = 0
+        for info in infos:
+            self._addPluginToTable(info, isStream=False)
 
         # Pre-instantiate visible rows immediately for current mode only
         self._ensureVisibleWidgets()
 
         self._updatePluginsSummaryLabel()
-        self.table.setSortingEnabled(True)
+        self.table.setSortingEnabled(False)
 
         self._checkFilters()
         self._ensureVisibleWidgets()
         self._checkPlugin(self.table.currentRow())
+
+    def _sortInfos(self, infos):
+        column = getattr(self, "_sortColumn", TW_NAME)
+        reverse = getattr(self, "_sortOrder", Qt.AscendingOrder) == Qt.DescendingOrder
+
+        def key(info):
+            name = (info.get("name") or "").lower()
+            if column == TW_LABEL:
+                return ((info.get("label") or "").lower(), name)
+            if column == TW_MAKER:
+                return ((info.get("maker") or "").lower(), name)
+            if column == TW_BINARY:
+                return (os.path.basename(info.get("filename") or "").lower(), name)
+            if column == TW_FAVORITE:
+                return (0 if self._isFavorite(info) else 1, name)
+            return (name, (info.get("label") or "").lower())
+
+        return sorted(infos, key=key, reverse=reverse)
+
+    def _onHeaderClicked(self, column):
+        if column < 0 or column >= _TABLE_COLUMNS:
+            return
+        if column == self._sortColumn:
+            self._sortOrder = (
+                Qt.DescendingOrder if self._sortOrder == Qt.AscendingOrder else Qt.AscendingOrder
+            )
+        else:
+            self._sortColumn = column
+            self._sortOrder = Qt.AscendingOrder
+        self.table.horizontalHeader().setSortIndicator(self._sortColumn, self._sortOrder)
+        self._addPluginsToTable()
 
     def _cacheRowData(self, index, info, pluginText=None):
         if pluginText is None:

@@ -35,6 +35,7 @@ from carla_shared import gCarla, CustomMessageBox, CARLA_KEY_CANVAS_THEME, CARLA
 from carla_skin import createPluginSlot
 from utils import QSafeSettings
 from patchcanvas.theme import Theme
+from project_storage import storage_manager
 
 # ------------------------------------------------------------------------------------------------------------
 # Rack Widget item
@@ -423,7 +424,7 @@ class RackListWidget(QListWidget):
                                  self.host.get_last_error(), QMessageBox.Ok, QMessageBox.Ok)
                 continue
 
-            if filename.endswith(".carxp") or filename.endswith(".carjp"):
+            if storage_manager.is_project_file(filename):
                 gCarla.gui.loadCanvasGroupPositionsFromProject(filename)
                 gCarla.gui.loadExternalCanvasGroupPositionsIfNeeded(filename)
 

@@ -117,6 +117,8 @@ from carla_utils import getPluginTypeAsString
 from widgets.collapsablewidget import CollapsibleBox
 from widgets.pixmapkeyboard import PixmapKeyboardHArea
 
+from project_storage import storage_manager
+
 # ------------------------------------------------------------------------------------------------------------
 # Carla GUI defines
 
@@ -1271,15 +1273,14 @@ class PluginEdit(QDialog):
 
             self.fCurrentStateFilename = None
 
-        fileFilter = self.tr("Carla State File (*.carxs)")
+        fileFilter = storage_manager.save_filter("state")
         filename, _ = QFileDialog.getSaveFileName(self, self.tr("Save Plugin State File"), filter=fileFilter)
 
         # FIXME use ok value, test if it works as expected
         if not filename:
             return
 
-        if not filename.lower().endswith(".carxs"):
-            filename += ".carxs"
+        filename = storage_manager.ensure_extension(filename, kind="state")
 
         self.fCurrentStateFilename = filename
         self.host.save_plugin_state(self.fPluginId, self.fCurrentStateFilename)
@@ -1304,7 +1305,7 @@ class PluginEdit(QDialog):
 
             return
 
-        fileFilter = self.tr("Carla State File (*.carxs)")
+        fileFilter = storage_manager.save_filter("state")
         filename, _ = QFileDialog.getOpenFileName(self, self.tr("Open Plugin State File"), filter=fileFilter)
 
         # FIXME use ok value, test if it works as expected
@@ -1779,12 +1780,13 @@ class ProjectLoadSummaryDialog(QDialog):
 # Modern Project Loading Dialog with indeterminate animation and detailed status text
 
 class ProjectLoadingDialog(QDialog):
-    def __init__(self, parent=None, filename="", offer_mode=False, on_load_accepted=None, on_load_declined=None):
+    def __init__(self, parent=None, filename="", offer_mode=False, on_load_accepted=None, on_load_declined=None,
+                 recover_mode=False, offer_detail=None):
         super().__init__(parent)
         from qt_compat import QTimer, QPushButton, QCheckBox
 
         self.setWindowTitle(self.tr("Loading Project..."))
-        self.setFixedSize(460, 150 if offer_mode else 120)
+        self.setFixedSize(460, 180 if offer_detail else (150 if offer_mode else 120))
         app_modal = getattr(Qt, "ApplicationModal", None) or getattr(getattr(Qt, "WindowModality", object), "ApplicationModal", None)
         if app_modal is not None:
             self.setWindowModality(app_modal)
@@ -1793,6 +1795,8 @@ class ProjectLoadingDialog(QDialog):
         self._current_progress = 12.0
         self._target_progress = 20.0
         self._offer_mode = offer_mode
+        self._recover_mode = recover_mode
+        self._offer_detail = offer_detail
         self._on_load_accepted = on_load_accepted
         self._on_load_declined = on_load_declined
         self._accepted = False
@@ -1806,7 +1810,12 @@ class ProjectLoadingDialog(QDialog):
         header_layout.setSpacing(8)
 
         basename = os.path.basename(filename) if filename else self.tr("Project")
-        title_prefix = self.tr("Recent Session:") if offer_mode else self.tr("Loading:")
+        if recover_mode:
+            title_prefix = self.tr("Recover Session:")
+        elif offer_mode:
+            title_prefix = self.tr("Recent Session:")
+        else:
+            title_prefix = self.tr("Loading:")
         self.lbl_title = QLabel(f"<b>{title_prefix}</b> {basename}", self)
         header_layout.addWidget(self.lbl_title, 1)
 
@@ -1840,11 +1849,12 @@ class ProjectLoadingDialog(QDialog):
         layout.addWidget(self.progressBar)
 
         # 3. Status detail label
-        initial_detail = (
-            self.tr("No project is currently open. Would you like to restore this session?")
-            if offer_mode
-            else self.tr("Reading project file & canvas geometry...")
-        )
+        if offer_mode and offer_detail:
+            initial_detail = offer_detail
+        elif offer_mode:
+            initial_detail = self.tr("No project is currently open. Would you like to restore this session?")
+        else:
+            initial_detail = self.tr("Reading project file & canvas geometry...")
         self.lbl_detail = QLabel(initial_detail, self)
         self.lbl_detail.setStyleSheet("color: #a6adc8; font-size: 11px;")
         self.lbl_detail.setWordWrap(True)
@@ -1880,7 +1890,7 @@ class ProjectLoadingDialog(QDialog):
         self.b_skip.clicked.connect(self._on_skip_clicked)
         btn_row.addWidget(self.b_skip)
 
-        self.b_load = QPushButton(self.tr("Load Session"), self.offer_widget)
+        self.b_load = QPushButton(self.tr("Recover Session") if recover_mode else self.tr("Load Session"), self.offer_widget)
         self.b_load.setStyleSheet("""
             QPushButton {
                 background-color: #cba6f7;
@@ -1942,7 +1952,10 @@ class ProjectLoadingDialog(QDialog):
         self.progressBar.show()
         self.lbl_percent.show()
         title_text = self.lbl_title.text()
-        self.lbl_title.setText(title_text.replace(self.tr("Recent Session:"), self.tr("Loading:")))
+        self.lbl_title.setText(
+            title_text.replace(self.tr("Recent Session:"), self.tr("Loading:"))
+                      .replace(self.tr("Recover Session:"), self.tr("Loading:"))
+        )
         self.lbl_detail.setText(detail or self.tr("Preparing project file & engine..."))
         self.setFixedSize(450, 120)
         self._anim_timer.start()

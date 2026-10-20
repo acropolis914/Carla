@@ -2,6 +2,7 @@
 # SPDX-FileCopyrightText: 2011-2026 Filipe Coelho <falktx@falktx.com>
 # SPDX-License-Identifier: GPL-2.0-or-later
 
+import hashlib
 import os
 import sys
 import time
@@ -51,6 +52,21 @@ from pluginlist.pluginlistdialog_py import (
     _infoToBytes,
     _newSettings,
 )
+
+
+def _cacheKeyFor(pinfo, sha1sum):
+    """
+    Cache key for a discovered plugin. Prefers the native per-binary sha1; for formats that
+    report no sha1 (LV2 and internal plugins), derive a stable synthetic key from the plugin
+    identity so they still get cached instead of being rescanned on every launch.
+    """
+    if sha1sum:
+        return sha1sum
+    ident = "%d|%d|%d|%s|%s|%s|%s" % (
+        pinfo["build"], pinfo["type"], pinfo["uniqueId"],
+        pinfo["filename"], pinfo["label"], pinfo["name"], pinfo["maker"],
+    )
+    return "x" + hashlib.sha1(ident.encode("utf-8", "replace")).hexdigest()
 
 
 class PluginScannerThread(QThread):
@@ -135,10 +151,15 @@ class PluginScannerThread(QThread):
 
         settings = _newSettings()
         cached_keys = set(k[12:] for k in settings.allKeys() if k.startswith("PluginCache/"))
+        written_keys = set()
+        seen_types = set()
+        observed_sha1 = {}
 
         def checkCacheCallback(filename, sha1):
             if filename:
                 self.fileChanged.emit(os.path.basename(filename))
+                if sha1:
+                    observed_sha1[filename] = sha1
             if self.ignoreCache:
                 return False
             if sha1 in cached_keys:
@@ -175,13 +196,22 @@ class PluginScannerThread(QThread):
                 "maker": info["metadata"]["maker"] or "",
             }
 
-            if sha1sum is not None:
-                s = _newSettings()
-                key = "PluginCache/%s" % sha1sum
-                data = _getBytes(s, key) if sha1sum in cached_keys else b""
-                data += _infoToBytes(pinfo)
-                s.setValue(key, QByteArray(data))
-                cached_keys.add(sha1sum)
+            # Cache every plugin, including formats without a native sha1 (LV2, internal),
+            # so a restart can show them instantly instead of rescanning them.
+            key_id = _cacheKeyFor(pinfo, sha1sum)
+            s = _newSettings()
+            key = "PluginCache/%s" % key_id
+            if key_id in written_keys:
+                # Same binary/key seen again in this run: append to the existing entry.
+                data = _getBytes(s, key) + _infoToBytes(pinfo)
+            else:
+                # First sighting this run: replace any previous entry to avoid duplicates
+                # from formats that cannot be skipped through the native cache callback.
+                data = _infoToBytes(pinfo)
+                written_keys.add(key_id)
+            s.setValue(key, QByteArray(data))
+            cached_keys.add(key_id)
+            seen_types.add(pinfo["type"])
 
             self._discoveredCount += 1
             self.pluginDiscovered.emit(pinfo, sha1sum or "")
@@ -210,8 +240,53 @@ class PluginScannerThread(QThread):
 
             self._currentRunner = None
 
+        if not self._stopRequested:
+            self._prunePluginCache(seen_types, observed_sha1, written_keys)
+
         self.statusChanged.emit("Scan complete" if not self._stopRequested else "Scan stopped")
         self.scanFinished.emit(self._discoveredCount)
+
+    def _prunePluginCache(self, seen_types, observed_sha1, keep_keys):
+        """
+        Drop cache entries that no longer match the current plugin set:
+
+        - Synthetic ("x") entries: removed when their plugin type was fully seen this run but the
+          entry was not rewritten, i.e. the plugin is gone or its identity fields changed.
+        - Native sha1 entries: removed when the entry's filename now hashes to a different sha1
+          (plugin file updated). Entries whose file was not visited are left untouched.
+        """
+        settings = _newSettings()
+        stale = []
+        for key in settings.allKeys():
+            if not key.startswith("PluginCache/"):
+                continue
+            key_id = key[12:]
+            if key_id in keep_keys:
+                continue
+            data = _getBytes(settings, key)
+            infos = _bytesToInfoList(data) if data else []
+
+            if key_id.startswith("x"):
+                if not infos:
+                    continue
+                types = set(i["type"] for i in infos)
+                if types and types.issubset(seen_types):
+                    stale.append(key)
+                continue
+
+            if not infos:
+                continue
+            for info in infos:
+                current = observed_sha1.get(info["filename"])
+                if current is not None and current != key_id:
+                    stale.append(key)
+                    break
+
+        for key in stale:
+            settings.remove(key)
+        if stale:
+            settings.sync()
+            log_carla(f"[SCANNER] Pruned {len(stale)} stale plugin cache entries", level="info")
 
 
 _GLOBAL_SCANNER = None

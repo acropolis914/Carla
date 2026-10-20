@@ -97,8 +97,8 @@ class ProjectSessionManager:
 
         files = []
         for f in os.listdir(autosave_dir):
-            if f.endswith((".carxp", ".carjp", ".json")):
-                full_path = os.path.join(autosave_dir, f)
+            full_path = os.path.join(autosave_dir, f)
+            if storage_manager.is_project_file(full_path):
                 files.append(full_path)
 
         files.sort(key=lambda p: os.path.getmtime(p), reverse=True)
@@ -142,13 +142,12 @@ class ProjectSessionManager:
         try:
             canonical_path = self.get_canonical_project_filepath(project_filepath)
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            ext = os.path.splitext(canonical_path)[1] or ".carxp"
+            ext = os.path.splitext(canonical_path)[1] or storage_manager.default_extension()
             base_name = os.path.splitext(os.path.basename(canonical_path))[0]
             autosave_file = os.path.join(autosave_dir, f"{base_name}_auto_{timestamp}{ext}")
 
-            # 1. Ask Carla backend engine to save state (via temporary XML if destination is .carjp)
-            is_json = autosave_file.lower().endswith((".carjp", ".json"))
-            backend_target = autosave_file if not is_json else (autosave_file + "._tmp.carxp")
+            # 1. Ask Carla backend engine to save state (temporary XML for non-XML formats)
+            backend_target, is_temp = storage_manager.prepare_for_backend_save(autosave_file)
 
             if not self.host_window.host.save_project(backend_target):
                 return None
@@ -157,7 +156,7 @@ class ProjectSessionManager:
             from patchcanvas import patchcanvas
             positions = patchcanvas.saveGroupPositions() if getattr(self.host_window, "fWithCanvas", False) else []
 
-            if is_json:
+            if is_temp:
                 storage_manager.finalize_from_backend_save(autosave_file, backend_target, positions)
                 if os.path.exists(backend_target):
                     try:
@@ -216,8 +215,8 @@ class ProjectSessionManager:
             return
         autosaves = []
         for f in os.listdir(autosave_dir):
-            if f.endswith((".carxp", ".carjp", ".json")):
-                p = os.path.join(autosave_dir, f)
+            p = os.path.join(autosave_dir, f)
+            if storage_manager.is_project_file(p):
                 autosaves.append(p)
 
         if len(autosaves) > self.max_autosaves:

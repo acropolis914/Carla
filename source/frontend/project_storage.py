@@ -67,6 +67,10 @@ class BaseProjectHandler:
     def can_handle(self, filepath):
         raise NotImplementedError
 
+    def load_root(self, filepath):
+        """Returns an ElementTree root element for the project, or None if unreadable"""
+        raise NotImplementedError
+
     def load_positions(self, filepath):
         raise NotImplementedError
 
@@ -95,6 +99,14 @@ class CarlaXmlProjectHandler(BaseProjectHandler):
                 return "<CARLA-PROJECT" in head
         except Exception:
             return False
+
+    def load_root(self, filepath):
+        if not filepath or not os.path.exists(filepath):
+            return None
+        try:
+            return ET.parse(filepath).getroot()
+        except Exception:
+            return None
 
     def load_positions(self, filepath):
         if not filepath or not os.path.exists(filepath):
@@ -260,6 +272,20 @@ class CarlaJsonProjectHandler(BaseProjectHandler):
         if not isinstance(doc, dict):
             raise ProjectFormatError("Invalid JSON root: expected object")
         return doc
+
+    def load_root(self, filepath):
+        if not filepath or not os.path.exists(filepath):
+            return None
+        try:
+            doc = self._read_json(filepath)
+        except Exception:
+            return None
+        if "CARLA-PROJECT" not in doc or not isinstance(doc["CARLA-PROJECT"], dict):
+            return None
+        try:
+            return dict_to_xml_elem("CARLA-PROJECT", doc["CARLA-PROJECT"])
+        except Exception:
+            return None
 
     def load_positions(self, filepath):
         if not filepath or not os.path.exists(filepath):
@@ -443,51 +469,251 @@ class CarlaJsonProjectHandler(BaseProjectHandler):
         return True
 
 
+class ProjectFormat:
+    """
+    A single file type, owned entirely by the save manager.
+
+    The rest of the program only ever carries a *tag* (the format id: "xml", "json", "state")
+    plus a filename. Extensions are resolved here and nowhere else.
+    """
+    def __init__(self, id, ext, display, kind="project", alt_exts=(), handler=None, filter_exts=None):
+        self.id = id
+        self.ext = ext
+        self.display = display
+        self.kind = kind
+        self.alt_exts = tuple(alt_exts)
+        self.handler = handler
+        # legacy aliases are accepted when loading, but stay out of file-dialog filters so that
+        # every unrelated *.json on disk does not show up in the open/save picker
+        self.filter_exts = tuple(alt_exts) if filter_exts is None else tuple(filter_exts)
+        self.patterns = ("*" + ext,) + tuple("*" + e for e in self.filter_exts if e != ext)
+
+    @property
+    def extensions(self):
+        return (self.ext,) + self.alt_exts
+
+    def has_primary_extension(self, filepath):
+        if not filepath:
+            return False
+        return str(filepath).lower().endswith(self.ext)
+
+    def has_extension(self, filepath):
+        if not filepath:
+            return False
+        path = str(filepath).lower()
+        return any(path.endswith(ext) for ext in self.extensions)
+
+    def __repr__(self):
+        return "ProjectFormat(%r, %r, kind=%r)" % (self.id, self.ext, self.kind)
+
+
 class ProjectStorageManager:
     """Dispatches and coordinates project file persistence across formats"""
+
+    # kept for backward compatibility with older callers
     EXTENSION_MAP = {
         "xml": ".carxp",
         "json": ".carjp",
     }
 
     def __init__(self):
-        self._handlers = [
-            CarlaJsonProjectHandler(),
-            CarlaXmlProjectHandler(),
+        self._formats = [
+            ProjectFormat("xml", ".carxp", "Carla XML Project", "project",
+                          handler=CarlaXmlProjectHandler()),
+            ProjectFormat("json", ".carjp", "Carla JSON Project", "project",
+                          alt_exts=(".json",), filter_exts=(), handler=CarlaJsonProjectHandler()),
+            ProjectFormat("state", ".carxs", "Carla State File", "state"),
         ]
+        self._defaults = {"project": "xml", "state": "state"}
 
-    def get_handler(self, filepath):
-        for h in self._handlers:
-            if h.can_handle(filepath):
-                return h
-        # Fallback to extension check
-        if str(filepath).lower().endswith((".carjp", ".json")):
-            return self._handlers[0]
-        return self._handlers[1]
+    # ------------------------------------------------------------------------------------------------
+    # registry
+
+    def formats(self, kind=None):
+        if kind is None:
+            return list(self._formats)
+        return [f for f in self._formats if f.kind == kind]
+
+    def get_format_by_tag(self, tag):
+        if not tag:
+            return None
+        for fmt in self._formats:
+            if fmt.id == tag:
+                return fmt
+        return None
+
+    def default_format(self, kind="project"):
+        fmt = self.get_format_by_tag(self._defaults.get(kind))
+        if fmt is not None:
+            return fmt
+        matching = self.formats(kind)
+        if not matching:
+            raise KeyError("unknown format kind: %s" % (kind,))
+        return matching[0]
+
+    def default_extension(self, kind="project"):
+        return self.default_format(kind).ext
+
+    def extensions(self, kind="project"):
+        exts = []
+        for fmt in self.formats(kind):
+            for ext in fmt.extensions:
+                if ext not in exts:
+                    exts.append(ext)
+        return exts
+
+    # ------------------------------------------------------------------------------------------------
+    # resolution (never raises, never leaks extensions upwards)
+
+    def get_format(self, filepath):
+        """Resolves a filename to its format using its extension, falling back to content sniffing."""
+        if not filepath:
+            return None
+        for fmt in self._formats:
+            if fmt.handler is None:
+                continue
+            if fmt.has_extension(filepath) or fmt.handler.can_handle(filepath):
+                return fmt
+        for fmt in self._formats:
+            if fmt.has_extension(filepath):
+                return fmt
+        return None
+
+    def get_format_tag(self, filepath):
+        fmt = self.get_format(filepath)
+        return fmt.id if fmt is not None else None
+
+    def is_project_file(self, filepath):
+        """
+        True when the program should treat *filepath* as a loadable project.
+
+        Primary extensions are trusted as-is. Legacy aliases (.json) and extension-less files are
+        only accepted once their content proves to be a Carla project, so unrelated files are
+        never mistaken for sessions.
+        """
+        if not filepath:
+            return False
+        for fmt in self._formats:
+            if fmt.kind == "project" and fmt.has_primary_extension(filepath):
+                return True
+        return self.get_project_root(filepath) is not None
+
+    def is_state_file(self, filepath):
+        if not filepath:
+            return False
+        for fmt in self._formats:
+            if fmt.kind == "state" and fmt.has_primary_extension(filepath):
+                return True
+        return False
+
+    def tag_from_filter(self, selected_filter, kind="project"):
+        """Maps a QFileDialog filter string to a format tag using its (untranslated) pattern."""
+        if not selected_filter:
+            return None
+        selected = str(selected_filter)
+        for fmt in self.formats(kind):
+            if fmt.ext in selected:
+                return fmt.id
+        return None
+
+    def ensure_extension(self, filepath, tag=None, kind="project"):
+        """Appends the chosen format's extension when the filename carries no known one."""
+        if not filepath:
+            return filepath
+        for fmt in self.formats(kind):
+            if fmt.has_extension(filepath):
+                return filepath
+        fmt = self.get_format_by_tag(tag)
+        if fmt is None or fmt.kind != kind:
+            fmt = self.default_format(kind)
+        return filepath + fmt.ext
+
+    # ------------------------------------------------------------------------------------------------
+    # dialog filters
+
+    def open_filter(self):
+        projects = self.formats("project")
+        all_patterns = " ".join(p for fmt in projects for p in fmt.patterns)
+        parts = ["Carla Project Files (%s)" % all_patterns]
+        parts += ["%s (%s)" % (fmt.display, " ".join(fmt.patterns)) for fmt in projects]
+        parts += ["%s (%s)" % (fmt.display, " ".join(fmt.patterns)) for fmt in self.formats("state")]
+        return ";;".join(parts)
+
+    def save_filter(self, kind="project"):
+        return ";;".join(
+            "%s (%s)" % (fmt.display, " ".join(fmt.patterns)) for fmt in self.formats(kind)
+        )
+
+    # ------------------------------------------------------------------------------------------------
+    # format-agnostic I/O
+
+    def get_project_root(self, filepath):
+        """ElementTree root for any project format, or None. Callers never inspect extensions."""
+        fmt = self.get_format(filepath)
+        if fmt is None or fmt.handler is None:
+            return None
+        try:
+            return fmt.handler.load_root(filepath)
+        except Exception:
+            return None
+
+    def sidecar_positions_path(self, filepath):
+        """
+        Path of the legacy sidecar canvas-positions file for a project, or None.
+
+        Only old-style XML projects (`.carxp` declaring VERSION 2.0) keep positions in a sidecar;
+        modern formats store them inline. The format and the legacy marker are both decided here so
+        callers never need to know about extensions.
+        """
+        fmt = self.get_format(filepath)
+        if fmt is None or fmt.kind != "project" or fmt.id != "xml":
+            return None
+        if not os.path.exists(filepath):
+            return None
+        try:
+            with open(filepath, "r", encoding="utf-8", errors="ignore") as fh:
+                head = "".join(fh.readlines(90))
+        except Exception:
+            return None
+        if head.find("<CARLA-PROJECT VERSION='2.0'>") < 0:
+            return None
+        base, _ext = os.path.splitext(filepath)
+        return base + ".json"
+
+    def has_sidecar_positions(self, filepath):
+        sidecar = self.sidecar_positions_path(filepath)
+        return bool(sidecar and os.path.exists(sidecar))
+
+    def handler_for(self, filepath):
+        fmt = self.get_format(filepath)
+        if fmt is not None and fmt.handler is not None:
+            return fmt.handler
+        return self.default_format("project").handler
+
+    # ------------------------------------------------------------------------------------------------
+    # persistence
 
     def load_canvas_positions(self, filepath):
-        handler = self.get_handler(filepath)
-        return handler.load_positions(filepath)
+        return self.handler_for(filepath).load_positions(filepath)
 
     def save_canvas_positions(self, filepath, positions, extra_metadata=None):
-        handler = self.get_handler(filepath)
-        return handler.save_positions(filepath, positions, extra_metadata=extra_metadata)
+        return self.handler_for(filepath).save_positions(filepath, positions, extra_metadata=extra_metadata)
 
     def prepare_for_backend_load(self, filepath, force_bridged=False):
-        """Prepares a file path readable by the C++ engine (converts .carjp to temporary xml if needed)"""
-        handler = self.get_handler(filepath)
-        return handler.load_full_project_as_xml_path(filepath, force_bridged=force_bridged)
+        """Prepares a file path readable by the C++ engine (converts non-XML projects to a temp XML)."""
+        return self.handler_for(filepath).load_full_project_as_xml_path(filepath, force_bridged=force_bridged)
 
     def prepare_for_backend_save(self, target_filepath):
         """Returns (backend_save_target, is_temporary) for saving from C++ backend."""
-        if str(target_filepath).lower().endswith((".carjp", ".json")):
+        fmt = self.get_format(target_filepath)
+        if fmt is not None and fmt.id == "json":
             tmp_xml = target_filepath + "._tmp_carla_save.carxp"
             return tmp_xml, True
         return target_filepath, False
 
     def finalize_from_backend_save(self, target_filepath, backend_saved_filepath, positions=None, extra_metadata=None):
         """Finalizes backend save into target format and writes canvas positions."""
-        handler = self.get_handler(target_filepath)
+        handler = self.handler_for(target_filepath)
         handler.save_full_project_from_xml_path(target_filepath, backend_saved_filepath)
         if positions is not None:
             handler.save_positions(target_filepath, positions, extra_metadata=extra_metadata)

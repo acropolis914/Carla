@@ -1399,40 +1399,38 @@ class HostWindow(QMainWindow):
             self.slot_engineStart()
 
         load_source = source_override or self.fProjectFilename
+        # Remember what was actually read so a recovery load restores canvas positions from the
+        # autosave, while the project keeps its last-saved name/path (fProjectFilename).
+        self.fLastLoadedSource = load_source
         self.projectLoadingStarted(load_source)
         if getattr(self, "fLoadingDialog", None) is not None:
             self.fLoadingDialog.setDetail(f"Preparing {os.path.basename(load_source)}...")
         self.fIsProjectLoading = True
 
-        # Check if project contains plugins prone to in-process JUCE UI thread collisions
+        # Check if project contains plugins prone to in-process UI/GL thread collisions
         force_bridged = False
         try:
-            tree = None
-            if load_source.endswith(".carxp"):
-                tree = ET.parse(load_source)
-            elif load_source.endswith((".carjp", ".json")):
-                with open(load_source, "r", encoding="utf-8") as jf:
-                    jdata = json.load(jf)
-                if isinstance(jdata, dict) and "CARLA-PROJECT" in jdata:
-                    from project_storage import dict_to_xml_elem
-                    root_elem = dict_to_xml_elem("CARLA-PROJECT", jdata["CARLA-PROJECT"])
-                    tree = ET.ElementTree(root_elem)
-            if tree is not None:
-                root = tree.getroot()
+            # Format-agnostic: the save manager resolves the file (XML or JSON) and hands back a
+            # common ElementTree root, so nothing here needs to know any extension.
+            root = storage_manager.get_project_root(load_source)
+            if root is not None:
                 eng_settings = root.find("EngineSettings")
-                prefer_bridges = eng_settings.findtext("PreferPluginBridges") if eng_settings is not None else "false"
-                if prefer_bridges and prefer_bridges.lower() in ("false", "0"):
-                    has_juce_vst3 = False
+                prefer_bridges = eng_settings.findtext("PreferPluginBridges") if eng_settings is not None else None
+                if not prefer_bridges or prefer_bridges.lower() in ("false", "0"):
+                    # Plugins that create their own GL/UI context and crash the host when loaded
+                    # in-process (KV-Element/JUCE UI thread collisions, Cardinal/VCV Rack GLX races).
+                    collision_tokens = ("element", "juce", "cardinal")
+                    risky_plugin = None
                     for p in root.findall("Plugin"):
                         info = p.find("Info")
-                        if info is not None:
-                            p_type = info.findtext("Type", "")
-                            p_name = info.findtext("Name", "")
-                            p_uri = info.findtext("URI", "")
-                            if "element" in p_name.lower() or "element" in p_uri.lower() or "juce" in p_name.lower():
-                                has_juce_vst3 = True
-                                break
-                    if has_juce_vst3:
+                        if info is None:
+                            continue
+                        p_name = (info.findtext("Name", "") or "").lower()
+                        p_uri = (info.findtext("URI", "") or "").lower()
+                        if any(tok in p_name or tok in p_uri for tok in collision_tokens):
+                            risky_plugin = info.findtext("Name", "") or info.findtext("URI", "") or self.tr("unknown")
+                            break
+                    if risky_plugin:
                         if getattr(gCarla, "autoload_lastsave", False):
                             force_bridged = True
                         else:
@@ -1440,7 +1438,8 @@ class HostWindow(QMainWindow):
                                 self,
                                 self.tr("Plugin Bridge Recommendation"),
                                 self.tr(
-                                    "This project contains plugins that may crash if loaded in-process (e.g. KV-Element / JUCE).\n\n"
+                                    "This project contains plugins that may crash if loaded in-process "
+                                    "(e.g. KV-Element / JUCE, Cardinal).\n\n"
                                     "Would you like to load plugins bridged in separate processes for stability?"
                                 ),
                                 QMessageBox.Yes | QMessageBox.No,
@@ -1641,20 +1640,24 @@ class HostWindow(QMainWindow):
         ):
             return
 
-        # Restore positions from .carxp if present
+        # Restore positions from the file that was actually loaded (autosave recovery included),
+        # while recent-projects and saving still use the last-saved project path.
         positions_loaded = False
+        source_for_positions = getattr(self, "fLastLoadedSource", None) or self.fProjectFilename
         if self.fProjectFilename and os.path.exists(self.fProjectFilename):
             self.addRecentProject(self.fProjectFilename)
-            positions_loaded = self.loadCanvasGroupPositionsFromProject(
-                self.fProjectFilename
-            )
+
+        if source_for_positions and os.path.exists(source_for_positions):
+            positions_loaded = self.loadCanvasGroupPositionsFromProject(source_for_positions)
 
         if (
             not positions_loaded
             and refreshCanvas
-            and not self.loadExternalCanvasGroupPositionsIfNeeded(self.fProjectFilename)
+            and not self.loadExternalCanvasGroupPositionsIfNeeded(source_for_positions)
         ):
             QTimer.singleShot(1, self.slot_canvasRefresh)
+
+        self.fLastLoadedSource = None
 
     def loadCanvasGroupPositionsFromProject(self, filename):
         if not filename or not os.path.exists(filename):
@@ -1690,18 +1693,9 @@ class HostWindow(QMainWindow):
             return False
 
     def loadExternalCanvasGroupPositionsIfNeeded(self, filename):
-        if not filename or not filename.endswith(".carxp"):
-            return False
-
-        extrafile = filename.rsplit(".", 1)[0] + ".json"
-        if not os.path.exists(extrafile):
-            return False
-
-        try:
-            with open(filename, "r") as fh:
-                if "".join(fh.readlines(90)).find("<CARLA-PROJECT VERSION='2.0'>") < 0:
-                    return False
-        except Exception:
+        # Which projects keep positions in a sidecar file is decided by the save manager.
+        extrafile = storage_manager.sidecar_positions_path(filename)
+        if not extrafile:
             return False
 
         with open(extrafile, "r") as fh:
@@ -1719,7 +1713,7 @@ class HostWindow(QMainWindow):
     # Recent Projects
 
     def addRecentProject(self, filename):
-        if not filename or not (filename.endswith(".carxp") or filename.endswith(".carjp")):
+        if not filename or not storage_manager.is_project_file(filename):
             return
         absPath = os.path.abspath(filename)
         if absPath in self.fRecentProjects:
@@ -1810,24 +1804,15 @@ class HostWindow(QMainWindow):
 
         if recent_file:
             recovery_source = None
+            recovery_mtime = None
             if hasattr(self, "fSessionManager") and self.fSessionManager is not None:
                 newer_autosave = self.fSessionManager.check_newer_autosave(recent_file)
                 if newer_autosave:
-                    if getattr(gCarla, "autoload_lastsave", False):
-                        recovery_source = newer_autosave
-                    else:
-                        mtime_str = datetime.fromtimestamp(os.path.getmtime(newer_autosave)).strftime("%Y-%m-%d %H:%M:%S")
-                        rec_ask = QMessageBox.question(
-                            self,
-                            self.tr("Autosave Recovery Detected"),
-                            self.tr(
-                                f"A newer autosave exists from {mtime_str} for recent project '{os.path.basename(recent_file)}'.\n\nWould you like to recover the autosaved session instead?"
-                            ),
-                            QMessageBox.Yes | QMessageBox.No,
-                            QMessageBox.Yes,
-                        )
-                        if rec_ask == QMessageBox.Yes:
-                            recovery_source = newer_autosave
+                    recovery_source = newer_autosave
+                    try:
+                        recovery_mtime = os.path.getmtime(newer_autosave)
+                    except OSError:
+                        recovery_mtime = None
 
             is_autoload = getattr(gCarla, "autoload_lastsave", False) or QSafeSettings().value("Main/AutoloadLastSave", False, bool)
             if is_autoload:
@@ -1835,6 +1820,8 @@ class HostWindow(QMainWindow):
                 return
 
             def _on_recent_load():
+                # Recovered autosaves are loaded as the last-saved project: content comes from
+                # the autosave, but the name/path stays the real project so saving writes there.
                 self.loadProjectLater(recent_file, source_override=recovery_source)
 
             def _on_recent_skip():
@@ -1844,10 +1831,24 @@ class HostWindow(QMainWindow):
                     if self.fWithCanvas:
                         QTimer.singleShot(600, self.slot_canvasArrange)
 
+            offer_detail = None
+            if recovery_source:
+                if recovery_mtime is not None:
+                    mtime_str = datetime.fromtimestamp(recovery_mtime).strftime("%Y-%m-%d %H:%M:%S")
+                else:
+                    mtime_str = self.tr("an unknown time")
+                offer_detail = self.tr(
+                    f"A newer autosave from {mtime_str} was found for this project.\n\n"
+                    f"Recovering restores the autosaved session but keeps the last-saved name and path "
+                    f"('{os.path.basename(recent_file)}')."
+                )
+
             self.fLoadingDialog = ProjectLoadingDialog(
                 self.fParentOrSelf,
                 recent_file,
                 offer_mode=True,
+                recover_mode=bool(recovery_source),
+                offer_detail=offer_detail,
                 on_load_accepted=_on_recent_load,
                 on_load_declined=_on_recent_skip,
             )
@@ -1886,9 +1887,7 @@ class HostWindow(QMainWindow):
 
     @pyqtSlot()
     def slot_fileOpen(self):
-        fileFilter = self.tr(
-            "Carla Project Files (*.carxp *.carjp);;Carla XML Project (*.carxp);;Carla JSON Project (*.carjp);;Carla Preset File (*.carxs)"
-        )
+        fileFilter = storage_manager.open_filter()
         filename, ok = QFileDialog.getOpenFileName(
             self,
             self.tr("Open Carla Project File"),
@@ -1948,9 +1947,7 @@ class HostWindow(QMainWindow):
         if self.fProjectFilename and not saveAs:
             return self.saveProjectNow()
 
-        fileFilter = self.tr(
-            "Carla XML Project (*.carxp);;Carla JSON Project (*.carjp)"
-        )
+        fileFilter = storage_manager.save_filter()
         selected_filter = ""
         filename, selected_filter = QFileDialog.getSaveFileName(
             self,
@@ -1962,11 +1959,9 @@ class HostWindow(QMainWindow):
         if not filename:
             return
 
-        if not (filename.lower().endswith(".carxp") or filename.lower().endswith(".carjp")):
-            if "carjp" in str(selected_filter).lower():
-                filename += ".carjp"
-            else:
-                filename += ".carxp"
+        # The chosen format travels as a tag; the save manager alone decides the extension.
+        chosen_tag = storage_manager.tag_from_filter(selected_filter)
+        filename = storage_manager.ensure_extension(filename, tag=chosen_tag)
 
         if self.fProjectFilename != filename:
             self.fProjectFilename = filename
@@ -2604,6 +2599,13 @@ class HostWindow(QMainWindow):
             log_carla(f"HostWindow: startStartupPluginScanner failed: {exc}", level="debug")
 
     def loadPluginFromData(self, btype, ptype, filename, label, uniqueId, extraPtr, options=PLUGIN_OPTIONS_NULL):
+        # Auto-sandbox plugins that create their own GL/UI context and crash the host when
+        # loaded in-process (e.g. Cardinal/VCV Rack GLX races), unless the user explicitly
+        # picked a bridge mode in the Add Plugin dialog.
+        if not (options & (PLUGIN_OPTION_USE_BRIDGE | PLUGIN_OPTION_AVOID_BRIDGE)):
+            ident = f"{label or ''} {filename or ''}".lower()
+            if "cardinal" in ident:
+                options |= PLUGIN_OPTION_USE_BRIDGE
         cursor = getattr(Qt, "WaitCursor", None) or getattr(getattr(Qt, "CursorShape", object), "WaitCursor", None)
         if cursor is not None:
             QApplication.setOverrideCursor(cursor)
@@ -4433,7 +4435,7 @@ class HostWindow(QMainWindow):
     def slot_fileTreeDoubleClicked(self, modelIndex):
         filename = self.fDirModel.filePath(modelIndex)
 
-        if filename.endswith(".carxp") or filename.endswith(".carjp"):
+        if storage_manager.is_project_file(filename):
             if self.fPluginCount > 0:
                 ask = QMessageBox.question(
                     self,
@@ -5272,7 +5274,7 @@ class HostWindow(QMainWindow):
 
         # Open
         elif opcode == NSM_CALLBACK_OPEN:
-            self.fProjectFilename = QFileInfo(valueStr + ".carxp").absoluteFilePath()
+            self.fProjectFilename = QFileInfo(valueStr + storage_manager.default_extension()).absoluteFilePath()
             self.setProperWindowTitle()
 
             self.fCustomStopAction = self.CUSTOM_ACTION_PROJECT_LOAD
