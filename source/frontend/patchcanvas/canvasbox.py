@@ -1158,6 +1158,19 @@ class CanvasBox(QGraphicsObject):
 
         self.m_last_pos = self.pos()
 
+    def updateConnectionSelectionState(self):
+        """
+        Refresh the selection state of the cables attached to this node.
+
+        Focusing a node must immediately highlight and re-route its cables; otherwise they keep
+        their stale look until the node happens to be moved.
+        """
+        for connection in self.m_connection_lines:
+            try:
+                connection.line.updateLineSelected()
+            except Exception:
+                pass
+
     def resetLinesZValue(self):
         for connection in canvas.connection_list:
             if (
@@ -2315,6 +2328,10 @@ class CanvasBox(QGraphicsObject):
         ):
             self.repaintLines()
             self.slot_signalPositionChangedLater()
+
+        elif change == QGraphicsItem.ItemSelectedHasChanged:
+            # A focused/selected node must update its cables right away
+            self.updateConnectionSelectionState()
 
         return super().itemChange(change, value)
 

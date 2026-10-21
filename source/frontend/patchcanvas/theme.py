@@ -148,6 +148,14 @@ def parse_theme_dict(raw):
                         data[text_key], data[bg_key], min_contrast=4.5
                     )
 
+    # 1b. Keep the selected node title readable on the header background, otherwise it can
+    #     blend into the header and the node name appears to vanish while the node is focused
+    header_bg = data.get("box_bg_2") or data.get("box_bg_1")
+    if header_bg and "box_text_sel" in data:
+        data["box_text_sel"] = adjust_text_for_contrast(
+            data["box_text_sel"], header_bg, min_contrast=4.5
+        )
+
     parsed = {}
 
     # 2. Reassemble flattened pens (box_pen, box_pen_sel, rubberband_pen, port pens)
@@ -322,7 +330,7 @@ class Theme(object):
                     adapted_raw["port_text"] = active_tokens["text-primary"]
                 if "accent" in active_tokens:
                     adapted_raw["box_pen_sel_color"] = active_tokens["accent"]
-                    adapted_raw["box_text_sel"] = active_tokens.get("bg-primary", "#ffffff")
+                    adapted_raw["box_text_sel"] = active_tokens["accent"]
                 if "border-dim" in active_tokens:
                     adapted_raw["box_pen_color"] = active_tokens["border-dim"]
                 theme_raw = adapted_raw

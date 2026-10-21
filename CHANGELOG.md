@@ -20,6 +20,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-20 05:30:00
+- **fix(patchbay)**: focused node name no longer disappears, and cables react to focus immediately
+  - Two issues reported from the Reddit release thread: "when a sink is focused, the sink's name disappears" and "manual linking is not automatically initiated until the chosen sink is moved to a new position".
+  - [theme.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/patchcanvas/theme.py): the app-theme adaptation mapped the selected node title to `bg-primary` (the canvas background) while the title is drawn on the header background (`bg-surface`). On any dark palette those two are nearly identical shades, so the title vanished the moment the node was focused. The selected title now uses the accent color, and `parse_theme_dict()` runs a contrast pass on `box_text_sel` against the header background so the name stays readable on every theme.
+  - [canvasbox.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/patchcanvas/canvasbox.py): `CanvasBox.itemChange()` now handles `ItemSelectedHasChanged` and calls the new `updateConnectionSelectionState()`, which refreshes the selection state of the attached cables. Focusing a node highlights and re-routes its cables immediately, instead of only after the node is dragged to a new position.
+
 ## [1.1.1] - 2026-10-20
 
 Stability and reliability patch: Cardinal crash-on-load fix, Add Plugin view sync, persistent plugin cache, single startup recovery prompt, and a filetype-agnostic storage refactor.
