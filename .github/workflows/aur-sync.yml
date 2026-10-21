@@ -1,0 +1,96 @@
+name: Sync AUR packages
+
+# Pushes the PKGBUILDs kept in this repository to the AUR repositories, so packaging fixes
+# reach users without waiting for a full release cycle.
+#
+# The release workflow (package.yml) also publishes to AUR on tag pushes; this workflow exists
+# for the case where only the packaging itself needs fixing.
+
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        description: 'AUR package to sync'
+        required: true
+        default: 'clara-bin'
+        type: choice
+        options:
+          - clara-bin
+
+jobs:
+  sync-aur:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Install tools
+        run: pacman -Sy --noconfirm git openssh
+
+      - name: Publish to AUR
+        env:
+          AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          AUR_PACKAGE: ${{ inputs.package }}
+        run: |
+          if [ -z "$AUR_SSH_PRIVATE_KEY" ]; then
+            echo "::error::AUR_SSH_PRIVATE_KEY secret is not set"
+            exit 1
+          fi
+
+          useradd -m builder
+          install -d -m 700 -o builder -g builder /home/builder/.ssh
+          printf '%s\n' "$AUR_SSH_PRIVATE_KEY" > /home/builder/.ssh/aur
+          chmod 600 /home/builder/.ssh/aur
+          chown builder:builder /home/builder/.ssh/aur
+          ssh-keyscan aur.archlinux.org > /home/builder/.ssh/known_hosts 2>/dev/null
+          chown builder:builder /home/builder/.ssh/known_hosts
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+
+          cat > /home/builder/sync.sh <<'SCRIPT'
+          set -euo pipefail
+          export GIT_SSH_COMMAND="ssh -i /home/builder/.ssh/aur -o UserKnownHostsFile=/home/builder/.ssh/known_hosts -o StrictHostKeyChecking=yes"
+
+          pkg="$AUR_PACKAGE"
+          aurdir="/home/builder/$pkg-aur"
+          rm -rf "$aurdir"
+
+          if ! git clone "ssh://aur@aur.archlinux.org/$pkg.git" "$aurdir" 2>/dev/null; then
+            mkdir -p "$aurdir"
+            git -C "$aurdir" init -q
+            git -C "$aurdir" remote add origin "ssh://aur@aur.archlinux.org/$pkg.git"
+          fi
+
+          cp "$GITHUB_WORKSPACE/aur/$pkg/PKGBUILD" "$aurdir/PKGBUILD"
+
+          # AUR expects pkgrel to be bumped whenever the PKGBUILD changes
+          if git -C "$aurdir" show HEAD:PKGBUILD > "$aurdir/PKGBUILD.orig" 2>/dev/null; then
+            if ! cmp -s "$aurdir/PKGBUILD" "$aurdir/PKGBUILD.orig"; then
+              rel="$(sed -n 's/^pkgrel=//p' "$aurdir/PKGBUILD" | head -n1)"
+              case "$rel" in
+                ''|*[!0-9]*) echo "::warning::could not parse pkgrel '$rel'" ;;
+                *) sed -i "s/^pkgrel=.*/pkgrel=$((rel + 1))/" "$aurdir/PKGBUILD"
+                   echo "PKGBUILD changed, bumped pkgrel to $((rel + 1))" ;;
+              esac
+            fi
+          fi
+          rm -f "$aurdir/PKGBUILD.orig"
+
+          cd "$aurdir"
+          makepkg --printsrcinfo > .SRCINFO
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add PKGBUILD .SRCINFO
+          if git diff --cached --quiet; then
+            echo "No changes to publish for $pkg"
+          else
+            git commit -m "chore: sync $pkg PKGBUILD from upstream repository"
+            git push origin HEAD
+          fi
+          SCRIPT
+          chmod +x /home/builder/sync.sh
+          chown builder:builder /home/builder/sync.sh
+          su builder -c "AUR_PACKAGE='$AUR_PACKAGE' GITHUB_WORKSPACE='$GITHUB_WORKSPACE' bash /home/builder/sync.sh"

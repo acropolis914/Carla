@@ -20,6 +20,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-20 05:55:00
+- **fix(aur)**: `clara-bin` AUR package no longer fails to build
+  - Users reported "Doesn't install on arch" for `clara-bin`. The upstream release asset (`clara-bin-<ver>-<rel>-x86_64.pkg.tar.zst`) is itself a pacman package and therefore carries pacman's own metadata files; the AUR `package()` step stripped `.PKGINFO` and `.MTREE` but left `.BUILDINFO` in the package root, so makepkg aborted with `ERROR: Dotfile found in package root` and no package was ever produced.
+  - [aur/clara-bin/PKGBUILD](file:///home/acroarch/Documents/Projects/git-clones/Carla/aur/clara-bin/PKGBUILD): `.BUILDINFO` is now excluded as well, so the AUR build completes and the resulting package installs and runs (`Clara v1.1.1`).
+  - Added [.github/workflows/aur-sync.yml](file:///home/acroarch/Documents/Projects/git-clones/Carla/.github/workflows/aur-sync.yml), a manually triggered workflow that syncs the in-repo PKGBUILDs to the AUR repositories (bumping `pkgrel` when the PKGBUILD changes), so packaging fixes reach users without waiting for a full release cycle.
+
 ### 2026-10-20 05:30:00
 - **fix(patchbay)**: focused node name no longer disappears, and cables react to focus immediately
   - Two issues reported from the Reddit release thread: "when a sink is focused, the sink's name disappears" and "manual linking is not automatically initiated until the chosen sink is moved to a new position".
