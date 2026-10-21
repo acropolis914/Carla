@@ -24,6 +24,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **fix(aur)**: `clara-bin` AUR package no longer fails to build
   - Users reported "Doesn't install on arch" for `clara-bin`. The upstream release asset (`clara-bin-<ver>-<rel>-x86_64.pkg.tar.zst`) is itself a pacman package and therefore carries pacman's own metadata files; the AUR `package()` step stripped `.PKGINFO` and `.MTREE` but left `.BUILDINFO` in the package root, so makepkg aborted with `ERROR: Dotfile found in package root` and no package was ever produced.
   - [aur/clara-bin/PKGBUILD](file:///home/acroarch/Documents/Projects/git-clones/Carla/aur/clara-bin/PKGBUILD): `.BUILDINFO` is now excluded as well, so the AUR build completes and the resulting package installs and runs (`Clara v1.1.1`).
+  - The same PKGBUILD derived the release asset name from `${pkgrel}`, but the release workflow always builds the Arch asset with `pkgrel=1`, so bumping the AUR `pkgrel` (as AUR requires when the PKGBUILD changes) made the download 404. The upstream release counter is now a separate `upstream_rel` variable.
   - Added [.github/workflows/aur-sync.yml](file:///home/acroarch/Documents/Projects/git-clones/Carla/.github/workflows/aur-sync.yml), a manually triggered workflow that syncs the in-repo PKGBUILDs to the AUR repositories (bumping `pkgrel` when the PKGBUILD changes), so packaging fixes reach users without waiting for a full release cycle.
 
 ### 2026-10-20 05:30:00
