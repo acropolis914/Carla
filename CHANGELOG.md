@@ -20,6 +20,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-22 12:55:00
+- **fix(ui)**: canvas toolbar toggles now show their "on" state, and manually created cables appear instantly
+  - The floating patchbay tool palette (signal flow/pulses, grid, snap and the pointer/select/hand modes) looked exactly the same whether a toggle was enabled or disabled, so there was no way to tell that the animated signal flow was actually running.
+  - Root cause: the live stylesheet is compiled by the theme engine from [base_primitives.qss](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/styles/base_primitives.qss) alone. The per-theme rules in `source/frontend/styles/themes/*.qss` - which do contain a `:checked` rule for the tool palette - are never loaded, because the theme registry always resolves a theme definition and the engine path takes precedence over the static-file fallback. Those four files were effectively dead code.
+  - [base_primitives.qss](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/styles/base_primitives.qss): now carries the floating tool palette rules (panel surface, flat buttons, hover and an accent `:checked` state), so every theme - Catppuccin Mocha/Macchiato/Latte, Classic Dark, Nord, Tokyo Night, Dracula and Gruvbox Dark - highlights the enabled toggles.
+  - [patchcanvas.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/patchcanvas/patchcanvas.py) and [utils.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/patchcanvas/utils.py): a cable created by manually connecting two ports no longer fades in over 750ms, it is drawn immediately. `CanvasItemFX()` takes an optional duration, so the eye-candy fade is untouched everywhere else (node and port appearance, cable removal).
+
 ## [1.1.2] - 2026-10-22
 
 Patchbay focus and packaging release: the focused node title stays readable, cables react to focus immediately, and the AUR `clara-bin` package builds, installs and updates correctly.

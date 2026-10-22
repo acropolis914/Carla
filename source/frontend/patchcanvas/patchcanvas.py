@@ -1393,7 +1393,8 @@ def connectPorts(
 
     if options.eyecandy == EYECANDY_FULL:
         item = connection_dict.widget
-        CanvasItemFX(item, True, False)
+        # New connections appear instantly, no fade-in delay
+        CanvasItemFX(item, True, False, duration=0)
 
     canvas.scene.update()
     QTimer.singleShot(0, canvas.scene.update)

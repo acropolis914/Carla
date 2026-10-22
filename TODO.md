@@ -12,6 +12,8 @@
 - [ ] `[Diff: 2]` Fix: Nested patchbay sessions get corrupted when a patchbay is opened from inside another patchbay (upstream [falkTX/Carla#1715](https://github.com/falkTX/Carla/issues/1715)) - reported by users, highest priority because it risks project data loss
 - [ ] `[Diff: 1]` Triage: High CPU usage reported by users - attribute the load before touching anything (suspect: Yabridge/PipeWire host scanning rather than the Carla engine)
 - [ ] `[Diff: 2]` Fix: Focus changes did not refresh cable gradients, so cables kept the previous node colours until the node was moved
+- [x] `[Diff: 1]` Fix: Canvas toolbar toggles (signal flow/pulses, grid, snap, pointer/select/hand) looked identical whether enabled or disabled, so the "on" state was invisible
+- [x] `[Diff: 1]` Fix: Manually created cables faded in over 750ms, making a new connection feel unresponsive
 ---
 
 ## 🎛️ Patchbay Canvas & Navigation
@@ -50,6 +52,7 @@
 - [x] `[Diff: 1]` feat: Settings dialog sidebar enhancement - use a more readable, cohesive font
 - [x] `[Diff: 2]` feat: Settings dialog polish & cleanup - reorganize sections, improve layout, use modern compact pills instead of outdated bitmap icons, and add live reactive tweakables
 - [x] `[Diff: 1]` feat: Minimize to system tray
+- [ ] `[Diff: 2]` Cleanup: the static theme files in `source/frontend/styles/themes/` are unreachable (the theme engine always compiles from `base_primitives.qss`), so their rules never apply - port the useful ones into the engine or delete them
 
 ---
 

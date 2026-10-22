@@ -213,7 +213,7 @@ def CanvasCallback(action, value1, value2, value_str):
     canvas.callback(action, value1, value2, value_str)
 
 
-def CanvasItemFX(item, show, destroy):
+def CanvasItemFX(item, show, destroy, duration=None):
     if canvas.debug:
         print(
             "PatchCanvas::CanvasItemFX(%s, %s, %s)"
@@ -228,8 +228,11 @@ def CanvasItemFX(item, show, destroy):
             del animation
             break
 
+    if duration is None:
+        duration = 750 if show else 500
+
     animation = CanvasFadeAnimation(item, show)
-    animation.setDuration(750 if show else 500)
+    animation.setDuration(duration)
 
     if show:
         animation.finished.connect(canvas.qobject.AnimationFinishedShow)
