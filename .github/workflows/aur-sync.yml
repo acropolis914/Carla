@@ -29,7 +29,7 @@ jobs:
           submodules: false
 
       - name: Install tools
-        run: pacman -Sy --noconfirm git openssh
+        run: pacman -Sy --noconfirm git openssh diffutils
 
       - name: Publish to AUR
         env:
@@ -81,9 +81,11 @@ jobs:
           # AUR expects pkgrel to be bumped whenever the PKGBUILD changes; the counter lives on
           # the AUR side, so derive it from the live package rather than from the copy in this
           # repository (which always carries the base value).
-          if [ -f "$aurdir/PKGBUILD.orig" ] && ! diff -q \
-              <(sed -e 's/pkgver=[^[:space:]]*/pkgver=@/g' -e 's/pkgrel=[^[:space:]]*/pkgrel=@/g' "$aurdir/PKGBUILD.orig") \
-              <(sed -e 's/pkgver=[^[:space:]]*/pkgver=@/g' -e 's/pkgrel=[^[:space:]]*/pkgrel=@/g' "$aurdir/PKGBUILD") >/dev/null; then
+          # Compare with git rather than diff(1): the container images do not always ship
+          # diffutils, and a missing diff made the comparison look like a change every time.
+          sed -e 's/pkgver=[^[:space:]]*/pkgver=@/g' -e 's/pkgrel=[^[:space:]]*/pkgrel=@/g' "$aurdir/PKGBUILD.orig" > "$aurdir/.masked.orig"
+          sed -e 's/pkgver=[^[:space:]]*/pkgver=@/g' -e 's/pkgrel=[^[:space:]]*/pkgrel=@/g' "$aurdir/PKGBUILD" > "$aurdir/.masked.new"
+          if [ -f "$aurdir/PKGBUILD.orig" ] && ! git diff --no-index --quiet "$aurdir/.masked.orig" "$aurdir/.masked.new"; then
             new_rel=$((live_rel + 1))
             echo "PKGBUILD changed, bumping pkgrel to $new_rel"
           else
@@ -91,7 +93,7 @@ jobs:
           fi
           [ "$new_rel" -lt 1 ] && new_rel=1
           sed -i "s/^pkgrel=.*/pkgrel=${new_rel}/" "$aurdir/PKGBUILD"
-          rm -f "$aurdir/PKGBUILD.orig"
+          rm -f "$aurdir/PKGBUILD.orig" "$aurdir/.masked.orig" "$aurdir/.masked.new"
 
           cd "$aurdir"
           makepkg --printsrcinfo > .SRCINFO

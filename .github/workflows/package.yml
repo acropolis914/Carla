@@ -553,7 +553,7 @@ jobs:
           submodules: false
 
       - name: Install tools
-        run: pacman -Sy --noconfirm git openssh
+        run: pacman -Sy --noconfirm git openssh diffutils
 
       - name: Publish clara-bin and clara-git to AUR
         env:
@@ -601,16 +601,18 @@ jobs:
               live_rel="$(sed -n 's/^pkgrel=//p' "$aurdir/PKGBUILD.orig" | head -n1)"
               case "$live_rel" in ''|*[!0-9]*) live_rel=0 ;; esac
             fi
-            if [ -f "$aurdir/PKGBUILD.orig" ] && ! diff -q \
-                <(sed -e 's/pkgver=[^[:space:]]*/pkgver=@/g' -e 's/pkgrel=[^[:space:]]*/pkgrel=@/g' "$aurdir/PKGBUILD.orig") \
-                <(sed -e 's/pkgver=[^[:space:]]*/pkgver=@/g' -e 's/pkgrel=[^[:space:]]*/pkgrel=@/g' "$aurdir/PKGBUILD") >/dev/null; then
+            # Compare with git rather than diff(1): the container images do not always ship
+            # diffutils, and a missing diff made the comparison look like a change every time.
+            sed -e 's/pkgver=[^[:space:]]*/pkgver=@/g' -e 's/pkgrel=[^[:space:]]*/pkgrel=@/g' "$aurdir/PKGBUILD.orig" > "$aurdir/.masked.orig"
+            sed -e 's/pkgver=[^[:space:]]*/pkgver=@/g' -e 's/pkgrel=[^[:space:]]*/pkgrel=@/g' "$aurdir/PKGBUILD" > "$aurdir/.masked.new"
+            if [ -f "$aurdir/PKGBUILD.orig" ] && ! git diff --no-index --quiet "$aurdir/.masked.orig" "$aurdir/.masked.new"; then
               new_rel=$((live_rel + 1))
             else
               new_rel="$live_rel"
             fi
             [ "$new_rel" -lt 1 ] && new_rel=1
             sed -i "s/^pkgrel=.*/pkgrel=${new_rel}/" "$aurdir/PKGBUILD"
-            rm -f "$aurdir/PKGBUILD.orig"
+            rm -f "$aurdir/PKGBUILD.orig" "$aurdir/.masked.orig" "$aurdir/.masked.new"
 
             cd "$aurdir"
             makepkg --printsrcinfo > .SRCINFO
