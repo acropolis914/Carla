@@ -1,6 +1,28 @@
 {
-  "latest": "1.1.1",
+  "latest": "1.1.2",
   "releases": {
+    "1.1.2": {
+      "version": "1.1.2",
+      "date": "2026-10-22",
+      "urgency": "suggested",
+      "summary": "Patchbay focus and packaging release: the focused node title stays readable, cables react to focus immediately, and the AUR `clara-bin` package builds, installs and updates correctly",
+      "changes": [
+        "Patchbay: the focused node title is readable again (it was drawn with the canvas background colour on the header background, 1.30:1 contrast) and the theme now enforces a minimum contrast ratio for selection colours",
+        "Patchbay: cables refresh their gradients and routing the moment a node gains or loses focus, instead of only after the node is moved",
+        "AUR: `clara-bin` builds and installs again - the release asset's own pacman metadata is stripped, the download URL no longer breaks when the AUR `pkgrel` is bumped, and the noisy strip/debug pass is disabled",
+        "AUR: a manual sync workflow publishes packaging fixes without waiting for a full release, and the published `pkgrel` is now derived from the live AUR package instead of being reset on every release"
+      ],
+      "installation": {
+        "appimage": "Download `Clara-1.1.2-x86_64.AppImage`, then: `chmod +x Clara-1.1.2-x86_64.AppImage && ./Clara-1.1.2-x86_64.AppImage`",
+        "flatpak": "Download/run the Flatpak bundle: `flatpak install --user com.github.acropolis914.Clara.flatpak`",
+        "arch": "Install via AUR / PKGBUILD: `paru -S clara-bin` (or `clara-git`)",
+        "ubuntu": "Download `.deb` and run: `sudo dpkg -i clara-ubuntu-*.deb && sudo apt-get install -f`",
+        "fedora": "Download `.rpm` and run: `sudo dnf install clara-*.rpm`",
+        "void": "Extract tarball: `tar --zstd -xvf clara-void-*.tar.zst -C /`",
+        "alpine": "Extract tarball: `tar --zstd -xvf clara-alpine-*.tar.zst -C /`",
+        "nix": "Run directly via Flake: `nix run github:acropolis914/Clara`"
+      }
+    },
     "1.1.1": {
       "version": "1.1.1",
       "date": "2026-10-20",

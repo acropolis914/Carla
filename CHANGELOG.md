@@ -20,6 +20,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [1.1.2] - 2026-10-22
+
+Patchbay focus and packaging release: the focused node title stays readable, cables react to focus immediately, and the AUR `clara-bin` package builds, installs and updates correctly.
+
+### 2026-10-22 11:05:00
+- **fix(ci)**: the published AUR `pkgrel` counter is no longer reset on every release
+  - The release job copied `aur/clara-bin/PKGBUILD` verbatim and rewrote only `pkgver`, which reset the published AUR `pkgrel` back to the repository base value. The sync workflow derived the counter from the repository copy as well, so a second packaging change could not increment it past the already published value.
+  - Both workflows now treat the AUR counter as the source of truth: it is kept when only the version changed, incremented when the PKGBUILD content changed, and never moves backwards. The sync workflow also never publishes a version whose release assets do not exist yet, so a packaging fix can no longer point users at a download that has not been released.
+
 ### 2026-10-20 05:55:00
 - **fix(aur)**: `clara-bin` AUR package no longer fails to build
   - Users reported "Doesn't install on arch" for `clara-bin`. The upstream release asset (`clara-bin-<ver>-<rel>-x86_64.pkg.tar.zst`) is itself a pacman package and therefore carries pacman's own metadata files; the AUR `package()` step stripped `.PKGINFO` and `.MTREE` but left `.BUILDINFO` in the package root, so makepkg aborted with `ERROR: Dotfile found in package root` and no package was ever produced.

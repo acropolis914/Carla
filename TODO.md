@@ -9,6 +9,9 @@
 - [x] `[Diff: 1]` Fix: Left-click drag on empty canvas does not pan the UI
 - [x] `[Diff: 1]` Fix: Patchbay canvas node power button (`⏻`) does not toggle plugin processing state reliably
 - [x] `[Diff: 1]` Fix: Patchbay canvasbox selected text color is inverted or unreadable against header background
+- [ ] `[Diff: 2]` Fix: Nested patchbay sessions get corrupted when a patchbay is opened from inside another patchbay (upstream [falkTX/Carla#1715](https://github.com/falkTX/Carla/issues/1715)) - reported by users, highest priority because it risks project data loss
+- [ ] `[Diff: 1]` Triage: High CPU usage reported by users - attribute the load before touching anything (suspect: Yabridge/PipeWire host scanning rather than the Carla engine)
+- [ ] `[Diff: 2]` Fix: Focus changes did not refresh cable gradients, so cables kept the previous node colours until the node was moved
 ---
 
 ## 🎛️ Patchbay Canvas & Navigation
@@ -73,8 +76,10 @@
 ---
 
 ## 🕹️ Control Interface (claractl / scripting)
-- [ ] `[Diff: 3]` IPC core: `QLocalServer` (UNIX socket) started by the GUI (`--control-socket`), newline-delimited JSON request/response protocol
-- [ ] `[Diff: 2]` Single command/ops layer shared by CLI + server + scripting (`getallnodes`, `getnode`, `getallconnections`, `movenode`, `connect src aport dst bport`, `disconnect`, `arrange`, `setlinestyle`, `getgraph`, `nodesinfo`)
+> **Build the ops layer first.** The shared command layer is plain functions over the existing graph-introspection model, so it is usable by the UI on its own and every IPC front-end (CLI, MCP, in-UI scripting) is just a thin transport on top of it. Starting with the socket means designing the protocol before the commands exist.
+
+- [ ] `[Diff: 2]` Shared ops layer as pure functions over the graph-introspection model: `getallnodes`, `getnode`, `getallconnections`, `movenode`, `connect src aport dst bport`, `disconnect`, `arrange`, `setlinestyle`, `getgraph`, `nodesinfo`
+- [ ] `[Diff: 3]` IPC core: `QLocalServer` (UNIX socket) started by the GUI (`--control-socket`), newline-delimited JSON request/response protocol (depends on the ops layer)
 - [ ] `[Diff: 2]` `claractl` CLI + `carla --getnodeinfo` alias - connect to a running instance, print JSON or tables
 - [ ] `[Diff: 3]` In-UI scripting tab - `exec` user code with a `Clara` facade injected into globals (no imports), e.g. `Clara.getAllNodes() -> dict`
 - [ ] `[Diff: 2]` MCP/lib wrapper exposing the same ops layer for external agents
@@ -109,3 +114,14 @@
 - [x] `[Diff: 3]` feat: AppImage build with standalone builder bundling CPython + PyQt6/Qt6
 - [x] `[Diff: 2]` feat: Flatpak manifest (`org.kde.Platform` 6.8 runtime) + automated CI workflow
 - [x] `[Diff: 1]` Decide Qt bundling policy: bundle libQt6 + PyQt6 inside AppImage/Flatpak for modern system portability
+- [x] `[Diff: 1]` Fix: AUR `clara-bin` build aborted with `Dotfile found in package root '.BUILDINFO'` - the release asset is itself a pacman package, so its pacman metadata has to be stripped
+- [x] `[Diff: 1]` Fix: AUR source URL was built from `${pkgrel}` while the release assets always use `pkgrel=1`, so bumping the AUR counter broke the download with a 404
+- [x] `[Diff: 1]` Fix: makepkg's strip/debug pass produced `gdb-add-index` noise and an empty `clara-bin-debug` split package from the already-stripped release binaries
+- [x] `[Diff: 1]` feat: Manual AUR sync workflow, so packaging fixes reach the AUR without waiting for a full release cycle
+- [x] `[Diff: 1]` Fix: Release job reset the published AUR `pkgrel` to the repository base value; the counter is now derived from the live AUR package
+
+---
+
+## 🧵 Deferred / Parked by Design
+- [ ] `[Diff: 3]` feat: Group patchbay nodes into folders/containers - requested by users, but parked on purpose: doing it against the current `QGraphicsItem`-bound canvas data model would lock in the architecture that the Parked section above intends to dismantle. Revisit after the data-model decoupling.
+

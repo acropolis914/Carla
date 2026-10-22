@@ -179,8 +179,11 @@ Active task tracking and architectural priorities are maintained in [TODO.md](TO
 - [x] Infinite canvas with migration recentering for legacy projects.
 - [x] Standardized `argparse` CLI integration with `rich` help output.
 - [x] Release pipeline hardening: tag/version consistency guard and AUR publish fix.
+- [x] Patchbay focus fixes: the focused node title stays readable, and cables react to focus immediately.
+- [x] AUR packaging fixes: `clara-bin` builds and installs again, and packaging fixes can be published without a full release.
 
 **Next up:**
+- [ ] Shared ops layer for graph control (`getallnodes`, `connect`, `arrange`, `getgraph`), as the base for every front-end.
 - [ ] `claractl` CLI / IPC core for live graph control and scripting.
 - [ ] Mini DSP load history graph with side labels and hover tooltips.
 - [ ] In-project session notes with rich Qt Markdown (`QTextDocument`) preview.
