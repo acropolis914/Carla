@@ -1,6 +1,27 @@
 {
-  "latest": "1.1.2",
+  "latest": "1.1.3",
   "releases": {
+    "1.1.3": {
+      "version": "1.1.3",
+      "date": "2026-10-22",
+      "urgency": "suggested",
+      "summary": "Patchbay UI fixes: the floating toolbar now shows which toggles are enabled, and a manually created cable is drawn instantly instead of fading in",
+      "changes": [
+        "Patchbay: the floating tool palette (signal flow/pulses, grid, snap, pointer/select/hand) now highlights the enabled toggles in the theme accent colour, so it is obvious when the animated signal flow is running",
+        "Patchbay: the toolbar styling was missing because the live stylesheet is compiled from base_primitives.qss alone; the floating palette rules now live there and apply to every theme (Catppuccin Mocha/Macchiato/Latte, Classic Dark, Nord, Tokyo Night, Dracula, Gruvbox Dark)",
+        "Patchbay: manually connecting two ports draws the cable immediately - the 750ms fade-in made a new connection feel unresponsive; node/port appearance and cable removal keep their eye-candy fades"
+      ],
+      "installation": {
+        "appimage": "Download `Clara-1.1.3-x86_64.AppImage`, then: `chmod +x Clara-1.1.3-x86_64.AppImage && ./Clara-1.1.3-x86_64.AppImage`",
+        "flatpak": "Download/run the Flatpak bundle: `flatpak install --user com.github.acropolis914.Clara.flatpak`",
+        "arch": "Install via AUR / PKGBUILD: `paru -S clara-bin` (or `clara-git`)",
+        "ubuntu": "Download `.deb` and run: `sudo dpkg -i clara-ubuntu-*.deb && sudo apt-get install -f`",
+        "fedora": "Download `.rpm` and run: `sudo dnf install clara-*.rpm`",
+        "void": "Extract tarball: `tar --zstd -xvf clara-void-*.tar.zst -C /`",
+        "alpine": "Extract tarball: `tar --zstd -xvf clara-alpine-*.tar.zst -C /`",
+        "nix": "Run directly via Flake: `nix run github:acropolis914/Clara`"
+      }
+    },
     "1.1.2": {
       "version": "1.1.2",
       "date": "2026-10-22",

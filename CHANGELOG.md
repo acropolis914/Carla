@@ -20,6 +20,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [1.1.3] - 2026-10-22
+
+Patchbay toolbar feedback release: the floating tool palette now shows which toggles are enabled, and a manually created cable is drawn instantly instead of fading in.
+
 ### 2026-10-22 12:55:00
 - **fix(ui)**: canvas toolbar toggles now show their "on" state, and manually created cables appear instantly
   - The floating patchbay tool palette (signal flow/pulses, grid, snap and the pointer/select/hand modes) looked exactly the same whether a toggle was enabled or disabled, so there was no way to tell that the animated signal flow was actually running.

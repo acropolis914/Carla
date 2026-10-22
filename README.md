@@ -181,6 +181,7 @@ Active task tracking and architectural priorities are maintained in [TODO.md](TO
 - [x] Release pipeline hardening: tag/version consistency guard and AUR publish fix.
 - [x] Patchbay focus fixes: the focused node title stays readable, and cables react to focus immediately.
 - [x] AUR packaging fixes: `clara-bin` builds and installs again, and packaging fixes can be published without a full release.
+- [x] Patchbay toolbar feedback: enabled toggles are highlighted in the theme accent, and new cables are drawn instantly.
 
 **Next up:**
 - [ ] Shared ops layer for graph control (`getallnodes`, `connect`, `arrange`, `getgraph`), as the base for every front-end.
