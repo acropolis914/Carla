@@ -591,6 +591,27 @@ jobs:
             fi
 
             sed -i "s/^pkgver=.*/pkgver=${TAG}/" "$aurdir/PKGBUILD"
+
+            # The AUR pkgrel counter lives on the AUR side, not in this repository: the PKGBUILD
+            # kept here always carries the base value. Derive the published counter from the live
+            # AUR package instead, so a release never resets it backwards and never bumps it when
+            # only the version changed.
+            live_rel=0
+            if git -C "$aurdir" show HEAD:PKGBUILD > "$aurdir/PKGBUILD.orig" 2>/dev/null; then
+              live_rel="$(sed -n 's/^pkgrel=//p' "$aurdir/PKGBUILD.orig" | head -n1)"
+              case "$live_rel" in ''|*[!0-9]*) live_rel=0 ;; esac
+            fi
+            if [ -f "$aurdir/PKGBUILD.orig" ] && ! diff -q \
+                <(sed -e 's/pkgver=[^[:space:]]*/pkgver=@/g' -e 's/pkgrel=[^[:space:]]*/pkgrel=@/g' "$aurdir/PKGBUILD.orig") \
+                <(sed -e 's/pkgver=[^[:space:]]*/pkgver=@/g' -e 's/pkgrel=[^[:space:]]*/pkgrel=@/g' "$aurdir/PKGBUILD") >/dev/null; then
+              new_rel=$((live_rel + 1))
+            else
+              new_rel="$live_rel"
+            fi
+            [ "$new_rel" -lt 1 ] && new_rel=1
+            sed -i "s/^pkgrel=.*/pkgrel=${new_rel}/" "$aurdir/PKGBUILD"
+            rm -f "$aurdir/PKGBUILD.orig"
+
             cd "$aurdir"
             makepkg --printsrcinfo > .SRCINFO
             git config user.name "github-actions[bot]"

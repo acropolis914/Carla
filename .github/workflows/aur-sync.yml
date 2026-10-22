@@ -66,17 +66,31 @@ jobs:
 
           cp "$GITHUB_WORKSPACE/aur/$pkg/PKGBUILD" "$aurdir/PKGBUILD"
 
-          # AUR expects pkgrel to be bumped whenever the PKGBUILD changes
+          # The published version belongs to the release pipeline: only the release workflow knows
+          # which release assets actually exist, so keep the live AUR version here. Syncing the
+          # repository version instead would point users at a download that does not exist yet.
+          live_ver=""
+          live_rel=0
           if git -C "$aurdir" show HEAD:PKGBUILD > "$aurdir/PKGBUILD.orig" 2>/dev/null; then
-            if ! cmp -s "$aurdir/PKGBUILD" "$aurdir/PKGBUILD.orig"; then
-              rel="$(sed -n 's/^pkgrel=//p' "$aurdir/PKGBUILD" | head -n1)"
-              case "$rel" in
-                ''|*[!0-9]*) echo "::warning::could not parse pkgrel '$rel'" ;;
-                *) sed -i "s/^pkgrel=.*/pkgrel=$((rel + 1))/" "$aurdir/PKGBUILD"
-                   echo "PKGBUILD changed, bumped pkgrel to $((rel + 1))" ;;
-              esac
-            fi
+            live_ver="$(sed -n 's/^pkgver=//p' "$aurdir/PKGBUILD.orig" | head -n1)"
+            live_rel="$(sed -n 's/^pkgrel=//p' "$aurdir/PKGBUILD.orig" | head -n1)"
+            case "$live_rel" in ''|*[!0-9]*) live_rel=0 ;; esac
           fi
+          [ -n "$live_ver" ] && sed -i "s/^pkgver=.*/pkgver=${live_ver}/" "$aurdir/PKGBUILD"
+
+          # AUR expects pkgrel to be bumped whenever the PKGBUILD changes; the counter lives on
+          # the AUR side, so derive it from the live package rather than from the copy in this
+          # repository (which always carries the base value).
+          if [ -f "$aurdir/PKGBUILD.orig" ] && ! diff -q \
+              <(sed -e 's/pkgver=[^[:space:]]*/pkgver=@/g' -e 's/pkgrel=[^[:space:]]*/pkgrel=@/g' "$aurdir/PKGBUILD.orig") \
+              <(sed -e 's/pkgver=[^[:space:]]*/pkgver=@/g' -e 's/pkgrel=[^[:space:]]*/pkgrel=@/g' "$aurdir/PKGBUILD") >/dev/null; then
+            new_rel=$((live_rel + 1))
+            echo "PKGBUILD changed, bumping pkgrel to $new_rel"
+          else
+            new_rel="$live_rel"
+          fi
+          [ "$new_rel" -lt 1 ] && new_rel=1
+          sed -i "s/^pkgrel=.*/pkgrel=${new_rel}/" "$aurdir/PKGBUILD"
           rm -f "$aurdir/PKGBUILD.orig"
 
           cd "$aurdir"
