@@ -1810,7 +1810,8 @@ class AbstractPluginSlot(QFrame, PluginEditParentMeta):
         if self.fIdleTimerId != 0:
             self.killTimer(self.fIdleTimerId)
             self.fIdleTimerId = 0
-            self.host.engine_close()
+            if self.parentWidget() is None:
+                self.host.engine_close()
 
         QFrame.closeEvent(self, event)
 

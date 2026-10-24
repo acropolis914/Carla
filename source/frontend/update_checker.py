@@ -106,13 +106,17 @@ class UpdateCheckThread(QThread):
 
 class UpdateChangelogDialog(QDialog):
     """Changelog & Installation guide viewer dialog."""
-    def __init__(self, release_info, parent=None):
+    def __init__(self, release_info, parent=None, current_version=None):
         super().__init__(parent)
-        self.setWindowTitle(f"Clara v{release_info.get('version')} Update Details")
-        self.resize(550, 400)
+        self.release_info = release_info
+        target_ver = release_info.get("version", "")
+        from carla_shared import CLARA_VERSION_STRING
+        curr_ver_display = current_version or CLARA_VERSION_STRING.lstrip("v")
+        self.setWindowTitle("Clara Update Details")
+        self.resize(580, 480)
         layout = QVBoxLayout(self)
 
-        title = QLabel(f"<h2>Clara v{release_info.get('version')}</h2>")
+        title = QLabel(f"<h2>Update Available: v{curr_ver_display} \u2192 v{target_ver}</h2>")
         summary = QLabel(f"<b>{release_info.get('summary', '')}</b>")
         summary.setWordWrap(True)
         layout.addWidget(title)
@@ -121,19 +125,47 @@ class UpdateChangelogDialog(QDialog):
         text_edit = QTextEdit()
         text_edit.setReadOnly(True)
 
-        content = "<h3>What's Changed</h3><ul>"
-        for change in release_info.get("changes", []):
-            content += f"<li>{change}</li>"
-        content += "</ul>"
+        html_content = ""
+        try:
+            import urllib.request
+            curr = current_version or CLARA_VERSION_STRING.lstrip("v")
+            req = urllib.request.Request(
+                "https://raw.githubusercontent.com/acropolis914/Clara/main/releases.json",
+                headers={"User-Agent": f"Clara/{curr}"}
+            )
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                if resp.status == 200:
+                    data = json.loads(resp.read().decode("utf-8"))
+                    releases = data.get("releases", {})
+                    for ver_key in releases.keys():
+                        try:
+                            if parse_semver(ver_key) > parse_semver(curr) and parse_semver(ver_key) <= parse_semver(target_ver):
+                                rel_data = releases[ver_key]
+                                changes = rel_data.get("changes", [])
+                                if changes:
+                                    html_content += f"<h3>v{ver_key}</h3><ul>"
+                                    for change in changes:
+                                        html_content += f"<li>{change}</li>"
+                                    html_content += "</ul>"
+                        except Exception:
+                            continue
+        except Exception:
+            pass
+
+        if not html_content:
+            html_content = "<h3>What's Changed</h3><ul>"
+            for change in release_info.get("changes", []):
+                html_content += f"<li>{change}</li>"
+            html_content += "</ul>"
 
         inst = release_info.get("installation", {})
         if inst:
-            content += "<h3>Installation Guide</h3><ul>"
+            html_content += "<h3>Installation Guide</h3><ul>"
             for distro, cmd in inst.items():
-                content += f"<li><b>{distro.title()}</b>: <code>{cmd}</code></li>"
-            content += "</ul>"
+                html_content += f"<li><b>{distro.title()}</b>: <code>{cmd}</code></li>"
+            html_content += "</ul>"
 
-        text_edit.setHtml(content)
+        text_edit.setHtml(html_content)
         layout.addWidget(text_edit)
 
         btn_row = QHBoxLayout()
@@ -156,12 +188,14 @@ class UpdateChangelogDialog(QDialog):
 
     def run_terminal_installer(self):
         import os, shutil, subprocess
+        from carla_shared import CLARA_VERSION_STRING
         script_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "scripts", "clara_self_updater.sh"))
         if not os.path.exists(script_path):
             system_paths = [
                 "/usr/share/clara/scripts/clara_self_updater.sh",
                 "/usr/lib/carla/scripts/clara_self_updater.sh",
-                "/usr/local/share/clara/scripts/clara_self_updater.sh"
+                "/usr/local/share/clara/scripts/clara_self_updater.sh",
+                "/usr/share/carla/scripts/clara_self_updater.sh"
             ]
             for sp in system_paths:
                 if os.path.exists(sp):
@@ -169,7 +203,8 @@ class UpdateChangelogDialog(QDialog):
                     break
 
         ver = self.release_info.get("version", "")
-        cmd_str = f"bash '{script_path}' '{ver}'"
+        curr_ver = CLARA_VERSION_STRING.lstrip("v")
+        cmd_str = f"bash '{script_path}' '{ver}' '{curr_ver}'"
 
         terminal = os.environ.get("TERMINAL")
         term_candidates = [
@@ -219,6 +254,7 @@ class UpdateChangelogDialog(QDialog):
     def open_download_page(self):
         url = self.release_info.get("url") or f"https://github.com/acropolis914/Clara/releases/tag/v{self.release_info.get('version', '')}"
         QDesktopServices.openUrl(QUrl(url))
+
 
 class UpdateNotificationBanner(QFrame):
     """Sleek top banner displayed when an update is available."""
@@ -274,22 +310,24 @@ class UpdateNotificationBanner(QFrame):
 
     def run_terminal_installer(self):
         import os, shutil, subprocess
+        from carla_shared import CLARA_VERSION_STRING
         script_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "scripts", "clara_self_updater.sh"))
         if not os.path.exists(script_path):
-            # Check installed location /usr/share/clara/scripts/clara_self_updater.sh or /usr/lib/carla/scripts/
             system_paths = [
                 "/usr/share/clara/scripts/clara_self_updater.sh",
                 "/usr/lib/carla/scripts/clara_self_updater.sh",
-                "/usr/local/share/clara/scripts/clara_self_updater.sh"
+                "/usr/local/share/clara/scripts/clara_self_updater.sh",
+                "/usr/share/carla/scripts/clara_self_updater.sh"
             ]
             for sp in system_paths:
                 if os.path.exists(sp):
                     script_path = sp
                     break
 
-        cmd_str = f"bash '{script_path}' '{self.version}'"
+        ver = self.version
+        curr_ver = CLARA_VERSION_STRING.lstrip("v")
+        cmd_str = f"bash '{script_path}' '{ver}' '{curr_ver}'"
 
-        # Detect terminal emulator
         terminal = os.environ.get("TERMINAL")
         term_candidates = [
             terminal,

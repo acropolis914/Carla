@@ -5711,8 +5711,12 @@ class HostWindow(QMainWindow):
             icon = self.windowIcon()
             if icon is None or icon.isNull():
                 icon = QApplication.instance().windowIcon()
+            if icon is None or icon.isNull():
+                icon = QIcon(":/scalable/carla.svg")
+            if icon is None or icon.isNull():
+                icon = QIcon.fromTheme("carla")
         except Exception:
-            icon = QApplication.instance().windowIcon()
+            icon = QIcon(":/scalable/carla.svg")
 
         self.fSystemTrayIcon = QSystemTrayIcon(icon, self)
         self.fSystemTrayIcon.setToolTip(self.windowTitle())
@@ -5970,7 +5974,7 @@ class HostWindow(QMainWindow):
             )
         ):
             event.ignore()
-            QTimer.singleShot(0, self._minimizeToSystemTray)
+            self._minimizeToSystemTray()
             return
 
         if self.shouldIgnoreClose():
@@ -6060,7 +6064,8 @@ class HostWindow(QMainWindow):
 
             # For critical or suggested updates, also prompt modal changelog dialog immediately
             if release_info.get("urgency", "").lower() in ("critical", "suggested"):
-                dlg = UpdateChangelogDialog(release_info, self)
+                from carla_shared import CLARA_VERSION_STRING
+                dlg = UpdateChangelogDialog(release_info, self, current_version=CLARA_VERSION_STRING.lstrip("v"))
                 dlg.exec_()
         except Exception:
             pass

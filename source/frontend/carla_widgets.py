@@ -1710,7 +1710,11 @@ class PluginEdit(QDialog):
             self.killTimer(self.fIdleTimerId)
             self.fIdleTimerId = 0
 
-            self.host.engine_close()
+            if self.fParent is None:
+                self.host.engine_close()
+
+        if self.fParent is not None:
+            self.fParent.editDialogVisibilityChanged(self.fPluginId, False)
 
         QDialog.closeEvent(self, event)
 

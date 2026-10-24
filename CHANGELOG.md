@@ -20,6 +20,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [1.1.4] - 2026-10-25
+
+Window lifecycle & system tray stability release: closing plugin edit windows no longer terminates the host engine, and minimize-to-tray works reliably under tiling Wayland/X11 compositors.
+
+### 2026-10-25 06:10:00
+- **fix(ui)**: prevent closing or killing plugin edit windows from terminating backend host engine and restore tray minimize reliability
+  - In [carla_widgets.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/carla_widgets.py) and [carla_skin.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/carla_skin.py), closing a plugin edit window or slot triggered `host.engine_close()` on timer cleanup from legacy standalone test code, crashing the entire Clara host process when closed via window managers or kill commands.
+  - Guarded `engine_close()` to only execute in standalone test harness (`parent is None`), and updated `editDialogVisibilityChanged` when closing the edit dialog.
+  - In [carla_host.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/carla_host.py), provided explicit SVG resource and theme fallbacks for `QSystemTrayIcon` when `windowIcon()` is null so waybar / StatusNotifierItem displays the icon, and made `_minimizeToSystemTray()` execute synchronously in `closeEvent` before compositor window destruction.
+
 ## [1.1.3] - 2026-10-22
 
 Patchbay toolbar feedback release: the floating tool palette now shows which toggles are enabled, and a manually created cable is drawn instantly instead of fading in.
