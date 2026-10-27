@@ -62,7 +62,7 @@ from carla_backend import (
 )
 
 def _get_clara_version():
-    base_version = "1.1.4"
+    base_version = "1.1.5"
     try:
         import subprocess
         tag = subprocess.check_output(
@@ -284,6 +284,7 @@ CARLA_KEY_CANVAS_SIGNAL_FLOW        = "Canvas/SignalFlow"      # bool (animated 
 CARLA_KEY_CANVAS_SIGNAL_FLOW_EXT    = "Canvas/SignalFlowExternal"  # bool (capture levels for external/pipewire nodes)
 CARLA_KEY_CANVAS_BOX_SHADOWS        = "Canvas/BoxShadows"      # bool (drop shadows beneath node boxes)
 CARLA_KEY_CANVAS_NODE_TRANSITIONS   = "Canvas/NodeTransitions" # bool (fade/scale animations for node changes)
+CARLA_KEY_CANVAS_SHOW_EXTERNAL      = "Canvas/ShowExternal"    # bool (show PipeWire/JACK external nodes in patchbay)
 
 CARLA_KEY_ENGINE_DRIVER_PREFIX         = "Engine/Driver-"
 CARLA_KEY_ENGINE_AUDIO_DRIVER          = "Engine/AudioDriver"         # str
@@ -388,6 +389,7 @@ CARLA_DEFAULT_CANVAS_NODE_MIN_WIDTH    = 160
 CARLA_DEFAULT_CANVAS_BOX_SHADOWS        = True
 CARLA_DEFAULT_CANVAS_NODE_TRANSITIONS   = True
 CARLA_DEFAULT_CANVAS_SIGNAL_FLOW        = False
+CARLA_DEFAULT_CANVAS_SHOW_EXTERNAL      = True
 
 # Engine
 CARLA_DEFAULT_FORCE_STEREO          = False
@@ -409,10 +411,25 @@ elif CARLA_OS_MAC:
     CARLA_DEFAULT_AUDIO_DRIVER = "CoreAudio"
 elif CARLA_OS_WIN:
     CARLA_DEFAULT_AUDIO_DRIVER = "Windows Audio"
-elif os.path.exists("/usr/bin/jackd") or os.path.exists("/usr/bin/jackdbus") or os.path.exists("/usr/bin/pw-jack"):
-    CARLA_DEFAULT_AUDIO_DRIVER = "JACK"
 else:
-    CARLA_DEFAULT_AUDIO_DRIVER = "PulseAudio"
+    def _detect_default_linux_audio_driver():
+        import shutil, glob, ctypes.util
+        if shutil.which("jackd") or shutil.which("jackdbus") or shutil.which("pw-jack"):
+            return "JACK"
+        if os.path.exists("/usr/bin/jackd") or os.path.exists("/usr/bin/jackdbus") or os.path.exists("/usr/bin/pw-jack"):
+            return "JACK"
+        # PipeWire active session socket or PipeWire-JACK library presence (e.g. Fedora / Bazzite / Debian)
+        runtime_dir = os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}"
+        if glob.glob(os.path.join(runtime_dir, "pipewire-*")):
+            return "JACK"
+        for p in ("/usr/lib64/pipewire-0.3/jack", "/usr/lib/pipewire-0.3/jack", "/usr/lib/x86_64-linux-gnu/pipewire-0.3/jack", "/usr/lib/aarch64-linux-gnu/pipewire-0.3/jack"):
+            if os.path.isdir(p):
+                return "JACK"
+        if ctypes.util.find_library("jack"):
+            return "JACK"
+        return "PulseAudio"
+
+    CARLA_DEFAULT_AUDIO_DRIVER = _detect_default_linux_audio_driver()
 
 CARLA_DEFAULT_PROCESS_MODE = ENGINE_PROCESS_MODE_PATCHBAY
 

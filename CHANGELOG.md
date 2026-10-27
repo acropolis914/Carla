@@ -20,6 +20,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [1.1.5] - 2026-10-28
+
+PipeWire patchbay nodes restoration and side-by-side split rendering fix.
+
+### 2026-10-28 05:35:00
+- **fix(audio)**: detect active PipeWire sessions and PipeWire-JACK paths for default JACK driver
+  - On PipeWire systems where `pw-jack` or standalone `jackd` binaries are not in `/usr/bin` (e.g. Bazzite / Fedora Atomic, clean minimal installs), Clara previously fell back to `PulseAudio`, preventing system and application PipeWire audio nodes from appearing in the patchbay.
+  - In [carla_shared.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/carla_shared.py), check for `$XDG_RUNTIME_DIR/pipewire-*` sockets, `ctypes.util.find_library("jack")`, and distro-specific PipeWire JACK paths so PipeWire systems reliably initialize with the JACK engine driver.
+  - In [build_appimage.sh](file:///home/acroarch/Documents/Projects/git-clones/Carla/scripts/build_appimage.sh), append distro PipeWire-JACK library search directories to `LD_LIBRARY_PATH` inside `AppRun`.
+- **fix(patchbay)**: show external PipeWire/JACK nodes by default and remember Show External/Internal state
+  - In [carla_host.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/carla_host.py), `slot_handleEngineStartedCallback` previously forced `fExternalPatchbay = False` whenever Process Mode was set to Patchbay, hiding all PipeWire graph nodes unless the user manually toggled Canvas -> Show External.
+  - Added `CARLA_KEY_CANVAS_SHOW_EXTERNAL` to remember the user's choice across restarts, defaulting to `True` so PipeWire patchbay nodes appear immediately.
+- **fix(ui)**: prevent transparent viewport smear in side-by-side split mode
+  - In [carla_host.py](file:///home/acroarch/Documents/Projects/git-clones/Carla/source/frontend/carla_host.py), `QTabWidget::pane` background was transparent, allowing the window frame to show through behind the plugin rack list and smearing graphics during movements. Set background-color to match the canvas background.
+
 ## [1.1.4] - 2026-10-25
 
 Window lifecycle & system tray stability release: closing plugin edit windows no longer terminates the host engine, and minimize-to-tray works reliably under tiling Wayland/X11 compositors.

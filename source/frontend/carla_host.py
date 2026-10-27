@@ -2157,11 +2157,17 @@ class HostWindow(QMainWindow):
         self.ui.act_canvas_show_external.blockSignals(True)
 
         if processMode == ENGINE_PROCESS_MODE_PATCHBAY and not self.host.isPlugin:
-            self.ui.act_canvas_show_internal.setChecked(True)
+            settings = QSafeSettings("falkTX", "Carla2")
+            show_external = settings.value(
+                CARLA_KEY_CANVAS_SHOW_EXTERNAL,
+                CARLA_DEFAULT_CANVAS_SHOW_EXTERNAL,
+                bool,
+            )
+            self.ui.act_canvas_show_internal.setChecked(not show_external)
             self.ui.act_canvas_show_internal.setVisible(True)
-            self.ui.act_canvas_show_external.setChecked(False)
+            self.ui.act_canvas_show_external.setChecked(show_external)
             self.ui.act_canvas_show_external.setVisible(True)
-            self.fExternalPatchbay = False
+            self.fExternalPatchbay = bool(show_external)
         else:
             self.ui.act_canvas_show_internal.setChecked(False)
             self.ui.act_canvas_show_internal.setVisible(False)
@@ -3133,6 +3139,7 @@ class HostWindow(QMainWindow):
     @pyqtSlot()
     def slot_canvasShowInternal(self):
         self.fExternalPatchbay = False
+        QSafeSettings("falkTX", "Carla2").setValue(CARLA_KEY_CANVAS_SHOW_EXTERNAL, False)
         self.ui.act_canvas_show_internal.blockSignals(True)
         self.ui.act_canvas_show_external.blockSignals(True)
         self.ui.act_canvas_show_internal.setChecked(True)
@@ -3144,6 +3151,7 @@ class HostWindow(QMainWindow):
     @pyqtSlot()
     def slot_canvasShowExternal(self):
         self.fExternalPatchbay = True
+        QSafeSettings("falkTX", "Carla2").setValue(CARLA_KEY_CANVAS_SHOW_EXTERNAL, True)
         self.ui.act_canvas_show_internal.blockSignals(True)
         self.ui.act_canvas_show_external.blockSignals(True)
         self.ui.act_canvas_show_internal.setChecked(False)
@@ -3400,13 +3408,13 @@ class HostWindow(QMainWindow):
                             width: 3px;
                         }}
                     """)
-                    self.ui.tabWidget.setStyleSheet("""
-                        QTabWidget::pane {
+                    self.ui.tabWidget.setStyleSheet(f"""
+                        QTabWidget::pane {{
                             border: none;
-                            background: transparent;
+                            background-color: {bg_hex};
                             margin: 0px;
                             padding: 0px;
-                        }
+                        }}
                     """)
                     self.ui.frame.setFrameShape(QFrame.NoFrame)
                     self.ui.frame.setStyleSheet(f"QFrame#frame {{ background-color: {bg_hex}; border: none; }}")

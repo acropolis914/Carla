@@ -237,6 +237,14 @@ QT6_DIR="$("$HERE/usr/python/bin/python3" -c 'import PyQt6, os; print(os.path.jo
 # Put PyQt6's Qt6 first so a stray system Qt copied by linuxdeploy can never
 # shadow it (a version mismatch breaks symbol resolution).
 export LD_LIBRARY_PATH="$QT6_DIR/lib:$HERE/usr/lib/carla:$HERE/usr/lib:$LD_LIBRARY_PATH"
+
+# Ensure host PipeWire JACK wrappers (e.g. Fedora / Bazzite / Debian) are discovered
+for pwjack_dir in /usr/lib64/pipewire-0.3/jack /usr/lib/pipewire-0.3/jack /usr/lib/x86_64-linux-gnu/pipewire-0.3/jack /usr/lib/aarch64-linux-gnu/pipewire-0.3/jack; do
+    if [ -d "$pwjack_dir" ]; then
+        export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$pwjack_dir"
+    fi
+done
+
 export QT_PLUGIN_PATH="$QT6_DIR/plugins"
 export QT_QPA_PLATFORM_PLUGIN_PATH="$QT6_DIR/plugins/platforms"
 
