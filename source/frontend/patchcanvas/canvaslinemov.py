@@ -10,7 +10,9 @@ from qt_compat import (
     Qt,
     QPointF,
     QPainter,
+    QPainterPath,
     QPen,
+    QTimer,
     QGraphicsPathItem,
 )
 
@@ -50,6 +52,11 @@ class CanvasLineMov(QGraphicsPathItem):
         self.m_algorithm = get_line_algorithm(self.m_shape)
         self.m_ctx = None
 
+        self._settle_timer = QTimer()
+        self._settle_timer.setSingleShot(True)
+        self._settle_timer.setInterval(45)
+        self._settle_timer.timeout.connect(self._on_drag_settled)
+
         # Port position doesn't change while moving around line
         self.p_itemX = self.scenePos().x()
         self.p_itemY = self.scenePos().y()
@@ -72,6 +79,10 @@ class CanvasLineMov(QGraphicsPathItem):
         pen.setWidthF(pen.widthF() + 0.00001)
         self.setPen(pen)
 
+    def _on_drag_settled(self):
+        if self.m_ctx is not None:
+            self.setPath(self.m_algorithm.build_drag_path(self.m_ctx))
+
     def updateLinePos(self, scenePos):
         if self.m_port_mode == PORT_MODE_INPUT:
             start = QPointF(0, float(canvas.theme.port_height)/2)
@@ -86,7 +97,15 @@ class CanvasLineMov(QGraphicsPathItem):
         ctx = LineContext(start, end, direction,
                           port1=self.parentItem(), canvas=canvas, scene_pos=scenePos)
         self.m_ctx = ctx
-        self.setPath(self.m_algorithm.build_drag_path(ctx))
+
+        # Fast direct straight line during active movement
+        fast_path = QPainterPath()
+        fast_path.moveTo(start)
+        fast_path.lineTo(end)
+        self.setPath(fast_path)
+
+        # Settle to the full bezier/configured curve once pointer settles
+        self._settle_timer.start()
 
     def type(self):
         return self.m_algorithm.mov_line_type

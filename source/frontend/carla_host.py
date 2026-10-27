@@ -3930,6 +3930,11 @@ class HostWindow(QMainWindow):
 
         audioDriverPrefix = CARLA_KEY_ENGINE_DRIVER_PREFIX + audioDriver
 
+        # One-time migration to enable OpenGL canvas for existing configs
+        if not settings.value("Canvas/OpenGLMigrationV1", False, bool):
+            settings.setValue(CARLA_KEY_CANVAS_USE_OPENGL, True)
+            settings.setValue("Canvas/OpenGLMigrationV1", True)
+
         self.fSavedSettings = {
             CARLA_KEY_MAIN_PROJECT_FOLDER: settings.value(
                 CARLA_KEY_MAIN_PROJECT_FOLDER, CARLA_DEFAULT_MAIN_PROJECT_FOLDER, str

@@ -712,6 +712,9 @@ class CanvasBox(QGraphicsObject):
             | QGraphicsItem.ItemIsSelectable
             | QGraphicsItem.ItemSendsGeometryChanges
         )
+        self.setCacheMode(
+            getattr(QGraphicsItem, "DeviceCoordinateCache", getattr(getattr(QGraphicsItem, "CacheMode", None), "DeviceCoordinateCache", None))
+        )
 
         # Wait for at least 1 port
         if options.auto_hide_groups:

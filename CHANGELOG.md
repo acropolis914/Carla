@@ -20,6 +20,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-10-28 06:07:00
+- **perf(patchbay)**: migrate to QOpenGLWidget, smart viewport updates, and item caching
+  - Migrated Qt OpenGL canvas viewport initialization from deprecated `QGLWidget` to `QOpenGLWidget` via `qt_compat.py` with safe runtime fallback.
+  - Set `CARLA_DEFAULT_CANVAS_USE_OPENGL = True` and added a one-time migration (`Canvas/OpenGLMigrationV1`) in `source/frontend/carla_host.py` to enable OpenGL acceleration for existing user configs.
+  - Applied `DontAdjustForAntialiasing` and `DontSavePainterState` optimization flags alongside `SmartViewportUpdate` to eliminate full canvas redraws.
+  - Enabled `DeviceCoordinateCache` on `CanvasBox`, `CanvasPort`, and `CanvasIcon` items to eliminate redundant repainting of static node bodies, badges, and SVGs.
+  - Bumped signal flow animation frequency to 60 FPS (16ms interval) for fluid visual pulses.
+  - Implemented fast straight-line drag previews during interactive mouse dragging with a settle timer to compute the full bezier curve when the pointer pauses.
+
 ## [1.1.5] - 2026-10-28
 
 PipeWire patchbay nodes restoration and side-by-side split rendering fix.

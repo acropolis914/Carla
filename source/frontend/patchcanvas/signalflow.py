@@ -30,8 +30,8 @@ state = _SignalFlowState()
 class SignalFlowAnimator(QObject):
     """Drives the animation clock and smooths per-plugin activity levels."""
 
-    INTERVAL_MS = 40          # ~25 FPS, only runs while enabled
-    PHASE_STEP = 0.045        # one full pulse cycle per ~0.9 s
+    INTERVAL_MS = 16          # ~60 FPS, butter-smooth with OpenGL
+    PHASE_STEP = 0.018        # one full pulse cycle per ~0.9 s
     ATTACK = 0.4              # smoothing toward a rising level
     DECAY = 0.82              # falloff when a plugin goes silent
 

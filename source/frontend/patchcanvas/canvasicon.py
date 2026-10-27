@@ -9,6 +9,7 @@ from qt_compat import (
     qCritical,
     QRectF,
     QPainter,
+    QGraphicsItem,
     QGraphicsSvgItem,
     QSvgRenderer,
     QGraphicsColorizeEffect,
@@ -35,6 +36,9 @@ class CanvasIcon(QGraphicsSvgItem):
     def __init__(self, icon, name, parent):
         QGraphicsSvgItem.__init__(self)
         self.setParentItem(parent)
+        self.setCacheMode(
+            getattr(QGraphicsItem, "DeviceCoordinateCache", getattr(getattr(QGraphicsItem, "CacheMode", None), "DeviceCoordinateCache", None))
+        )
 
         self.m_renderer = None
         self.p_size = QRectF(0, 0, 0, 0)
