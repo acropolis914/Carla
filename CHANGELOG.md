@@ -20,6 +20,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+- **fix(patchbay)**: prevent SIGSEGV during container inline rename with transparent QGraphicsTextItem
+  - Replaced `QGraphicsProxyWidget` embedded `QLineEdit` with native `QGraphicsTextItem` to eliminate Qt6 proxy destruction crash.
+  - Made inline rename background seamlessly transparent with `#cad3f5` foreground matching canvas header text.
 - **fix(patchbay)**: fix AttributeError on container ungroup in contextual toolbar
   - Added `dissolve()` alias to `CanvasContainer` and invoked `ungroup()` with selection refresh from the contextual toolbar overlay.
 - **feat(patchbay)**: route collapsed container cables to header, enable inline rename and group resizing

@@ -64,6 +64,7 @@ if qt_config == 5:
         QPixmap,
         QPolygonF,
         QSurfaceFormat,
+        QTextCursor,
         QIcon,
         QDesktopServices,
     )
@@ -96,6 +97,7 @@ if qt_config == 5:
         QGraphicsProxyWidget,
         QGraphicsRectItem,
         QGraphicsSimpleTextItem,
+        QGraphicsTextItem,
         QGraphicsScene,
         QGraphicsView,
         QGroupBox,
@@ -209,6 +211,7 @@ elif qt_config == 6:
         QPolygonF,
         QShortcut,
         QSurfaceFormat,
+        QTextCursor,
         QIcon,
         QDesktopServices,
     )
@@ -239,6 +242,7 @@ elif qt_config == 6:
         QGraphicsProxyWidget,
         QGraphicsRectItem,
         QGraphicsSimpleTextItem,
+        QGraphicsTextItem,
         QGraphicsScene,
         QGraphicsView,
         QGroupBox,

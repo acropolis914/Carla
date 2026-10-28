@@ -12,7 +12,7 @@ from qt_compat import (
     QFont,
     QGraphicsItem,
     QGraphicsObject,
-    QGraphicsProxyWidget,
+    QGraphicsTextItem,
     QHBoxLayout,
     QInputDialog,
     QLineEdit,
@@ -25,6 +25,7 @@ from qt_compat import (
     QPushButton,
     QRectF,
     Qt,
+    QTextCursor,
     QWidget,
     QWidgetAction,
 )
@@ -97,8 +98,8 @@ class CanvasContainer(QGraphicsObject):
         self.m_hover_insert_idx = None
         self.m_active_hover_box = None
 
-        # Inline title editor proxy
-        self.m_title_editor_proxy = None
+        # Inline title editor item
+        self.m_title_editor_item = None
 
         # Graphics item configuration - strictly NO ItemIsMovable to avoid dual-offset drift!
         self.setZValue(-10.0)
@@ -484,40 +485,64 @@ class CanvasContainer(QGraphicsObject):
         super().mouseDoubleClickEvent(event)
 
     def startInlineRename(self):
-        if self.m_title_editor_proxy is not None:
+        if self.m_title_editor_item is not None:
             return
 
-        edit = QLineEdit(self.m_title)
-        edit.setStyleSheet(
-            "QLineEdit { background: #181926; color: #cad3f5; border: 1.5px solid #89b4fa; "
-            "border-radius: 4px; padding: 1px 4px; font-weight: bold; font-size: 11px; }"
-        )
-        rect = self.boundingRect()
-        edit_w = max(100.0, rect.width() - 124.0)
-        edit.setFixedSize(int(edit_w), int(CONTAINER_HEADER_HEIGHT - 6.0))
+        text_item = QGraphicsTextItem(self)
+        text_item.setPlainText(self.m_title)
+        font = QFont()
+        font.setBold(True)
+        font.setPixelSize(12)
+        text_item.setFont(font)
+        text_item.setDefaultTextColor(QColor("#cad3f5"))
+        text_item.setPos(6.0, 3.0)
+        text_item.setTextInteractionFlags(Qt.TextEditorInteraction)
+        text_item.setZValue(100.0)
+        self.m_title_editor_item = text_item
 
-        proxy = QGraphicsProxyWidget(self)
-        proxy.setWidget(edit)
-        proxy.setPos(8.0, 3.0)
-        proxy.setZValue(100.0)
-        self.m_title_editor_proxy = proxy
+        container = self
 
         def finish_edit():
-            if self.m_title_editor_proxy is None:
+            if container.m_title_editor_item is None:
                 return
-            new_txt = edit.text().strip()
+            new_txt = text_item.toPlainText().strip()
             if new_txt:
-                self.m_title = new_txt
-            p = self.m_title_editor_proxy
-            self.m_title_editor_proxy = None
-            if self.scene():
-                self.scene().removeItem(p)
-            self.update()
+                container.m_title = new_txt
+            it = container.m_title_editor_item
+            container.m_title_editor_item = None
+            if it.scene():
+                it.scene().removeItem(it)
+            container.update()
 
-        edit.returnPressed.connect(finish_edit)
-        edit.editingFinished.connect(finish_edit)
-        edit.setFocus()
-        edit.selectAll()
+        def text_keyPressEvent(ev):
+            if ev.key() in (Qt.Key_Return, Qt.Key_Enter):
+                ev.accept()
+                finish_edit()
+                return
+            elif ev.key() == Qt.Key_Escape:
+                ev.accept()
+                if container.m_title_editor_item is not None:
+                    it = container.m_title_editor_item
+                    container.m_title_editor_item = None
+                    if it.scene():
+                        it.scene().removeItem(it)
+                    container.update()
+                return
+            QGraphicsTextItem.keyPressEvent(text_item, ev)
+
+        def text_focusOutEvent(ev):
+            finish_edit()
+            QGraphicsTextItem.focusOutEvent(text_item, ev)
+
+        text_item.keyPressEvent = text_keyPressEvent
+        text_item.focusOutEvent = text_focusOutEvent
+        text_item.setFocus()
+
+        # Select all text
+        cursor = text_item.textCursor()
+        cursor.select(QTextCursor.SelectionType.Document if hasattr(QTextCursor, "SelectionType") else QTextCursor.Document)
+        text_item.setTextCursor(cursor)
+        self.update()
 
     # -------------------------------------------------------------------------
     # Context Menu & Actions
@@ -682,13 +707,14 @@ class CanvasContainer(QGraphicsObject):
         header_path.addRoundedRect(header_rect, 8.0, 8.0)
         painter.fillPath(header_path, QColor(pen_color.red(), pen_color.green(), pen_color.blue(), 50))
 
-        # Title text
-        painter.setPen(QColor(220, 224, 232))
-        font = QFont(painter.font())
-        font.setBold(True)
-        font.setPixelSize(12)
-        painter.setFont(font)
-        painter.drawText(QRectF(10, 0, rect.width() - 120, CONTAINER_HEADER_HEIGHT), Qt.AlignVCenter | Qt.AlignLeft, self.m_title)
+        # Title text (hidden while inline editing)
+        if self.m_title_editor_item is None:
+            painter.setPen(QColor(220, 224, 232))
+            font = QFont(painter.font())
+            font.setBold(True)
+            font.setPixelSize(12)
+            painter.setFont(font)
+            painter.drawText(QRectF(10, 0, rect.width() - 120, CONTAINER_HEADER_HEIGHT), Qt.AlignVCenter | Qt.AlignLeft, self.m_title)
 
         # Layout badge [VBOX / HBOX / GRID]
         badge_text = self.m_layout_mode.upper()
