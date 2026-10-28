@@ -1678,8 +1678,11 @@ class HostWindow(QMainWindow):
 
             # Restore layout containers (VBox, HBox, Grid)
             containers_data = getattr(data_list, "patchbay_containers", None)
+            logger.info("CANVAS", f"loadCanvasGroupPositionsFromProject: containers_data count={len(containers_data) if containers_data else 0}")
             if containers_data:
                 patchcanvas.loadContainers(containers_data)
+                # Also schedule a deferred sweep in case PipeWire / external clients are still arriving
+                QTimer.singleShot(150, lambda: patchcanvas.loadContainers(containers_data))
 
             # Auto-recenter legacy saves that do NOT have infinite_canvas == True
             is_infinite = getattr(data_list, "infinite_canvas", False)

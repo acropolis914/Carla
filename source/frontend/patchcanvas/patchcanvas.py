@@ -2754,7 +2754,7 @@ def loadContainers(containers_data):
 
     # Clear existing containers
     for c in list(getattr(canvas, "container_list", [])):
-        if canvas.scene:
+        if canvas.scene and c.scene() == canvas.scene:
             canvas.scene.removeItem(c)
     canvas.container_list = []
 
@@ -2795,4 +2795,5 @@ def loadContainers(containers_data):
                 if desc not in container.m_standby_descriptors:
                     container.m_standby_descriptors.append(desc)
 
+        print(f"[CONTAINERS] Created '{container.m_title}' pos={container.pos().x()},{container.pos().y()} items={len(container.m_items)} standby={len(container.m_standby_descriptors)}")
         container.updateLayout()
