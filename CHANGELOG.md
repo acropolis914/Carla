@@ -20,6 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+- **feat(patchbay)**: integrate container controls into floating contextual toolbar and batch actions
+  - Display dedicated container controls (`[GROUP]`, rename, layout mode switcher, color swatch picker, collapse/expand, ungroup) when selecting a container.
+  - Added "Group Selected Nodes into Container..." button (`icon_rack`) with layout mode popover on the batch action toolbar.
+- **fix(patchbay)**: allow container right-click context menu by including CanvasContainerType in scene event filter
+  - Included `CanvasContainerType` in `PatchScene.contextMenuEvent` filter so right-clicking containers opens the container menu instead of canvas background actions.
 - **feat(patchbay)**: implement matching Catppuccin swatch bar color context menu for containers
   - Replaced text-only color list with the interactive Catppuccin horizontal palette bar, quick reset button, and native color dialog matching `CanvasBox`.
 - **fix(patchbay)**: fix NameError for `QColor` when restoring containers on startup

@@ -33,6 +33,7 @@ from . import (
     canvas,
     options,
     CanvasBoxType,
+    CanvasContainerType,
     CanvasIconType,
     CanvasPortType,
     CanvasLineType,
@@ -570,7 +571,7 @@ class PatchScene(QGraphicsScene):
             return
 
         items = self.items(event.scenePos())
-        on_item = any(item and item.type() in (CanvasBoxType, CanvasIconType, CanvasPortType) for item in items)
+        on_item = any(item and item.type() in (CanvasBoxType, CanvasContainerType, CanvasIconType, CanvasPortType) for item in items)
         if not on_item:
             self.m_mouse_down_init = False
             event.accept()

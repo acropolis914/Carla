@@ -907,7 +907,47 @@ class CanvasContextToolBarOverlay(QFrame):
         icon_dist_v = "\uf07d" if nf else "⬍"  # nf-fa-arrows-v
         icon_tools = "\uf085" if nf else "🧰"  # nf-fa-cogs
 
-        if count == 0:
+        # Check for selected containers in the scene
+        selected_containers = []
+        if self.graphicsView and self.graphicsView.scene():
+            selected_containers = [
+                it for it in self.graphicsView.scene().selectedItems()
+                if it and it.type() == patchcanvas.CanvasContainerType
+            ]
+
+        if count == 0 and selected_containers:
+            # Single or Multiple Container Context Actions
+            c = selected_containers[0]
+            c_name = getattr(c, "m_title", "Group")
+            short_c_name = (c_name[:14] + "…") if len(c_name) > 15 else c_name
+            self.addLabel(f"[GROUP] {short_c_name.upper()}", f"Container: {c_name}")
+            self.addSeparator()
+
+            # Rename
+            self.addButton(icon_ren, "Rename Container...", c.promptRename)
+
+            # Layout Mode switcher
+            btnLayout = self.addButton(icon_split, f"Layout Mode: {getattr(c, 'm_layout_mode', 'vbox').upper()}", lambda: None)
+            btnLayout.clicked.disconnect()
+            btnLayout.clicked.connect(lambda: self._slot_show_container_layout_menu(btnLayout, c))
+
+            # Color Picker
+            btnCColor = self.addButton(icon_color, "Container Color...", lambda: None)
+            btnCColor.clicked.disconnect()
+            btnCColor.clicked.connect(lambda: self._slot_show_color_menu(btnCColor, [c]))
+
+            # Collapse / Expand
+            is_col = getattr(c, "m_collapsed", False)
+            col_icon = "\uf067" if is_col else "\uf068" if nf else ("[+]" if is_col else "[-]")
+            col_tip = "Expand Group" if is_col else "Collapse Group"
+            self.addButton(col_icon, col_tip, lambda: (c.toggleCollapse(), self.updateSelection()))
+
+            # Ungroup
+            self.addButton(icon_del, "Ungroup / Dissolve Container", c.dissolve)
+            self.addSeparator()
+            self.addButton(icon_desel, "Deselect (Esc)", patchcanvas.deselectAllNodes)
+
+        elif count == 0:
             # Global Canvas Actions
             self.addLabel("CANVAS", "Patchbay Canvas Actions")
             self.addSeparator()
@@ -1110,6 +1150,10 @@ class CanvasContextToolBarOverlay(QFrame):
                 "Disconnect All Cables on Selected Nodes",
                 lambda: self._slot_disconnect_selected(selected),
             )
+            # Group into Container
+            btnGroup = self.addButton(icon_rack, "Group Selected Nodes into Container...", lambda: None)
+            btnGroup.clicked.disconnect()
+            btnGroup.clicked.connect(lambda: self._slot_show_group_create_menu(btnGroup))
             self.addSeparator()
 
             self.addButton(
@@ -1244,8 +1288,11 @@ class CanvasContextToolBarOverlay(QFrame):
             pass
         patchcanvas.autoArrangeNodes(algorithm=algorithm)
 
-    def _slot_show_color_menu(self, source_button, nodes):
+    def _apply_color_to_nodes(self, nodes, hex_str):
         for n in nodes:
+            if hasattr(n, "setColor") and hasattr(n, "m_layout_mode"):
+                n.setColor(hex_str if hex_str else "#89b4fa")
+                continue
             if hasattr(n, "setCustomColor"):
                 n.setCustomColor(hex_str)
             pid = getattr(n, "m_plugin_id", -1)
@@ -1256,11 +1303,47 @@ class CanvasContextToolBarOverlay(QFrame):
 
     def _open_custom_color_dialog(self, nodes):
         initial = QColor("#1e1e2e")
-        if nodes and hasattr(nodes[0], "m_custom_color") and nodes[0].m_custom_color:
-            initial = QColor(nodes[0].m_custom_color)
-        color = QColorDialog.getColor(initial, self, "Choose Node Tint Color")
+        if nodes:
+            if hasattr(nodes[0], "m_color") and nodes[0].m_color:
+                initial = nodes[0].m_color
+            elif hasattr(nodes[0], "m_custom_color") and nodes[0].m_custom_color:
+                initial = QColor(nodes[0].m_custom_color)
+        color = QColorDialog.getColor(initial, self, "Choose Tint Color")
         if color.isValid():
             self._apply_color_to_nodes(nodes, color.name())
+
+    def _slot_show_container_layout_menu(self, source_button, container):
+        menu = QMenu(self)
+        modes = [
+            ("vbox", "VBox (Vertical)"),
+            ("hbox", "HBox (Horizontal)"),
+            ("grid", "Grid (Matrix)"),
+            ("freeform", "Freeform (Unconstrained)"),
+        ]
+        cur = getattr(container, "m_layout_mode", "vbox")
+        for mode_key, mode_name in modes:
+            act = menu.addAction(mode_name)
+            act.setCheckable(True)
+            act.setChecked(cur == mode_key)
+            act.triggered.connect(lambda checked=False, m=mode_key: (container.setLayoutMode(m), self.updateSelection()))
+
+        btn_pos = source_button.mapToGlobal(QPoint(0, source_button.height() + 4))
+        menu.exec_(btn_pos)
+
+    def _slot_show_group_create_menu(self, source_button):
+        menu = QMenu(self)
+        modes = [
+            ("vbox", "VBox (Vertical)"),
+            ("hbox", "HBox (Horizontal)"),
+            ("grid", "Grid (Matrix)"),
+            ("freeform", "Freeform (Unconstrained)"),
+        ]
+        for mode_key, mode_name in modes:
+            act = menu.addAction(mode_name)
+            act.triggered.connect(lambda checked=False, m=mode_key: (patchcanvas.createContainerFromSelected(m), self.updateSelection()))
+
+        btn_pos = source_button.mapToGlobal(QPoint(0, source_button.height() + 4))
+        menu.exec_(btn_pos)
 
     def _slot_toggle_power(self, node):
         pid = getattr(node, "m_plugin_id", -1)
