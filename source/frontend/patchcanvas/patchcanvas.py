@@ -2749,6 +2749,7 @@ def loadContainers(containers_data):
     if not containers_data or not canvas.scene:
         return
 
+    from qt_compat import QColor
     from .canvascontainer import CanvasContainer
 
     # Clear existing containers

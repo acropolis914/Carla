@@ -20,6 +20,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+- **fix(patchbay)**: fix NameError for `QColor` when restoring containers on startup
+  - Imported `QColor` from `qt_compat` inside `loadContainers()` so container restoration succeeds without failing silently in `loadCanvasGroupPositionsFromProject`.
 - **fix(storage)**: enable layout container metadata persistence and restoration
   - Subclassed `CanvasPositionList` so list objects can retain attached metadata attributes (`patchbay_containers`, `split_view_enabled`, `infinite_canvas`).
   - Added XML `<Containers>` element and JSON `Containers` support inside `<CanvasPositions>` to ensure container group definitions survive save and load cycles.
