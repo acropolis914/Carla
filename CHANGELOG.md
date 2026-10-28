@@ -20,6 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+- **feat(patchbay)**: route collapsed container cables to header, enable inline rename and group resizing
+  - Re-anchored cables of child nodes inside collapsed containers to the header edges so connections remain visible and neatly routed to the group.
+  - Added interactive header drag movement, clickable header buttons (`[-]`/`[+]`, `[✕]`, layout switcher), and corner/edge resize handles with dynamic cursors.
+  - Added inline rename editor on the container header via double-click or the Rename action.
+  - Added `CanvasContainerType` to `DraggableGraphicsView` interactive items to prevent backdrop panning when clicking containers.
 - **feat(patchbay)**: integrate container controls into floating contextual toolbar and batch actions
   - Display dedicated container controls (`[GROUP]`, rename, layout mode switcher, color swatch picker, collapse/expand, ungroup) when selecting a container.
   - Added "Group Selected Nodes into Container..." button (`icon_rack`) with layout mode popover on the batch action toolbar.

@@ -8,9 +8,11 @@ from qt_compat import (
     QAction,
     QColor,
     QColorDialog,
+    QCursor,
     QFont,
     QGraphicsItem,
     QGraphicsObject,
+    QGraphicsProxyWidget,
     QHBoxLayout,
     QInputDialog,
     QLineEdit,
@@ -87,10 +89,16 @@ class CanvasContainer(QGraphicsObject):
 
         # Interaction state
         self.m_is_dragging = False
+        self.m_is_resizing = False
+        self.m_resize_edge = None
         self.m_drag_start_item_pos = QPointF(0, 0)
         self.m_drag_start_mouse_pos = QPointF(0, 0)
+        self.m_drag_start_size = (self.m_width, self.m_height)
         self.m_hover_insert_idx = None
         self.m_active_hover_box = None
+
+        # Inline title editor proxy
+        self.m_title_editor_proxy = None
 
         # Graphics item configuration - strictly NO ItemIsMovable to avoid dual-offset drift!
         self.setZValue(-10.0)
@@ -270,6 +278,16 @@ class CanvasContainer(QGraphicsObject):
         self.syncChildrenPositions()
         self.update()
 
+    def getHeaderPortScenePos(self, port, is_output=True):
+        """Returns the scene coordinate along the container header for a port on collapse."""
+        c_pos = self.pos()
+        w = max(self.m_width, CONTAINER_MIN_WIDTH)
+        y = c_pos.y() + CONTAINER_HEADER_HEIGHT / 2.0
+        if is_output:
+            return QPointF(c_pos.x() + w, y)
+        else:
+            return QPointF(c_pos.x(), y)
+
     def syncChildrenPositions(self):
         """Positions all child boxes precisely at container.pos() + offset without cumulative drift."""
         c_pos = self.pos()
@@ -280,12 +298,10 @@ class CanvasContainer(QGraphicsObject):
                 box.blockSignals(True)
                 box.setPos(c_pos.x() + rel_x, c_pos.y() + rel_y)
                 box.blockSignals(False)
-                box.repaintLines()
-                for conn in box.m_connection_lines:
-                    conn.line.setVisible(True)
-            else:
-                for conn in box.m_connection_lines:
-                    conn.line.setVisible(False)
+            box.repaintLines(forced=True)
+            for conn in box.m_connection_lines:
+                conn.line.setVisible(True)
+                conn.line.updateLinePos()
 
     def toggleCollapse(self):
         self.m_collapsed = not self.m_collapsed
@@ -335,12 +351,58 @@ class CanvasContainer(QGraphicsObject):
     # Movement Lockstep (Zero Drift)
     # -------------------------------------------------------------------------
 
+    def hoverMoveEvent(self, event):
+        pos = event.pos()
+        rect = self.boundingRect()
+        margin = 10.0
+
+        # Don't show resize cursor if collapsed
+        if not self.m_collapsed:
+            at_right = abs(pos.x() - rect.width()) <= margin
+            at_bottom = abs(pos.y() - rect.height()) <= margin
+            if at_right and at_bottom:
+                self.setCursor(QCursor(Qt.SizeFDiagCursor))
+                return
+            elif at_right:
+                self.setCursor(QCursor(Qt.SizeHorCursor))
+                return
+            elif at_bottom:
+                self.setCursor(QCursor(Qt.SizeVerCursor))
+                return
+
+        if pos.y() <= CONTAINER_HEADER_HEIGHT:
+            if pos.x() >= rect.width() - 110:
+                self.setCursor(QCursor(Qt.PointingHandCursor))
+                return
+            self.setCursor(QCursor(Qt.SizeAllCursor))
+            return
+
+        self.setCursor(QCursor(Qt.ArrowCursor))
+        super().hoverMoveEvent(event)
+
+    def hoverLeaveEvent(self, event):
+        self.setCursor(QCursor(Qt.ArrowCursor))
+        super().hoverLeaveEvent(event)
+
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
             pos = event.pos()
             rect = self.boundingRect()
+            margin = 10.0
 
-            # Check header controls
+            # 1. Check resize handle on bottom/right corners (when expanded)
+            if not self.m_collapsed:
+                at_right = abs(pos.x() - rect.width()) <= margin
+                at_bottom = abs(pos.y() - rect.height()) <= margin
+                if at_right or at_bottom:
+                    self.m_is_resizing = True
+                    self.m_resize_edge = (at_right, at_bottom)
+                    self.m_drag_start_mouse_pos = event.scenePos()
+                    self.m_drag_start_size = (self.m_width, self.m_height)
+                    event.accept()
+                    return
+
+            # 2. Check header controls
             if pos.y() <= CONTAINER_HEADER_HEIGHT:
                 # Close/ungroup button: [✕] at very right
                 if pos.x() >= rect.width() - 24:
@@ -363,20 +425,38 @@ class CanvasContainer(QGraphicsObject):
                     self.updateLayout()
                     return
 
-            self.m_is_dragging = True
-            self.m_drag_start_item_pos = self.pos()
-            self.m_drag_start_mouse_pos = event.scenePos()
+                # Header dragging
+                self.m_is_dragging = True
+                self.m_drag_start_item_pos = self.pos()
+                self.m_drag_start_mouse_pos = event.scenePos()
+                event.accept()
+                return
+
+            # Clicking container backdrop selects it
+            self.setSelected(True)
             event.accept()
             return
 
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
+        if self.m_is_resizing:
+            delta = event.scenePos() - self.m_drag_start_mouse_pos
+            orig_w, orig_h = self.m_drag_start_size
+            rx, ry = self.m_resize_edge
+            new_w = max(CONTAINER_MIN_WIDTH, orig_w + delta.x()) if rx else orig_w
+            new_h = max(CONTAINER_HEADER_HEIGHT + CONTAINER_PADDING * 2, orig_h + delta.y()) if ry else orig_h
+            self.prepareGeometryChange()
+            self.m_width = new_w
+            self.m_height = new_h
+            self.m_expanded_height = new_h
+            self.update()
+            event.accept()
+            return
+
         if self.m_is_dragging:
             delta = event.scenePos() - self.m_drag_start_mouse_pos
-            # Set absolute item position
             self.setPos(self.m_drag_start_item_pos + delta)
-            # Re-anchor children with zero drift
             self.syncChildrenPositions()
             event.accept()
             return
@@ -384,6 +464,11 @@ class CanvasContainer(QGraphicsObject):
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
+        if self.m_is_resizing:
+            self.m_is_resizing = False
+            self.m_resize_edge = None
+            event.accept()
+            return
         if self.m_is_dragging:
             self.m_is_dragging = False
             event.accept()
@@ -392,10 +477,47 @@ class CanvasContainer(QGraphicsObject):
 
     def mouseDoubleClickEvent(self, event):
         if event.button() == Qt.LeftButton and event.pos().y() <= CONTAINER_HEADER_HEIGHT:
+            # Inline rename editor
             event.accept()
-            self.promptRename()
+            self.startInlineRename()
             return
         super().mouseDoubleClickEvent(event)
+
+    def startInlineRename(self):
+        if self.m_title_editor_proxy is not None:
+            return
+
+        edit = QLineEdit(self.m_title)
+        edit.setStyleSheet(
+            "QLineEdit { background: #181926; color: #cad3f5; border: 1.5px solid #89b4fa; "
+            "border-radius: 4px; padding: 1px 4px; font-weight: bold; font-size: 11px; }"
+        )
+        rect = self.boundingRect()
+        edit_w = max(100.0, rect.width() - 124.0)
+        edit.setFixedSize(int(edit_w), int(CONTAINER_HEADER_HEIGHT - 6.0))
+
+        proxy = QGraphicsProxyWidget(self)
+        proxy.setWidget(edit)
+        proxy.setPos(8.0, 3.0)
+        proxy.setZValue(100.0)
+        self.m_title_editor_proxy = proxy
+
+        def finish_edit():
+            if self.m_title_editor_proxy is None:
+                return
+            new_txt = edit.text().strip()
+            if new_txt:
+                self.m_title = new_txt
+            p = self.m_title_editor_proxy
+            self.m_title_editor_proxy = None
+            if self.scene():
+                self.scene().removeItem(p)
+            self.update()
+
+        edit.returnPressed.connect(finish_edit)
+        edit.editingFinished.connect(finish_edit)
+        edit.setFocus()
+        edit.selectAll()
 
     # -------------------------------------------------------------------------
     # Context Menu & Actions
@@ -501,12 +623,7 @@ class CanvasContainer(QGraphicsObject):
         event.accept()
 
     def promptRename(self):
-        new_title, ok = QInputDialog.getText(
-            None, "Rename Group", "Enter container title:", QLineEdit.Normal, self.m_title
-        )
-        if ok and new_title.strip():
-            self.m_title = new_title.strip()
-            self.update()
+        self.startInlineRename()
 
     def promptCustomColor(self):
         chosen = QColorDialog.getColor(self.m_color, None, "Select Container Accent Color")
@@ -623,3 +740,9 @@ class CanvasContainer(QGraphicsObject):
                 else:
                     local_x = rect.width() - CONTAINER_PADDING / 2.0
                 painter.drawLine(QPointF(local_x, CONTAINER_HEADER_HEIGHT + CONTAINER_PADDING), QPointF(local_x, rect.height() - CONTAINER_PADDING))
+
+        # 5. Subtle resize grip marks at bottom-right corner
+        painter.setPen(QPen(QColor(180, 190, 210, 80), 1.2))
+        rw, rh = rect.width(), rect.height()
+        painter.drawLine(QPointF(rw - 12, rh - 4), QPointF(rw - 4, rh - 12))
+        painter.drawLine(QPointF(rw - 8, rh - 4), QPointF(rw - 4, rh - 8))

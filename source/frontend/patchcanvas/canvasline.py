@@ -132,10 +132,25 @@ class CanvasLine(QGraphicsPathItem):
     def _sceneEndpoints(self):
         if self.item1.getPortMode() != PORT_MODE_OUTPUT:
             return None
-        rect1 = self.item1.sceneBoundingRect()
-        rect2 = self.item2.sceneBoundingRect()
-        start = QPointF(rect1.right(), rect1.top() + float(canvas.theme.port_height) / 2)
-        end = QPointF(rect2.left(), rect2.top() + float(canvas.theme.port_height) / 2)
+
+        # Check if item1's box is in a collapsed container
+        box1 = self.item1.parentItem()
+        c1 = getattr(box1, "_canvas_container", None) if box1 else None
+        if c1 and getattr(c1, "m_collapsed", False):
+            start = c1.getHeaderPortScenePos(self.item1, is_output=True)
+        else:
+            rect1 = self.item1.sceneBoundingRect()
+            start = QPointF(rect1.right(), rect1.top() + float(canvas.theme.port_height) / 2)
+
+        # Check if item2's box is in a collapsed container
+        box2 = self.item2.parentItem()
+        c2 = getattr(box2, "_canvas_container", None) if box2 else None
+        if c2 and getattr(c2, "m_collapsed", False):
+            end = c2.getHeaderPortScenePos(self.item2, is_output=False)
+        else:
+            rect2 = self.item2.sceneBoundingRect()
+            end = QPointF(rect2.left(), rect2.top() + float(canvas.theme.port_height) / 2)
+
         return start, end
 
     def getEndpoints(self):
@@ -162,10 +177,10 @@ class CanvasLine(QGraphicsPathItem):
         return self.m_algorithm.line_type
 
     def updateLineGradient(self):
-        rect1 = self.item1.sceneBoundingRect()
-        rect2 = self.item2.sceneBoundingRect()
-        p1_scene = QPointF(rect1.right(), rect1.top() + float(canvas.theme.port_height) / 2)
-        p2_scene = QPointF(rect2.left(), rect2.top() + float(canvas.theme.port_height) / 2)
+        pair = self._sceneEndpoints()
+        if pair is None:
+            return
+        p1_scene, p2_scene = pair
 
         # Map scene endpoints to local item coordinates for QPainter
         p1 = self.mapFromScene(p1_scene)

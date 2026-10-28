@@ -232,10 +232,10 @@ class DraggableGraphicsView(QGraphicsView):
                 is_node_or_conn = (
                     itype in (QGraphicsItem.UserType + 1, QGraphicsItem.UserType + 2, QGraphicsItem.UserType + 3,
                               QGraphicsItem.UserType + 4, QGraphicsItem.UserType + 5, QGraphicsItem.UserType + 6,
-                              QGraphicsItem.UserType + 7, QGraphicsItem.UserType + 8)
+                              QGraphicsItem.UserType + 7, QGraphicsItem.UserType + 8, QGraphicsItem.UserType + 10)
                     or top_type in (QGraphicsItem.UserType + 1, QGraphicsItem.UserType + 2, QGraphicsItem.UserType + 3,
                                     QGraphicsItem.UserType + 4, QGraphicsItem.UserType + 5, QGraphicsItem.UserType + 6,
-                                    QGraphicsItem.UserType + 7, QGraphicsItem.UserType + 8)
+                                    QGraphicsItem.UserType + 7, QGraphicsItem.UserType + 8, QGraphicsItem.UserType + 10)
                 )
                 if not is_node_or_conn:
                     clicked_on_empty_canvas = True
