@@ -1,6 +1,33 @@
 {
-  "latest": "1.1.6",
+  "latest": "1.1.7",
   "releases": {
+    "1.1.7": {
+      "version": "1.1.7",
+      "date": "2026-10-29",
+      "urgency": "suggested",
+      "summary": "Patchbay layout containers (VBox, HBox, Grid, Freeform), collapse cable rerouting to header slots, interactive resizing, transparent inline rename, and contextual toolbar integration",
+      "changes": [
+        "Layout Containers: backdrop layout groups (VBox, HBox, Grid, and Freeform) placed behind patchbay nodes without reparenting cables or altering port coordinates",
+        "Zero-Drift Child Anchoring: child nodes anchor strictly to container origin with grid-snap bypassing to eliminate coordinate drift and de-centering",
+        "Collapse Cable Rerouting: collapsing a container re-anchors all child input and output cables to proxy header slots so connections stay visible and cleanly routed to the group",
+        "Interactive Header & Resizing: draggable header in normal cursor mode, direct clickable header buttons (collapse, ungroup, layout switcher), and corner/edge resize handles with dynamic sizing cursors",
+        "Transparent Inline Rename: double-clicking the container header or choosing Rename launches a seamless inline text editor powered by native QGraphicsTextItem (preventing Qt6 proxy widget crashes)",
+        "Contextual Toolbar Integration: dedicated [GROUP] options on the floating toolbar (rename, layout mode switcher, color swatch picker, collapse/expand toggle, ungroup) and batch 'Group Selected Nodes into Container' action",
+        "Catppuccin Palette Bar: horizontal color swatch bar with 10 Catppuccin presets, quick reset button, and native color dialog for both nodes and containers",
+        "Project Persistence: full XML and JSON serialization/restoration of container definitions, layouts, and standby ghost descriptors across session save and load cycles",
+        "Stability: fix right-click context menu event dispatch in PatchScene and prevent accidental canvas panning when clicking containers"
+      ],
+      "installation": {
+        "appimage": "Download `Clara-1.1.7-x86_64.AppImage`, then: `chmod +x Clara-1.1.7-x86_64.AppImage && ./Clara-1.1.7-x86_64.AppImage`",
+        "flatpak": "Download/run the Flatpak bundle: `flatpak install --user com.github.acropolis914.Clara.flatpak`",
+        "arch": "Install via AUR / PKGBUILD: `paru -S clara-bin` (or `clara-git`)",
+        "ubuntu": "Download `.deb` and run: `sudo dpkg -i clara-ubuntu-*.deb && sudo apt-get install -f`",
+        "fedora": "Download `.rpm` and run: `sudo dnf install clara-*.rpm`",
+        "void": "Extract tarball: `tar --zstd -xvf clara-void-*.tar.zst -C /`",
+        "alpine": "Extract tarball: `tar --zstd -xvf clara-alpine-*.tar.zst -C /`",
+        "nix": "Run directly via Flake: `nix run github:acropolis914/Clara`"
+      }
+    },
     "1.1.6": {
       "version": "1.1.6",
       "date": "2026-10-28",

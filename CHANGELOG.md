@@ -20,11 +20,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-- **fix(patchbay)**: prevent SIGSEGV during container inline rename with transparent QGraphicsTextItem
-  - Replaced `QGraphicsProxyWidget` embedded `QLineEdit` with native `QGraphicsTextItem` to eliminate Qt6 proxy destruction crash.
-  - Made inline rename background seamlessly transparent with `#cad3f5` foreground matching canvas header text.
-- **fix(patchbay)**: fix AttributeError on container ungroup in contextual toolbar
-  - Added `dissolve()` alias to `CanvasContainer` and invoked `ungroup()` with selection refresh from the contextual toolbar overlay.
+
+## [1.1.7] - 2026-10-29
+
+Patchbay layout containers (VBox, HBox, Grid, Freeform), collapse cable rerouting to header slots, interactive resizing, transparent inline rename, and contextual toolbar integration.
+
+### Features
 - **feat(patchbay)**: route collapsed container cables to header, enable inline rename and group resizing
   - Re-anchored cables of child nodes inside collapsed containers to the header edges so connections remain visible and neatly routed to the group.
   - Added interactive header drag movement, clickable header buttons (`[-]`/`[+]`, `[✕]`, layout switcher), and corner/edge resize handles with dynamic cursors.
@@ -33,10 +34,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **feat(patchbay)**: integrate container controls into floating contextual toolbar and batch actions
   - Display dedicated container controls (`[GROUP]`, rename, layout mode switcher, color swatch picker, collapse/expand, ungroup) when selecting a container.
   - Added "Group Selected Nodes into Container..." button (`icon_rack`) with layout mode popover on the batch action toolbar.
-- **fix(patchbay)**: allow container right-click context menu by including CanvasContainerType in scene event filter
-  - Included `CanvasContainerType` in `PatchScene.contextMenuEvent` filter so right-clicking containers opens the container menu instead of canvas background actions.
 - **feat(patchbay)**: implement matching Catppuccin swatch bar color context menu for containers
   - Replaced text-only color list with the interactive Catppuccin horizontal palette bar, quick reset button, and native color dialog matching `CanvasBox`.
+
+### Bug Fixes & Stability
+- **fix(patchbay)**: prevent SIGSEGV during container inline rename with transparent QGraphicsTextItem
+  - Replaced `QGraphicsProxyWidget` embedded `QLineEdit` with native `QGraphicsTextItem` to eliminate Qt6 proxy destruction crash.
+  - Made inline rename background seamlessly transparent with `#cad3f5` foreground matching canvas header text.
+- **fix(patchbay)**: fix AttributeError on container ungroup in contextual toolbar
+  - Added `dissolve()` alias to `CanvasContainer` and invoked `ungroup()` with selection refresh from the contextual toolbar overlay.
+- **fix(patchbay)**: allow container right-click context menu by including CanvasContainerType in scene event filter
+  - Included `CanvasContainerType` in `PatchScene.contextMenuEvent` filter so right-clicking containers opens the container menu instead of canvas background actions.
 - **fix(patchbay)**: fix NameError for `QColor` when restoring containers on startup
   - Imported `QColor` from `qt_compat` inside `loadContainers()` so container restoration succeeds without failing silently in `loadCanvasGroupPositionsFromProject`.
 - **fix(storage)**: enable layout container metadata persistence and restoration
@@ -44,8 +52,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Added XML `<Containers>` element and JSON `Containers` support inside `<CanvasPositions>` to ensure container group definitions survive save and load cycles.
 - **fix(host)**: auto-bridge DecentSampler to prevent in-process malloc crash on startup
   - Added `decentsampler` to risky plugin collision tokens and auto-sandbox bridging checks in `carla_host.py`.
- 
- ## [1.1.6] - 2026-10-28
+
+## [1.1.6] - 2026-10-28
 
 Patchbay performance overhaul: QOpenGLWidget hardware acceleration, item caching, 60fps animations, fast wire previews, and context-aware plugin placement.
 
