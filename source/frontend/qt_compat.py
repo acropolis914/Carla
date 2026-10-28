@@ -404,6 +404,8 @@ elif qt_config == 6:
 
     Qt.ContainsItemBoundingRect = Qt.ItemSelectionMode.ContainsItemBoundingRect
 
+    Qt.IntersectsItemBoundingRect = Qt.ItemSelectionMode.IntersectsItemBoundingRect
+
     # --------------------------------------------------------------------------------------------------------
     # Qt.Key
     # --------------------------------------------------------------------------------------------------------
