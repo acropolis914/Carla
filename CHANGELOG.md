@@ -20,6 +20,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+- **feat(patchbay)**: implement matching Catppuccin swatch bar color context menu for containers
+  - Replaced text-only color list with the interactive Catppuccin horizontal palette bar, quick reset button, and native color dialog matching `CanvasBox`.
 - **fix(patchbay)**: fix NameError for `QColor` when restoring containers on startup
   - Imported `QColor` from `qt_compat` inside `loadContainers()` so container restoration succeeds without failing silently in `loadCanvasGroupPositionsFromProject`.
 - **fix(storage)**: enable layout container metadata persistence and restoration

@@ -11,6 +11,7 @@ from qt_compat import (
     QFont,
     QGraphicsItem,
     QGraphicsObject,
+    QHBoxLayout,
     QInputDialog,
     QLineEdit,
     QMenu,
@@ -19,8 +20,11 @@ from qt_compat import (
     QPainterPath,
     QPen,
     QPointF,
+    QPushButton,
     QRectF,
     Qt,
+    QWidget,
+    QWidgetAction,
 )
 
 from . import (
@@ -423,14 +427,67 @@ class CanvasContainer(QGraphicsObject):
         act_grid.triggered.connect(lambda: self.setLayoutMode(CONTAINER_LAYOUT_GRID))
         act_freeform.triggered.connect(lambda: self.setLayoutMode(CONTAINER_LAYOUT_FREEFORM))
 
-        # Color Accent
-        color_menu = menu.addMenu("Color Accent")
-        for label, hex_code in CATPPUCCIN_PALETTE:
-            act_c = color_menu.addAction(label)
-            act_c.triggered.connect(lambda checked=False, col=hex_code: self.setColor(QColor(col)))
+        # Color context menu with Catppuccin palette swatches
+        color_menu = QMenu("Color", menu)
+        palette_widget = QWidget()
+        pal_layout = QHBoxLayout(palette_widget)
+        pal_layout.setContentsMargins(6, 4, 6, 4)
+        pal_layout.setSpacing(4)
+
+        catppuccin_colors = [
+            ("#f38ba8", "Red"),
+            ("#fab387", "Peach"),
+            ("#f9e2af", "Yellow"),
+            ("#a6e3a1", "Green"),
+            ("#94e2d5", "Teal"),
+            ("#89dceb", "Sky"),
+            ("#89b4fa", "Blue"),
+            ("#b4befe", "Lavender"),
+            ("#cba6f7", "Mauve"),
+            ("#f5c2e7", "Pink"),
+        ]
+
+        # Reset button
+        btn_reset = QPushButton("✕")
+        btn_reset.setToolTip("Reset to Default Color")
+        btn_reset.setFixedSize(22, 22)
+        btn_reset.setStyleSheet(
+            "QPushButton { font-weight: bold; color: #888; background: transparent; border: 1px solid #555; border-radius: 3px; } "
+            "QPushButton:hover { color: #fff; border-color: #888; background: #333; }"
+        )
+        btn_reset.clicked.connect(lambda: (self.setColor(QColor("#89b4fa")), menu.close()))
+        pal_layout.addWidget(btn_reset)
+
+        for col_hex, col_name in catppuccin_colors:
+            btn_col = QPushButton()
+            btn_col.setToolTip(col_name)
+            btn_col.setFixedSize(22, 22)
+            btn_col.setStyleSheet(
+                f"QPushButton {{ background-color: {col_hex}; border: 1px solid rgba(0,0,0,0.4); border-radius: 3px; }} "
+                f"QPushButton:hover {{ border: 2px solid #ffffff; }}"
+            )
+            btn_col.clicked.connect(lambda checked=False, c=col_hex: (self.setColor(QColor(c)), menu.close()))
+            pal_layout.addWidget(btn_col)
+
+        color_widget_action = QWidgetAction(color_menu)
+        color_widget_action.setDefaultWidget(palette_widget)
+        color_menu.addAction(color_widget_action)
         color_menu.addSeparator()
-        act_custom_col = color_menu.addAction("Custom Color...")
-        act_custom_col.triggered.connect(self.promptCustomColor)
+
+        def pickCustomColor():
+            menu.close()
+            initial = self.m_color if self.m_color else QColor("#89b4fa")
+            chosen = QColorDialog.getColor(initial, None, "Select Container Color")
+            if chosen.isValid():
+                self.setColor(chosen)
+
+        act_custom_color = color_menu.addAction("Custom Color...")
+        act_custom_color.triggered.connect(pickCustomColor)
+
+        act_reset_color = color_menu.addAction("Reset Color")
+        act_reset_color.triggered.connect(lambda: (self.setColor(QColor("#89b4fa")), menu.close()))
+
+        menu.addMenu(color_menu)
 
         menu.addSeparator()
 
@@ -457,7 +514,7 @@ class CanvasContainer(QGraphicsObject):
             self.setColor(chosen)
 
     def setColor(self, color):
-        self.m_color = color
+        self.m_color = QColor(color) if isinstance(color, str) else color
         self.update()
 
     def setLayoutMode(self, mode):
