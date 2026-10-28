@@ -32,7 +32,8 @@ Patchbay performance overhaul: QOpenGLWidget hardware acceleration, item caching
   - Supported double-clicking the container header to rename inline.
   - Interactive drag-and-drop ergonomics: dynamic slot gap preview lines, automatic child translation when dragging the container, and drag-out extraction.
   - Supported **VBox** (vertical stack), **HBox** (horizontal chain), and **Grid** (matrix) with header badge mode switching and ungroup button.
-  - Implemented standby ghost recovery: unplugged PipeWire/JACK external clients collapse into container standby and automatically reclaim their slot when reconnected.
+  - Synchronized cable visibility during collapse/expand so cables hide neatly when containers are minimized and reappear when expanded.
+  - Added user confirmation prompt when clicking ungroup/remove, and kept child nodes at their exact canvas coordinates without stacking.
   - Persistent JSON project storage under `extra_metadata["patchbay_containers"]`.
 
 ### 2026-10-28 10:00:00

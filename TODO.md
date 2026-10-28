@@ -45,6 +45,7 @@
 - [x] `[Diff: 2]` feat: Side-by-side view for mini rack and patchbay with bidirectional focus/scroll synchronization
 - [x] `[Diff: 2]` feat: Synchronized colors, bypass state, and switch button between rack node and patchbay node
 - [x] `[Diff: 2]` feat: Minified rack mode exposing only essential controls (Photoshop layer view with mini collapsible slider tray)
+- [ ] `[Diff: 2]` feat: A/B Quick-Audition & Snapshot Switching - store two temporary routing/bypass states to toggle between alternative chains with a single hotkey/button
 
 ---
 

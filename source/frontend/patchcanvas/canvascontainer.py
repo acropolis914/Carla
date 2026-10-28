@@ -14,6 +14,7 @@ from qt_compat import (
     QInputDialog,
     QLineEdit,
     QMenu,
+    QMessageBox,
     QPainter,
     QPainterPath,
     QPen,
@@ -248,6 +249,11 @@ class CanvasContainer(QGraphicsObject):
                 box.setPos(c_pos.x() + rel_x, c_pos.y() + rel_y)
                 box.blockSignals(False)
                 box.repaintLines()
+                for conn in box.m_connection_lines:
+                    conn.line.setVisible(True)
+            else:
+                for conn in box.m_connection_lines:
+                    conn.line.setVisible(False)
 
     def toggleCollapse(self):
         self.m_collapsed = not self.m_collapsed
@@ -427,7 +433,21 @@ class CanvasContainer(QGraphicsObject):
         self.updateLayout()
 
     def ungroup(self):
+        reply = QMessageBox.question(
+            None,
+            "Ungroup Container",
+            f"Are you sure you want to ungroup '{self.m_title}'?\nAll items will remain on the canvas.",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+        if reply != QMessageBox.Yes:
+            return
+
         from .patchcanvas import ungroupNode
+        # Ensure all boxes are visible and keep their current canvas coordinates
+        if self.m_collapsed:
+            self.toggleCollapse()
+
         for b in list(self.m_items):
             ungroupNode(b)
 
