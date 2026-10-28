@@ -19,6 +19,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 
 ## [Unreleased]
+ 
+ ## [1.1.6] - 2026-10-28
+
+Patchbay performance overhaul: QOpenGLWidget hardware acceleration, item caching, 60fps animations, and fast wire previews.
 
 ### 2026-10-28 06:07:00
 - **perf(patchbay)**: migrate to QOpenGLWidget, smart viewport updates, and item caching

@@ -1,6 +1,30 @@
 {
-  "latest": "1.1.5",
+  "latest": "1.1.6",
   "releases": {
+    "1.1.6": {
+      "version": "1.1.6",
+      "date": "2026-10-28",
+      "urgency": "suggested",
+      "summary": "Patchbay performance overhaul: QOpenGLWidget hardware acceleration, item caching, 60fps animations, and fast wire previews",
+      "changes": [
+        "Hardware Acceleration: migrate canvas viewport from deprecated QGLWidget to modern QOpenGLWidget via qt_compat.py with safe runtime fallback",
+        "Migration: enable Canvas/UseOpenGL by default and add automatic one-time config migration for existing users",
+        "Viewport Updates: enable SmartViewportUpdate alongside DontAdjustForAntialiasing and DontSavePainterState optimization flags to eliminate full-canvas repaints",
+        "Item Caching: enable DeviceCoordinateCache on CanvasBox, CanvasPort, and CanvasIcon items so static nodes, badges, and icons bypass redundant repainting",
+        "Signal Pulses: bump signal flow animation clock to 60 FPS (16ms interval) for fluid visual pulses",
+        "Wire Dragging: render instantaneous straight-line previews during active mouse dragging with a settle timer to transition to bezier curves when paused"
+      ],
+      "installation": {
+        "appimage": "Download `Clara-1.1.6-x86_64.AppImage`, then: `chmod +x Clara-1.1.6-x86_64.AppImage && ./Clara-1.1.6-x86_64.AppImage`",
+        "flatpak": "Download/run the Flatpak bundle: `flatpak install --user com.github.acropolis914.Clara.flatpak`",
+        "arch": "Install via AUR / PKGBUILD: `paru -S clara-bin` (or `clara-git`)",
+        "ubuntu": "Download `.deb` and run: `sudo dpkg -i clara-ubuntu-*.deb && sudo apt-get install -f`",
+        "fedora": "Download `.rpm` and run: `sudo dnf install clara-*.rpm`",
+        "void": "Extract tarball: `tar --zstd -xvf clara-void-*.tar.zst -C /`",
+        "alpine": "Extract tarball: `tar --zstd -xvf clara-alpine-*.tar.zst -C /`",
+        "nix": "Run directly via Flake: `nix run github:acropolis914/Clara`"
+      }
+    },
     "1.1.5": {
       "version": "1.1.5",
       "date": "2026-10-28",
