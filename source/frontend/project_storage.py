@@ -9,6 +9,10 @@ import xml.etree.ElementTree as ET
 class ProjectFormatError(Exception):
     pass
 
+class CanvasPositionList(list):
+    """Subclass of list that allows attaching arbitrary canvas metadata attributes."""
+    pass
+
 def xml_elem_to_dict(elem):
     """Losslessly converts an XML ElementTree element into a Python dict/data structure."""
     node = {}
@@ -117,11 +121,12 @@ class CarlaXmlProjectHandler(BaseProjectHandler):
             if root.tag != "CARLA-PROJECT":
                 return []
 
-            data_list = []
+            data_list = CanvasPositionList()
             is_infinite = False
             canvas_elem = root.find("CanvasPositions")
             split_view_enabled = None
             split_view_sizes = None
+            containers_data = None
             if canvas_elem is not None:
                 is_infinite = canvas_elem.get("infinite_canvas") in ("1", "true", "True")
                 if "split_view_enabled" in canvas_elem.attrib:
@@ -129,6 +134,12 @@ class CarlaXmlProjectHandler(BaseProjectHandler):
                 if "split_view_sizes" in canvas_elem.attrib:
                     try:
                         split_view_sizes = [int(s) for s in canvas_elem.get("split_view_sizes").split(",") if s.strip()]
+                    except Exception:
+                        pass
+                containers_elem = canvas_elem.find("Containers")
+                if containers_elem is not None and containers_elem.text:
+                    try:
+                        containers_data = json.loads(containers_elem.text)
                     except Exception:
                         pass
                 for p_elem in canvas_elem.findall("Position"):
@@ -170,16 +181,17 @@ class CarlaXmlProjectHandler(BaseProjectHandler):
                                         "hide_unconnected_ports": False,
                                     })
             # Attach infinite_canvas and layout metadata to the returned list
-            if hasattr(data_list, "__dict__"):
-                setattr(data_list, "infinite_canvas", is_infinite)
-                if split_view_enabled is not None:
-                    setattr(data_list, "split_view_enabled", split_view_enabled)
-                if split_view_sizes is not None:
-                    setattr(data_list, "split_view_sizes", split_view_sizes)
+            setattr(data_list, "infinite_canvas", is_infinite)
+            if split_view_enabled is not None:
+                setattr(data_list, "split_view_enabled", split_view_enabled)
+            if split_view_sizes is not None:
+                setattr(data_list, "split_view_sizes", split_view_sizes)
+            if containers_data is not None:
+                setattr(data_list, "patchbay_containers", containers_data)
             return data_list
         except Exception as e:
             print("CarlaXmlProjectHandler::load_positions error:", e)
-            return []
+            return CanvasPositionList()
 
     def save_positions(self, filepath, positions, extra_metadata=None):
         if not filepath or not os.path.exists(filepath):
@@ -201,6 +213,9 @@ class CarlaXmlProjectHandler(BaseProjectHandler):
                     canvas_pos_elem.set("split_view_enabled", "1" if extra_metadata["split_view_enabled"] else "0")
                 if "split_view_sizes" in extra_metadata:
                     canvas_pos_elem.set("split_view_sizes", ",".join(str(s) for s in extra_metadata["split_view_sizes"]))
+                if "patchbay_containers" in extra_metadata and extra_metadata["patchbay_containers"]:
+                    c_elem = ET.SubElement(canvas_pos_elem, "Containers")
+                    c_elem.text = json.dumps(extra_metadata["patchbay_containers"])
 
             for pos_data in positions:
                 name = str(pos_data.get("name", "")).strip()
@@ -292,10 +307,11 @@ class CarlaJsonProjectHandler(BaseProjectHandler):
             return []
         try:
             doc = self._read_json(filepath)
-            positions = []
+            positions = CanvasPositionList()
             is_infinite = False
             split_view_enabled = None
             split_view_sizes = None
+            containers_data = doc.get("patchbay_containers")
             if "CARLA-PROJECT" in doc and isinstance(doc["CARLA-PROJECT"], dict):
                 c_pos = doc["CARLA-PROJECT"].get("CanvasPositions", {})
                 if isinstance(c_pos, dict):
@@ -306,6 +322,11 @@ class CarlaJsonProjectHandler(BaseProjectHandler):
                     if "split_view_sizes" in attrs:
                         try:
                             split_view_sizes = [int(s) for s in str(attrs.get("split_view_sizes", "")).split(",") if s.strip()]
+                        except Exception:
+                            pass
+                    if "Containers" in c_pos:
+                        try:
+                            containers_data = c_pos["Containers"] if isinstance(c_pos["Containers"], list) else json.loads(str(c_pos["Containers"]))
                         except Exception:
                             pass
                     pos_entries = c_pos.get("Position", [])
@@ -345,18 +366,17 @@ class CarlaJsonProjectHandler(BaseProjectHandler):
                             "hide_unconnected_ports": bool(p.get("hide_unconnected_ports", False)),
                         })
 
-            if hasattr(positions, "__dict__"):
-                setattr(positions, "infinite_canvas", is_infinite)
-                if split_view_enabled is not None:
-                    setattr(positions, "split_view_enabled", split_view_enabled)
-                if split_view_sizes is not None:
-                    setattr(positions, "split_view_sizes", split_view_sizes)
-                if "patchbay_containers" in doc:
-                    setattr(positions, "patchbay_containers", doc["patchbay_containers"])
+            setattr(positions, "infinite_canvas", is_infinite)
+            if split_view_enabled is not None:
+                setattr(positions, "split_view_enabled", split_view_enabled)
+            if split_view_sizes is not None:
+                setattr(positions, "split_view_sizes", split_view_sizes)
+            if containers_data is not None:
+                setattr(positions, "patchbay_containers", containers_data)
             return positions
         except Exception as e:
             print("CarlaJsonProjectHandler::load_positions error:", e)
-            return []
+            return CanvasPositionList()
 
     def save_positions(self, filepath, positions, extra_metadata=None):
         try:
@@ -376,6 +396,9 @@ class CarlaJsonProjectHandler(BaseProjectHandler):
                         c_attrs["split_view_sizes"] = ",".join(str(s) for s in extra_metadata["split_view_sizes"])
 
                 canvas_pos_elem = {"@attributes": c_attrs, "Position": []}
+                if extra_metadata and "patchbay_containers" in extra_metadata and extra_metadata["patchbay_containers"]:
+                    canvas_pos_elem["Containers"] = extra_metadata["patchbay_containers"]
+                    doc["patchbay_containers"] = extra_metadata["patchbay_containers"]
                 for p in positions:
                     name = str(p.get("name", "")).strip()
                     if not name:

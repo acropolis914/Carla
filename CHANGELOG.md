@@ -20,6 +20,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+- **fix(storage)**: enable layout container metadata persistence and restoration
+  - Subclassed `CanvasPositionList` so list objects can retain attached metadata attributes (`patchbay_containers`, `split_view_enabled`, `infinite_canvas`).
+  - Added XML `<Containers>` element and JSON `Containers` support inside `<CanvasPositions>` to ensure container group definitions survive save and load cycles.
 - **fix(host)**: auto-bridge DecentSampler to prevent in-process malloc crash on startup
   - Added `decentsampler` to risky plugin collision tokens and auto-sandbox bridging checks in `carla_host.py`.
  
