@@ -474,6 +474,16 @@ class PatchScene(QGraphicsScene):
             x = min(pos_x, rubberband_orig_point.x())
             y = min(pos_y, rubberband_orig_point.y())
 
+            # Throttle tiny sub-pixel rect adjustments
+            last_p = getattr(self, "_last_rubberband_rect_pos", None)
+            if last_p is not None:
+                dx = pos_x - last_p.x()
+                dy = pos_y - last_p.y()
+                if (dx * dx + dy * dy) < 4.0:
+                    return
+
+            self._last_rubberband_rect_pos = pos
+
             lineHinting = canvas.theme.rubberband_pen.widthF() / 2
             self.m_rubberband.setRect(x+lineHinting,
                                       y+lineHinting,

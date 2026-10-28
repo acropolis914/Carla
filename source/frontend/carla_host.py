@@ -491,6 +491,10 @@ class HostWindow(QMainWindow):
         self.ui.miniCanvasPreview.setRealParent(self)
         self.ui.tw_miniCanvas.tabBar().hide()
 
+        self._miniCanvasTimer = QTimer(self)
+        self._miniCanvasTimer.setSingleShot(True)
+        self._miniCanvasTimer.timeout.connect(self._doUpdateMiniCanvas)
+
         # ----------------------------------------------------------------------------------------------------
         # Set up GUI (logs)
         logger.parse_cli_args()
@@ -3124,14 +3128,19 @@ class HostWindow(QMainWindow):
         patchcanvas.setInitialPos(x, y)
 
     def updateMiniCanvasLater(self):
+        if hasattr(self, "_miniCanvasTimer"):
+            self._miniCanvasTimer.start(self.fMiniCanvasUpdateTimeout)
+        else:
+            self._doUpdateMiniCanvas()
+
+    def _doUpdateMiniCanvas(self):
         if self._isModernMiniCanvasMode():
             self._expandSceneRectForMinimap()
             if hasattr(self.ui, "modernMiniCanvas") and self.ui.modernMiniCanvas is not None:
-                QTimer.singleShot(self.fMiniCanvasUpdateTimeout, self.ui.modernMiniCanvas.update)
+                self.ui.modernMiniCanvas.update()
             return
-        QTimer.singleShot(
-            self.fMiniCanvasUpdateTimeout, self.ui.miniCanvasPreview.update
-        )
+        if hasattr(self.ui, "miniCanvasPreview") and self.ui.miniCanvasPreview is not None:
+            self.ui.miniCanvasPreview.update()
 
     # --------------------------------------------------------------------------------------------------------
     # Canvas (menu actions)

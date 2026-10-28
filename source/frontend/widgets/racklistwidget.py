@@ -520,14 +520,8 @@ class RackListWidget(QListWidget):
         if delta != 0:
             vsb = self.verticalScrollBar()
             if vsb and vsb.maximum() > vsb.minimum():
-                curr = vsb.value()
-                base_target = self._smooth_target_val if self._smooth_target_val is not None else curr
-                # Standard wheel step is 120 units; smooth scroll by ~80px per step
                 pixel_step = int((delta / 120.0) * -80)
-                new_target = max(vsb.minimum(), min(vsb.maximum(), base_target + pixel_step))
-                self._smooth_target_val = new_target
-                if not self._smooth_timer.isActive():
-                    self._smooth_timer.start()
+                vsb.setValue(max(vsb.minimum(), min(vsb.maximum(), vsb.value() + pixel_step)))
                 event.accept()
                 return
 

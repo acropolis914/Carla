@@ -32,6 +32,9 @@ Patchbay performance overhaul: QOpenGLWidget hardware acceleration, item caching
   - Enabled `DeviceCoordinateCache` on `CanvasBox`, `CanvasPort`, and `CanvasIcon` items to eliminate redundant repainting of static node bodies, badges, and SVGs.
   - Bumped signal flow animation frequency to 60 FPS (16ms interval) for fluid visual pulses.
   - Implemented zero-allocation straight-line wire drag previews with sub-pixel deadband pruning and fast bounding-rect port hover lookup with leeway.
+  - Replaced laggy timer-interpolated rack scrolling with direct native wheel scrolling for instant responsiveness.
+  - Debounced patchbay minimap scene updates via a single coalescing timer to eliminate cascade redraws during node manipulation.
+  - Throttled sub-pixel rubberband marquee updates to reduce scene collision testing overhead.
 
 ## [1.1.5] - 2026-10-28
 
