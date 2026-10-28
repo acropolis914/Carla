@@ -27,6 +27,9 @@ Patchbay performance overhaul: QOpenGLWidget hardware acceleration, item caching
 ### 2026-10-28 15:15:00
 - **feat(patchbay)**: layout containers (VBox, HBox, Grid) with interactive drop zones and standby recovery
   - Added non-destructive backdrop layout containers (`CanvasContainer`) placed behind patchbay nodes (`z = -10`) without reparenting cables or altering port coordinates.
+  - Eliminated movement drift and de-centering by anchoring child coordinates strictly to the container origin and bypassing canvas grid snapping for contained items.
+  - Added dedicated right-click context menu to containers with **Rename**, **Catppuccin color accents**, **Layout mode**, **Collapse/Expand**, and **Ungroup**.
+  - Supported double-clicking the container header to rename inline.
   - Interactive drag-and-drop ergonomics: dynamic slot gap preview lines, automatic child translation when dragging the container, and drag-out extraction.
   - Supported **VBox** (vertical stack), **HBox** (horizontal chain), and **Grid** (matrix) with header badge mode switching and ungroup button.
   - Implemented standby ghost recovery: unplugged PipeWire/JACK external clients collapse into container standby and automatically reclaim their slot when reconnected.

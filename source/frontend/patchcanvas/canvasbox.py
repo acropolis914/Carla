@@ -1818,6 +1818,10 @@ class CanvasBox(QGraphicsObject):
         QGraphicsObject.mouseReleaseEvent(self, event)
 
     def fixPos(self):
+        # Do not snap if constrained by a layout container
+        if getattr(self, "_canvas_container", None) is not None:
+            return
+
         self.blockSignals(True)
         if getattr(options, "snap_enabled", True):
             gs = max(1, getattr(options, "grid_size", 20))

@@ -333,16 +333,16 @@ class CanvasToolBarOverlay(QFrame):
             font.setPointSize(11)
 
         # Icons: Sensible Nerd Font glyphs or clean unicode symbols
-        self.icon_pointer = "\uf245" if font_family else "↖"   # nf-fa-mouse-pointer
-        self.icon_select  = "\uf247" if font_family else "⛶"   # nf-fa-object-group
-        self.icon_hand    = "\uf256" if font_family else "✋"   # nf-fa-hand-paper-o
-        self.icon_zoomin  = "\uf00e" if font_family else "+"   # nf-fa-search-plus
-        self.icon_zoomout = "\uf010" if font_family else "-"   # nf-fa-search-minus
-        self.icon_fit     = "\uf0b2" if font_family else "⛶"   # nf-fa-arrows-alt
-        self.icon_grid    = "\uf00a" if font_family else "#"   # nf-fa-th
-        self.icon_snap    = "\uf076" if font_family else "🧲"  # nf-fa-magnet
-        self.icon_flow    = "\uf21e" if font_family else "∿"   # nf-fa-heartbeat
-        self.icon_help    = "\uf059" if font_family else "?"   # nf-fa-question-circle
+        self.icon_pointer = "\uf245" if font_family else "↖"  # nf-fa-mouse-pointer
+        self.icon_select = "\uf247" if font_family else "⛶"  # nf-fa-object-group
+        self.icon_hand = "\uf256" if font_family else ","  # nf-fa-hand-paper-o
+        self.icon_zoomin = "\uf00e" if font_family else "+"  # nf-fa-search-plus
+        self.icon_zoomout = "\uf010" if font_family else "-"  # nf-fa-search-minus
+        self.icon_fit = "\uf0b2" if font_family else "⛶"  # nf-fa-arrows-alt
+        self.icon_grid = "\uf00a" if font_family else "#"  # nf-fa-th
+        self.icon_snap = "\uf076" if font_family else ""  # nf-fa-magnet
+        self.icon_flow = "\uf21e" if font_family else "∿"  # nf-fa-heartbeat
+        self.icon_help = "\uf059" if font_family else "?"  # nf-fa-question-circle
         # Main Application Menu Button (Accessible when Menubar is hidden)
         self.btnMenu = CanvasToolButton("☰", self)
         self.btnMenu.setObjectName("canvasMenuButton")
@@ -433,7 +433,9 @@ class CanvasToolBarOverlay(QFrame):
         # Signal / Event Flow Animation Toggle
         self._signalflow_external = True
         self.btnSignalFlow = CanvasToolButton(self.icon_flow, self)
-        self.btnSignalFlow.setToolTip("Toggle animated signal/event flow over the patchbay\n(right-click for options)")
+        self.btnSignalFlow.setToolTip(
+            "Toggle animated signal/event flow over the patchbay\n(right-click for options)"
+        )
         self.btnSignalFlow.setFont(font)
         self.btnSignalFlow.setFixedSize(28, 28)
         self.btnSignalFlow.setCheckable(True)
@@ -463,9 +465,15 @@ class CanvasToolBarOverlay(QFrame):
 
         try:
             from utils import QSafeSettings
-            from carla_shared import CARLA_KEY_CANVAS_SIGNAL_FLOW, CARLA_KEY_CANVAS_SIGNAL_FLOW_EXT
+            from carla_shared import (
+                CARLA_KEY_CANVAS_SIGNAL_FLOW,
+                CARLA_KEY_CANVAS_SIGNAL_FLOW_EXT,
+            )
+
             settings = QSafeSettings("falkTX", "Carla2")
-            self._signalflow_external = settings.value(CARLA_KEY_CANVAS_SIGNAL_FLOW_EXT, True, bool)
+            self._signalflow_external = settings.value(
+                CARLA_KEY_CANVAS_SIGNAL_FLOW_EXT, True, bool
+            )
             if settings.value(CARLA_KEY_CANVAS_SIGNAL_FLOW, False, bool):
                 self._applySignalFlow(True)
         except Exception:
@@ -513,13 +521,17 @@ class CanvasToolBarOverlay(QFrame):
 
     def _slot_toggleSignalFlow(self):
         from patchcanvas import signalflow
+
         animator = signalflow.get_animator()
         new_state = not animator.is_enabled()
         self._applySignalFlow(new_state)
         try:
             from utils import QSafeSettings
             from carla_shared import CARLA_KEY_CANVAS_SIGNAL_FLOW
-            QSafeSettings("falkTX", "Carla2").setValue(CARLA_KEY_CANVAS_SIGNAL_FLOW, new_state)
+
+            QSafeSettings("falkTX", "Carla2").setValue(
+                CARLA_KEY_CANVAS_SIGNAL_FLOW, new_state
+            )
         except Exception:
             pass
 
@@ -528,7 +540,9 @@ class CanvasToolBarOverlay(QFrame):
         act_ext = QAction("Include external / PipeWire nodes", menu)
         act_ext.setCheckable(True)
         act_ext.setChecked(bool(self._signalflow_external))
-        act_ext.setToolTip("Sample real levels of external nodes (bus, monitors, hardware) via a hidden peak-detect tap")
+        act_ext.setToolTip(
+            "Sample real levels of external nodes (bus, monitors, hardware) via a hidden peak-detect tap"
+        )
         menu.addAction(act_ext)
         chosen = menu.exec_(self.btnSignalFlow.mapToGlobal(pos))
         if chosen is act_ext:
@@ -536,19 +550,24 @@ class CanvasToolBarOverlay(QFrame):
             try:
                 from utils import QSafeSettings
                 from carla_shared import CARLA_KEY_CANVAS_SIGNAL_FLOW_EXT
-                QSafeSettings("falkTX", "Carla2").setValue(CARLA_KEY_CANVAS_SIGNAL_FLOW_EXT, self._signalflow_external)
+
+                QSafeSettings("falkTX", "Carla2").setValue(
+                    CARLA_KEY_CANVAS_SIGNAL_FLOW_EXT, self._signalflow_external
+                )
             except Exception:
                 pass
             if not self._signalflow_external:
                 self._stopExternalSampler()
             elif self._signalflow_ready:
                 from patchcanvas import signalflow
+
                 if signalflow.get_animator().is_enabled():
                     self._external_sampler()
 
     def _stopExternalSampler(self):
         try:
             from patchcanvas import pwlevels
+
             pwlevels.get_sampler().set_nodes(set())
             pwlevels.get_sampler().stop()
         except Exception:
@@ -559,6 +578,7 @@ class CanvasToolBarOverlay(QFrame):
             return None
         try:
             from patchcanvas import pwlevels
+
             sampler = pwlevels.get_sampler()
             if not sampler.is_available():
                 return None
@@ -570,6 +590,7 @@ class CanvasToolBarOverlay(QFrame):
 
     def _applySignalFlow(self, enabled):
         from patchcanvas import signalflow
+
         animator = signalflow.get_animator()
         if not getattr(self, "_signalflow_ready", False):
             self._signalflow_ready = True
@@ -603,7 +624,9 @@ class CanvasToolBarOverlay(QFrame):
                     continue
                 pid = getattr(group, "plugin_id", -1)
                 if not (0 <= pid <= patchcanvas.MAX_PLUGIN_ID_ALLOWED):
-                    name = getattr(group, "pw_node_name", None) or getattr(group, "group_name", None)
+                    name = getattr(group, "pw_node_name", None) or getattr(
+                        group, "group_name", None
+                    )
                     external_groups.append((gid, name))
                     continue
                 try:
@@ -622,8 +645,12 @@ class CanvasToolBarOverlay(QFrame):
                 gid = getattr(group, "group_id", None)
                 if gid is None:
                     continue
-                if getattr(group, "plugin_id", -1) not in range(0, patchcanvas.MAX_PLUGIN_ID_ALLOWED + 1):
-                    name = getattr(group, "pw_node_name", None) or getattr(group, "group_name", None)
+                if getattr(group, "plugin_id", -1) not in range(
+                    0, patchcanvas.MAX_PLUGIN_ID_ALLOWED + 1
+                ):
+                    name = getattr(group, "pw_node_name", None) or getattr(
+                        group, "group_name", None
+                    )
                     external_groups.append((gid, name))
 
         levels = dict(plugin_levels)
@@ -636,7 +663,9 @@ class CanvasToolBarOverlay(QFrame):
             for conn in connections:
                 connected_ids.add(getattr(conn, "group_out_id", None))
                 connected_ids.add(getattr(conn, "group_in_id", None))
-            desired = [name for gid, name in external_groups if gid in connected_ids and name]
+            desired = [
+                name for gid, name in external_groups if gid in connected_ids and name
+            ]
             sampler.set_nodes(desired)
             sampler.process()
             for gid, name in external_groups:
@@ -667,12 +696,16 @@ class CanvasToolBarOverlay(QFrame):
 
     def _repaintActiveSignalItems(self):
         from patchcanvas import signalflow
+
         levels = signalflow.state.levels
         if not levels:
             return
         canvas = patchcanvas.canvas
         for conn in list(canvas.connection_list):
-            if getattr(conn, "group_out_id", None) in levels or getattr(conn, "group_in_id", None) in levels:
+            if (
+                getattr(conn, "group_out_id", None) in levels
+                or getattr(conn, "group_in_id", None) in levels
+            ):
                 widget = getattr(conn, "widget", None)
                 if widget is not None:
                     widget.update()
@@ -689,7 +722,9 @@ class CanvasToolBarOverlay(QFrame):
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
-            self._dragPos = _get_event_global_pos(event) - self.frameGeometry().topLeft()
+            self._dragPos = (
+                _get_event_global_pos(event) - self.frameGeometry().topLeft()
+            )
             event.accept()
             return
         super().mousePressEvent(event)
@@ -786,7 +821,9 @@ class CanvasContextToolBarOverlay(QFrame):
                     lst = getattr(self.graphicsView, "fSearchList", None)
                     if lst is not None and lst.isVisible() and lst.count():
                         lst.setFocus()
-                        lst.setCurrentRow(0 if event.key() == Qt.Key_Down else lst.count() - 1)
+                        lst.setCurrentRow(
+                            0 if event.key() == Qt.Key_Down else lst.count() - 1
+                        )
                         return True
         return QFrame.eventFilter(self, obj, event)
 
@@ -845,39 +882,43 @@ class CanvasContextToolBarOverlay(QFrame):
 
         nf = bool(self.font_family)
         # Nerd Font glyphs (FontAwesome / Material exact match)
-        icon_arr     = "\uf0e8" if nf else "🔀"  # nf-fa-sitemap
-        icon_repel   = "\uf0b2" if nf else "↔"   # nf-fa-arrows-alt
-        icon_aside   = "\uf08d" if nf else "⏭"   # nf-fa-thumb-tack
-        icon_sel     = "\uf046" if nf else "⛶"  # nf-fa-check-square-o
-        icon_desel   = "\uf00d" if nf else "✕"  # nf-fa-times
-        icon_inv     = "\uf0ec" if nf else "⇄"  # nf-fa-exchange
-        icon_edit    = "\uf1de" if nf else "⚙"  # nf-fa-sliders
-        icon_ui      = "\uf108" if nf else "🖥"  # nf-fa-desktop
-        icon_rack    = "\uf1b3" if nf else "📦"  # nf-fa-cubes
-        icon_clone   = "\uf24d" if nf else "⧉"  # nf-fa-clone
-        icon_ren     = "\uf040" if nf else "✎"  # nf-fa-pencil
-        icon_del     = "\uf1f8" if nf else "🗑"  # nf-fa-trash
-        icon_cut     = "\uf127" if nf else "✂"  # nf-fa-chain-broken
-        icon_split   = "\uf0db" if nf else "⚯"  # nf-fa-columns
-        icon_color   = "\uf1fc" if nf else "🎨" # nf-fa-paint-brush
-        icon_prop    = "\uf05a" if nf else "ℹ"  # nf-fa-info-circle
-        icon_power   = "\uf011" if nf else "⏻"  # nf-fa-power-off
-        icon_bypass  = "\uf205" if nf else "⮀"  # nf-fa-toggle-on
-        icon_ports   = "\uf070" if nf else ""  # nf-fa-eye-slash
-        icon_al_h    = "\uf037" if nf else "═"  # nf-fa-align-center
-        icon_al_v    = "\uf037" if nf else "║"  # nf-fa-align-center
-        icon_dist_h  = "\uf07e" if nf else "⬌"  # nf-fa-arrows-h
-        icon_dist_v  = "\uf07d" if nf else "⬍"  # nf-fa-arrows-v
-        icon_tools   = "\uf085" if nf else "🧰" # nf-fa-cogs
+        icon_arr = "\uf0e8" if nf else "🔀"  # nf-fa-sitemap
+        icon_repel = "\uf0b2" if nf else "↔"  # nf-fa-arrows-alt
+        icon_aside = "\uf08d" if nf else "⏭"  # nf-fa-thumb-tack
+        icon_sel = "\uf046" if nf else "⛶"  # nf-fa-check-square-o
+        icon_desel = "\uf00d" if nf else "✕"  # nf-fa-times
+        icon_inv = "\uf0ec" if nf else "⇄"  # nf-fa-exchange
+        icon_edit = "\uf1de" if nf else "⚙"  # nf-fa-sliders
+        icon_ui = "\uf108" if nf else "🖥"  # nf-fa-desktop
+        icon_rack = "\uf1b3" if nf else "📦"  # nf-fa-cubes
+        icon_clone = "\uf24d" if nf else "⧉"  # nf-fa-clone
+        icon_ren = "\uf040" if nf else "✎"  # nf-fa-pencil
+        icon_del = "\uf1f8" if nf else "🗑"  # nf-fa-trash
+        icon_cut = "\uf127" if nf else "✂"  # nf-fa-chain-broken
+        icon_split = "\uf0db" if nf else "⚯"  # nf-fa-columns
+        icon_color = "\uf1fc" if nf else "🎨"  # nf-fa-paint-brush
+        icon_prop = "\uf05a" if nf else "ℹ"  # nf-fa-info-circle
+        icon_power = "\uf011" if nf else "⏻"  # nf-fa-power-off
+        icon_bypass = "\uf205" if nf else "⮀"  # nf-fa-toggle-on
+        icon_ports = "\uf070" if nf else ""  # nf-fa-eye-slash
+        icon_al_h = "󱇆" if nf else "═"  # nf-fa-align-center
+        icon_al_v = "󱇃" if nf else "║"  # nf-fa-align-center
+        icon_dist_h = "\uf07e" if nf else "⬌"  # nf-fa-arrows-h
+        icon_dist_v = "\uf07d" if nf else "⬍"  # nf-fa-arrows-v
+        icon_tools = "\uf085" if nf else "🧰"  # nf-fa-cogs
 
         if count == 0:
             # Global Canvas Actions
             self.addLabel("CANVAS", "Patchbay Canvas Actions")
             self.addSeparator()
 
-            self.addButton(icon_aside, "Park Disconnected Nodes Aside", self._slot_move_aside_all)
+            self.addButton(
+                icon_aside, "Park Disconnected Nodes Aside", self._slot_move_aside_all
+            )
             self.addSeparator()
-            self.addButton(icon_sel, "Select All Nodes (Ctrl+A)", patchcanvas.selectAllNodes)
+            self.addButton(
+                icon_sel, "Select All Nodes (Ctrl+A)", patchcanvas.selectAllNodes
+            )
 
         elif count == 1:
             # Single Node Context Actions
@@ -887,52 +928,124 @@ class CanvasContextToolBarOverlay(QFrame):
 
             badge = getattr(node, "m_type_badge", "")
             badge_txt = f"[{badge}] " if badge else ""
-            self.addLabel(f"{badge_txt}{short_name.upper()}", f"{name} ({badge or 'Node'})")
+            self.addLabel(
+                f"{badge_txt}{short_name.upper()}", f"{name} ({badge or 'Node'})"
+            )
             self.addSeparator()
 
             plugin_id = getattr(node, "m_plugin_id", -1)
             group_id = getattr(node, "m_group_id", -1)
-            has_plugin = (0 <= plugin_id <= patchcanvas.MAX_PLUGIN_ID_ALLOWED)
+            has_plugin = 0 <= plugin_id <= patchcanvas.MAX_PLUGIN_ID_ALLOWED
             has_ui = getattr(node, "m_plugin_ui", False)
 
             if has_plugin:
                 # Power & Bypass
-                self.addButton(icon_power, "Power / Toggle Active", lambda: self._slot_toggle_power(node))
-                self.addButton(icon_bypass, "Toggle Bypass (Dry/Wet)", lambda: self._slot_toggle_bypass(node))
+                self.addButton(
+                    icon_power,
+                    "Power / Toggle Active",
+                    lambda: self._slot_toggle_power(node),
+                )
+                self.addButton(
+                    icon_bypass,
+                    "Toggle Bypass (Dry/Wet)",
+                    lambda: self._slot_toggle_bypass(node),
+                )
                 self.addSeparator()
 
                 # Parameter Edit & Custom UI
-                self.addButton(icon_edit, "Edit Parameters", lambda: patchcanvas.canvas.callback(patchcanvas.ACTION_PLUGIN_EDIT, plugin_id, 0, ""))
+                self.addButton(
+                    icon_edit,
+                    "Edit Parameters",
+                    lambda: patchcanvas.canvas.callback(
+                        patchcanvas.ACTION_PLUGIN_EDIT, plugin_id, 0, ""
+                    ),
+                )
                 if has_ui:
-                    self.addButton(icon_ui, "Show Custom Plugin GUI", lambda: patchcanvas.canvas.callback(patchcanvas.ACTION_PLUGIN_SHOW_UI, plugin_id, 0, ""))
-                self.addButton(icon_rack, "Jump to Plugin in Rack Tab", lambda: self._slot_jump_rack(plugin_id))
-                self.addButton(icon_clone, "Duplicate / Clone Plugin", lambda: patchcanvas.canvas.callback(patchcanvas.ACTION_PLUGIN_CLONE, plugin_id, 0, ""))
-                self.addButton(icon_ren, "Rename Plugin...", lambda: patchcanvas.canvas.callback(patchcanvas.ACTION_PLUGIN_RENAME, plugin_id, 0, ""))
-                self.addButton(icon_del, "Remove Plugin", lambda: patchcanvas.canvas.callback(patchcanvas.ACTION_PLUGIN_REMOVE, plugin_id, 0, ""))
+                    self.addButton(
+                        icon_ui,
+                        "Show Custom Plugin GUI",
+                        lambda: patchcanvas.canvas.callback(
+                            patchcanvas.ACTION_PLUGIN_SHOW_UI, plugin_id, 0, ""
+                        ),
+                    )
+                self.addButton(
+                    icon_rack,
+                    "Jump to Plugin in Rack Tab",
+                    lambda: self._slot_jump_rack(plugin_id),
+                )
+                self.addButton(
+                    icon_clone,
+                    "Duplicate / Clone Plugin",
+                    lambda: patchcanvas.canvas.callback(
+                        patchcanvas.ACTION_PLUGIN_CLONE, plugin_id, 0, ""
+                    ),
+                )
+                self.addButton(
+                    icon_ren,
+                    "Rename Plugin...",
+                    lambda: patchcanvas.canvas.callback(
+                        patchcanvas.ACTION_PLUGIN_RENAME, plugin_id, 0, ""
+                    ),
+                )
+                self.addButton(
+                    icon_del,
+                    "Remove Plugin",
+                    lambda: patchcanvas.canvas.callback(
+                        patchcanvas.ACTION_PLUGIN_REMOVE, plugin_id, 0, ""
+                    ),
+                )
                 self.addSeparator()
 
             # Appearance & Box Setup
-            btnColor = self.addButton(icon_color, "Node Tint Color Presets & Custom...", lambda: None)
+            btnColor = self.addButton(
+                icon_color, "Node Tint Color Presets & Custom...", lambda: None
+            )
             btnColor.clicked.disconnect()
-            btnColor.clicked.connect(lambda: self._slot_show_color_menu(btnColor, [node]))
+            btnColor.clicked.connect(
+                lambda: self._slot_show_color_menu(btnColor, [node])
+            )
 
             if hasattr(node, "showPropertiesDialog"):
-                self.addButton(icon_prop, "Node Properties & Badges...", node.showPropertiesDialog)
+                self.addButton(
+                    icon_prop, "Node Properties & Badges...", node.showPropertiesDialog
+                )
 
             # Hide/Show unconnected ports
             hiding_ports = getattr(node, "m_hide_unconnected_ports", False)
-            self.addButton(icon_ports, "Toggle Hide Unconnected Ports", lambda: self._slot_toggle_hide_ports(node), checkable=True, checked=hiding_ports)
+            self.addButton(
+                icon_ports,
+                "Toggle Hide Unconnected Ports",
+                lambda: self._slot_toggle_hide_ports(node),
+                checkable=True,
+                checked=hiding_ports,
+            )
 
             # Split/Join if available
             split_label = "Join" if getattr(node, "m_split", False) else "Split"
-            self.addButton(icon_split, f"{split_label} Input/Output Box Groups", lambda: self._slot_split_join(node))
+            self.addButton(
+                icon_split,
+                f"{split_label} Input/Output Box Groups",
+                lambda: self._slot_split_join(node),
+            )
 
             # Disconnect all cables from this node
-            self.addButton(icon_cut, "Disconnect All Cables from This Node", lambda: self._slot_disconnect_node(node))
+            self.addButton(
+                icon_cut,
+                "Disconnect All Cables from This Node",
+                lambda: self._slot_disconnect_node(node),
+            )
 
             self.addSeparator()
-            self.addButton(icon_arr, "Auto-Arrange Subgraph Connected to This Node", lambda: patchcanvas.arrangeConnected(node, "both"))
-            self.addButton(icon_aside, "Park This Node Aside", lambda: patchcanvas.moveAsideNonConnectedNodes(node))
+            self.addButton(
+                icon_arr,
+                "Auto-Arrange Subgraph Connected to This Node",
+                lambda: patchcanvas.arrangeConnected(node, "both"),
+            )
+            self.addButton(
+                icon_aside,
+                "Park This Node Aside",
+                lambda: patchcanvas.moveAsideNonConnectedNodes(node),
+            )
             self.addButton(icon_desel, "Deselect (Esc)", patchcanvas.deselectAllNodes)
 
         else:
@@ -941,35 +1054,83 @@ class CanvasContextToolBarOverlay(QFrame):
             self.addSeparator()
 
             # Batch Align & Distribute
-            self.addButton(icon_al_h, "Align Selected Nodes Horizontally", lambda: patchcanvas.alignSelected("horizontal"))
-            self.addButton(icon_al_v, "Align Selected Nodes Vertically", lambda: patchcanvas.alignSelected("vertical"))
-            self.addButton(icon_dist_h, "Distribute Horizontally with Equal Spacing", lambda: patchcanvas.alignSelected("distribute_h"))
-            self.addButton(icon_dist_v, "Distribute Vertically with Equal Spacing", lambda: patchcanvas.alignSelected("distribute_v"))
-            self.addButton(icon_repel, "Auto-Repel Selected Overlaps", lambda: patchcanvas.repelNodes(selected))
+            self.addButton(
+                icon_al_h,
+                "Align Selected Nodes Horizontally",
+                lambda: patchcanvas.alignSelected("horizontal"),
+            )
+            self.addButton(
+                icon_al_v,
+                "Align Selected Nodes Vertically",
+                lambda: patchcanvas.alignSelected("vertical"),
+            )
+            self.addButton(
+                icon_dist_h,
+                "Distribute Horizontally with Equal Spacing",
+                lambda: patchcanvas.alignSelected("distribute_h"),
+            )
+            self.addButton(
+                icon_dist_v,
+                "Distribute Vertically with Equal Spacing",
+                lambda: patchcanvas.alignSelected("distribute_v"),
+            )
+            self.addButton(
+                icon_repel,
+                "Auto-Repel Selected Overlaps",
+                lambda: patchcanvas.repelNodes(selected),
+            )
             self.addSeparator()
 
             # Batch Operations
-            btnBatchColor = self.addButton(icon_color, "Batch Color Selected Nodes...", lambda: None)
+            btnBatchColor = self.addButton(
+                icon_color, "Batch Color Selected Nodes...", lambda: None
+            )
             btnBatchColor.clicked.disconnect()
-            btnBatchColor.clicked.connect(lambda: self._slot_show_color_menu(btnBatchColor, selected))
+            btnBatchColor.clicked.connect(
+                lambda: self._slot_show_color_menu(btnBatchColor, selected)
+            )
 
-            self.addButton(icon_power, "Batch Toggle Power (Active)", lambda: self._slot_batch_power(selected))
-            self.addButton(icon_bypass, "Batch Toggle Bypass", lambda: self._slot_batch_bypass(selected))
-            self.addButton(icon_ports, "Batch Toggle Hide Unconnected Ports", lambda: self._slot_batch_hide_ports(selected))
-            self.addButton(icon_cut, "Disconnect All Cables on Selected Nodes", lambda: self._slot_disconnect_selected(selected))
+            self.addButton(
+                icon_power,
+                "Batch Toggle Power (Active)",
+                lambda: self._slot_batch_power(selected),
+            )
+            self.addButton(
+                icon_bypass,
+                "Batch Toggle Bypass",
+                lambda: self._slot_batch_bypass(selected),
+            )
+            self.addButton(
+                icon_ports,
+                "Batch Toggle Hide Unconnected Ports",
+                lambda: self._slot_batch_hide_ports(selected),
+            )
+            self.addButton(
+                icon_cut,
+                "Disconnect All Cables on Selected Nodes",
+                lambda: self._slot_disconnect_selected(selected),
+            )
             self.addSeparator()
 
-            self.addButton(icon_inv, "Invert Selection", patchcanvas.invertNodeSelection)
-            self.addButton(icon_desel, "Clear Selection (Esc)", patchcanvas.deselectAllNodes)
+            self.addButton(
+                icon_inv, "Invert Selection", patchcanvas.invertNodeSelection
+            )
+            self.addButton(
+                icon_desel, "Clear Selection (Esc)", patchcanvas.deselectAllNodes
+            )
 
         # Grouped "Arrange tools" popover, always available so the bar stays uncluttered
         self.addSeparator()
-        btnTools = self.addButton(icon_tools, "Arrange Tools: auto-arrange, auto-wire, repel", lambda: None)
+        btnTools = self.addButton(
+            icon_tools, "Arrange Tools: auto-arrange, auto-wire, repel", lambda: None
+        )
         btnTools.clicked.disconnect()
         btnTools.clicked.connect(lambda: self._slot_show_arrange_menu(btnTools, count))
 
         # Calculate exact pixel width for pure icon controls
-        total_w = self.layout.contentsMargins().left() + self.layout.contentsMargins().right()
+        total_w = (
+            self.layout.contentsMargins().left() + self.layout.contentsMargins().right()
+        )
         spacing = self.layout.spacing()
         for w in self._items:
             w.show()
@@ -1027,7 +1188,9 @@ class CanvasContextToolBarOverlay(QFrame):
 
         for name, hex_code in presets:
             act = menu.addAction(create_color_icon(hex_code), name)
-            act.triggered.connect(lambda checked, h=hex_code: self._apply_color_to_nodes(nodes, h))
+            act.triggered.connect(
+                lambda checked, h=hex_code: self._apply_color_to_nodes(nodes, h)
+            )
 
         menu.addSeparator()
         act_custom = menu.addAction("Custom Color Picker...")
@@ -1047,7 +1210,9 @@ class CanvasContextToolBarOverlay(QFrame):
         arrange_menu = menu.addMenu("Auto arrange")
         for algo_name, algo_label in patchcanvas.layout_algorithms():
             act = arrange_menu.addAction(algo_label)
-            act.triggered.connect(lambda checked=False, a=algo_name: self._slot_run_arrange(a))
+            act.triggered.connect(
+                lambda checked=False, a=algo_name: self._slot_run_arrange(a)
+            )
 
         act_wire = menu.addAction("Auto wire")
         act_wire.triggered.connect(lambda: patchcanvas.autoWire())
@@ -1058,7 +1223,9 @@ class CanvasContextToolBarOverlay(QFrame):
         act_both.setEnabled(has_selection)
 
         menu.addSeparator()
-        act_repel = menu.addAction("Auto repel all" if not has_selection else "Auto repel selection")
+        act_repel = menu.addAction(
+            "Auto repel all" if not has_selection else "Auto repel selection"
+        )
         act_repel.triggered.connect(lambda: patchcanvas.autoRepelNodes())
 
         btn_pos = source_button.mapToGlobal(QPoint(0, source_button.height() + 4))
@@ -1069,7 +1236,10 @@ class CanvasContextToolBarOverlay(QFrame):
         try:
             from utils import QSafeSettings
             from carla_shared import CARLA_KEY_CANVAS_ARRANGE_STYLE
-            QSafeSettings("falkTX", "Carla2").setValue(CARLA_KEY_CANVAS_ARRANGE_STYLE, algorithm)
+
+            QSafeSettings("falkTX", "Carla2").setValue(
+                CARLA_KEY_CANVAS_ARRANGE_STYLE, algorithm
+            )
         except Exception:
             pass
         patchcanvas.autoArrangeNodes(algorithm=algorithm)
@@ -1080,7 +1250,9 @@ class CanvasContextToolBarOverlay(QFrame):
                 n.setCustomColor(hex_str)
             pid = getattr(n, "m_plugin_id", -1)
             if 0 <= pid <= patchcanvas.MAX_PLUGIN_ID_ALLOWED:
-                patchcanvas.canvas.callback(patchcanvas.ACTION_PLUGIN_COLOR, pid, 0, hex_str)
+                patchcanvas.canvas.callback(
+                    patchcanvas.ACTION_PLUGIN_COLOR, pid, 0, hex_str
+                )
 
     def _open_custom_color_dialog(self, nodes):
         initial = QColor("#1e1e2e")
@@ -1097,11 +1269,21 @@ class CanvasContextToolBarOverlay(QFrame):
         try:
             from carla_shared import gCarla
             from carla_backend import PARAMETER_ACTIVE
-            pwidget = gCarla.gui.getPluginWidget(pid) if hasattr(gCarla.gui, "getPluginWidget") else None
+
+            pwidget = (
+                gCarla.gui.getPluginWidget(pid)
+                if hasattr(gCarla.gui, "getPluginWidget")
+                else None
+            )
             if pwidget is not None and hasattr(pwidget, "fIsActive"):
                 cur = bool(pwidget.fIsActive)
-            elif hasattr(gCarla.gui, "host") and hasattr(gCarla.gui.host, "get_internal_parameter_value"):
-                cur = bool(gCarla.gui.host.get_internal_parameter_value(pid, PARAMETER_ACTIVE) >= 0.5)
+            elif hasattr(gCarla.gui, "host") and hasattr(
+                gCarla.gui.host, "get_internal_parameter_value"
+            ):
+                cur = bool(
+                    gCarla.gui.host.get_internal_parameter_value(pid, PARAMETER_ACTIVE)
+                    >= 0.5
+                )
             else:
                 cur = True
             new_state = not cur
@@ -1123,8 +1305,15 @@ class CanvasContextToolBarOverlay(QFrame):
         try:
             from carla_shared import gCarla
             from carla_backend import PARAMETER_DRYWET
-            pwidget = gCarla.gui.getPluginWidget(pid) if hasattr(gCarla.gui, "getPluginWidget") else None
-            cur_val = gCarla.gui.host.get_internal_parameter_value(pid, PARAMETER_DRYWET)
+
+            pwidget = (
+                gCarla.gui.getPluginWidget(pid)
+                if hasattr(gCarla.gui, "getPluginWidget")
+                else None
+            )
+            cur_val = gCarla.gui.host.get_internal_parameter_value(
+                pid, PARAMETER_DRYWET
+            )
             new_val = 1.0 if cur_val == 0.0 else 0.0
             gCarla.gui.host.set_drywet(pid, new_val)
             if pwidget is not None:
@@ -1148,7 +1337,9 @@ class CanvasContextToolBarOverlay(QFrame):
             self._slot_toggle_bypass(n)
 
     def _slot_batch_hide_ports(self, nodes):
-        any_unhidden = any(not getattr(n, "m_hide_unconnected_ports", False) for n in nodes)
+        any_unhidden = any(
+            not getattr(n, "m_hide_unconnected_ports", False) for n in nodes
+        )
         for n in nodes:
             if hasattr(n, "setHideUnconnectedPorts"):
                 n.setHideUnconnectedPorts(any_unhidden)
@@ -1188,8 +1379,9 @@ class CanvasContextToolBarOverlay(QFrame):
         port_ids = set(getattr(node, "m_port_list_ids", []))
         conns_to_drop = []
         for c in patchcanvas.canvas.connection_list:
-            if (c.group_out_id == group_id and c.port_out_id in port_ids) or \
-               (c.group_in_id == group_id and c.port_in_id in port_ids):
+            if (c.group_out_id == group_id and c.port_out_id in port_ids) or (
+                c.group_in_id == group_id and c.port_in_id in port_ids
+            ):
                 conns_to_drop.append(c.connection_id)
         for cid in conns_to_drop:
             patchcanvas.canvas.callback(patchcanvas.ACTION_PORTS_DISCONNECT, cid, 0, "")
@@ -1202,8 +1394,10 @@ class CanvasContextToolBarOverlay(QFrame):
                 node_groups_ports.add((gid, pid))
         conns_to_drop = []
         for c in patchcanvas.canvas.connection_list:
-            if (c.group_out_id, c.port_out_id) in node_groups_ports or \
-               (c.group_in_id, c.port_in_id) in node_groups_ports:
+            if (c.group_out_id, c.port_out_id) in node_groups_ports or (
+                c.group_in_id,
+                c.port_in_id,
+            ) in node_groups_ports:
                 conns_to_drop.append(c.connection_id)
         for cid in conns_to_drop:
             patchcanvas.canvas.callback(patchcanvas.ACTION_PORTS_DISCONNECT, cid, 0, "")
@@ -1225,8 +1419,11 @@ class CanvasContextToolBarOverlay(QFrame):
     def _slot_jump_rack(self, plugin_id):
         try:
             from carla_shared import gCarla
+
             if hasattr(gCarla.gui, "ui"):
-                split_idx = gCarla.gui.ui.tabWidget.indexOf(getattr(gCarla.gui, "tabSplit", None))
+                split_idx = gCarla.gui.ui.tabWidget.indexOf(
+                    getattr(gCarla.gui, "tabSplit", None)
+                )
                 if split_idx >= 0:
                     gCarla.gui.ui.tabWidget.setCurrentIndex(split_idx)
                 else:
@@ -1240,7 +1437,9 @@ class CanvasContextToolBarOverlay(QFrame):
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
-            self._dragPos = _get_event_global_pos(event) - self.frameGeometry().topLeft()
+            self._dragPos = (
+                _get_event_global_pos(event) - self.frameGeometry().topLeft()
+            )
             event.accept()
             return
         super().mousePressEvent(event)
@@ -1305,7 +1504,9 @@ class CanvasViewportFilter(QObject):
         self.toolBar.show()
         QTimer.singleShot(100, self.toolBar.reposition)
 
-        self.contextToolBar = CanvasContextToolBarOverlay(self.graphicsView, overlayParent)
+        self.contextToolBar = CanvasContextToolBarOverlay(
+            self.graphicsView, overlayParent
+        )
         self.contextToolBar.show()
         QTimer.singleShot(100, self.contextToolBar.reposition)
 
@@ -2099,7 +2300,7 @@ def canvasCallback(action, value1, value2, valueStr):
         connectionId = value1
         log_carla(
             f"carla_canvas: ACTION_PORTS_DISCONNECT connectionId={connectionId} (external={gCarla.gui.fExternalPatchbay})",
-            level="debug"
+            level="debug",
         )
 
         alt_pressed = bool(QApplication.keyboardModifiers() & Qt.AltModifier)

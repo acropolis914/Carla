@@ -5,11 +5,15 @@
 # Non-destructive backdrop container (VBox, HBox, Grid) for grouping canvas nodes.
 
 from qt_compat import (
+    QAction,
     QColor,
+    QColorDialog,
     QFont,
     QGraphicsItem,
     QGraphicsObject,
-    QLinearGradient,
+    QInputDialog,
+    QLineEdit,
+    QMenu,
     QPainter,
     QPainterPath,
     QPen,
@@ -32,7 +36,19 @@ CONTAINER_LAYOUT_GRID = "grid"
 CONTAINER_PADDING = 14.0
 CONTAINER_HEADER_HEIGHT = 28.0
 CONTAINER_ITEM_SPACING = 12.0
-CONTAINER_MIN_WIDTH = 200.0
+CONTAINER_MIN_WIDTH = 220.0
+
+CATPPUCCIN_PALETTE = [
+    ("Blue", "#89b4fa"),
+    ("Mauve", "#cba6f7"),
+    ("Green", "#a6e3a1"),
+    ("Peach", "#fab387"),
+    ("Teal", "#94e2d5"),
+    ("Lavender", "#b4befe"),
+    ("Flamingo", "#f2cdcd"),
+    ("Red", "#f38ba8"),
+    ("Yellow", "#f9e2af"),
+]
 
 
 class CanvasContainer(QGraphicsObject):
@@ -53,25 +69,27 @@ class CanvasContainer(QGraphicsObject):
 
         # Ordered list of child CanvasBox items currently attached
         self.m_items = []
+        # Relative coordinate offsets: box -> (rel_x, rel_y) from container origin
+        self.m_item_offsets = {}
         # Standby/ghost member descriptors: [{"plugin_id": ..., "pw_node_name": ..., "name": ..., "split_mode": ...}]
         self.m_standby_descriptors = []
 
         # Geometry
         self.m_width = CONTAINER_MIN_WIDTH
         self.m_height = CONTAINER_HEADER_HEIGHT + CONTAINER_PADDING * 2
-        self.m_target_rect = QRectF(0, 0, self.m_width, self.m_height)
+        self.m_expanded_height = self.m_height
 
         # Interaction state
         self.m_is_dragging = False
-        self.m_last_scene_pos = QPointF(0, 0)
-        self.m_hover_insert_idx = None  # Preview slot index when node dragged over
+        self.m_drag_start_item_pos = QPointF(0, 0)
+        self.m_drag_start_mouse_pos = QPointF(0, 0)
+        self.m_hover_insert_idx = None
         self.m_active_hover_box = None
 
-        # Graphics item configuration
+        # Graphics item configuration - strictly NO ItemIsMovable to avoid dual-offset drift!
         self.setZValue(-10.0)
         self.setFlags(
             QGraphicsItem.ItemIsSelectable
-            | QGraphicsItem.ItemIsMovable
             | QGraphicsItem.ItemSendsGeometryChanges
         )
         self.setAcceptHoverEvents(True)
@@ -80,7 +98,8 @@ class CanvasContainer(QGraphicsObject):
         return CanvasContainerType
 
     def boundingRect(self):
-        return QRectF(0, 0, self.m_width, self.m_height)
+        h = CONTAINER_HEADER_HEIGHT if self.m_collapsed else self.m_height
+        return QRectF(0, 0, self.m_width, h)
 
     def shape(self):
         path = QPainterPath()
@@ -131,6 +150,8 @@ class CanvasContainer(QGraphicsObject):
     def removeItem(self, box, to_standby=False):
         if box in self.m_items:
             self.m_items.remove(box)
+            if box in self.m_item_offsets:
+                del self.m_item_offsets[box]
             if hasattr(box, "_canvas_container"):
                 delattr(box, "_canvas_container")
             if to_standby:
@@ -147,45 +168,39 @@ class CanvasContainer(QGraphicsObject):
     # -------------------------------------------------------------------------
 
     def updateLayout(self):
-        """Computes positions of member nodes and resizes container frame."""
+        """Computes positions of member nodes and resizes container frame with zero drift."""
         if not self.m_items:
             self.prepareGeometryChange()
             self.m_width = CONTAINER_MIN_WIDTH
             self.m_height = CONTAINER_HEADER_HEIGHT + CONTAINER_PADDING * 2
+            self.m_item_offsets.clear()
             self.update()
             return
 
-        pos = self.pos()
-        start_x = pos.x() + CONTAINER_PADDING
-        start_y = pos.y() + CONTAINER_HEADER_HEIGHT + CONTAINER_PADDING
+        start_rel_x = CONTAINER_PADDING
+        start_rel_y = CONTAINER_HEADER_HEIGHT + CONTAINER_PADDING
+
+        self.m_item_offsets.clear()
 
         if self.m_layout_mode == CONTAINER_LAYOUT_VBOX:
-            # Find max child width
             max_w = max(b.boundingRect().width() for b in self.m_items)
-            current_y = start_y
+            current_y = start_rel_y
             for box in self.m_items:
-                box.blockSignals(True)
-                box.setPos(start_x, current_y)
-                box.blockSignals(False)
-                box.repaintLines()
+                self.m_item_offsets[box] = (start_rel_x, current_y)
                 current_y += box.boundingRect().height() + CONTAINER_ITEM_SPACING
 
-            total_h = current_y - start_y - CONTAINER_ITEM_SPACING
+            total_h = current_y - start_rel_y - CONTAINER_ITEM_SPACING
             new_w = max(CONTAINER_MIN_WIDTH, max_w + CONTAINER_PADDING * 2)
             new_h = CONTAINER_HEADER_HEIGHT + CONTAINER_PADDING * 2 + total_h
 
         elif self.m_layout_mode == CONTAINER_LAYOUT_HBOX:
-            # Find max child height
             max_h = max(b.boundingRect().height() for b in self.m_items)
-            current_x = start_x
+            current_x = start_rel_x
             for box in self.m_items:
-                box.blockSignals(True)
-                box.setPos(current_x, start_y)
-                box.blockSignals(False)
-                box.repaintLines()
+                self.m_item_offsets[box] = (current_x, start_rel_y)
                 current_x += box.boundingRect().width() + CONTAINER_ITEM_SPACING
 
-            total_w = current_x - start_x - CONTAINER_ITEM_SPACING
+            total_w = current_x - start_rel_x - CONTAINER_ITEM_SPACING
             new_w = max(CONTAINER_MIN_WIDTH, total_w + CONTAINER_PADDING * 2)
             new_h = CONTAINER_HEADER_HEIGHT + CONTAINER_PADDING * 2 + max_h
 
@@ -196,29 +211,48 @@ class CanvasContainer(QGraphicsObject):
                 c = idx % cols
                 col_widths[c] = max(col_widths[c], box.boundingRect().width())
 
-            grid_x = start_x
-            current_y = start_y
+            current_y = start_rel_y
             row_max_h = 0
             for idx, box in enumerate(self.m_items):
                 c = idx % cols
                 if c == 0 and idx > 0:
                     current_y += row_max_h + CONTAINER_ITEM_SPACING
                     row_max_h = 0
-                bx = start_x if c == 0 else start_x + col_widths[0] + CONTAINER_ITEM_SPACING
-                box.blockSignals(True)
-                box.setPos(bx, current_y)
-                box.blockSignals(False)
-                box.repaintLines()
+                bx = start_rel_x if c == 0 else start_rel_x + col_widths[0] + CONTAINER_ITEM_SPACING
+                self.m_item_offsets[box] = (bx, current_y)
                 row_max_h = max(row_max_h, box.boundingRect().height())
 
             total_w = sum(col_widths) + (cols - 1) * CONTAINER_ITEM_SPACING
-            total_h = (current_y + row_max_h) - start_y
+            total_h = (current_y + row_max_h) - start_rel_y
             new_w = max(CONTAINER_MIN_WIDTH, total_w + CONTAINER_PADDING * 2)
             new_h = CONTAINER_HEADER_HEIGHT + CONTAINER_PADDING * 2 + total_h
 
         self.prepareGeometryChange()
         self.m_width = new_w
         self.m_height = new_h
+        if not self.m_collapsed:
+            self.m_expanded_height = new_h
+
+        # Apply absolute coordinates strictly anchored to container origin
+        self.syncChildrenPositions()
+        self.update()
+
+    def syncChildrenPositions(self):
+        """Positions all child boxes precisely at container.pos() + offset without cumulative drift."""
+        c_pos = self.pos()
+        visible = not self.m_collapsed
+        for box, (rel_x, rel_y) in self.m_item_offsets.items():
+            box.setVisible(visible)
+            if visible:
+                box.blockSignals(True)
+                box.setPos(c_pos.x() + rel_x, c_pos.y() + rel_y)
+                box.blockSignals(False)
+                box.repaintLines()
+
+    def toggleCollapse(self):
+        self.m_collapsed = not self.m_collapsed
+        self.prepareGeometryChange()
+        self.syncChildrenPositions()
         self.update()
 
     # -------------------------------------------------------------------------
@@ -260,25 +294,30 @@ class CanvasContainer(QGraphicsObject):
             self.update()
 
     # -------------------------------------------------------------------------
-    # Movement Lockstep (Container moves all children)
+    # Movement Lockstep (Zero Drift)
     # -------------------------------------------------------------------------
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
             pos = event.pos()
             rect = self.boundingRect()
-            # Check if clicked on layout switcher badge (top right)
+
+            # Check header controls
             if pos.y() <= CONTAINER_HEADER_HEIGHT:
-                # Close/ungroup button: [x] at the very right
+                # Close/ungroup button: [✕] at very right
                 if pos.x() >= rect.width() - 24:
                     event.accept()
-                    from .patchcanvas import ungroupNode
-                    for b in list(self.m_items):
-                        ungroupNode(b)
+                    self.ungroup()
                     return
 
-                # Layout mode switcher: [VBOX/HBOX/GRID]
-                if rect.width() - 85 <= pos.x() < rect.width() - 25:
+                # Collapse / Expand button: [-] / [+]
+                if rect.width() - 48 <= pos.x() < rect.width() - 26:
+                    event.accept()
+                    self.toggleCollapse()
+                    return
+
+                # Layout switcher badge: [VBOX/HBOX/GRID]
+                if rect.width() - 110 <= pos.x() < rect.width() - 50:
                     event.accept()
                     modes = [CONTAINER_LAYOUT_VBOX, CONTAINER_LAYOUT_HBOX, CONTAINER_LAYOUT_GRID]
                     next_idx = (modes.index(self.m_layout_mode) + 1) % len(modes)
@@ -287,26 +326,110 @@ class CanvasContainer(QGraphicsObject):
                     return
 
             self.m_is_dragging = True
-            self.m_last_scene_pos = event.scenePos()
+            self.m_drag_start_item_pos = self.pos()
+            self.m_drag_start_mouse_pos = event.scenePos()
+            event.accept()
+            return
+
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
         if self.m_is_dragging:
-            delta = event.scenePos() - self.m_last_scene_pos
-            self.m_last_scene_pos = event.scenePos()
-
-            # Translate all children by delta
-            for box in self.m_items:
-                box.blockSignals(True)
-                box.setPos(box.pos() + delta)
-                box.blockSignals(False)
-                box.repaintLines()
+            delta = event.scenePos() - self.m_drag_start_mouse_pos
+            # Set absolute item position
+            self.setPos(self.m_drag_start_item_pos + delta)
+            # Re-anchor children with zero drift
+            self.syncChildrenPositions()
+            event.accept()
+            return
 
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
-        self.m_is_dragging = False
+        if self.m_is_dragging:
+            self.m_is_dragging = False
+            event.accept()
+            return
         super().mouseReleaseEvent(event)
+
+    def mouseDoubleClickEvent(self, event):
+        if event.button() == Qt.LeftButton and event.pos().y() <= CONTAINER_HEADER_HEIGHT:
+            event.accept()
+            self.promptRename()
+            return
+        super().mouseDoubleClickEvent(event)
+
+    # -------------------------------------------------------------------------
+    # Context Menu & Actions
+    # -------------------------------------------------------------------------
+
+    def contextMenuEvent(self, event):
+        menu = QMenu()
+
+        act_rename = menu.addAction("Rename...")
+        act_rename.triggered.connect(self.promptRename)
+
+        # Layout Modes
+        layout_menu = menu.addMenu("Layout Mode")
+        act_vbox = layout_menu.addAction("VBox (Vertical)")
+        act_hbox = layout_menu.addAction("HBox (Horizontal)")
+        act_grid = layout_menu.addAction("Grid (Matrix)")
+        act_vbox.setCheckable(True)
+        act_hbox.setCheckable(True)
+        act_grid.setCheckable(True)
+        act_vbox.setChecked(self.m_layout_mode == CONTAINER_LAYOUT_VBOX)
+        act_hbox.setChecked(self.m_layout_mode == CONTAINER_LAYOUT_HBOX)
+        act_grid.setChecked(self.m_layout_mode == CONTAINER_LAYOUT_GRID)
+
+        act_vbox.triggered.connect(lambda: self.setLayoutMode(CONTAINER_LAYOUT_VBOX))
+        act_hbox.triggered.connect(lambda: self.setLayoutMode(CONTAINER_LAYOUT_HBOX))
+        act_grid.triggered.connect(lambda: self.setLayoutMode(CONTAINER_LAYOUT_GRID))
+
+        # Color Accent
+        color_menu = menu.addMenu("Color Accent")
+        for label, hex_code in CATPPUCCIN_PALETTE:
+            act_c = color_menu.addAction(label)
+            act_c.triggered.connect(lambda checked=False, col=hex_code: self.setColor(QColor(col)))
+        color_menu.addSeparator()
+        act_custom_col = color_menu.addAction("Custom Color...")
+        act_custom_col.triggered.connect(self.promptCustomColor)
+
+        menu.addSeparator()
+
+        act_collapse = menu.addAction("Expand" if self.m_collapsed else "Collapse")
+        act_collapse.triggered.connect(self.toggleCollapse)
+
+        act_ungroup = menu.addAction("Ungroup Container")
+        act_ungroup.triggered.connect(self.ungroup)
+
+        menu.exec_(event.screenPos())
+        event.accept()
+
+    def promptRename(self):
+        new_title, ok = QInputDialog.getText(
+            None, "Rename Group", "Enter container title:", QLineEdit.Normal, self.m_title
+        )
+        if ok and new_title.strip():
+            self.m_title = new_title.strip()
+            self.update()
+
+    def promptCustomColor(self):
+        chosen = QColorDialog.getColor(self.m_color, None, "Select Container Accent Color")
+        if chosen.isValid():
+            self.setColor(chosen)
+
+    def setColor(self, color):
+        self.m_color = color
+        self.update()
+
+    def setLayoutMode(self, mode):
+        self.m_layout_mode = mode
+        self.updateLayout()
+
+    def ungroup(self):
+        from .patchcanvas import ungroupNode
+        for b in list(self.m_items):
+            ungroupNode(b)
 
     # -------------------------------------------------------------------------
     # Painting & Visual Rendering
@@ -317,7 +440,7 @@ class CanvasContainer(QGraphicsObject):
         rect = self.boundingRect()
 
         # 1. Background Frame Panel
-        bg_color = QColor(24, 25, 38, 180)  # Catppuccin Macchiato mantle with alpha
+        bg_color = QColor(24, 25, 38, 195)  # Catppuccin Macchiato mantle
         painter.setBrush(bg_color)
         pen_color = self.m_color
         pen = QPen(pen_color, 1.5)
@@ -328,8 +451,7 @@ class CanvasContainer(QGraphicsObject):
         header_rect = QRectF(0, 0, rect.width(), CONTAINER_HEADER_HEIGHT)
         header_path = QPainterPath()
         header_path.addRoundedRect(header_rect, 8.0, 8.0)
-        # Clip bottom corners of header
-        painter.fillPath(header_path, QColor(pen_color.red(), pen_color.green(), pen_color.blue(), 45))
+        painter.fillPath(header_path, QColor(pen_color.red(), pen_color.green(), pen_color.blue(), 50))
 
         # Title text
         painter.setPen(QColor(220, 224, 232))
@@ -337,27 +459,35 @@ class CanvasContainer(QGraphicsObject):
         font.setBold(True)
         font.setPixelSize(12)
         painter.setFont(font)
-        painter.drawText(QRectF(10, 0, rect.width() - 80, CONTAINER_HEADER_HEIGHT), Qt.AlignVCenter | Qt.AlignLeft, self.m_title)
+        painter.drawText(QRectF(10, 0, rect.width() - 120, CONTAINER_HEADER_HEIGHT), Qt.AlignVCenter | Qt.AlignLeft, self.m_title)
 
-        # Layout badge [VBox / HBox / Grid]
+        # Layout badge [VBOX / HBOX / GRID]
         badge_text = self.m_layout_mode.upper()
         painter.setPen(QColor(180, 190, 210))
         font.setBold(False)
         font.setPixelSize(10)
         painter.setFont(font)
-        painter.drawText(QRectF(rect.width() - 85, 0, 55, CONTAINER_HEADER_HEIGHT), Qt.AlignVCenter | Qt.AlignRight, f"[{badge_text}]")
+        painter.drawText(QRectF(rect.width() - 110, 0, 55, CONTAINER_HEADER_HEIGHT), Qt.AlignVCenter | Qt.AlignRight, f"[{badge_text}]")
+
+        # Collapse toggle [-] / [+]
+        collapse_char = "[+]" if self.m_collapsed else "[-]"
+        painter.setPen(QColor(180, 190, 210))
+        painter.drawText(QRectF(rect.width() - 48, 0, 20, CONTAINER_HEADER_HEIGHT), Qt.AlignVCenter | Qt.AlignCenter, collapse_char)
 
         # Close / ungroup button [✕]
         painter.setPen(QColor(235, 160, 172))
         font.setBold(True)
         font.setPixelSize(11)
         painter.setFont(font)
-        painter.drawText(QRectF(rect.width() - 22, 0, 16, CONTAINER_HEADER_HEIGHT), Qt.AlignVCenter | Qt.AlignCenter, "✕")
+        painter.drawText(QRectF(rect.width() - 24, 0, 16, CONTAINER_HEADER_HEIGHT), Qt.AlignVCenter | Qt.AlignCenter, "✕")
+
+        if self.m_collapsed:
+            return
 
         # 3. Disconnected standby chip notice if items are unplugged
         if self.m_standby_descriptors:
             standby_cnt = len(self.m_standby_descriptors)
-            painter.setPen(QColor(243, 139, 168, 180))  # Catppuccin Red/Pink warning
+            painter.setPen(QColor(243, 139, 168, 180))  # Catppuccin Red/Pink
             font.setItalic(True)
             font.setPixelSize(10)
             painter.setFont(font)
@@ -369,7 +499,7 @@ class CanvasContainer(QGraphicsObject):
 
         # 4. Interactive Drop Slot Indicator Line
         if self.m_hover_insert_idx is not None:
-            painter.setPen(QPen(QColor("#a6e3a1"), 2.5, Qt.DashLine))  # Catppuccin Green drop indicator
+            painter.setPen(QPen(QColor("#a6e3a1"), 2.5, Qt.DashLine))
             if self.m_layout_mode == CONTAINER_LAYOUT_VBOX:
                 if self.m_hover_insert_idx < len(self.m_items):
                     b = self.m_items[self.m_hover_insert_idx]
