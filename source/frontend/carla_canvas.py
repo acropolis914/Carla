@@ -2177,7 +2177,7 @@ def canvasCallback(action, value1, value2, valueStr):
             pwidget.showCustomUI()
 
     elif action == patchcanvas.ACTION_BG_RIGHT_CLICK:
-        gCarla.gui.slot_showPluginActionsMenu()
+        gCarla.gui.slot_showPluginActionsMenu(value1, value2)
 
     elif action == patchcanvas.ACTION_INLINE_DISPLAY:
         if gCarla.gui.fIsProjectLoading:

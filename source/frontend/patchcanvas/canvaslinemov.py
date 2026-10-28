@@ -13,6 +13,7 @@ from qt_compat import (
     QPainterPath,
     QPen,
     QTimer,
+    QGraphicsItem,
     QGraphicsPathItem,
 )
 
@@ -44,24 +45,23 @@ from .linealgos import (
 class CanvasLineMov(QGraphicsPathItem):
     def __init__(self, port_mode, port_type, parent, shape=None):
         QGraphicsPathItem.__init__(self)
-        self.setParentItem(parent)
-
         self.m_port_mode = port_mode
         self.m_port_type = port_type
         self.m_shape = shape if shape is not None else getattr(options, "line_style", "bezier")
         self.m_algorithm = get_line_algorithm(self.m_shape)
 
-        # Port position doesn't change while moving around line
-        self.p_itemX = self.scenePos().x()
-        self.p_itemY = self.scenePos().y()
-        self.p_width = parent.getPortWidth()
+        self.setCacheMode(getattr(QGraphicsItem, "NoCache", getattr(getattr(QGraphicsItem, "CacheMode", None), "NoCache", 0)))
 
+        # Start position in scene coordinates directly from port
+        port_rect = parent.sceneBoundingRect()
         if self.m_port_mode == PORT_MODE_INPUT:
-            self.m_start_point = QPointF(0, float(canvas.theme.port_height) / 2)
+            self.m_start_point = QPointF(port_rect.left(), port_rect.top() + float(canvas.theme.port_height) / 2)
         elif self.m_port_mode == PORT_MODE_OUTPUT:
-            self.m_start_point = QPointF(self.p_width + 12, float(canvas.theme.port_height) / 2)
+            self.m_start_point = QPointF(port_rect.right(), port_rect.top() + float(canvas.theme.port_height) / 2)
         else:
-            self.m_start_point = QPointF(0, 0)
+            self.m_start_point = port_rect.center()
+
+        canvas.scene.addItem(self)
 
         self._last_scene_x = None
         self._last_scene_y = None
@@ -97,12 +97,10 @@ class CanvasLineMov(QGraphicsPathItem):
         self._last_scene_x = sx
         self._last_scene_y = sy
 
-        end = QPointF(sx - self.p_itemX, sy - self.p_itemY)
-
-        # Zero allocation straight line directly to cursor
+        # Zero allocation straight line directly to cursor in scene coordinates
         fast_path = QPainterPath()
         fast_path.moveTo(self.m_start_point)
-        fast_path.lineTo(end)
+        fast_path.lineTo(QPointF(sx, sy))
         self.setPath(fast_path)
 
     def type(self):

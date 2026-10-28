@@ -22,9 +22,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
  
  ## [1.1.6] - 2026-10-28
 
-Patchbay performance overhaul: QOpenGLWidget hardware acceleration, item caching, 60fps animations, and fast wire previews.
+Patchbay performance overhaul: QOpenGLWidget hardware acceleration, item caching, 60fps animations, fast wire previews, and context-aware plugin placement.
 
-### 2026-10-28 06:07:00
+### 2026-10-28 10:00:00
+- **feat(patchbay)**: place added plugins at right-click location or viewport center
+  - Forwarded right-click scene coordinates through context menu and canvas actions to anchor newly loaded plugins directly under the user's cursor.
+  - Automatically center new plugins in the visible patchbay viewport when added from the sidebar, rack, or menubar.
+  - Optimized moving wire drag preview by unparenting from cached ports into top-level scene coordinates with `NoCache` for stutter-free wire rendering.
+
 - **perf(patchbay)**: migrate to QOpenGLWidget, smart viewport updates, and item caching
   - Migrated Qt OpenGL canvas viewport initialization from deprecated `QGLWidget` to `QOpenGLWidget` via `qt_compat.py` with safe runtime fallback.
   - Set `CARLA_DEFAULT_CANVAS_USE_OPENGL = True` and added a one-time migration (`Canvas/OpenGLMigrationV1`) in `source/frontend/carla_host.py` to enable OpenGL acceleration for existing user configs.

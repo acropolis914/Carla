@@ -415,8 +415,12 @@ class PatchScene(QGraphicsScene):
         if getattr(self, "m_mouse_down_init", False) and not self.m_right_drag_active:
             self.m_mouse_down_init = False
             self.m_mouse_rubberband = False
+            pos = self.m_right_press_pos
             self.m_right_press_pos = None
-            canvas.callback(ACTION_BG_RIGHT_CLICK, 0, 0, "")
+            if pos is not None:
+                canvas.callback(ACTION_BG_RIGHT_CLICK, int(pos.x()), int(pos.y()), f"{pos.x()}:{pos.y()}")
+            else:
+                canvas.callback(ACTION_BG_RIGHT_CLICK, 0, 0, "")
 
     def mousePressEvent(self, event):
         ctrlDown = bool(event.modifiers() & Qt.ControlModifier)
@@ -519,7 +523,8 @@ class PatchScene(QGraphicsScene):
 
             if was_short_click:
                 event.accept()
-                canvas.callback(ACTION_BG_RIGHT_CLICK, 0, 0, "")
+                sp = event.scenePos()
+                canvas.callback(ACTION_BG_RIGHT_CLICK, int(sp.x()), int(sp.y()), f"{sp.x()}:{sp.y()}")
                 return
 
         QGraphicsScene.mouseReleaseEvent(self, event)
@@ -569,7 +574,8 @@ class PatchScene(QGraphicsScene):
         if not on_item:
             self.m_mouse_down_init = False
             event.accept()
-            canvas.callback(ACTION_BG_RIGHT_CLICK, 0, 0, "")
+            sp = event.scenePos()
+            canvas.callback(ACTION_BG_RIGHT_CLICK, int(sp.x()), int(sp.y()), f"{sp.x()}:{sp.y()}")
             return
 
         self.m_mouse_down_init = False

@@ -2449,6 +2449,7 @@ class HostWindow(QMainWindow):
         if plugin is None:
             return
 
+        self._preparePluginAddCanvasPos()
         if not self.host.add_plugin(
             plugin["build"],
             plugin["type"],
@@ -2480,8 +2481,12 @@ class HostWindow(QMainWindow):
                 QMessageBox.StandardButton.Ok,
             )
 
-    @pyqtSlot()
-    def slot_showPluginActionsMenu(self):
+    def slot_showPluginActionsMenu(self, sceneX=None, sceneY=None):
+        if sceneX is not None and sceneY is not None and (sceneX != 0 or sceneY != 0):
+            self._targetPluginAddPos = QPointF(float(sceneX), float(sceneY))
+        else:
+            self._targetPluginAddPos = None
+
         menu = QMenu(self)
 
         menu.addSection("Plugins")
@@ -2608,7 +2613,21 @@ class HostWindow(QMainWindow):
         except Exception as exc:
             log_carla(f"HostWindow: startStartupPluginScanner failed: {exc}", level="debug")
 
+    def _preparePluginAddCanvasPos(self):
+        try:
+            if getattr(self, "_targetPluginAddPos", None) is not None:
+                patchcanvas.setInitialPos(self._targetPluginAddPos.x(), self._targetPluginAddPos.y())
+                self._targetPluginAddPos = None
+            elif hasattr(self.ui, "graphicsView"):
+                vp = self.ui.graphicsView.viewport()
+                if vp:
+                    center_scene = self.ui.graphicsView.mapToScene(vp.rect().center())
+                    patchcanvas.setInitialPos(center_scene.x(), center_scene.y())
+        except Exception:
+            pass
+
     def loadPluginFromData(self, btype, ptype, filename, label, uniqueId, extraPtr, options=PLUGIN_OPTIONS_NULL):
+        self._preparePluginAddCanvasPos()
         # Auto-sandbox plugins that create their own GL/UI context and crash the host when
         # loaded in-process (e.g. Cardinal/VCV Rack GLX races), unless the user explicitly
         # picked a bridge mode in the Add Plugin dialog.
