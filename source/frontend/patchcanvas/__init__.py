@@ -83,6 +83,7 @@ CanvasBezierLineType = QGraphicsItem.UserType + 5
 CanvasLineMovType = QGraphicsItem.UserType + 6
 CanvasBezierLineMovType = QGraphicsItem.UserType + 7
 CanvasRubberbandType = QGraphicsItem.UserType + 8
+CanvasContainerType = QGraphicsItem.UserType + 10
 
 # ------------------------------------------------------------------------------------------------------------
 
@@ -134,6 +135,7 @@ class Canvas(object):
         self.port_list = []
         self.connection_list = []
         self.animation_list = []
+        self.container_list = []
         self.group_plugin_map = {}
         self.old_group_pos = {}
         self.pipewire_group_map = {}

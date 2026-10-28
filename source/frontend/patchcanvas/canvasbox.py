@@ -1382,6 +1382,24 @@ class CanvasBox(QGraphicsObject):
         act_x_arrange = arrangeMenu.addAction("Auto-arrange All")
         menu.addMenu(arrangeMenu)
 
+        containerMenu = QMenu("Container / Group", menu)
+        act_group_vbox = containerMenu.addAction("Group into VBox")
+        act_group_hbox = containerMenu.addAction("Group into HBox")
+        act_group_grid = containerMenu.addAction("Group into Grid")
+        containerMenu.addSeparator()
+        act_ungroup = containerMenu.addAction("Ungroup Container")
+
+        from .patchcanvas import createContainerFromSelected, ungroupNode
+        act_group_vbox.triggered.connect(lambda: createContainerFromSelected("vbox"))
+        act_group_hbox.triggered.connect(lambda: createContainerFromSelected("hbox"))
+        act_group_grid.triggered.connect(lambda: createContainerFromSelected("grid"))
+        act_ungroup.triggered.connect(lambda: ungroupNode(self))
+
+        if not getattr(self, "_canvas_container", None):
+            act_ungroup.setEnabled(False)
+
+        menu.addMenu(containerMenu)
+
         selectMenu = QMenu("Select", menu)
         act_sel_all = selectMenu.addAction("Select All\tCtrl+A")
         act_desel = selectMenu.addAction("Deselect\tCtrl+D")
@@ -1715,6 +1733,19 @@ class CanvasBox(QGraphicsObject):
                 self.setCursor(QCursor(Qt.SizeAllCursor))
                 self.m_cursor_moving = True
             self.repaintLines()
+
+            if getattr(canvas, "container_list", None):
+                sp = event.scenePos()
+                hovered = None
+                for c in canvas.container_list:
+                    if c.sceneBoundingRect().contains(sp):
+                        hovered = c
+                        break
+                for c in canvas.container_list:
+                    if c is hovered:
+                        c.setHoverPreview(self, sp)
+                    else:
+                        c.clearHoverPreview()
         QGraphicsObject.mouseMoveEvent(self, event)
 
     def hoverMoveEvent(self, event):
@@ -1755,6 +1786,29 @@ class CanvasBox(QGraphicsObject):
         if moved:
             self.unsetCursor()
             QTimer.singleShot(0, self.fixPos)
+
+            # Container drop or extraction handling
+            if getattr(canvas, "container_list", None):
+                sp = event.scenePos()
+                dropped_c = None
+                for c in canvas.container_list:
+                    if c.sceneBoundingRect().contains(sp):
+                        dropped_c = c
+                        break
+
+                for c in canvas.container_list:
+                    c.clearHoverPreview()
+
+                current_c = getattr(self, "_canvas_container", None)
+                if dropped_c is not None:
+                    idx = dropped_c.calculateInsertionIndex(sp)
+                    if current_c and current_c is not dropped_c:
+                        current_c.removeItem(self)
+                    dropped_c.addItem(self, idx)
+                elif current_c is not None:
+                    # Node dragged completely outside container bounds -> detach
+                    current_c.removeItem(self)
+
         self.m_mouse_down = False
         self.m_cursor_moving = False
         canvas.dragging = False

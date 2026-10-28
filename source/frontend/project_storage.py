@@ -351,6 +351,8 @@ class CarlaJsonProjectHandler(BaseProjectHandler):
                     setattr(positions, "split_view_enabled", split_view_enabled)
                 if split_view_sizes is not None:
                     setattr(positions, "split_view_sizes", split_view_sizes)
+                if "patchbay_containers" in doc:
+                    setattr(positions, "patchbay_containers", doc["patchbay_containers"])
             return positions
         except Exception as e:
             print("CarlaJsonProjectHandler::load_positions error:", e)
@@ -400,6 +402,8 @@ class CarlaJsonProjectHandler(BaseProjectHandler):
                     doc["split_view_enabled"] = bool(extra_metadata.get("split_view_enabled", False))
                     if "split_view_sizes" in extra_metadata:
                         doc["split_view_sizes"] = extra_metadata["split_view_sizes"]
+                    if "patchbay_containers" in extra_metadata:
+                        doc["patchbay_containers"] = extra_metadata["patchbay_containers"]
 
                 clean_positions = []
                 for p in positions:

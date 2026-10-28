@@ -24,6 +24,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 Patchbay performance overhaul: QOpenGLWidget hardware acceleration, item caching, 60fps animations, fast wire previews, and context-aware plugin placement.
 
+### 2026-10-28 15:15:00
+- **feat(patchbay)**: layout containers (VBox, HBox, Grid) with interactive drop zones and standby recovery
+  - Added non-destructive backdrop layout containers (`CanvasContainer`) placed behind patchbay nodes (`z = -10`) without reparenting cables or altering port coordinates.
+  - Interactive drag-and-drop ergonomics: dynamic slot gap preview lines, automatic child translation when dragging the container, and drag-out extraction.
+  - Supported **VBox** (vertical stack), **HBox** (horizontal chain), and **Grid** (matrix) with header badge mode switching and ungroup button.
+  - Implemented standby ghost recovery: unplugged PipeWire/JACK external clients collapse into container standby and automatically reclaim their slot when reconnected.
+  - Persistent JSON project storage under `extra_metadata["patchbay_containers"]`.
+
 ### 2026-10-28 10:00:00
 - **feat(patchbay)**: place added plugins at right-click location or viewport center
   - Forwarded right-click scene coordinates through context menu and canvas actions to anchor newly loaded plugins directly under the user's cursor.

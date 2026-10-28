@@ -496,6 +496,19 @@ def addGroup(
 
     canvas.group_list.append(group_dict)
 
+    if hasattr(canvas, "container_list"):
+        for c in canvas.container_list:
+            for desc in list(c.m_standby_descriptors):
+                if c.matchesDescriptor(group_box, desc):
+                    c.addItem(group_box)
+                    break
+            if group_dict.split and group_dict.widgets[1]:
+                sbox = group_dict.widgets[1]
+                for desc in list(c.m_standby_descriptors):
+                    if c.matchesDescriptor(sbox, desc):
+                        c.addItem(sbox)
+                        break
+
     if options.eyecandy == EYECANDY_FULL and not options.auto_hide_groups:
         CanvasItemFX(group_box, True, False)
     else:
@@ -535,6 +548,11 @@ def removeGroup(group_id):
                         "CanvasPositions/%s_SPLIT" % group_name, SPLIT_YES
                     )
 
+                if hasattr(canvas, "container_list"):
+                    for c in canvas.container_list:
+                        if c.containsBox(s_item):
+                            c.removeItem(s_item, to_standby=True)
+
                 if options.eyecandy == EYECANDY_FULL:
                     CanvasItemFX(s_item, False, True)
                 else:
@@ -550,6 +568,11 @@ def removeGroup(group_id):
                     canvas.settings.setValue(
                         "CanvasPositions/%s_SPLIT" % group_name, SPLIT_NO
                     )
+
+            if hasattr(canvas, "container_list"):
+                for c in canvas.container_list:
+                    if c.containsBox(item):
+                        c.removeItem(item, to_standby=True)
 
             if options.eyecandy == EYECANDY_FULL:
                 CanvasItemFX(item, False, True)
@@ -2655,3 +2678,120 @@ def handleAllPluginsRemoved():
 
 
 # ------------------------------------------------------------------------------------------------------------
+# Layout Containers (VBox, HBox, Grid)
+
+
+def createContainerFromSelected(layout_mode="vbox", title=None):
+    if not canvas.scene:
+        return None
+
+    selected_boxes = [item for item in canvas.scene.selectedItems() if item and item.type() == CanvasBoxType]
+    if not selected_boxes:
+        return None
+
+    from .canvascontainer import CanvasContainer
+    c_id = f"container_{len(getattr(canvas, 'container_list', [])) + 1}"
+    title = title or f"Group {len(getattr(canvas, 'container_list', [])) + 1}"
+    container = CanvasContainer(c_id, title=title, layout_mode=layout_mode)
+
+    # Calculate average position of selected boxes
+    avg_x = sum(b.x() for b in selected_boxes) / len(selected_boxes)
+    avg_y = sum(b.y() for b in selected_boxes) / len(selected_boxes)
+    container.setPos(avg_x - 14, avg_y - 42)
+
+    canvas.scene.addItem(container)
+    if not hasattr(canvas, "container_list"):
+        canvas.container_list = []
+    canvas.container_list.append(container)
+
+    for box in selected_boxes:
+        old_c = getattr(box, "_canvas_container", None)
+        if old_c:
+            old_c.removeItem(box)
+        container.addItem(box)
+
+    container.updateLayout()
+    return container
+
+
+def ungroupNode(box):
+    c = getattr(box, "_canvas_container", None)
+    if c:
+        c.removeItem(box)
+        if not c.m_items and not c.m_standby_descriptors:
+            if hasattr(canvas, "container_list") and c in canvas.container_list:
+                canvas.container_list.remove(c)
+            if canvas.scene:
+                canvas.scene.removeItem(c)
+
+
+def saveContainers():
+    ret = []
+    for c in getattr(canvas, "container_list", []):
+        members = [c.getBoxDescriptor(b) for b in c.m_items]
+        # Include standby descriptors as well so offline clients stay in group
+        for d in c.m_standby_descriptors:
+            if d not in members:
+                members.append(d)
+
+        ret.append({
+            "id": c.m_id,
+            "title": c.m_title,
+            "type": c.m_layout_mode,
+            "color": c.m_color.name() if hasattr(c.m_color, "name") else str(c.m_color),
+            "pos": [c.x(), c.y()],
+            "members": members,
+        })
+    return ret
+
+
+def loadContainers(containers_data):
+    if not containers_data or not canvas.scene:
+        return
+
+    from .canvascontainer import CanvasContainer
+
+    # Clear existing containers
+    for c in list(getattr(canvas, "container_list", [])):
+        if canvas.scene:
+            canvas.scene.removeItem(c)
+    canvas.container_list = []
+
+    all_boxes = []
+    for g in canvas.group_list:
+        if g.widgets[0]:
+            all_boxes.append(g.widgets[0])
+        if g.split and g.widgets[1]:
+            all_boxes.append(g.widgets[1])
+
+    for c_info in containers_data:
+        c_id = c_info.get("id", "container")
+        title = c_info.get("title", "Group")
+        ltype = c_info.get("type", "vbox")
+        pos = c_info.get("pos", [0, 0])
+        members = c_info.get("members", [])
+
+        container = CanvasContainer(c_id, title=title, layout_mode=ltype)
+        container.setPos(pos[0], pos[1])
+        if "color" in c_info:
+            container.m_color = QColor(c_info["color"])
+
+        canvas.scene.addItem(container)
+        canvas.container_list.append(container)
+
+        for desc in members:
+            # Try to match existing box
+            matched = None
+            for box in all_boxes:
+                if container.matchesDescriptor(box, desc):
+                    matched = box
+                    break
+
+            if matched:
+                container.addItem(matched)
+            else:
+                # Store in standby
+                if desc not in container.m_standby_descriptors:
+                    container.m_standby_descriptors.append(desc)
+
+        container.updateLayout()

@@ -1586,6 +1586,8 @@ class HostWindow(QMainWindow):
         extra_meta["split_view_enabled"] = is_split
         if hasattr(self, "splitter"):
             extra_meta["split_view_sizes"] = self.splitter.sizes()
+        if self.fWithCanvas:
+            extra_meta["patchbay_containers"] = patchcanvas.saveContainers()
 
         try:
             storage_manager.finalize_from_backend_save(
@@ -1673,6 +1675,11 @@ class HostWindow(QMainWindow):
                 return False
 
             patchcanvas.restoreGroupPositions(data_list)
+
+            # Restore layout containers (VBox, HBox, Grid)
+            containers_data = getattr(data_list, "patchbay_containers", None)
+            if containers_data:
+                patchcanvas.loadContainers(containers_data)
 
             # Auto-recenter legacy saves that do NOT have infinite_canvas == True
             is_infinite = getattr(data_list, "infinite_canvas", False)

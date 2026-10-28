@@ -123,8 +123,10 @@
 - [x] `[Diff: 1]` feat: Manual AUR sync workflow, so packaging fixes reach the AUR without waiting for a full release cycle
 - [x] `[Diff: 1]` Fix: Release job reset the published AUR `pkgrel` to the repository base value; the counter is now derived from the live AUR package
 
+## 🎛️ Patchbay Canvas & Navigation
+- [x] `[Diff: 3]` feat: Group patchbay nodes into containers (VBox, HBox, Grid) with non-destructive backdrop framing, interactive drop zones, and standby reconnect recovery
+
 ---
 
 ## 🧵 Deferred / Parked by Design
-- [ ] `[Diff: 3]` feat: Group patchbay nodes into folders/containers - requested by users, but parked on purpose: doing it against the current `QGraphicsItem`-bound canvas data model would lock in the architecture that the Parked section above intends to dismantle. Revisit after the data-model decoupling.
 
