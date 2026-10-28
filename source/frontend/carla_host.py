@@ -1422,8 +1422,8 @@ class HostWindow(QMainWindow):
                 prefer_bridges = eng_settings.findtext("PreferPluginBridges") if eng_settings is not None else None
                 if not prefer_bridges or prefer_bridges.lower() in ("false", "0"):
                     # Plugins that create their own GL/UI context and crash the host when loaded
-                    # in-process (KV-Element/JUCE UI thread collisions, Cardinal/VCV Rack GLX races).
-                    collision_tokens = ("element", "juce", "cardinal")
+                    # in-process (KV-Element/JUCE UI thread collisions, Cardinal/VCV Rack GLX races, DecentSampler).
+                    collision_tokens = ("element", "juce", "cardinal", "decentsampler")
                     risky_plugin = None
                     for p in root.findall("Plugin"):
                         info = p.find("Info")
@@ -2640,7 +2640,7 @@ class HostWindow(QMainWindow):
         # picked a bridge mode in the Add Plugin dialog.
         if not (options & (PLUGIN_OPTION_USE_BRIDGE | PLUGIN_OPTION_AVOID_BRIDGE)):
             ident = f"{label or ''} {filename or ''}".lower()
-            if "cardinal" in ident:
+            if "cardinal" in ident or "decentsampler" in ident:
                 options |= PLUGIN_OPTION_USE_BRIDGE
         cursor = getattr(Qt, "WaitCursor", None) or getattr(getattr(Qt, "CursorShape", object), "WaitCursor", None)
         if cursor is not None:

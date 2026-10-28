@@ -19,6 +19,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 
 ## [Unreleased]
+
+- **fix(host)**: auto-bridge DecentSampler to prevent in-process malloc crash on startup
+  - Added `decentsampler` to risky plugin collision tokens and auto-sandbox bridging checks in `carla_host.py`.
  
  ## [1.1.6] - 2026-10-28
 
