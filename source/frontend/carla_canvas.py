@@ -943,7 +943,7 @@ class CanvasContextToolBarOverlay(QFrame):
             self.addButton(col_icon, col_tip, lambda: (c.toggleCollapse(), self.updateSelection()))
 
             # Ungroup
-            self.addButton(icon_del, "Ungroup / Dissolve Container", c.dissolve)
+            self.addButton(icon_del, "Ungroup / Dissolve Container", lambda: (c.ungroup(), self.updateSelection()))
             self.addSeparator()
             self.addButton(icon_desel, "Deselect (Esc)", patchcanvas.deselectAllNodes)
 

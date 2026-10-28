@@ -20,6 +20,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+- **fix(patchbay)**: fix AttributeError on container ungroup in contextual toolbar
+  - Added `dissolve()` alias to `CanvasContainer` and invoked `ungroup()` with selection refresh from the contextual toolbar overlay.
 - **feat(patchbay)**: route collapsed container cables to header, enable inline rename and group resizing
   - Re-anchored cables of child nodes inside collapsed containers to the header edges so connections remain visible and neatly routed to the group.
   - Added interactive header drag movement, clickable header buttons (`[-]`/`[+]`, `[✕]`, layout switcher), and corner/edge resize handles with dynamic cursors.

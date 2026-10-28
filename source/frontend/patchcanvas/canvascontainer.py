@@ -657,6 +657,9 @@ class CanvasContainer(QGraphicsObject):
         for b in list(self.m_items):
             ungroupNode(b)
 
+    def dissolve(self):
+        self.ungroup()
+
     # -------------------------------------------------------------------------
     # Painting & Visual Rendering
     # -------------------------------------------------------------------------
