@@ -38,6 +38,8 @@ Patchbay layout containers (VBox, HBox, Grid, Freeform), collapse cable reroutin
   - Replaced text-only color list with the interactive Catppuccin horizontal palette bar, quick reset button, and native color dialog matching `CanvasBox`.
 
 ### Bug Fixes & Stability
+- **fix(qt_compat)**: add Qt6 aliases for CursorShape and TextInteractionFlag
+  - Exposed `Qt.SizeFDiagCursor`, `Qt.SizeHorCursor`, `Qt.SizeVerCursor`, `Qt.TextEditorInteraction`, etc. on `Qt` namespace for PyQt6 cross-compatibility.
 - **fix(patchbay)**: prevent SIGSEGV during container inline rename with transparent QGraphicsTextItem
   - Replaced `QGraphicsProxyWidget` embedded `QLineEdit` with native `QGraphicsTextItem` to eliminate Qt6 proxy destruction crash.
   - Made inline rename background seamlessly transparent with `#cad3f5` foreground matching canvas header text.

@@ -1010,6 +1010,31 @@ elif qt_config == 6:
     Qt.RightButton = Qt.MouseButton.RightButton
 
     # --------------------------------------------------------------------------------------------------------
+    # Qt.CursorShape
+    # --------------------------------------------------------------------------------------------------------
+
+    Qt.ArrowCursor = Qt.CursorShape.ArrowCursor
+    Qt.PointingHandCursor = Qt.CursorShape.PointingHandCursor
+    Qt.SizeAllCursor = Qt.CursorShape.SizeAllCursor
+    Qt.SizeHorCursor = Qt.CursorShape.SizeHorCursor
+    Qt.SizeVerCursor = Qt.CursorShape.SizeVerCursor
+    Qt.SizeFDiagCursor = Qt.CursorShape.SizeFDiagCursor
+    Qt.SizeBDiagCursor = Qt.CursorShape.SizeBDiagCursor
+    Qt.ClosedHandCursor = Qt.CursorShape.ClosedHandCursor
+    Qt.OpenHandCursor = Qt.CursorShape.OpenHandCursor
+
+    # --------------------------------------------------------------------------------------------------------
+    # Qt.TextInteractionFlag
+    # --------------------------------------------------------------------------------------------------------
+
+    Qt.NoTextInteraction = Qt.TextInteractionFlag.NoTextInteraction
+    Qt.TextSelectableByMouse = Qt.TextInteractionFlag.TextSelectableByMouse
+    Qt.TextSelectableByKeyboard = Qt.TextInteractionFlag.TextSelectableByKeyboard
+    Qt.TextEditable = Qt.TextInteractionFlag.TextEditable
+    Qt.TextEditorInteraction = Qt.TextInteractionFlag.TextEditorInteraction
+    Qt.TextBrowserInteraction = Qt.TextInteractionFlag.TextBrowserInteraction
+
+    # --------------------------------------------------------------------------------------------------------
     # Qt.WindowModality
     # --------------------------------------------------------------------------------------------------------
 
