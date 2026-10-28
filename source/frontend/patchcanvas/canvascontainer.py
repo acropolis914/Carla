@@ -33,6 +33,7 @@ from . import (
 CONTAINER_LAYOUT_VBOX = "vbox"
 CONTAINER_LAYOUT_HBOX = "hbox"
 CONTAINER_LAYOUT_GRID = "grid"
+CONTAINER_LAYOUT_FREEFORM = "freeform"
 
 CONTAINER_PADDING = 14.0
 CONTAINER_HEADER_HEIGHT = 28.0
@@ -168,6 +169,16 @@ class CanvasContainer(QGraphicsObject):
     # Layout Solvers
     # -------------------------------------------------------------------------
 
+    def addFreeformItem(self, box, rel_x=None, rel_y=None):
+        if box not in self.m_items:
+            self.m_items.append(box)
+        setattr(box, "_canvas_container", self)
+        if rel_x is None or rel_y is None:
+            rel_x = box.x() - self.x()
+            rel_y = box.y() - self.y()
+        self.m_item_offsets[box] = (max(CONTAINER_PADDING, rel_x), max(CONTAINER_HEADER_HEIGHT + CONTAINER_PADDING, rel_y))
+        self.updateLayout()
+
     def updateLayout(self):
         """Computes positions of member nodes and resizes container frame with zero drift."""
         if not self.m_items:
@@ -181,9 +192,24 @@ class CanvasContainer(QGraphicsObject):
         start_rel_x = CONTAINER_PADDING
         start_rel_y = CONTAINER_HEADER_HEIGHT + CONTAINER_PADDING
 
-        self.m_item_offsets.clear()
+        if self.m_layout_mode == CONTAINER_LAYOUT_FREEFORM:
+            # Calculate bounding hull of child nodes relative to container origin
+            min_x = min_y = float("inf")
+            max_r = max_b = float("-inf")
+            for box in self.m_items:
+                if box not in self.m_item_offsets:
+                    self.m_item_offsets[box] = (max(start_rel_x, box.x() - self.x()), max(start_rel_y, box.y() - self.y()))
+                rx, ry = self.m_item_offsets[box]
+                min_x = min(min_x, rx)
+                min_y = min(min_y, ry)
+                max_r = max(max_r, rx + box.boundingRect().width())
+                max_b = max(max_b, ry + box.boundingRect().height())
 
-        if self.m_layout_mode == CONTAINER_LAYOUT_VBOX:
+            new_w = max(CONTAINER_MIN_WIDTH, max_r + CONTAINER_PADDING)
+            new_h = max(CONTAINER_HEADER_HEIGHT + CONTAINER_PADDING * 2, max_b + CONTAINER_PADDING)
+
+        elif self.m_layout_mode == CONTAINER_LAYOUT_VBOX:
+            self.m_item_offsets.clear()
             max_w = max(b.boundingRect().width() for b in self.m_items)
             current_y = start_rel_y
             for box in self.m_items:
@@ -195,6 +221,7 @@ class CanvasContainer(QGraphicsObject):
             new_h = CONTAINER_HEADER_HEIGHT + CONTAINER_PADDING * 2 + total_h
 
         elif self.m_layout_mode == CONTAINER_LAYOUT_HBOX:
+            self.m_item_offsets.clear()
             max_h = max(b.boundingRect().height() for b in self.m_items)
             current_x = start_rel_x
             for box in self.m_items:
@@ -206,6 +233,7 @@ class CanvasContainer(QGraphicsObject):
             new_h = CONTAINER_HEADER_HEIGHT + CONTAINER_PADDING * 2 + max_h
 
         else:  # Grid (2-column default)
+            self.m_item_offsets.clear()
             cols = 2
             col_widths = [0] * cols
             for idx, box in enumerate(self.m_items):
@@ -322,10 +350,10 @@ class CanvasContainer(QGraphicsObject):
                     self.toggleCollapse()
                     return
 
-                # Layout switcher badge: [VBOX/HBOX/GRID]
+                # Layout switcher badge: [VBOX/HBOX/GRID/FREE]
                 if rect.width() - 110 <= pos.x() < rect.width() - 50:
                     event.accept()
-                    modes = [CONTAINER_LAYOUT_VBOX, CONTAINER_LAYOUT_HBOX, CONTAINER_LAYOUT_GRID]
+                    modes = [CONTAINER_LAYOUT_VBOX, CONTAINER_LAYOUT_HBOX, CONTAINER_LAYOUT_GRID, CONTAINER_LAYOUT_FREEFORM]
                     next_idx = (modes.index(self.m_layout_mode) + 1) % len(modes)
                     self.m_layout_mode = modes[next_idx]
                     self.updateLayout()
@@ -380,16 +408,20 @@ class CanvasContainer(QGraphicsObject):
         act_vbox = layout_menu.addAction("VBox (Vertical)")
         act_hbox = layout_menu.addAction("HBox (Horizontal)")
         act_grid = layout_menu.addAction("Grid (Matrix)")
+        act_freeform = layout_menu.addAction("Freeform (Unconstrained)")
         act_vbox.setCheckable(True)
         act_hbox.setCheckable(True)
         act_grid.setCheckable(True)
+        act_freeform.setCheckable(True)
         act_vbox.setChecked(self.m_layout_mode == CONTAINER_LAYOUT_VBOX)
         act_hbox.setChecked(self.m_layout_mode == CONTAINER_LAYOUT_HBOX)
         act_grid.setChecked(self.m_layout_mode == CONTAINER_LAYOUT_GRID)
+        act_freeform.setChecked(self.m_layout_mode == CONTAINER_LAYOUT_FREEFORM)
 
         act_vbox.triggered.connect(lambda: self.setLayoutMode(CONTAINER_LAYOUT_VBOX))
         act_hbox.triggered.connect(lambda: self.setLayoutMode(CONTAINER_LAYOUT_HBOX))
         act_grid.triggered.connect(lambda: self.setLayoutMode(CONTAINER_LAYOUT_GRID))
+        act_freeform.triggered.connect(lambda: self.setLayoutMode(CONTAINER_LAYOUT_FREEFORM))
 
         # Color Accent
         color_menu = menu.addMenu("Color Accent")

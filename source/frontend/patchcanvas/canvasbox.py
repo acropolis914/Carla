@@ -1386,6 +1386,7 @@ class CanvasBox(QGraphicsObject):
         act_group_vbox = containerMenu.addAction("Group into VBox")
         act_group_hbox = containerMenu.addAction("Group into HBox")
         act_group_grid = containerMenu.addAction("Group into Grid")
+        act_group_freeform = containerMenu.addAction("Group into Freeform")
         containerMenu.addSeparator()
         act_ungroup = containerMenu.addAction("Ungroup Container")
 
@@ -1393,6 +1394,7 @@ class CanvasBox(QGraphicsObject):
         act_group_vbox.triggered.connect(lambda: createContainerFromSelected("vbox"))
         act_group_hbox.triggered.connect(lambda: createContainerFromSelected("hbox"))
         act_group_grid.triggered.connect(lambda: createContainerFromSelected("grid"))
+        act_group_freeform.triggered.connect(lambda: createContainerFromSelected("freeform"))
         act_ungroup.triggered.connect(lambda: ungroupNode(self))
 
         if not getattr(self, "_canvas_container", None):
@@ -1801,10 +1803,18 @@ class CanvasBox(QGraphicsObject):
 
                 current_c = getattr(self, "_canvas_container", None)
                 if dropped_c is not None:
-                    idx = dropped_c.calculateInsertionIndex(sp)
-                    if current_c and current_c is not dropped_c:
-                        current_c.removeItem(self)
-                    dropped_c.addItem(self, idx)
+                    if dropped_c.m_layout_mode == "freeform":
+                        if current_c and current_c is not dropped_c:
+                            current_c.removeItem(self)
+                        # Relative offset from container origin
+                        rel_x = self.x() - dropped_c.x()
+                        rel_y = self.y() - dropped_c.y()
+                        dropped_c.addFreeformItem(self, rel_x, rel_y)
+                    else:
+                        idx = dropped_c.calculateInsertionIndex(sp)
+                        if current_c and current_c is not dropped_c:
+                            current_c.removeItem(self)
+                        dropped_c.addItem(self, idx)
                 elif current_c is not None:
                     # Node dragged completely outside container bounds -> detach
                     current_c.removeItem(self)

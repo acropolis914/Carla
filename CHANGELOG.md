@@ -31,7 +31,7 @@ Patchbay performance overhaul: QOpenGLWidget hardware acceleration, item caching
   - Added dedicated right-click context menu to containers with **Rename**, **Catppuccin color accents**, **Layout mode**, **Collapse/Expand**, and **Ungroup**.
   - Supported double-clicking the container header to rename inline.
   - Interactive drag-and-drop ergonomics: dynamic slot gap preview lines, automatic child translation when dragging the container, and drag-out extraction.
-  - Supported **VBox** (vertical stack), **HBox** (horizontal chain), and **Grid** (matrix) with header badge mode switching and ungroup button.
+  - Supported **VBox** (vertical stack), **HBox** (horizontal chain), **Grid** (matrix), and **Freeform** (unconstrained positions within an auto-fitting boundary frame) with header badge mode switching and ungroup button.
   - Synchronized cable visibility during collapse/expand so cables hide neatly when containers are minimized and reappear when expanded.
   - Added user confirmation prompt when clicking ungroup/remove, and kept child nodes at their exact canvas coordinates without stacking.
   - Persistent JSON project storage under `extra_metadata["patchbay_containers"]`.
