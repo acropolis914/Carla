@@ -276,9 +276,10 @@ class CanvasPort(QGraphicsItem):
             self.parentItem().setZValue(canvas.last_z_value)
 
         item = None
-        items = canvas.scene.items(
-            event.scenePos(), Qt.ContainsItemShape, Qt.AscendingOrder
-        )
+        sp = event.scenePos()
+        # Fast query with an 8px leeway box around cursor using fast bounding rect intersection
+        leeway_rect = QRectF(sp.x() - 8.0, sp.y() - 8.0, 16.0, 16.0)
+        items = canvas.scene.items(leeway_rect, Qt.IntersectsItemBoundingRect, Qt.AscendingOrder)
         for _, itemx in enumerate(items):
             if itemx.type() != CanvasPortType or itemx == self:
                 continue

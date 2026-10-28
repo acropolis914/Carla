@@ -31,7 +31,7 @@ Patchbay performance overhaul: QOpenGLWidget hardware acceleration, item caching
   - Applied `DontAdjustForAntialiasing` and `DontSavePainterState` optimization flags alongside `SmartViewportUpdate` to eliminate full canvas redraws.
   - Enabled `DeviceCoordinateCache` on `CanvasBox`, `CanvasPort`, and `CanvasIcon` items to eliminate redundant repainting of static node bodies, badges, and SVGs.
   - Bumped signal flow animation frequency to 60 FPS (16ms interval) for fluid visual pulses.
-  - Implemented fast straight-line drag previews during interactive mouse dragging with a settle timer to compute the full bezier curve when the pointer pauses.
+  - Implemented zero-allocation straight-line wire drag previews with sub-pixel deadband pruning and fast bounding-rect port hover lookup with leeway.
 
 ## [1.1.5] - 2026-10-28
 

@@ -50,17 +50,21 @@ class CanvasLineMov(QGraphicsPathItem):
         self.m_port_type = port_type
         self.m_shape = shape if shape is not None else getattr(options, "line_style", "bezier")
         self.m_algorithm = get_line_algorithm(self.m_shape)
-        self.m_ctx = None
-
-        self._settle_timer = QTimer()
-        self._settle_timer.setSingleShot(True)
-        self._settle_timer.setInterval(45)
-        self._settle_timer.timeout.connect(self._on_drag_settled)
 
         # Port position doesn't change while moving around line
         self.p_itemX = self.scenePos().x()
         self.p_itemY = self.scenePos().y()
         self.p_width = parent.getPortWidth()
+
+        if self.m_port_mode == PORT_MODE_INPUT:
+            self.m_start_point = QPointF(0, float(canvas.theme.port_height) / 2)
+        elif self.m_port_mode == PORT_MODE_OUTPUT:
+            self.m_start_point = QPointF(self.p_width + 12, float(canvas.theme.port_height) / 2)
+        else:
+            self.m_start_point = QPointF(0, 0)
+
+        self._last_scene_x = None
+        self._last_scene_y = None
 
         if port_type == PORT_TYPE_AUDIO_JACK:
             pen = QPen(canvas.theme.line_audio_jack, 2)
@@ -79,33 +83,27 @@ class CanvasLineMov(QGraphicsPathItem):
         pen.setWidthF(pen.widthF() + 0.00001)
         self.setPen(pen)
 
-    def _on_drag_settled(self):
-        if self.m_ctx is not None:
-            self.setPath(self.m_algorithm.build_drag_path(self.m_ctx))
-
     def updateLinePos(self, scenePos):
-        if self.m_port_mode == PORT_MODE_INPUT:
-            start = QPointF(0, float(canvas.theme.port_height)/2)
-            direction = DIRECTION_INPUT
-        elif self.m_port_mode == PORT_MODE_OUTPUT:
-            start = QPointF(self.p_width + 12, float(canvas.theme.port_height)/2)
-            direction = DIRECTION_OUTPUT
-        else:
-            return
+        sx = scenePos.x()
+        sy = scenePos.y()
 
-        end = QPointF(scenePos.x() - self.p_itemX, scenePos.y() - self.p_itemY)
-        ctx = LineContext(start, end, direction,
-                          port1=self.parentItem(), canvas=canvas, scene_pos=scenePos)
-        self.m_ctx = ctx
+        # Leeway deadband: skip if pointer moved less than 1.5 pixels
+        if self._last_scene_x is not None:
+            dx = sx - self._last_scene_x
+            dy = sy - self._last_scene_y
+            if (dx * dx + dy * dy) < 2.25:
+                return
 
-        # Fast direct straight line during active movement
+        self._last_scene_x = sx
+        self._last_scene_y = sy
+
+        end = QPointF(sx - self.p_itemX, sy - self.p_itemY)
+
+        # Zero allocation straight line directly to cursor
         fast_path = QPainterPath()
-        fast_path.moveTo(start)
+        fast_path.moveTo(self.m_start_point)
         fast_path.lineTo(end)
         self.setPath(fast_path)
-
-        # Settle to the full bezier/configured curve once pointer settles
-        self._settle_timer.start()
 
     def type(self):
         return self.m_algorithm.mov_line_type
