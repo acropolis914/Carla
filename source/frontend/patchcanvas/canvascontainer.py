@@ -707,10 +707,11 @@ class CanvasContainer(QGraphicsObject):
         header_path.addRoundedRect(header_rect, 8.0, 8.0)
         painter.fillPath(header_path, QColor(pen_color.red(), pen_color.green(), pen_color.blue(), 50))
 
+        font = QFont(painter.font())
+
         # Title text (hidden while inline editing)
         if self.m_title_editor_item is None:
             painter.setPen(QColor(220, 224, 232))
-            font = QFont(painter.font())
             font.setBold(True)
             font.setPixelSize(12)
             painter.setFont(font)
