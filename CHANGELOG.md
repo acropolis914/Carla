@@ -26,6 +26,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Restricted double-click inline rename collision strictly to the title text boundary with minimum 5-character width, leaving the remaining header draggable.
   - Preserved original canvas layout and positions when grouping selected nodes into Freeform containers.
 
+### Bug Fixes
+- **fix(patchbay)**: forward all keyboard inputs to active scene focus items during inline rename
+  - Fixed `DraggableGraphicsView` and `PatchCanvasScene` intercepting characters (`V`, `H`, `Q`, `Space`, `Escape`, `Ctrl+A/D/F/S`) while inline editing text items in the canvas.
+- **fix(patchbay)**: initialize external patchbay state on startup and sync menu actions
+  - Initialize `fExternalPatchbay` from `Canvas/ShowExternal` settings on startup so PipeWire, PulseAudio, and ALSA nodes appear immediately without waiting for manual toggle.
+  - Added container host execution fallback (`distrobox-host-exec`, `flatpak-spawn`) and backoff handling for `pw-dump` port name queries.
+- **fix(engine)**: prevent `curPluginCount != 0` assertion failure on empty racks
+  - Guarded `setGroupAsPlugin`, `carla_get_custom_data_value`, and `CarlaEngine::getPlugin` against querying `MAIN_CARLA_PLUGIN_ID` (0xFFFF) or out-of-bound plugin IDs.
+- **fix(updater)**: resolve actual RPM release assets and use fail-safe curl
+  - Query GitHub release assets dynamically in `clara_self_updater.sh` and use `curl -f` to avoid downloading 404 HTML error pages as invalid RPM packages.
+- **fix(app)**: set desktop file name to `clara` for host portal registration
+  - Set `desktopFileName` to `clara` (or Flatpak ID) to eliminate D-Bus host portal registration errors.
+- **fix(packaging)**: disable detached debug package generation across all PKGBUILDs
+  - Added `options=('!debug')` to root `PKGBUILD`, `PKGBUILD.local`, `aur/clara-git/PKGBUILD`, and CI template `.github/aur/PKGBUILD.in` to prevent spawning redundant `-debug` tarballs.
+
 
 ## [1.1.7] - 2026-10-29
 

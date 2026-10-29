@@ -75,6 +75,12 @@ class DraggableGraphicsView(QGraphicsView):
         self.toolModeChanged.emit(self.fToolMode)
 
     def keyPressEvent(self, event):
+        # Ignore tool hotkeys if an in-scene item (e.g. rename editor) has keyboard focus
+        sc = self.scene()
+        if sc is not None and sc.focusItem() is not None:
+            QGraphicsView.keyPressEvent(self, event)
+            return
+
         # Ignore tool hotkeys if searching
         edit = self._searchWidget()
         if edit is not None and edit.hasFocus():

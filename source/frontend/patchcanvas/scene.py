@@ -368,6 +368,10 @@ class PatchScene(QGraphicsScene):
             event.ignore()
             return
 
+        if self.focusItem() is not None:
+            QGraphicsScene.keyPressEvent(self, event)
+            return
+
         if event.key() == Qt.Key_Home:
             event.accept()
             self.zoom_fit()
