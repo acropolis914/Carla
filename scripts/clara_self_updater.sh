@@ -172,6 +172,15 @@ cleanup() {
 }
 trap cleanup EXIT
 
+find_release_asset() {
+    local ext_regex="$1"
+    local asset_url=""
+    if command -v curl >/dev/null 2>&1; then
+        asset_url=$(curl -sSL "https://api.github.com/repos/acropolis914/Clara/releases/tags/v${TARGET_VERSION}" 2>/dev/null | grep -o '"browser_download_url": *"[^"]*"' | cut -d'"' -f4 | grep -E "$ext_regex" | head -n 1)
+    fi
+    echo "$asset_url"
+}
+
 # 4. Perform package installation per installation method
 case "$INSTALL_METHOD" in
     arch)
@@ -230,10 +239,19 @@ case "$INSTALL_METHOD" in
 
     rpm|fedora)
         echo -e "${CYAN}→ Updating via dnf/rpm (mirroring original install)...${RESET}"
-        RPM_NAME="clara-fedora-x86_64.rpm"
-        RPM_URL="https://github.com/acropolis914/Clara/releases/download/v${TARGET_VERSION}/${RPM_NAME}"
+        RPM_URL=$(find_release_asset '\.fc[0-9]+\.x86_64\.rpm$|\.rpm$')
+        if [ -n "$RPM_URL" ]; then
+            RPM_NAME=$(basename "$RPM_URL")
+        else
+            RPM_NAME="clara-${TARGET_VERSION}-1.fc44.x86_64.rpm"
+            RPM_URL="https://github.com/acropolis914/Clara/releases/download/v${TARGET_VERSION}/${RPM_NAME}"
+        fi
         echo -e "${BLUE}Downloading ${RPM_NAME}...${RESET}"
-        curl -sSL "$RPM_URL" -o "$TMP_DIR/${RPM_NAME}" || wget -qO "$TMP_DIR/${RPM_NAME}" "$RPM_URL"
+        curl -sSLf "$RPM_URL" -o "$TMP_DIR/${RPM_NAME}" || wget -qO "$TMP_DIR/${RPM_NAME}" "$RPM_URL" || {
+            RPM_NAME="clara-fedora-x86_64.rpm"
+            RPM_URL="https://github.com/acropolis914/Clara/releases/download/v${TARGET_VERSION}/${RPM_NAME}"
+            curl -sSLf "$RPM_URL" -o "$TMP_DIR/${RPM_NAME}" || wget -qO "$TMP_DIR/${RPM_NAME}" "$RPM_URL"
+        }
         if command -v dnf >/dev/null 2>&1; then
             echo -e "${CYAN}→ Installing with dnf...${RESET}"
             run_privileged dnf install -y "$TMP_DIR/${RPM_NAME}"
@@ -325,9 +343,18 @@ case "$INSTALL_METHOD" in
             read -r
             exit 0
         elif command -v dnf >/dev/null 2>&1 || command -v rpm >/dev/null 2>&1; then
-            PKG_NAME="clara-fedora-x86_64.rpm"
-            RPM_URL="https://github.com/acropolis914/Clara/releases/download/v${TARGET_VERSION}/${PKG_NAME}"
-            curl -sSL "$RPM_URL" -o "$TMP_DIR/${PKG_NAME}" || wget -qO "$TMP_DIR/${PKG_NAME}" "$RPM_URL"
+            RPM_URL=$(find_release_asset '\.fc[0-9]+\.x86_64\.rpm$|\.rpm$')
+            if [ -n "$RPM_URL" ]; then
+                PKG_NAME=$(basename "$RPM_URL")
+            else
+                PKG_NAME="clara-${TARGET_VERSION}-1.fc44.x86_64.rpm"
+                RPM_URL="https://github.com/acropolis914/Clara/releases/download/v${TARGET_VERSION}/${PKG_NAME}"
+            fi
+            curl -sSLf "$RPM_URL" -o "$TMP_DIR/${PKG_NAME}" || wget -qO "$TMP_DIR/${PKG_NAME}" "$RPM_URL" || {
+                PKG_NAME="clara-fedora-x86_64.rpm"
+                RPM_URL="https://github.com/acropolis914/Clara/releases/download/v${TARGET_VERSION}/${PKG_NAME}"
+                curl -sSLf "$RPM_URL" -o "$TMP_DIR/${PKG_NAME}" || wget -qO "$TMP_DIR/${PKG_NAME}" "$RPM_URL"
+            }
             if command -v dnf >/dev/null 2>&1; then
                 run_privileged dnf install -y "$TMP_DIR/${PKG_NAME}"
             elif command -v yum >/dev/null 2>&1; then

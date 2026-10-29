@@ -68,7 +68,13 @@ class CanvasContainer(QGraphicsObject):
     preserving cable trajectories and native port coordinates.
     """
 
-    def __init__(self, container_id, title="Group", layout_mode=CONTAINER_LAYOUT_VBOX, parent=None):
+    def __init__(
+        self,
+        container_id,
+        title="Group",
+        layout_mode=CONTAINER_LAYOUT_VBOX,
+        parent=None,
+    ):
         super().__init__(parent)
 
         self.m_id = container_id
@@ -105,8 +111,7 @@ class CanvasContainer(QGraphicsObject):
         # Graphics item configuration - strictly NO ItemIsMovable to avoid dual-offset drift!
         self.setZValue(-10.0)
         self.setFlags(
-            QGraphicsItem.ItemIsSelectable
-            | QGraphicsItem.ItemSendsGeometryChanges
+            QGraphicsItem.ItemIsSelectable | QGraphicsItem.ItemSendsGeometryChanges
         )
         self.setAcceptHoverEvents(True)
 
@@ -133,7 +138,9 @@ class CanvasContainer(QGraphicsObject):
             "plugin_id": getattr(box, "m_plugin_id", -1),
             "pw_node_name": getattr(box, "pw_node_name", None),
             "name": getattr(box, "m_group_name", ""),
-            "split_mode": getattr(box, "m_split_mode", 0) if hasattr(box, "m_split_mode") else (1 if getattr(box, "isSplit", lambda: False)() else 0),
+            "split_mode": getattr(box, "m_split_mode", 0)
+            if hasattr(box, "m_split_mode")
+            else (1 if getattr(box, "isSplit", lambda: False)() else 0),
         }
 
     def matchesDescriptor(self, box, desc):
@@ -190,7 +197,10 @@ class CanvasContainer(QGraphicsObject):
         if rel_x is None or rel_y is None:
             rel_x = box.x() - self.x()
             rel_y = box.y() - self.y()
-        self.m_item_offsets[box] = (max(CONTAINER_PADDING, rel_x), max(CONTAINER_HEADER_HEIGHT + CONTAINER_PADDING, rel_y))
+        self.m_item_offsets[box] = (
+            max(CONTAINER_PADDING, rel_x),
+            max(CONTAINER_HEADER_HEIGHT + CONTAINER_PADDING, rel_y),
+        )
         self.updateLayout()
 
     def updateLayout(self):
@@ -212,7 +222,10 @@ class CanvasContainer(QGraphicsObject):
             max_r = max_b = float("-inf")
             for box in self.m_items:
                 if box not in self.m_item_offsets:
-                    self.m_item_offsets[box] = (max(start_rel_x, box.x() - self.x()), max(start_rel_y, box.y() - self.y()))
+                    self.m_item_offsets[box] = (
+                        max(start_rel_x, box.x() - self.x()),
+                        max(start_rel_y, box.y() - self.y()),
+                    )
                 rx, ry = self.m_item_offsets[box]
                 min_x = min(min_x, rx)
                 min_y = min(min_y, ry)
@@ -220,7 +233,10 @@ class CanvasContainer(QGraphicsObject):
                 max_b = max(max_b, ry + box.boundingRect().height())
 
             new_w = max(CONTAINER_MIN_WIDTH, max_r + CONTAINER_PADDING)
-            new_h = max(CONTAINER_HEADER_HEIGHT + CONTAINER_PADDING * 2, max_b + CONTAINER_PADDING)
+            new_h = max(
+                CONTAINER_HEADER_HEIGHT + CONTAINER_PADDING * 2,
+                max_b + CONTAINER_PADDING,
+            )
 
         elif self.m_layout_mode == CONTAINER_LAYOUT_VBOX:
             self.m_item_offsets.clear()
@@ -261,7 +277,11 @@ class CanvasContainer(QGraphicsObject):
                 if c == 0 and idx > 0:
                     current_y += row_max_h + CONTAINER_ITEM_SPACING
                     row_max_h = 0
-                bx = start_rel_x if c == 0 else start_rel_x + col_widths[0] + CONTAINER_ITEM_SPACING
+                bx = (
+                    start_rel_x
+                    if c == 0
+                    else start_rel_x + col_widths[0] + CONTAINER_ITEM_SPACING
+                )
                 self.m_item_offsets[box] = (bx, current_y)
                 row_max_h = max(row_max_h, box.boundingRect().height())
 
@@ -421,7 +441,12 @@ class CanvasContainer(QGraphicsObject):
                 # Layout switcher badge: x = 48 to 72
                 if 48.0 <= pos.x() <= 72.0:
                     event.accept()
-                    modes = [CONTAINER_LAYOUT_VBOX, CONTAINER_LAYOUT_HBOX, CONTAINER_LAYOUT_GRID, CONTAINER_LAYOUT_FREEFORM]
+                    modes = [
+                        CONTAINER_LAYOUT_VBOX,
+                        CONTAINER_LAYOUT_HBOX,
+                        CONTAINER_LAYOUT_GRID,
+                        CONTAINER_LAYOUT_FREEFORM,
+                    ]
                     next_idx = (modes.index(self.m_layout_mode) + 1) % len(modes)
                     self.m_layout_mode = modes[next_idx]
                     self.updateLayout()
@@ -447,7 +472,11 @@ class CanvasContainer(QGraphicsObject):
             orig_w, orig_h = self.m_drag_start_size
             rx, ry = self.m_resize_edge
             new_w = max(CONTAINER_MIN_WIDTH, orig_w + delta.x()) if rx else orig_w
-            new_h = max(CONTAINER_HEADER_HEIGHT + CONTAINER_PADDING * 2, orig_h + delta.y()) if ry else orig_h
+            new_h = (
+                max(CONTAINER_HEADER_HEIGHT + CONTAINER_PADDING * 2, orig_h + delta.y())
+                if ry
+                else orig_h
+            )
             self.prepareGeometryChange()
             self.m_width = new_w
             self.m_height = new_h
@@ -478,7 +507,10 @@ class CanvasContainer(QGraphicsObject):
         super().mouseReleaseEvent(event)
 
     def mouseDoubleClickEvent(self, event):
-        if event.button() == Qt.LeftButton and event.pos().y() <= CONTAINER_HEADER_HEIGHT:
+        if (
+            event.button() == Qt.LeftButton
+            and event.pos().y() <= CONTAINER_HEADER_HEIGHT
+        ):
             # Inline rename collision: starts after controls (x >= 78) and limited to title length with min 5 chars
             font = QFont()
             font.setBold(True)
@@ -550,7 +582,11 @@ class CanvasContainer(QGraphicsObject):
 
         # Select all text
         cursor = text_item.textCursor()
-        cursor.select(QTextCursor.SelectionType.Document if hasattr(QTextCursor, "SelectionType") else QTextCursor.Document)
+        cursor.select(
+            QTextCursor.SelectionType.Document
+            if hasattr(QTextCursor, "SelectionType")
+            else QTextCursor.Document
+        )
         text_item.setTextCursor(cursor)
         self.update()
 
@@ -582,7 +618,9 @@ class CanvasContainer(QGraphicsObject):
         act_vbox.triggered.connect(lambda: self.setLayoutMode(CONTAINER_LAYOUT_VBOX))
         act_hbox.triggered.connect(lambda: self.setLayoutMode(CONTAINER_LAYOUT_HBOX))
         act_grid.triggered.connect(lambda: self.setLayoutMode(CONTAINER_LAYOUT_GRID))
-        act_freeform.triggered.connect(lambda: self.setLayoutMode(CONTAINER_LAYOUT_FREEFORM))
+        act_freeform.triggered.connect(
+            lambda: self.setLayoutMode(CONTAINER_LAYOUT_FREEFORM)
+        )
 
         # Color context menu with Catppuccin palette swatches
         color_menu = QMenu("Color", menu)
@@ -612,7 +650,9 @@ class CanvasContainer(QGraphicsObject):
             "QPushButton { font-weight: bold; color: #888; background: transparent; border: 1px solid #555; border-radius: 3px; } "
             "QPushButton:hover { color: #fff; border-color: #888; background: #333; }"
         )
-        btn_reset.clicked.connect(lambda: (self.setColor(QColor("#89b4fa")), menu.close()))
+        btn_reset.clicked.connect(
+            lambda: (self.setColor(QColor("#89b4fa")), menu.close())
+        )
         pal_layout.addWidget(btn_reset)
 
         for col_hex, col_name in catppuccin_colors:
@@ -623,7 +663,12 @@ class CanvasContainer(QGraphicsObject):
                 f"QPushButton {{ background-color: {col_hex}; border: 1px solid rgba(0,0,0,0.4); border-radius: 3px; }} "
                 f"QPushButton:hover {{ border: 2px solid #ffffff; }}"
             )
-            btn_col.clicked.connect(lambda checked=False, c=col_hex: (self.setColor(QColor(c)), menu.close()))
+            btn_col.clicked.connect(
+                lambda checked=False, c=col_hex: (
+                    self.setColor(QColor(c)),
+                    menu.close(),
+                )
+            )
             pal_layout.addWidget(btn_col)
 
         color_widget_action = QWidgetAction(color_menu)
@@ -642,7 +687,9 @@ class CanvasContainer(QGraphicsObject):
         act_custom_color.triggered.connect(pickCustomColor)
 
         act_reset_color = color_menu.addAction("Reset Color")
-        act_reset_color.triggered.connect(lambda: (self.setColor(QColor("#89b4fa")), menu.close()))
+        act_reset_color.triggered.connect(
+            lambda: (self.setColor(QColor("#89b4fa")), menu.close())
+        )
 
         menu.addMenu(color_menu)
 
@@ -661,7 +708,9 @@ class CanvasContainer(QGraphicsObject):
         self.startInlineRename()
 
     def promptCustomColor(self):
-        chosen = QColorDialog.getColor(self.m_color, None, "Select Container Accent Color")
+        chosen = QColorDialog.getColor(
+            self.m_color, None, "Select Container Accent Color"
+        )
         if chosen.isValid():
             self.setColor(chosen)
 
@@ -685,6 +734,7 @@ class CanvasContainer(QGraphicsObject):
             return
 
         from .patchcanvas import ungroupNode
+
         # Ensure all boxes are visible and keep their current canvas coordinates
         if self.m_collapsed:
             self.toggleCollapse()
@@ -715,7 +765,10 @@ class CanvasContainer(QGraphicsObject):
         header_rect = QRectF(0, 0, rect.width(), CONTAINER_HEADER_HEIGHT)
         header_path = QPainterPath()
         header_path.addRoundedRect(header_rect, 8.0, 8.0)
-        painter.fillPath(header_path, QColor(pen_color.red(), pen_color.green(), pen_color.blue(), 50))
+        painter.fillPath(
+            header_path,
+            QColor(pen_color.red(), pen_color.green(), pen_color.blue(), 50),
+        )
 
         font = QFont(painter.font())
 
@@ -724,12 +777,20 @@ class CanvasContainer(QGraphicsObject):
         font.setBold(True)
         font.setPixelSize(12)
         painter.setFont(font)
-        painter.drawText(QRectF(8, 0, 18, CONTAINER_HEADER_HEIGHT), Qt.AlignVCenter | Qt.AlignCenter, "󰅖")
+        painter.drawText(
+            QRectF(8, 0, 18, CONTAINER_HEADER_HEIGHT),
+            Qt.AlignVCenter | Qt.AlignCenter,
+            "󰅖",
+        )
 
         # 2. Collapse toggle [󰍡 / 󰍢] (x: 28 to 46)
-        collapse_icon = "󰍢" if self.m_collapsed else "󰍡"
+        collapse_icon = "󰪦" if self.m_collapsed else "󰘖"
         painter.setPen(QColor(180, 190, 210))
-        painter.drawText(QRectF(28, 0, 18, CONTAINER_HEADER_HEIGHT), Qt.AlignVCenter | Qt.AlignCenter, collapse_icon)
+        painter.drawText(
+            QRectF(28, 0, 18, CONTAINER_HEADER_HEIGHT),
+            Qt.AlignVCenter | Qt.AlignCenter,
+            collapse_icon,
+        )
 
         # 3. Layout switcher badge (x: 48 to 72)
         # VBOX: 󰝘, HBOX: 󰝙, GRID: 󰝚, FREEFORM: 󰝜
@@ -741,7 +802,11 @@ class CanvasContainer(QGraphicsObject):
         }
         layout_icon = layout_icons.get(self.m_layout_mode, "󰝘")
         painter.setPen(QColor(137, 180, 250))
-        painter.drawText(QRectF(48, 0, 24, CONTAINER_HEADER_HEIGHT), Qt.AlignVCenter | Qt.AlignCenter, layout_icon)
+        painter.drawText(
+            QRectF(48, 0, 24, CONTAINER_HEADER_HEIGHT),
+            Qt.AlignVCenter | Qt.AlignCenter,
+            layout_icon,
+        )
 
         # 4. Title text (hidden while inline editing, positioned at x=78)
         if self.m_title_editor_item is None:
@@ -749,7 +814,11 @@ class CanvasContainer(QGraphicsObject):
             font.setBold(True)
             font.setPixelSize(12)
             painter.setFont(font)
-            painter.drawText(QRectF(78, 0, rect.width() - 88, CONTAINER_HEADER_HEIGHT), Qt.AlignVCenter | Qt.AlignLeft, self.m_title)
+            painter.drawText(
+                QRectF(78, 0, rect.width() - 88, CONTAINER_HEADER_HEIGHT),
+                Qt.AlignVCenter | Qt.AlignLeft,
+                self.m_title,
+            )
 
         if self.m_collapsed:
             return
@@ -776,14 +845,20 @@ class CanvasContainer(QGraphicsObject):
                     local_y = b.y() - self.y() - CONTAINER_ITEM_SPACING / 2.0
                 else:
                     local_y = rect.height() - CONTAINER_PADDING / 2.0
-                painter.drawLine(QPointF(CONTAINER_PADDING, local_y), QPointF(rect.width() - CONTAINER_PADDING, local_y))
+                painter.drawLine(
+                    QPointF(CONTAINER_PADDING, local_y),
+                    QPointF(rect.width() - CONTAINER_PADDING, local_y),
+                )
             elif self.m_layout_mode == CONTAINER_LAYOUT_HBOX:
                 if self.m_hover_insert_idx < len(self.m_items):
                     b = self.m_items[self.m_hover_insert_idx]
                     local_x = b.x() - self.x() - CONTAINER_ITEM_SPACING / 2.0
                 else:
                     local_x = rect.width() - CONTAINER_PADDING / 2.0
-                painter.drawLine(QPointF(local_x, CONTAINER_HEADER_HEIGHT + CONTAINER_PADDING), QPointF(local_x, rect.height() - CONTAINER_PADDING))
+                painter.drawLine(
+                    QPointF(local_x, CONTAINER_HEADER_HEIGHT + CONTAINER_PADDING),
+                    QPointF(local_x, rect.height() - CONTAINER_PADDING),
+                )
 
         # 5. Subtle resize grip marks at bottom-right corner
         painter.setPen(QPen(QColor(180, 190, 210, 80), 1.2))

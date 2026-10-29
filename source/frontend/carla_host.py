@@ -4420,17 +4420,9 @@ class HostWindow(QMainWindow):
             self.ui.listWidget.update()
 
         if self.fWithCanvas:
-            patchcanvas.clear()
+            # Non-destructive in-place options update
             self.setupCanvas()
             self.slot_miniCanvasCheckAll()
-
-        if (
-            self.host.processMode == ENGINE_PROCESS_MODE_CONTINUOUS_RACK
-            and self.host.isPlugin
-        ):
-            pass
-        elif self.host.is_engine_running():
-            self.host.patchbay_refresh(self.fExternalPatchbay)
 
     # --------------------------------------------------------------------------------------------------------
     # About (menu actions)

@@ -166,7 +166,12 @@ class CarlaApplication():
             self.fApp.setWindowIcon(QIcon(":/scalable/carla-control.svg"))
         else:
             if QT_VERSION >= 0x50700:
-                self.fApp.setDesktopFileName("carla")
+                desktop_file = (
+                    "com.github.acropolis914.Clara"
+                    if os.environ.get("FLATPAK_ID")
+                    else "clara"
+                )
+                self.fApp.setDesktopFileName(desktop_file)
             self.fApp.setWindowIcon(QIcon(":/scalable/carla.svg"))
 
     def createPaletteBlack(self):

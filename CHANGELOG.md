@@ -22,9 +22,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Features
 - **feat(patchbay)**: spammable container header nerd font icons and targeted inline rename collision
-  - Positioned container control buttons (`󰅖` ungroup, `󰍡` collapse/expand, `󰝘`/`󰝙`/`󰝚`/`󰝜` layout switchers) at fixed coordinates on the left of the header for position stability.
+  - Positioned container control buttons (`󰅖` ungroup, `󰘖`/`󰪦` collapse/expand, `󰝘`/`󰝙`/`󰝚`/`󰝜` layout switchers) at fixed coordinates on the left of the header for position stability.
   - Restricted double-click inline rename collision strictly to the title text boundary with minimum 5-character width, leaving the remaining header draggable.
   - Preserved original canvas layout and positions when grouping selected nodes into Freeform containers.
+- **fix(patchbay)**: automatic lifecycle for all drawn canvas items across settings updates and refreshes
+  - Made `setOptions()` live and non-destructive: theme, line style, stroke thickness, cable opacity, and node geometry update existing items in-place without clearing the canvas.
+  - Removed destructive `patchcanvas.clear()` from `slot_configureCarla()`, preventing grouping boxes and layouts from disappearing when changing canvas settings.
+  - Preserved `CanvasContainer` objects and custom node colors across canvas refreshes/clears using standby descriptors and color caching.
 
 - **fix(patchbay)**: prevent canvasbox sub-bar occlusion and resolve missing ports on asynchronous loads
   - Added dedicated shaded background strip and bottom separator for node sub-bars so buttons never clash with port rows.

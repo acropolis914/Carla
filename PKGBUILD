@@ -8,6 +8,7 @@ pkgdesc="Audio Plugin Host (fork with UI/UX enhancements, quick search, recent p
 arch=('x86_64')
 url="https://github.com/acropolis914/Carla"
 license=('GPL-2.0-or-later')
+options=('!debug')
 depends=(
   'alsa-lib'
   'glibc'

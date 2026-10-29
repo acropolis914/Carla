@@ -1136,12 +1136,13 @@ void CarlaEngine::touchPluginParameter(const uint, const uint32_t, const bool) n
 
 CarlaPluginPtr CarlaEngine::getPlugin(const uint id) const noexcept
 {
+    if (pData->curPluginCount == 0 || id >= pData->curPluginCount)
+        return nullptr;
+
 #ifndef BUILD_BRIDGE_ALTERNATIVE_ARCH
     CARLA_SAFE_ASSERT_RETURN_ERRN(pData->plugins != nullptr, "Invalid engine internal data");
-    CARLA_SAFE_ASSERT_RETURN_ERRN(pData->curPluginCount != 0, "Invalid engine internal data");
 #endif
     CARLA_SAFE_ASSERT_RETURN_ERRN(pData->nextAction.opcode == kEnginePostActionNull, "Invalid engine internal data");
-    CARLA_SAFE_ASSERT_RETURN_ERRN(id < pData->curPluginCount, "Invalid plugin Id");
 
     return pData->plugins[id].plugin;
 }

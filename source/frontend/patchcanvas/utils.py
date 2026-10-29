@@ -53,8 +53,15 @@ def _updatePipewirePortNames():
     _pipewire_serial_to_media.clear()
     _pipewire_node_first_serial.clear()
     try:
+        import shutil
+        cmd = ("pw-dump",)
+        if not shutil.which("pw-dump"):
+            if shutil.which("distrobox-host-exec"):
+                cmd = ("distrobox-host-exec", "pw-dump")
+            elif shutil.which("flatpak-spawn"):
+                cmd = ("flatpak-spawn", "--host", "pw-dump")
         output = subprocess.check_output(
-            ("pw-dump",), stderr=subprocess.DEVNULL, text=True
+            cmd, stderr=subprocess.DEVNULL, text=True
         )
         objects = json.loads(output)
         nodes = {
@@ -91,7 +98,7 @@ def _updatePipewirePortNames():
                     if display_name not in candidates:
                         candidates.append(display_name)
     except (OSError, ValueError, KeyError, subprocess.SubprocessError):
-        _pipewire_available = False
+        _pipewire_last_dump_time = now + 10.0
 
 
 def CanvasGetPortDisplayName(group_name, port_name):

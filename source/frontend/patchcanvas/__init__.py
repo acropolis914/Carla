@@ -300,8 +300,14 @@ features.handle_group_pos = False
 
 # PatchCanvas API
 def setOptions(new_options):
-    if canvas.initiated:
-        return
+    old_theme = getattr(options, "theme_name", "")
+    old_line_style = getattr(options, "line_style", "bezier")
+    old_line_stroke = getattr(options, "line_stroke", "solid")
+    old_line_opacity = getattr(options, "line_opacity", 100)
+    old_rounded_nodes = getattr(options, "rounded_nodes", True)
+    old_node_radius = getattr(options, "node_radius", 8)
+    old_node_min_width = getattr(options, "node_min_width", 160)
+
     options.theme_name = new_options.theme_name
     options.auto_hide_groups = new_options.auto_hide_groups
     options.auto_select_items = new_options.auto_select_items
@@ -320,6 +326,53 @@ def setOptions(new_options):
     options.grid_enabled = getattr(new_options, "grid_enabled", True)
     options.grid_size = getattr(new_options, "grid_size", 20)
     options.snap_enabled = getattr(new_options, "snap_enabled", True)
+
+    if not canvas.initiated:
+        return
+
+    # Canvas is already running: apply visual changes live in-place without deleting items!
+    # 1. Theme update
+    if options.theme_name != old_theme:
+        for i in range(Theme.THEME_MAX):
+            if getThemeName(i) == options.theme_name:
+                canvas.theme = Theme(i)
+                break
+        if canvas.scene:
+            canvas.scene.updateTheme()
+        for g in getattr(canvas, "group_list", []):
+            for w in g.widgets:
+                if w and hasattr(w, "updateTheme"):
+                    w.updateTheme()
+
+    # 2. Line style, stroke, and opacity updates
+    if (
+        options.line_style != old_line_style
+        or options.line_stroke != old_line_stroke
+        or options.line_opacity != old_line_opacity
+    ):
+        for conn in getattr(canvas, "connection_list", []):
+            if hasattr(conn, "widget") and conn.widget:
+                if options.line_style != old_line_style and hasattr(conn.widget, "setShape"):
+                    conn.widget.setShape(options.line_style)
+                if options.line_stroke != old_line_stroke and hasattr(conn.widget, "setStroke"):
+                    conn.widget.setStroke(options.line_stroke)
+                if options.line_opacity != old_line_opacity and hasattr(conn.widget, "setOpacityVal"):
+                    conn.widget.setOpacityVal(options.line_opacity)
+                conn.widget.updateLinePos()
+
+    # 3. Node geometry updates
+    if (
+        options.rounded_nodes != old_rounded_nodes
+        or options.node_radius != old_node_radius
+        or options.node_min_width != old_node_min_width
+    ):
+        for g in getattr(canvas, "group_list", []):
+            for w in g.widgets:
+                if w and hasattr(w, "updatePositions"):
+                    w.updatePositions()
+
+    if canvas.scene:
+        canvas.scene.update()
 
 
 

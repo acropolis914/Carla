@@ -34,6 +34,7 @@ from . import (
     port_type2str,
     CanvasIconType,
     CanvasRubberbandType,
+    CanvasContainerType,
     ACTION_PORTS_DISCONNECT,
     EYECANDY_FULL,
     ICON_APPLICATION,
@@ -329,13 +330,20 @@ def clear():
 
     canvas.scene.clearSelection()
 
+    # Cache custom colors across clear/refresh
+    old_custom_colors = getattr(canvas, "old_custom_colors", {})
+    for group in canvas.group_list:
+        if group.widgets[0] and group.widgets[0].m_custom_color:
+            old_custom_colors[group.group_name] = group.widgets[0].m_custom_color
+    canvas.old_custom_colors = old_custom_colors
+
     animatedItems = []
     for animation in canvas.animation_list:
         animatedItems.append(animation.item())
 
     for item in canvas.scene.items():
         if (
-            item.type() in (CanvasIconType, CanvasRubberbandType)
+            item.type() in (CanvasIconType, CanvasRubberbandType, CanvasContainerType)
             or item in animatedItems
         ):
             continue
@@ -493,6 +501,10 @@ def addGroup(
 
     group_box.checkItemPos()
     group_box.blockSignals(False)
+    if hasattr(canvas, "old_custom_colors") and group_name in canvas.old_custom_colors:
+        group_box.setCustomColor(canvas.old_custom_colors[group_name])
+        if group_dict.split and group_dict.widgets[1]:
+            group_dict.widgets[1].setCustomColor(canvas.old_custom_colors[group_name])
 
     canvas.group_list.append(group_dict)
 
@@ -1065,9 +1077,14 @@ def setGroupAsPlugin(group_id, plugin_id, hasUI, hasInlineDisplay):
             # Sync saved custom color if present
             try:
                 from carla_shared import gCarla, CUSTOM_DATA_TYPE_PROPERTY
-                pitem = gCarla.gui.getPluginItem(plugin_id) if hasattr(gCarla.gui, "getPluginItem") else None
-                saved_color = gCarla.gui.host.get_custom_data_value(
-                    plugin_id, CUSTOM_DATA_TYPE_PROPERTY, "CarlaColor"
+                from carla_backend import MAIN_CARLA_PLUGIN_ID
+                pitem = gCarla.gui.getPluginItem(plugin_id) if (hasattr(gCarla.gui, "getPluginItem") and plugin_id != MAIN_CARLA_PLUGIN_ID) else None
+                saved_color = (
+                    gCarla.gui.host.get_custom_data_value(
+                        plugin_id, CUSTOM_DATA_TYPE_PROPERTY, "CarlaColor"
+                    )
+                    if (hasattr(gCarla.gui, "host") and plugin_id != MAIN_CARLA_PLUGIN_ID and plugin_id < getattr(gCarla.gui.host, "get_plugin_count", lambda: 0)())
+                    else None
                 )
                 hex_col = None
                 if saved_color and saved_color != "255;255;255":
