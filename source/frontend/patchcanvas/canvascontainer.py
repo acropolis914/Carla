@@ -734,10 +734,10 @@ class CanvasContainer(QGraphicsObject):
         # 3. Layout switcher badge (x: 48 to 72)
         # VBOX: 󰝘, HBOX: 󰝙, GRID: 󰝚, FREEFORM: 󰝜
         layout_icons = {
-            CONTAINER_LAYOUT_VBOX: "󰝘",
-            CONTAINER_LAYOUT_HBOX: "󰝙",
-            CONTAINER_LAYOUT_GRID: "󰝚",
-            CONTAINER_LAYOUT_FREEFORM: "󰝜",
+            CONTAINER_LAYOUT_VBOX: "󱇍",
+            CONTAINER_LAYOUT_HBOX: "󱇈",
+            CONTAINER_LAYOUT_GRID: "󰕰",
+            CONTAINER_LAYOUT_FREEFORM: "󰆟",
         }
         layout_icon = layout_icons.get(self.m_layout_mode, "󰝘")
         painter.setPen(QColor(137, 180, 250))
@@ -769,7 +769,7 @@ class CanvasContainer(QGraphicsObject):
 
         # 4. Interactive Drop Slot Indicator Line
         if self.m_hover_insert_idx is not None:
-            painter.setPen(QPen(QColor("#a6e3a1"), 2.5, Qt.DashLine))
+            painter.setPen(QPen(QColor("#6c7c6a"), 2.5, Qt.DashLine))
             if self.m_layout_mode == CONTAINER_LAYOUT_VBOX:
                 if self.m_hover_insert_idx < len(self.m_items):
                     b = self.m_items[self.m_hover_insert_idx]
