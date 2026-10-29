@@ -26,7 +26,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Restricted double-click inline rename collision strictly to the title text boundary with minimum 5-character width, leaving the remaining header draggable.
   - Preserved original canvas layout and positions when grouping selected nodes into Freeform containers.
 
-### Bug Fixes
+- **fix(patchbay)**: prevent canvasbox sub-bar occlusion and resolve missing ports on asynchronous loads
+  - Added dedicated shaded background strip and bottom separator for node sub-bars so buttons never clash with port rows.
+  - Linked `_port_dict` directly to child `CanvasPort` items in `addPortFromGroup` and checked `childItems()` during `updatePositions` to prevent nodes from collapsing before global port lists settle.
 - **fix(patchbay)**: forward all keyboard inputs to active scene focus items during inline rename
   - Fixed `DraggableGraphicsView` and `PatchCanvasScene` intercepting characters (`V`, `H`, `Q`, `Space`, `Escape`, `Ctrl+A/D/F/S`) while inline editing text items in the canvas.
 - **fix(host)**: detect yabridge and Wine plugins in project bridge safety pre-check

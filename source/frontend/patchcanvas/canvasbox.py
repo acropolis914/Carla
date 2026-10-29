@@ -925,6 +925,7 @@ class CanvasBox(QGraphicsObject):
         port_dict.port_type = port_type
         port_dict.is_alternate = is_alternate
         port_dict.widget = new_widget
+        new_widget._port_dict = port_dict
 
         self.m_port_list_ids.append(port_id)
 
@@ -1012,14 +1013,24 @@ class CanvasBox(QGraphicsObject):
             min_width, min(app_name_size, max_title_width)
         )
 
-        # Get Port List
+        # Get Port List: check canvas.port_list and fallback to direct child CanvasPort widgets
         port_list = []
+        port_seen_ids = set()
         for port in canvas.port_list:
             if (
                 port.widget.parentItem() == self
                 and port.port_id in self.m_port_list_ids
             ):
                 port_list.append(port)
+                port_seen_ids.add((port.port_mode, port.port_id))
+
+        # Check any child CanvasPort items that might not yet be in canvas.port_list
+        for child in self.childItems():
+            if isinstance(child, CanvasPort) and hasattr(child, "_port_dict"):
+                pd = child._port_dict
+                if (pd.port_mode, pd.port_id) not in port_seen_ids:
+                    port_list.append(pd)
+                    port_seen_ids.add((pd.port_mode, pd.port_id))
 
         # Filter connected vs unconnected if hide_unconnected_ports is enabled
         connected_port_ids = set()
@@ -2167,6 +2178,17 @@ class CanvasBox(QGraphicsObject):
         if has_rack_pair and header_height > 0:
             subbar_y = header_height
             subbar_h = 22
+
+            # Sub-bar background strip with subtle separator
+            subbar_rect = QRectF(lineHinting, subbar_y, self.p_width - 2 * lineHinting, subbar_h)
+            painter.save()
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(QColor(0, 0, 0, 45))
+            painter.drawRect(subbar_rect)
+            # Subtle bottom separator line
+            painter.setPen(QPen(QColor(255, 255, 255, 18), 1.0))
+            painter.drawLine(QPointF(subbar_rect.left(), subbar_rect.bottom()), QPointF(subbar_rect.right(), subbar_rect.bottom()))
+            painter.restore()
 
             # Inspect states for 3 controls
             # 1. Power State
