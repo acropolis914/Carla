@@ -10,6 +10,7 @@ from qt_compat import (
     QColorDialog,
     QCursor,
     QFont,
+    QFontMetrics,
     QGraphicsItem,
     QGraphicsObject,
     QGraphicsTextItem,
@@ -405,20 +406,20 @@ class CanvasContainer(QGraphicsObject):
 
             # 2. Check header controls
             if pos.y() <= CONTAINER_HEADER_HEIGHT:
-                # Close/ungroup button: [✕] at very right
-                if pos.x() >= rect.width() - 24:
+                # Close/ungroup button [󰅖]: x = 8 to 26
+                if 8.0 <= pos.x() <= 26.0:
                     event.accept()
                     self.ungroup()
                     return
 
-                # Collapse / Expand button: [-] / [+]
-                if rect.width() - 48 <= pos.x() < rect.width() - 26:
+                # Collapse / Expand button [󰍡]: x = 28 to 46
+                if 28.0 <= pos.x() <= 46.0:
                     event.accept()
                     self.toggleCollapse()
                     return
 
-                # Layout switcher badge: [VBOX/HBOX/GRID/FREE]
-                if rect.width() - 110 <= pos.x() < rect.width() - 50:
+                # Layout switcher badge: x = 48 to 72
+                if 48.0 <= pos.x() <= 72.0:
                     event.accept()
                     modes = [CONTAINER_LAYOUT_VBOX, CONTAINER_LAYOUT_HBOX, CONTAINER_LAYOUT_GRID, CONTAINER_LAYOUT_FREEFORM]
                     next_idx = (modes.index(self.m_layout_mode) + 1) % len(modes)
@@ -478,10 +479,19 @@ class CanvasContainer(QGraphicsObject):
 
     def mouseDoubleClickEvent(self, event):
         if event.button() == Qt.LeftButton and event.pos().y() <= CONTAINER_HEADER_HEIGHT:
-            # Inline rename editor
-            event.accept()
-            self.startInlineRename()
-            return
+            # Inline rename collision: starts after controls (x >= 78) and limited to title length with min 5 chars
+            font = QFont()
+            font.setBold(True)
+            font.setPixelSize(12)
+            fm = QFontMetrics(font)
+            min_width = fm.horizontalAdvance("MMMMM")  # min 5 characters width
+            title_width = max(min_width, fm.horizontalAdvance(self.m_title) + 12)
+            title_rect = QRectF(78.0, 0, title_width, CONTAINER_HEADER_HEIGHT)
+
+            if title_rect.contains(event.pos()):
+                event.accept()
+                self.startInlineRename()
+                return
         super().mouseDoubleClickEvent(event)
 
     def startInlineRename(self):
@@ -495,7 +505,7 @@ class CanvasContainer(QGraphicsObject):
         font.setPixelSize(12)
         text_item.setFont(font)
         text_item.setDefaultTextColor(QColor("#cad3f5"))
-        text_item.setPos(6.0, 3.0)
+        text_item.setPos(74.0, 3.0)
         text_item.setTextInteractionFlags(Qt.TextEditorInteraction)
         text_item.setZValue(100.0)
         self.m_title_editor_item = text_item
@@ -709,33 +719,37 @@ class CanvasContainer(QGraphicsObject):
 
         font = QFont(painter.font())
 
-        # Title text (hidden while inline editing)
+        # 1. Close / ungroup button [󰅖] (x: 8 to 26)
+        painter.setPen(QColor(235, 160, 172))
+        font.setBold(True)
+        font.setPixelSize(12)
+        painter.setFont(font)
+        painter.drawText(QRectF(8, 0, 18, CONTAINER_HEADER_HEIGHT), Qt.AlignVCenter | Qt.AlignCenter, "󰅖")
+
+        # 2. Collapse toggle [󰍡 / 󰍢] (x: 28 to 46)
+        collapse_icon = "󰍢" if self.m_collapsed else "󰍡"
+        painter.setPen(QColor(180, 190, 210))
+        painter.drawText(QRectF(28, 0, 18, CONTAINER_HEADER_HEIGHT), Qt.AlignVCenter | Qt.AlignCenter, collapse_icon)
+
+        # 3. Layout switcher badge (x: 48 to 72)
+        # VBOX: 󰝘, HBOX: 󰝙, GRID: 󰝚, FREEFORM: 󰝜
+        layout_icons = {
+            CONTAINER_LAYOUT_VBOX: "󰝘",
+            CONTAINER_LAYOUT_HBOX: "󰝙",
+            CONTAINER_LAYOUT_GRID: "󰝚",
+            CONTAINER_LAYOUT_FREEFORM: "󰝜",
+        }
+        layout_icon = layout_icons.get(self.m_layout_mode, "󰝘")
+        painter.setPen(QColor(137, 180, 250))
+        painter.drawText(QRectF(48, 0, 24, CONTAINER_HEADER_HEIGHT), Qt.AlignVCenter | Qt.AlignCenter, layout_icon)
+
+        # 4. Title text (hidden while inline editing, positioned at x=78)
         if self.m_title_editor_item is None:
             painter.setPen(QColor(220, 224, 232))
             font.setBold(True)
             font.setPixelSize(12)
             painter.setFont(font)
-            painter.drawText(QRectF(10, 0, rect.width() - 120, CONTAINER_HEADER_HEIGHT), Qt.AlignVCenter | Qt.AlignLeft, self.m_title)
-
-        # Layout badge [VBOX / HBOX / GRID]
-        badge_text = self.m_layout_mode.upper()
-        painter.setPen(QColor(180, 190, 210))
-        font.setBold(False)
-        font.setPixelSize(10)
-        painter.setFont(font)
-        painter.drawText(QRectF(rect.width() - 110, 0, 55, CONTAINER_HEADER_HEIGHT), Qt.AlignVCenter | Qt.AlignRight, f"[{badge_text}]")
-
-        # Collapse toggle [-] / [+]
-        collapse_char = "[+]" if self.m_collapsed else "[-]"
-        painter.setPen(QColor(180, 190, 210))
-        painter.drawText(QRectF(rect.width() - 48, 0, 20, CONTAINER_HEADER_HEIGHT), Qt.AlignVCenter | Qt.AlignCenter, collapse_char)
-
-        # Close / ungroup button [✕]
-        painter.setPen(QColor(235, 160, 172))
-        font.setBold(True)
-        font.setPixelSize(11)
-        painter.setFont(font)
-        painter.drawText(QRectF(rect.width() - 24, 0, 16, CONTAINER_HEADER_HEIGHT), Qt.AlignVCenter | Qt.AlignCenter, "✕")
+            painter.drawText(QRectF(78, 0, rect.width() - 88, CONTAINER_HEADER_HEIGHT), Qt.AlignVCenter | Qt.AlignLeft, self.m_title)
 
         if self.m_collapsed:
             return
