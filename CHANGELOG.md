@@ -29,6 +29,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Bug Fixes
 - **fix(patchbay)**: forward all keyboard inputs to active scene focus items during inline rename
   - Fixed `DraggableGraphicsView` and `PatchCanvasScene` intercepting characters (`V`, `H`, `Q`, `Space`, `Escape`, `Ctrl+A/D/F/S`) while inline editing text items in the canvas.
+- **fix(host)**: detect yabridge and Wine plugins in project bridge safety pre-check
+  - Included `"yabridge"` and `"wine"` tokens and checked plugin `Binary` path during project loading to ensure Windows bridged plugins run sandboxed in separate processes rather than crashing the host in-process.
 - **fix(patchbay)**: initialize external patchbay state on startup and sync menu actions
   - Initialize `fExternalPatchbay` from `Canvas/ShowExternal` settings on startup so PipeWire, PulseAudio, and ALSA nodes appear immediately without waiting for manual toggle.
   - Added container host execution fallback (`distrobox-host-exec`, `flatpak-spawn`) and backoff handling for `pw-dump` port name queries.

@@ -290,7 +290,12 @@ class HostWindow(QMainWindow):
 
         self.fPeaksCleared = True
 
-        self.fExternalPatchbay = False
+        _saved_show_ext = QSafeSettings("falkTX", "Carla2").value(
+            CARLA_KEY_CANVAS_SHOW_EXTERNAL,
+            CARLA_DEFAULT_CANVAS_SHOW_EXTERNAL,
+            bool,
+        )
+        self.fExternalPatchbay = bool(_saved_show_ext) if not host.isPlugin else False
         self.fSelectedPlugins = []
 
         self.fCanvasWidth = 0
@@ -797,6 +802,8 @@ class HostWindow(QMainWindow):
         self.ui.toolBar.visibilityChanged.connect(self.slot_toolbarVisibilityChanged)
 
         if withCanvas:
+            self.ui.act_canvas_show_internal.setChecked(not self.fExternalPatchbay)
+            self.ui.act_canvas_show_external.setChecked(self.fExternalPatchbay)
             self.ui.act_canvas_show_internal.triggered.connect(
                 self.slot_canvasShowInternal
             )
@@ -1421,9 +1428,9 @@ class HostWindow(QMainWindow):
                 eng_settings = root.find("EngineSettings")
                 prefer_bridges = eng_settings.findtext("PreferPluginBridges") if eng_settings is not None else None
                 if not prefer_bridges or prefer_bridges.lower() in ("false", "0"):
-                    # Plugins that create their own GL/UI context and crash the host when loaded
-                    # in-process (KV-Element/JUCE UI thread collisions, Cardinal/VCV Rack GLX races, DecentSampler).
-                    collision_tokens = ("element", "juce", "cardinal", "decentsampler")
+                    # Plugins that create their own GL/UI context or run via Wine/yabridge and crash the host
+                    # when loaded in-process.
+                    collision_tokens = ("element", "juce", "cardinal", "decentsampler", "yabridge", "wine")
                     risky_plugin = None
                     for p in root.findall("Plugin"):
                         info = p.find("Info")
@@ -1431,7 +1438,8 @@ class HostWindow(QMainWindow):
                             continue
                         p_name = (info.findtext("Name", "") or "").lower()
                         p_uri = (info.findtext("URI", "") or "").lower()
-                        if any(tok in p_name or tok in p_uri for tok in collision_tokens):
+                        p_bin = (info.findtext("Binary", "") or "").lower()
+                        if any(tok in p_name or tok in p_uri or tok in p_bin for tok in collision_tokens):
                             risky_plugin = info.findtext("Name", "") or info.findtext("URI", "") or self.tr("unknown")
                             break
                     if risky_plugin:
