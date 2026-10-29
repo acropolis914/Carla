@@ -2694,21 +2694,42 @@ def createContainerFromSelected(layout_mode="vbox", title=None):
     title = title or f"Group {len(getattr(canvas, 'container_list', [])) + 1}"
     container = CanvasContainer(c_id, title=title, layout_mode=layout_mode)
 
-    # Calculate average position of selected boxes
-    avg_x = sum(b.x() for b in selected_boxes) / len(selected_boxes)
-    avg_y = sum(b.y() for b in selected_boxes) / len(selected_boxes)
-    container.setPos(avg_x - 14, avg_y - 42)
+    if layout_mode == "freeform":
+        # Anchor container precisely to the bounding box of selected items so they don't move
+        min_x = min(b.x() for b in selected_boxes)
+        min_y = min(b.y() for b in selected_boxes)
+        container_x = min_x - 14.0
+        container_y = min_y - 36.0
+        container.setPos(container_x, container_y)
 
-    canvas.scene.addItem(container)
-    if not hasattr(canvas, "container_list"):
-        canvas.container_list = []
-    canvas.container_list.append(container)
+        canvas.scene.addItem(container)
+        if not hasattr(canvas, "container_list"):
+            canvas.container_list = []
+        canvas.container_list.append(container)
 
-    for box in selected_boxes:
-        old_c = getattr(box, "_canvas_container", None)
-        if old_c:
-            old_c.removeItem(box)
-        container.addItem(box)
+        for box in selected_boxes:
+            old_c = getattr(box, "_canvas_container", None)
+            if old_c:
+                old_c.removeItem(box)
+            # Store exact relative offset so box stays at current canvas pos
+            container.m_item_offsets[box] = (box.x() - container_x, box.y() - container_y)
+            container.addItem(box)
+    else:
+        # Calculate average position of selected boxes for structured layout
+        avg_x = sum(b.x() for b in selected_boxes) / len(selected_boxes)
+        avg_y = sum(b.y() for b in selected_boxes) / len(selected_boxes)
+        container.setPos(avg_x - 14, avg_y - 42)
+
+        canvas.scene.addItem(container)
+        if not hasattr(canvas, "container_list"):
+            canvas.container_list = []
+        canvas.container_list.append(container)
+
+        for box in selected_boxes:
+            old_c = getattr(box, "_canvas_container", None)
+            if old_c:
+                old_c.removeItem(box)
+            container.addItem(box)
 
     container.updateLayout()
     return container
