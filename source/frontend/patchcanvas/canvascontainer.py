@@ -146,14 +146,22 @@ class CanvasContainer(QGraphicsObject):
     def matchesDescriptor(self, box, desc):
         """Checks if a CanvasBox matches a stored descriptor."""
         p_id = getattr(box, "m_plugin_id", -1)
-        if p_id >= 0 and desc.get("plugin_id", -1) >= 0:
-            return p_id == desc.get("plugin_id")
+        desc_pid = desc.get("plugin_id", -1)
+        if p_id >= 0 and desc_pid >= 0:
+            return p_id == desc_pid
 
         pw_name = getattr(box, "pw_node_name", None)
         if pw_name and desc.get("pw_node_name"):
             return pw_name == desc.get("pw_node_name")
 
-        return getattr(box, "m_group_name", "") == desc.get("name")
+        box_name = getattr(box, "m_group_name", "")
+        desc_name = desc.get("name", "")
+        if box_name and desc_name and box_name == desc_name:
+            box_split = getattr(box, "m_split_mode", 0) if hasattr(box, "m_split_mode") else (1 if getattr(box, "isSplit", lambda: False)() else 0)
+            desc_split = desc.get("split_mode", 0)
+            return box_split == desc_split
+
+        return False
 
     def addItem(self, box, index=None):
         if box in self.m_items:

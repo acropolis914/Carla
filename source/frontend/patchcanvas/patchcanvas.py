@@ -1104,6 +1104,18 @@ def setGroupAsPlugin(group_id, plugin_id, hasUI, hasInlineDisplay):
                 pass
 
             canvas.group_plugin_map[plugin_id] = group
+
+            if hasattr(canvas, "container_list"):
+                for c in canvas.container_list:
+                    for desc in list(c.m_standby_descriptors):
+                        if c.matchesDescriptor(group.widgets[0], desc):
+                            c.addItem(group.widgets[0])
+                            break
+                    if group.split and group.widgets[1]:
+                        for desc in list(c.m_standby_descriptors):
+                            if c.matchesDescriptor(group.widgets[1], desc):
+                                c.addItem(group.widgets[1])
+                                break
             return
 
     qCritical(

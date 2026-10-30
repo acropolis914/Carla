@@ -29,6 +29,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Made `setOptions()` live and non-destructive: theme, line style, stroke thickness, cable opacity, and node geometry update existing items in-place without clearing the canvas.
   - Removed destructive `patchcanvas.clear()` from `slot_configureCarla()`, preventing grouping boxes and layouts from disappearing when changing canvas settings.
   - Preserved `CanvasContainer` objects and custom node colors across canvas refreshes/clears using standby descriptors and color caching.
+  - Re-link container standby descriptors in `setGroupAsPlugin()` when plugin IDs become available after group creation, preventing active rack plugins from reporting as unplugged.
 
 - **fix(patchbay)**: prevent canvasbox sub-bar occlusion and resolve missing ports on asynchronous loads
   - Added dedicated shaded background strip and bottom separator for node sub-bars so buttons never clash with port rows.
